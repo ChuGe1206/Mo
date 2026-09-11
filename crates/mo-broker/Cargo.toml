@@ -8,12 +8,19 @@ publish = false
 [dependencies]
 mo-ipc = { path = "../mo-ipc" }
 
+[target.'cfg(windows)'.dependencies]
+mo-windows-pipe = { path = "../mo-windows-pipe" }
+
 [lib]
 path = "src/lib.rs"
 
 [[bin]]
 name = "mo-broker-tcp-spike"
 path = "src/main.rs"
+
+[[bin]]
+name = "mo-broker"
+path = "src/named_pipe_main.rs"
 
 [lints.rust]
 unsafe_code = "forbid"

@@ -58,3 +58,23 @@ commit = "920bd41ebf6f9bf6855d14fbe80212e54e749791"
 distribution = "present-in-phase-0-official-verification-asset-only"
 ship_in_mo = false
 source_required = false
+
+[[component]]
+id = "windows-sys"
+name = "windows-sys"
+repository = "https://github.com/microsoft/windows-rs"
+license = "MIT OR Apache-2.0"
+version = "0.61.2"
+crate_sha256 = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
+distribution = "rust-runtime-dependency"
+source_required = false
+
+[[component]]
+id = "windows-link"
+name = "windows-link"
+repository = "https://github.com/microsoft/windows-rs"
+license = "MIT OR Apache-2.0"
+version = "0.2.1"
+crate_sha256 = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+distribution = "rust-build-and-runtime-dependency"
+source_required = false

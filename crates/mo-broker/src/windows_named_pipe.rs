@@ -1,0 +1,71 @@
+//! Authenticated Windows named-pipe adapter for the broker state machine.
+//!
+//! This first vertical slice intentionally serves one connection per listener.
+//! It validates the pipe client before dispatching even the `Hello` frame.
+
+use std::io::{self, Write};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use mo_ipc::{Frame, FrameError, read_frame, write_frame};
+use mo_windows_pipe::{AuthenticatedPipe, PipeAddress, PipeListener};
+
+use crate::BrokerConnection;
+
+pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
+pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
+
+static GENERATION_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+pub fn bind_default() -> io::Result<PipeListener> {
+    PipeListener::bind(PipeAddress::new(DEFAULT_ENDPOINT)?)
+}
+
+pub fn serve_listener(listener: PipeListener) -> io::Result<()> {
+    let (mut stream, first_frame) = listener.accept_first_frame(FIRST_FRAME_TIMEOUT)?;
+    serve_authenticated(&mut stream, first_frame)
+}
+
+pub fn serve_authenticated(stream: &mut AuthenticatedPipe, first_frame: Frame) -> io::Result<()> {
+    let mut broker = BrokerConnection::new(next_generation());
+    dispatch(stream, &mut broker, first_frame)?;
+
+    loop {
+        let request = match read_frame(stream) {
+            Ok(frame) => frame,
+            Err(FrameError::Io(error))
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::UnexpectedEof
+                        | io::ErrorKind::ConnectionReset
+                        | io::ErrorKind::ConnectionAborted
+                        | io::ErrorKind::BrokenPipe
+                ) =>
+            {
+                return Ok(());
+            }
+            Err(error) => return Err(io::Error::new(io::ErrorKind::InvalidData, error)),
+        };
+        dispatch(stream, &mut broker, request)?;
+    }
+}
+
+fn dispatch(
+    stream: &mut AuthenticatedPipe,
+    broker: &mut BrokerConnection,
+    request: Frame,
+) -> io::Result<()> {
+    let response = broker.handle(request).map_err(io::Error::other)?;
+    write_frame(stream, &response)
+        .map_err(|error| io::Error::new(io::ErrorKind::BrokenPipe, error))?;
+    stream.flush()
+}
+
+fn next_generation() -> u64 {
+    let elapsed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    let time_bits = u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX);
+    let counter = GENERATION_COUNTER.fetch_add(1, Ordering::Relaxed);
+    (time_bits ^ counter.rotate_left(17) ^ u64::from(std::process::id())).max(1)
+}

@@ -231,3 +231,35 @@ fn loopback_spike_round_trips_real_framed_tcp_io() {
     drop(stream);
     server.join().unwrap().unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn authenticated_named_pipe_round_trips_broker_handshake() {
+    use mo_windows_pipe::{PipeAddress, PipeClient, PipeListener};
+
+    let address = PipeAddress::new(&format!("broker-test-{}", std::process::id())).unwrap();
+    let listener = PipeListener::bind(address.clone()).unwrap();
+    assert!(listener.rejects_remote_clients().unwrap());
+    let server = thread::spawn(move || mo_broker::windows_named_pipe::serve_listener(listener));
+
+    let mut stream = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+    let hello_payload = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features: FEATURE_KEY_EVENTS,
+        max_payload_len: u32::try_from(MAX_PAYLOAD_LEN).unwrap(),
+    }
+    .encode_payload()
+    .unwrap();
+    mo_ipc::write_frame(
+        &mut stream,
+        &frame(MessageKind::Hello, 0, 0, 1, hello_payload),
+    )
+    .unwrap();
+
+    let hello_ack = mo_ipc::read_frame(&mut stream).unwrap();
+    assert_eq!(hello_ack.header.kind, MessageKind::HelloAck);
+    assert_ne!(hello_ack.header.connection_generation, 0);
+
+    drop(stream);
+    server.join().unwrap().unwrap();
+}

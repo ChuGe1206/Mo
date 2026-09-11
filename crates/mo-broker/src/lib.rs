@@ -1,11 +1,12 @@
-//! Phase 0 broker state machine.
+//! Phase 0 broker state machine and process-boundary adapters.
 //!
-//! This crate intentionally contains no Windows named-pipe implementation yet.
-//! The `tcp_loopback_spike` module is a local diagnostic transport only; it is
-//! not a security or AppContainer compatibility claim.
+//! The TCP module remains diagnostic-only. On Windows, `windows_named_pipe`
+//! connects the state machine to Mo's authenticated local transport.
 
 mod state;
 pub mod tcp_loopback_spike;
+#[cfg(windows)]
+pub mod windows_named_pipe;
 
 pub use state::{
     BrokerConnection, BrokerError, ERROR_BAD_HANDSHAKE, ERROR_BAD_REQUEST,

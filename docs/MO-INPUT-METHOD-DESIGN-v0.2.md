@@ -292,6 +292,8 @@ EngineClient
 - snapshot revision；
 - 当前版本与前一版本的兼容协商。
 
+Windows 实现使用 `\\.\pipe\LOCAL\` 命名空间；DACL 只授予 Broker 当前 logon SID 所需的数据读写权限，并排除 `FILE_CREATE_PIPE_INSTANCE`。服务端设置 `PIPE_REJECT_REMOTE_CLIENTS`，读取首个有界帧后调用 `ImpersonateNamedPipeClient`，从线程 token 再次核对 logon SID，并保证任何退出路径都执行 `RevertToSelf`。客户端只授予 `SecurityIdentification` 级别，Broker 不借用客户端身份访问其他资源。
+
 Broker 把所有客户端当作不可信输入：不接受任意路径、URL、命令或插件加载请求，也不允许一个宿主读取另一个宿主的 session。
 
 按键 IPC 有严格超时：

@@ -6,13 +6,13 @@
 
 ## G0：工程基线——本机通过，远端 CI 待首次运行
 
-- Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
+- Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 35 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 40 个运行时测试和 1 个 compile-fail 契约测试。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
-- 尚未在 GitHub runner 上产生首个 CI 结果；当前目录也尚未建立 Git 历史。
+- 尚未在 GitHub runner 上产生首个 CI 结果；本地 `main` 已建立 Phase 0 基线提交 `25ef5d7`，未配置 remote。
 
 ## G1：librime FFI——本机通过
 
@@ -30,12 +30,14 @@
 - 自主 C++ COM 壳以 `/W4 /WX /sdl /GS /guard:cf` 构建 x64 与 x86 DLL，零警告。
 - 两种架构均通过 DLL 加载、导出、未知 CLSID、Server Lock、禁止聚合、`ITfTextInputProcessorEx` 创建、错误参数和卸载探针。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
+- Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
+- Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
 - 诊断 TCP transport 已通过真实 loopback framed I/O 测试；它不构成生产传输安全结论。
 
 未通过：
 
 - TSF key sink、edit session、composition/candidate UI 以及与 Rust Broker 的真实往返。
-- Windows named pipe、DACL/peer token 校验、AppContainer/WinUI 连接测试。
+- Named Pipe 多实例/overlapped I/O、已认证连接逐请求 deadline、DACL 负向访问测试，以及 AppContainer/WinUI 连接测试。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 
@@ -56,4 +58,4 @@
 
 ## 下一检查点
 
-Phase 0 的下一检查点只聚焦一条垂直链路：x64/x86 TSF key sink → 受限 named pipe → Rust Engine Actor → librime → TSF edit session 上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。
+Phase 0 的下一检查点继续聚焦同一垂直链路：把 x64/x86 TSF key sink 接入已验证的受限 Named Pipe，再把 Broker 的协议 echo 替换为 Rust Engine Actor → librime，并通过 TSF edit session 上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。
