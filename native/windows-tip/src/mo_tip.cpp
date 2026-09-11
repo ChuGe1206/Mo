@@ -12,7 +12,7 @@ namespace {
 volatile LONG g_live_objects = 0;
 volatile LONG g_server_locks = 0;
 
-class TextService final : public ITfTextInputProcessorEx {
+class TextService final : public ITfTextInputProcessorEx, public ITfKeyEventSink {
 public:
     TextService() noexcept { InterlockedIncrement(&g_live_objects); }
 
@@ -28,6 +28,11 @@ public:
             || IsEqualIID(interface_id, IID_ITfTextInputProcessor)
             || IsEqualIID(interface_id, IID_ITfTextInputProcessorEx)) {
             *object = static_cast<ITfTextInputProcessorEx*>(this);
+            AddRef();
+            return S_OK;
+        }
+        if (IsEqualIID(interface_id, IID_ITfKeyEventSink)) {
+            *object = static_cast<ITfKeyEventSink*>(this);
             AddRef();
             return S_OK;
         }
@@ -62,24 +67,86 @@ public:
             return TF_E_ALREADY_EXISTS;
         }
 
+        ITfKeystrokeMgr* keystroke_manager = nullptr;
+        HRESULT result = thread_manager->QueryInterface(
+            IID_ITfKeystrokeMgr,
+            reinterpret_cast<void**>(&keystroke_manager));
+        if (FAILED(result)) {
+            return result;
+        }
+        result = keystroke_manager->AdviseKeyEventSink(client_id, this, TRUE);
+        if (FAILED(result)) {
+            keystroke_manager->Release();
+            return result;
+        }
+
         thread_manager->AddRef();
         thread_manager_ = thread_manager;
+        keystroke_manager_ = keystroke_manager;
         client_id_ = client_id;
         activation_flags_ = flags;
-
-        // Phase 0 intentionally does not install key sinks, edit sessions,
-        // language bars, UIElement providers, or broker IPC yet.
         return S_OK;
     }
 
     STDMETHODIMP Deactivate() noexcept override {
+        HRESULT result = S_OK;
+        if (keystroke_manager_ != nullptr) {
+            result = keystroke_manager_->UnadviseKeyEventSink(client_id_);
+            keystroke_manager_->Release();
+            keystroke_manager_ = nullptr;
+        }
         if (thread_manager_ != nullptr) {
             thread_manager_->Release();
             thread_manager_ = nullptr;
         }
         client_id_ = TF_CLIENTID_NULL;
         activation_flags_ = 0;
+        has_focus_ = false;
+        return result;
+    }
+
+    STDMETHODIMP OnSetFocus(BOOL foreground) noexcept override {
+        has_focus_ = foreground != FALSE;
         return S_OK;
+    }
+
+    STDMETHODIMP OnTestKeyDown(
+        ITfContext* context,
+        WPARAM,
+        LPARAM,
+        BOOL* eaten) noexcept override {
+        return TestKey(context, eaten);
+    }
+
+    STDMETHODIMP OnTestKeyUp(
+        ITfContext* context,
+        WPARAM,
+        LPARAM,
+        BOOL* eaten) noexcept override {
+        return TestKey(context, eaten);
+    }
+
+    STDMETHODIMP OnKeyDown(
+        ITfContext* context,
+        WPARAM,
+        LPARAM,
+        BOOL* eaten) noexcept override {
+        return HandleKey(context, eaten);
+    }
+
+    STDMETHODIMP OnKeyUp(
+        ITfContext* context,
+        WPARAM,
+        LPARAM,
+        BOOL* eaten) noexcept override {
+        return HandleKey(context, eaten);
+    }
+
+    STDMETHODIMP OnPreservedKey(
+        ITfContext* context,
+        REFGUID,
+        BOOL* eaten) noexcept override {
+        return HandleKey(context, eaten);
     }
 
 private:
@@ -88,10 +155,40 @@ private:
         InterlockedDecrement(&g_live_objects);
     }
 
+    static HRESULT ValidateKeyArguments(ITfContext* context, BOOL* eaten) noexcept {
+        if (eaten == nullptr) {
+            return E_POINTER;
+        }
+        *eaten = FALSE;
+        return context == nullptr ? E_INVALIDARG : S_OK;
+    }
+
+    HRESULT TestKey(ITfContext* context, BOOL* eaten) const noexcept {
+        const HRESULT result = ValidateKeyArguments(context, eaten);
+        if (FAILED(result)) {
+            return result;
+        }
+        // Fail open until the bounded Broker client is connected. OnTestKey*
+        // and OnKey* must make the same decision for each event.
+        return S_OK;
+    }
+
+    HRESULT HandleKey(ITfContext* context, BOOL* eaten) const noexcept {
+        const HRESULT result = ValidateKeyArguments(context, eaten);
+        if (FAILED(result)) {
+            return result;
+        }
+        // The current shell observes the event but never consumes it. A later
+        // change will set TRUE only after a matching Broker response arrives.
+        return S_OK;
+    }
+
     volatile LONG reference_count_ = 1;
     ITfThreadMgr* thread_manager_ = nullptr;
+    ITfKeystrokeMgr* keystroke_manager_ = nullptr;
     TfClientId client_id_ = TF_CLIENTID_NULL;
     DWORD activation_flags_ = 0;
+    bool has_focus_ = false;
 };
 
 class ClassFactory final : public IClassFactory {
