@@ -1,0 +1,22 @@
+[package]
+name = "mo-rime-sys"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+links = "rime"
+build = "build.rs"
+description = "Minimal audited librime C ABI bindings for Mo"
+
+[features]
+default = []
+# These features only control the final native link directive.  Bindings and
+# ABI tests compile without either feature, so Phase 0 does not need librime.
+link-dynamic = []
+link-static = []
+
+[dependencies]
+
+[lints]
+workspace = true

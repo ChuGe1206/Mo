@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!--
+    Phase 0 authoring probe only. This MSI installs files and COM activation
+    registry values, but deliberately has no custom action that mutates TSF
+    profiles or the current user's enabled keyboard list.
+  -->
+  <Package
+      Name="Mo (墨) 输入法 — Phase 0 placeholder"
+      Manufacturer="Mo Project"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}"
+      Scope="perMachine"
+      Compressed="yes">
+    <MajorUpgrade DowngradeErrorMessage="A newer Mo placeholder is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPCOMMENTS" Value="Non-distributable Phase 0 installer authoring probe." />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Mo">
+        <Directory Id="BIN64FOLDER" Name="bin">
+          <Component Id="BrokerX64Component" Guid="{80C183A5-32BB-49F8-958F-6F1F8FB86E49}" Bitness="always64">
+            <File Id="BrokerX64File" Source="$(var.BrokerExe)" Name="mo-broker.exe" KeyPath="yes" />
+          </Component>
+          <Component Id="RegistrarX64Component" Guid="{B626250B-E581-4B78-846C-FC8953E888EB}" Bitness="always64">
+            <File Id="RegistrarX64File" Source="$(var.RegistrarExe)" Name="mo-tip-registrar.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+        <Directory Id="TIPFOLDER" Name="tip">
+          <Directory Id="TIPX64FOLDER" Name="x64">
+            <Component Id="TipX64Component" Guid="{2208852A-7BA6-43EC-A353-2EB1660C6814}" Bitness="always64">
+              <File Id="TipX64File" Source="$(var.TipX64Dll)" Name="mo-tip.dll" KeyPath="yes" />
+              <RegistryKey Root="HKLM" Key="Software\Classes\CLSID\{B4911146-2A27-47AA-9D12-109B6AE10A70}\InprocServer32">
+                <RegistryValue Type="string" Value="[#TipX64File]" />
+                <RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
+              </RegistryKey>
+            </Component>
+          </Directory>
+          <Directory Id="TIPX86FOLDER" Name="x86">
+            <Component Id="TipX86Component" Guid="{385222C4-F89F-48AF-8E20-63C6BB1AA746}" Bitness="always32">
+              <File Id="TipX86File" Source="$(var.TipX86Dll)" Name="mo-tip.dll" KeyPath="yes" />
+              <RegistryKey Root="HKLM" Key="Software\Classes\CLSID\{B4911146-2A27-47AA-9D12-109B6AE10A70}\InprocServer32">
+                <RegistryValue Type="string" Value="[#TipX86File]" />
+                <RegistryValue Name="ThreadingModel" Type="string" Value="Apartment" />
+              </RegistryKey>
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MoPhaseZero" Title="Mo Phase 0 files" Level="1">
+      <ComponentRef Id="BrokerX64Component" />
+      <ComponentRef Id="RegistrarX64Component" />
+      <ComponentRef Id="TipX64Component" />
+      <ComponentRef Id="TipX86Component" />
+    </Feature>
+  </Package>
+</Wix>
+

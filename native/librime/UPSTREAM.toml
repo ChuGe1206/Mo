@@ -1,0 +1,7 @@
+repository = "https://github.com/rime/librime"
+version = "1.17.0"
+revision = "33e78140250125871856cdc5b42ddc6a5fcd3cd4"
+header = "src/rime_api.h"
+header_sha256 = "85caf744b4e5405a9a1de9c7aef3affc4ae315f4ae5d7ebdd08e191a2c16dad4"
+license = "BSD-3-Clause"
+status = "not-vendored"

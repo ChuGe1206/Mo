@@ -1,0 +1,1103 @@
+//! Safe, single-threaded ownership boundary around the librime C API.
+//!
+//! Every native snapshot is copied before its matching `free_*` call.  Engine
+//! and session handles are deliberately `!Send + !Sync`; the future engine
+//! actor is the only intended owner.
+
+#![deny(unsafe_op_in_unsafe_fn)]
+
+use mo_rime_sys as sys;
+use std::ffi::{CStr, CString, c_char, c_int};
+use std::fmt;
+use std::marker::PhantomData;
+use std::mem::size_of;
+use std::ptr::NonNull;
+use std::rc::Rc;
+use std::sync::{Mutex, MutexGuard, TryLockError};
+
+const MAX_CANDIDATES_PER_PAGE: usize = 1_024;
+const MAX_SELECT_LABELS: usize = 256;
+
+static ENGINE_GATE: Mutex<()> = Mutex::new(());
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    NullApi,
+    ApiTooOld { advertised: c_int, required: c_int },
+    MissingFunction(&'static str),
+    EngineAlreadyActive,
+    EngineGatePoisoned,
+    InteriorNul(&'static str),
+    SessionCreationFailed,
+    NativeReleaseFailed(&'static str),
+    NativeCallFailed(&'static str),
+    InvalidCount { field: &'static str, value: c_int },
+    NullArray { field: &'static str, count: usize },
+    AllocationFailed(&'static str),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NullApi => formatter.write_str("rime_get_api returned NULL"),
+            Self::ApiTooOld {
+                advertised,
+                required,
+            } => write!(
+                formatter,
+                "librime API table is too old: advertised {advertised} bytes, need {required}"
+            ),
+            Self::MissingFunction(name) => {
+                write!(formatter, "librime API function `{name}` is unavailable")
+            }
+            Self::EngineAlreadyActive => {
+                formatter.write_str("a librime engine is already active in this process")
+            }
+            Self::EngineGatePoisoned => formatter.write_str("the librime engine gate is poisoned"),
+            Self::InteriorNul(field) => write!(formatter, "`{field}` contains a NUL byte"),
+            Self::SessionCreationFailed => {
+                formatter.write_str("librime failed to create a session")
+            }
+            Self::NativeReleaseFailed(kind) => {
+                write!(formatter, "librime failed to release {kind}")
+            }
+            Self::NativeCallFailed(call) => write!(formatter, "librime call `{call}` failed"),
+            Self::InvalidCount { field, value } => {
+                write!(formatter, "invalid native count `{field}`: {value}")
+            }
+            Self::NullArray { field, count } => {
+                write!(
+                    formatter,
+                    "native array `{field}` is NULL with count {count}"
+                )
+            }
+            Self::AllocationFailed(field) => {
+                write!(
+                    formatter,
+                    "failed to allocate owned snapshot field `{field}`"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EngineConfig {
+    pub shared_data_dir: String,
+    pub user_data_dir: String,
+    pub distribution_name: String,
+    pub distribution_code_name: String,
+    pub distribution_version: String,
+    pub app_name: String,
+    pub modules: Vec<String>,
+    pub min_log_level: c_int,
+    pub log_dir: Option<String>,
+    pub prebuilt_data_dir: Option<String>,
+    pub staging_dir: Option<String>,
+}
+
+impl EngineConfig {
+    pub fn new(shared_data_dir: impl Into<String>, user_data_dir: impl Into<String>) -> Self {
+        Self {
+            shared_data_dir: shared_data_dir.into(),
+            user_data_dir: user_data_dir.into(),
+            distribution_name: "Mo Input Method".to_owned(),
+            distribution_code_name: "Mo".to_owned(),
+            distribution_version: env!("CARGO_PKG_VERSION").to_owned(),
+            app_name: "rime.mo".to_owned(),
+            // Mo's pinned Windows librime distribution includes librime-lua,
+            // and the pinned rime-ice schemas require its processors,
+            // translators and filters. Callers can still replace this list
+            // when testing a deliberately reduced native build.
+            modules: vec!["default".to_owned(), "lua".to_owned()],
+            min_log_level: 1,
+            log_dir: None,
+            prebuilt_data_dir: None,
+            staging_dir: None,
+        }
+    }
+}
+
+struct TraitStorage {
+    raw: sys::RimeTraits,
+    _shared_data_dir: CString,
+    _user_data_dir: CString,
+    _distribution_name: CString,
+    _distribution_code_name: CString,
+    _distribution_version: CString,
+    _app_name: CString,
+    _log_dir: Option<CString>,
+    _prebuilt_data_dir: Option<CString>,
+    _staging_dir: Option<CString>,
+    _modules: Vec<CString>,
+    _module_pointers: Vec<*const c_char>,
+}
+
+impl TraitStorage {
+    fn new(config: EngineConfig) -> Result<Box<Self>, Error> {
+        let shared_data_dir = c_string("shared_data_dir", config.shared_data_dir)?;
+        let user_data_dir = c_string("user_data_dir", config.user_data_dir)?;
+        let distribution_name = c_string("distribution_name", config.distribution_name)?;
+        let distribution_code_name =
+            c_string("distribution_code_name", config.distribution_code_name)?;
+        let distribution_version = c_string("distribution_version", config.distribution_version)?;
+        let app_name = c_string("app_name", config.app_name)?;
+        let log_dir = optional_c_string("log_dir", config.log_dir)?;
+        let prebuilt_data_dir = optional_c_string("prebuilt_data_dir", config.prebuilt_data_dir)?;
+        let staging_dir = optional_c_string("staging_dir", config.staging_dir)?;
+
+        let modules = config
+            .modules
+            .into_iter()
+            .map(|value| c_string("modules", value))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut module_pointers = Vec::new();
+        module_pointers
+            .try_reserve_exact(modules.len() + 1)
+            .map_err(|_| Error::AllocationFailed("modules"))?;
+        module_pointers.extend(modules.iter().map(|module| module.as_ptr()));
+        module_pointers.push(std::ptr::null());
+
+        let raw = sys::RimeTraits {
+            data_size: sys::rime_struct_data_size::<sys::RimeTraits>(),
+            shared_data_dir: shared_data_dir.as_ptr(),
+            user_data_dir: user_data_dir.as_ptr(),
+            distribution_name: distribution_name.as_ptr(),
+            distribution_code_name: distribution_code_name.as_ptr(),
+            distribution_version: distribution_version.as_ptr(),
+            app_name: app_name.as_ptr(),
+            modules: module_pointers.as_mut_ptr(),
+            min_log_level: config.min_log_level,
+            log_dir: optional_pointer(&log_dir),
+            prebuilt_data_dir: optional_pointer(&prebuilt_data_dir),
+            staging_dir: optional_pointer(&staging_dir),
+        };
+
+        Ok(Box::new(Self {
+            raw,
+            _shared_data_dir: shared_data_dir,
+            _user_data_dir: user_data_dir,
+            _distribution_name: distribution_name,
+            _distribution_code_name: distribution_code_name,
+            _distribution_version: distribution_version,
+            _app_name: app_name,
+            _log_dir: log_dir,
+            _prebuilt_data_dir: prebuilt_data_dir,
+            _staging_dir: staging_dir,
+            _modules: modules,
+            _module_pointers: module_pointers,
+        }))
+    }
+}
+
+fn c_string(field: &'static str, value: String) -> Result<CString, Error> {
+    CString::new(value).map_err(|_| Error::InteriorNul(field))
+}
+
+fn optional_c_string(field: &'static str, value: Option<String>) -> Result<Option<CString>, Error> {
+    value.map(|value| c_string(field, value)).transpose()
+}
+
+fn optional_pointer(value: &Option<CString>) -> *const c_char {
+    value
+        .as_ref()
+        .map_or(std::ptr::null(), |value| value.as_ptr())
+}
+
+#[derive(Clone, Copy)]
+struct Functions {
+    setup: unsafe extern "C" fn(*mut sys::RimeTraits),
+    initialize: unsafe extern "C" fn(*mut sys::RimeTraits),
+    finalize: unsafe extern "C" fn(),
+    create_session: unsafe extern "C" fn() -> sys::RimeSessionId,
+    destroy_session: unsafe extern "C" fn(sys::RimeSessionId) -> sys::RimeBool,
+    cleanup_all_sessions: unsafe extern "C" fn(),
+    process_key: unsafe extern "C" fn(sys::RimeSessionId, c_int, c_int) -> sys::RimeBool,
+    commit_composition: unsafe extern "C" fn(sys::RimeSessionId) -> sys::RimeBool,
+    clear_composition: unsafe extern "C" fn(sys::RimeSessionId),
+    get_commit: unsafe extern "C" fn(sys::RimeSessionId, *mut sys::RimeCommit) -> sys::RimeBool,
+    free_commit: unsafe extern "C" fn(*mut sys::RimeCommit) -> sys::RimeBool,
+    get_context: unsafe extern "C" fn(sys::RimeSessionId, *mut sys::RimeContext) -> sys::RimeBool,
+    free_context: unsafe extern "C" fn(*mut sys::RimeContext) -> sys::RimeBool,
+    get_status: unsafe extern "C" fn(sys::RimeSessionId, *mut sys::RimeStatus) -> sys::RimeBool,
+    free_status: unsafe extern "C" fn(*mut sys::RimeStatus) -> sys::RimeBool,
+}
+
+impl Functions {
+    unsafe fn load(api: *mut sys::RimeApi) -> Result<Self, Error> {
+        let api = NonNull::new(api).ok_or(Error::NullApi)?;
+        // SAFETY: the caller promises that `api` points at a live librime API
+        // table; reading its first C int is valid before interpreting the rest.
+        let advertised = unsafe { api.as_ptr().cast::<c_int>().read() };
+        if !sys::advertised_range_available(
+            advertised,
+            std::mem::offset_of!(sys::RimeApi, free_status),
+            size_of::<sys::FreeStatusFn>(),
+        ) {
+            return Err(Error::ApiTooOld {
+                advertised,
+                required: sys::RIME_API_REQUIRED_DATA_SIZE,
+            });
+        }
+
+        // SAFETY: the range check above proves the entire committed prefix is
+        // present, and the caller guarantees the table remains live.
+        let api = unsafe { api.as_ref() };
+        macro_rules! required {
+            ($field:ident) => {
+                api.$field
+                    .ok_or(Error::MissingFunction(stringify!($field)))?
+            };
+        }
+
+        Ok(Self {
+            setup: required!(setup),
+            initialize: required!(initialize),
+            finalize: required!(finalize),
+            create_session: required!(create_session),
+            destroy_session: required!(destroy_session),
+            cleanup_all_sessions: required!(cleanup_all_sessions),
+            process_key: required!(process_key),
+            commit_composition: required!(commit_composition),
+            clear_composition: required!(clear_composition),
+            get_commit: required!(get_commit),
+            free_commit: required!(free_commit),
+            get_context: required!(get_context),
+            free_context: required!(free_context),
+            get_status: required!(get_status),
+            free_status: required!(free_status),
+        })
+    }
+}
+
+/// A process-global librime instance.
+///
+/// The `Rc` marker makes this type `!Send + !Sync`.  Move all access through a
+/// single engine actor rather than locking this value across arbitrary threads.
+///
+/// ```compile_fail
+/// fn require_send<T: Send>() {}
+/// require_send::<mo_rime::Engine>();
+/// ```
+pub struct Engine {
+    functions: Functions,
+    _traits: Box<TraitStorage>,
+    _gate: MutexGuard<'static, ()>,
+    _thread_affinity: PhantomData<Rc<()>>,
+}
+
+impl Engine {
+    /// Initializes the linked librime selected by a `link-*` Cargo feature.
+    #[cfg(any(feature = "link-dynamic", feature = "link-static"))]
+    pub fn open(config: EngineConfig) -> Result<Self, Error> {
+        // SAFETY: the symbol is provided by the linked library and librime owns
+        // its process-lifetime API table.
+        unsafe { Self::from_raw_api(config, sys::rime_get_api()) }
+    }
+
+    /// Initializes an API table supplied by a native or runtime loader.
+    ///
+    /// # Safety
+    ///
+    /// `api` must be a correctly aligned table returned by `rime_get_api` from
+    /// the pinned compatible librime.  Its containing library and all function
+    /// pointers must remain loaded until the returned `Engine` is dropped.
+    pub unsafe fn from_raw_api(
+        config: EngineConfig,
+        api: *mut sys::RimeApi,
+    ) -> Result<Self, Error> {
+        let gate = match ENGINE_GATE.try_lock() {
+            Ok(gate) => gate,
+            Err(TryLockError::WouldBlock) => return Err(Error::EngineAlreadyActive),
+            Err(TryLockError::Poisoned(_)) => return Err(Error::EngineGatePoisoned),
+        };
+        let mut traits = TraitStorage::new(config)?;
+        // SAFETY: delegated to this method's caller; `Functions::load` also
+        // validates that the complete prefix and every required pointer exist.
+        let functions = unsafe { Functions::load(api)? };
+
+        // All fallible Rust preparation happens before the first native call.
+        // SAFETY: the function table and trait pointers meet the method's
+        // contract, and TraitStorage outlives finalization.
+        unsafe {
+            (functions.setup)(&mut traits.raw);
+            (functions.initialize)(&mut traits.raw);
+        }
+
+        Ok(Self {
+            functions,
+            _traits: traits,
+            _gate: gate,
+            _thread_affinity: PhantomData,
+        })
+    }
+
+    pub fn create_session(&self) -> Result<Session<'_>, Error> {
+        // SAFETY: Engine owns an initialized live function table and calls are
+        // confined to its owning thread by the type's auto-trait markers.
+        let id = unsafe { (self.functions.create_session)() };
+        if id == sys::RIME_NO_SESSION {
+            return Err(Error::SessionCreationFailed);
+        }
+        Ok(Session {
+            engine: self,
+            id,
+            active: true,
+        })
+    }
+}
+
+impl Drop for Engine {
+    fn drop(&mut self) {
+        // SAFETY: this is the final use of the initialized process-global table.
+        // cleanup_all_sessions also covers an intentionally forgotten Session.
+        unsafe {
+            (self.functions.cleanup_all_sessions)();
+            (self.functions.finalize)();
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitSnapshot {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompositionSnapshot {
+    /// Byte length reported by librime for the UTF-8 preedit.
+    pub byte_length: c_int,
+    /// UTF-8 byte offset reported by librime.
+    pub cursor_byte_pos: c_int,
+    /// UTF-8 byte offset reported by librime.
+    pub selection_start_byte: c_int,
+    /// UTF-8 byte offset reported by librime.
+    pub selection_end_byte: c_int,
+    pub preedit: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CandidateSnapshot {
+    pub text: String,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuSnapshot {
+    pub page_size: c_int,
+    pub page_number: c_int,
+    pub is_last_page: bool,
+    pub highlighted_candidate_index: c_int,
+    pub candidates: Vec<CandidateSnapshot>,
+    pub select_keys: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContextSnapshot {
+    pub composition: CompositionSnapshot,
+    pub menu: MenuSnapshot,
+    pub commit_text_preview: Option<String>,
+    pub select_labels: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusSnapshot {
+    pub schema_id: Option<String>,
+    pub schema_name: Option<String>,
+    pub is_disabled: bool,
+    pub is_composing: bool,
+    pub is_ascii_mode: bool,
+    pub is_full_shape: bool,
+    pub is_simplified: bool,
+    pub is_traditional: bool,
+    pub is_ascii_punct: bool,
+}
+
+pub struct Session<'engine> {
+    engine: &'engine Engine,
+    id: sys::RimeSessionId,
+    active: bool,
+}
+
+impl Session<'_> {
+    pub fn id(&self) -> sys::RimeSessionId {
+        self.id
+    }
+
+    pub fn process_key(&mut self, keycode: c_int, modifiers: c_int) -> bool {
+        // SAFETY: the session is live and bound to its initialized Engine.
+        sys::from_rime_bool(unsafe {
+            (self.engine.functions.process_key)(self.id, keycode, modifiers)
+        })
+    }
+
+    pub fn commit_composition(&mut self) -> bool {
+        // SAFETY: the session is live and bound to its initialized Engine.
+        sys::from_rime_bool(unsafe { (self.engine.functions.commit_composition)(self.id) })
+    }
+
+    pub fn clear_composition(&mut self) {
+        // SAFETY: the session is live and bound to its initialized Engine.
+        unsafe { (self.engine.functions.clear_composition)(self.id) }
+    }
+
+    pub fn take_commit(&mut self) -> Result<Option<CommitSnapshot>, Error> {
+        let mut raw = sys::RimeCommit::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_commit)(self.id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_commit, "RimeCommit");
+        // SAFETY: a successful get_commit populated the guarded value.
+        let copied = unsafe { copy_commit(guard.get()) };
+        guard.release()?;
+        copied.map(Some)
+    }
+
+    pub fn context(&mut self) -> Result<Option<ContextSnapshot>, Error> {
+        let mut raw = sys::RimeContext::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_context)(self.id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_context, "RimeContext");
+        // SAFETY: a successful get_context populated the guarded value.
+        let copied = unsafe { copy_context(guard.get()) };
+        guard.release()?;
+        copied.map(Some)
+    }
+
+    pub fn status(&mut self) -> Result<Option<StatusSnapshot>, Error> {
+        let mut raw = sys::RimeStatus::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_status)(self.id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_status, "RimeStatus");
+        // SAFETY: a successful get_status populated the guarded value.
+        let copied = unsafe { copy_status(guard.get()) };
+        guard.release()?;
+        Ok(Some(copied))
+    }
+
+    pub fn close(mut self) -> Result<(), Error> {
+        self.destroy()
+    }
+
+    fn destroy(&mut self) -> Result<(), Error> {
+        if !self.active {
+            return Ok(());
+        }
+        self.active = false;
+        // SAFETY: this call consumes the only live Rust session handle.
+        if sys::from_rime_bool(unsafe { (self.engine.functions.destroy_session)(self.id) }) {
+            Ok(())
+        } else {
+            Err(Error::NativeCallFailed("destroy_session"))
+        }
+    }
+}
+
+impl Drop for Session<'_> {
+    fn drop(&mut self) {
+        let _ = self.destroy();
+    }
+}
+
+type FreeOutput<T> = unsafe extern "C" fn(*mut T) -> sys::RimeBool;
+
+struct NativeOutput<T> {
+    value: NonNull<T>,
+    free: FreeOutput<T>,
+    name: &'static str,
+    armed: bool,
+}
+
+impl<T> NativeOutput<T> {
+    fn new(value: &mut T, free: FreeOutput<T>, name: &'static str) -> Self {
+        Self {
+            value: NonNull::from(value),
+            free,
+            name,
+            armed: true,
+        }
+    }
+
+    fn get(&self) -> &T {
+        // SAFETY: NativeOutput is created from an exclusive live reference and
+        // never outlives the local native value.
+        unsafe { self.value.as_ref() }
+    }
+
+    fn release(mut self) -> Result<(), Error> {
+        self.armed = false;
+        // SAFETY: this is the exactly-once matching free call for a successful
+        // get_* operation.
+        let released = unsafe { (self.free)(self.value.as_ptr()) };
+        if sys::from_rime_bool(released) {
+            Ok(())
+        } else {
+            Err(Error::NativeReleaseFailed(self.name))
+        }
+    }
+}
+
+impl<T> Drop for NativeOutput<T> {
+    fn drop(&mut self) {
+        if self.armed {
+            // SAFETY: the guard still owns the matching native output.
+            let _ = unsafe { (self.free)(self.value.as_ptr()) };
+        }
+    }
+}
+
+unsafe fn copy_commit(raw: &sys::RimeCommit) -> Result<CommitSnapshot, Error> {
+    if raw.text.is_null() {
+        return Err(Error::NullArray {
+            field: "commit.text",
+            count: 1,
+        });
+    }
+    // SAFETY: get_commit promises a live NUL-terminated string until free_commit.
+    Ok(CommitSnapshot {
+        text: unsafe { copy_string(raw.text) },
+    })
+}
+
+unsafe fn copy_context(raw: &sys::RimeContext) -> Result<ContextSnapshot, Error> {
+    let candidate_count = checked_count(
+        "context.menu.num_candidates",
+        raw.menu.num_candidates,
+        MAX_CANDIDATES_PER_PAGE,
+    )?;
+    let page_size = checked_count(
+        "context.menu.page_size",
+        raw.menu.page_size,
+        MAX_SELECT_LABELS,
+    )?;
+
+    if candidate_count != 0 && raw.menu.candidates.is_null() {
+        return Err(Error::NullArray {
+            field: "context.menu.candidates",
+            count: candidate_count,
+        });
+    }
+    let mut candidates = Vec::new();
+    candidates
+        .try_reserve_exact(candidate_count)
+        .map_err(|_| Error::AllocationFailed("context.menu.candidates"))?;
+    if candidate_count != 0 {
+        // SAFETY: count was bounded and the non-NULL array comes from librime.
+        let raw_candidates =
+            unsafe { std::slice::from_raw_parts(raw.menu.candidates, candidate_count) };
+        candidates.extend(raw_candidates.iter().map(|candidate| CandidateSnapshot {
+            // SAFETY: candidate strings live until free_context.  NULL is
+            // represented as an empty candidate, matching upstream frontends.
+            text: unsafe { copy_optional_string(candidate.text) }.unwrap_or_default(),
+            // SAFETY: same lifetime as candidate.text.
+            comment: unsafe { copy_optional_string(candidate.comment) },
+        }));
+    }
+
+    let mut select_labels = Vec::new();
+    if !raw.select_labels.is_null() && page_size != 0 {
+        select_labels
+            .try_reserve_exact(page_size)
+            .map_err(|_| Error::AllocationFailed("context.select_labels"))?;
+        // SAFETY: librime exposes page_size entries when select_labels is set.
+        let labels = unsafe { std::slice::from_raw_parts(raw.select_labels, page_size) };
+        select_labels.extend(
+            labels
+                .iter()
+                // SAFETY: each optional label lives until free_context.
+                .map(|label| unsafe { copy_optional_string(*label) }.unwrap_or_default()),
+        );
+    }
+
+    Ok(ContextSnapshot {
+        composition: CompositionSnapshot {
+            byte_length: raw.composition.length,
+            cursor_byte_pos: raw.composition.cursor_pos,
+            selection_start_byte: raw.composition.sel_start,
+            selection_end_byte: raw.composition.sel_end,
+            // SAFETY: optional preedit lives until free_context.
+            preedit: unsafe { copy_optional_string(raw.composition.preedit) }.unwrap_or_default(),
+        },
+        menu: MenuSnapshot {
+            page_size: raw.menu.page_size,
+            page_number: raw.menu.page_no,
+            is_last_page: sys::from_rime_bool(raw.menu.is_last_page),
+            highlighted_candidate_index: raw.menu.highlighted_candidate_index,
+            candidates,
+            // SAFETY: optional select_keys lives until free_context.
+            select_keys: unsafe { copy_optional_string(raw.menu.select_keys) },
+        },
+        // SAFETY: optional preview lives until free_context.
+        commit_text_preview: unsafe { copy_optional_string(raw.commit_text_preview) },
+        select_labels,
+    })
+}
+
+unsafe fn copy_status(raw: &sys::RimeStatus) -> StatusSnapshot {
+    StatusSnapshot {
+        // SAFETY: status strings live until free_status.
+        schema_id: unsafe { copy_optional_string(raw.schema_id) },
+        // SAFETY: status strings live until free_status.
+        schema_name: unsafe { copy_optional_string(raw.schema_name) },
+        is_disabled: sys::from_rime_bool(raw.is_disabled),
+        is_composing: sys::from_rime_bool(raw.is_composing),
+        is_ascii_mode: sys::from_rime_bool(raw.is_ascii_mode),
+        is_full_shape: sys::from_rime_bool(raw.is_full_shape),
+        is_simplified: sys::from_rime_bool(raw.is_simplified),
+        is_traditional: sys::from_rime_bool(raw.is_traditional),
+        is_ascii_punct: sys::from_rime_bool(raw.is_ascii_punct),
+    }
+}
+
+fn checked_count(field: &'static str, value: c_int, maximum: usize) -> Result<usize, Error> {
+    let value = usize::try_from(value).map_err(|_| Error::InvalidCount { field, value })?;
+    if value > maximum {
+        return Err(Error::InvalidCount {
+            field,
+            value: c_int::try_from(value).unwrap_or(c_int::MAX),
+        });
+    }
+    Ok(value)
+}
+
+unsafe fn copy_string(pointer: *const c_char) -> String {
+    // SAFETY: caller guarantees a live NUL-terminated C string.
+    unsafe { CStr::from_ptr(pointer) }
+        .to_string_lossy()
+        .into_owned()
+}
+
+unsafe fn copy_optional_string(pointer: *const c_char) -> Option<String> {
+    if pointer.is_null() {
+        None
+    } else {
+        // SAFETY: caller forwards the native string lifetime guarantee.
+        Some(unsafe { copy_string(pointer) })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ptr;
+
+    static TEST_SERIAL: Mutex<()> = Mutex::new(());
+    static FAKE: Mutex<FakeState> = Mutex::new(FakeState::new());
+
+    #[derive(Debug)]
+    struct FakeState {
+        calls: Vec<&'static str>,
+        traits_are_valid: bool,
+        malformed_context: bool,
+    }
+
+    impl FakeState {
+        const fn new() -> Self {
+            Self {
+                calls: Vec::new(),
+                traits_are_valid: false,
+                malformed_context: false,
+            }
+        }
+
+        fn reset(&mut self) {
+            self.calls.clear();
+            self.traits_are_valid = false;
+            self.malformed_context = false;
+        }
+    }
+
+    fn record(call: &'static str) {
+        if let Ok(mut state) = FAKE.lock() {
+            state.calls.push(call);
+        }
+    }
+
+    unsafe extern "C" fn fake_setup(traits: *mut sys::RimeTraits) {
+        let valid = if traits.is_null() {
+            false
+        } else {
+            // SAFETY: test passes its live TraitStorage pointer.
+            let traits = unsafe { &*traits };
+            traits.data_size == sys::rime_struct_data_size::<sys::RimeTraits>()
+                && !traits.shared_data_dir.is_null()
+                && !traits.user_data_dir.is_null()
+                && !traits.modules.is_null()
+        };
+        if let Ok(mut state) = FAKE.lock() {
+            state.calls.push("setup");
+            state.traits_are_valid = valid;
+        }
+    }
+
+    unsafe extern "C" fn fake_initialize(_: *mut sys::RimeTraits) {
+        record("initialize");
+    }
+
+    unsafe extern "C" fn fake_finalize() {
+        record("finalize");
+    }
+
+    unsafe extern "C" fn fake_create_session() -> sys::RimeSessionId {
+        record("create_session");
+        42
+    }
+
+    unsafe extern "C" fn fake_destroy_session(_: sys::RimeSessionId) -> sys::RimeBool {
+        record("destroy_session");
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_cleanup_all_sessions() {
+        record("cleanup_all_sessions");
+    }
+
+    unsafe extern "C" fn fake_process_key(
+        _: sys::RimeSessionId,
+        keycode: c_int,
+        _: c_int,
+    ) -> sys::RimeBool {
+        record("process_key");
+        sys::to_rime_bool(keycode == 65)
+    }
+
+    unsafe extern "C" fn fake_commit_composition(_: sys::RimeSessionId) -> sys::RimeBool {
+        record("commit_composition");
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_clear_composition(_: sys::RimeSessionId) {
+        record("clear_composition");
+    }
+
+    unsafe extern "C" fn fake_get_commit(
+        _: sys::RimeSessionId,
+        output: *mut sys::RimeCommit,
+    ) -> sys::RimeBool {
+        record("get_commit");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        // SAFETY: wrapper provides a live initialized output.
+        unsafe { (*output).text = owned_c_string(b"\xe4\xbd\xa0\xe5\xa5\xbd\0") };
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_free_commit(output: *mut sys::RimeCommit) -> sys::RimeBool {
+        record("free_commit");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        // SAFETY: fake_get_commit allocated this exact pointer once.
+        unsafe {
+            free_c_string((*output).text);
+            (*output).text = ptr::null_mut();
+        }
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_get_context(
+        _: sys::RimeSessionId,
+        output: *mut sys::RimeContext,
+    ) -> sys::RimeBool {
+        record("get_context");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        let malformed = FAKE
+            .lock()
+            .map(|state| state.malformed_context)
+            .unwrap_or(false);
+        // SAFETY: wrapper provides a live initialized output.
+        let output = unsafe { &mut *output };
+        output.composition.length = 6;
+        output.composition.cursor_pos = 6;
+        // Include invalid UTF-8 to prove conversion is owned and non-UB.
+        output.composition.preedit = unsafe { owned_c_string(b"ni\xffhao\0") };
+        output.menu.page_size = 2;
+        output.menu.page_no = 0;
+        output.menu.is_last_page = -1;
+        output.menu.highlighted_candidate_index = 0;
+        output.menu.num_candidates = 2;
+        output.menu.select_keys = unsafe { owned_c_string(b"12\0") };
+        output.commit_text_preview = unsafe { owned_c_string(b"preview\0") };
+
+        if !malformed {
+            let candidates = vec![
+                sys::RimeCandidate {
+                    text: unsafe { owned_c_string(b"one\0") },
+                    comment: ptr::null_mut(),
+                    reserved: ptr::null_mut(),
+                },
+                sys::RimeCandidate {
+                    text: unsafe { owned_c_string(b"two\0") },
+                    comment: unsafe { owned_c_string(b"comment\0") },
+                    reserved: ptr::null_mut(),
+                },
+            ]
+            .into_boxed_slice();
+            output.menu.candidates = Box::into_raw(candidates).cast::<sys::RimeCandidate>();
+        }
+
+        let labels = vec![unsafe { owned_c_string(b"1.\0") }, unsafe {
+            owned_c_string(b"2.\0")
+        }]
+        .into_boxed_slice();
+        output.select_labels = Box::into_raw(labels).cast::<*mut c_char>();
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_free_context(output: *mut sys::RimeContext) -> sys::RimeBool {
+        record("free_context");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        // SAFETY: allocations below were created by fake_get_context and are
+        // recovered exactly once using their recorded C counts.
+        let output = unsafe { &mut *output };
+        unsafe {
+            free_c_string(output.composition.preedit);
+            free_c_string(output.menu.select_keys);
+            free_c_string(output.commit_text_preview);
+        }
+        output.composition.preedit = ptr::null_mut();
+        output.menu.select_keys = ptr::null_mut();
+        output.commit_text_preview = ptr::null_mut();
+
+        if !output.menu.candidates.is_null() {
+            let count = usize::try_from(output.menu.num_candidates).unwrap_or_default();
+            // SAFETY: pointer/count reconstruct the allocation from get_context.
+            let candidates = unsafe {
+                Box::from_raw(ptr::slice_from_raw_parts_mut(output.menu.candidates, count))
+            };
+            for candidate in &*candidates {
+                unsafe {
+                    free_c_string(candidate.text);
+                    free_c_string(candidate.comment);
+                }
+            }
+            drop(candidates);
+            output.menu.candidates = ptr::null_mut();
+        }
+
+        if !output.select_labels.is_null() {
+            let count = usize::try_from(output.menu.page_size).unwrap_or_default();
+            // SAFETY: pointer/count reconstruct the allocation from get_context.
+            let labels = unsafe {
+                Box::from_raw(ptr::slice_from_raw_parts_mut(output.select_labels, count))
+            };
+            for label in &*labels {
+                unsafe { free_c_string(*label) };
+            }
+            drop(labels);
+            output.select_labels = ptr::null_mut();
+        }
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_get_status(
+        _: sys::RimeSessionId,
+        output: *mut sys::RimeStatus,
+    ) -> sys::RimeBool {
+        record("get_status");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        // SAFETY: wrapper provides a live initialized output.
+        unsafe {
+            (*output).schema_id = owned_c_string(b"mo_pinyin\0");
+            (*output).schema_name = owned_c_string(b"Mo\0");
+            (*output).is_composing = sys::RIME_TRUE;
+            (*output).is_simplified = 7;
+        }
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_free_status(output: *mut sys::RimeStatus) -> sys::RimeBool {
+        record("free_status");
+        if output.is_null() {
+            return sys::RIME_FALSE;
+        }
+        // SAFETY: fake_get_status allocated these exact pointers once.
+        unsafe {
+            free_c_string((*output).schema_id);
+            free_c_string((*output).schema_name);
+            (*output).schema_id = ptr::null_mut();
+            (*output).schema_name = ptr::null_mut();
+        }
+        sys::RIME_TRUE
+    }
+
+    unsafe fn owned_c_string(bytes_with_nul: &[u8]) -> *mut c_char {
+        // Test constants are all explicitly NUL-terminated with no earlier NUL.
+        // SAFETY: upheld by each hard-coded caller in this module.
+        unsafe { CString::from_vec_with_nul_unchecked(bytes_with_nul.to_vec()) }.into_raw()
+    }
+
+    unsafe fn free_c_string(pointer: *mut c_char) {
+        if !pointer.is_null() {
+            // SAFETY: pointer came from CString::into_raw in owned_c_string.
+            drop(unsafe { CString::from_raw(pointer) });
+        }
+    }
+
+    fn fake_api() -> sys::RimeApi {
+        sys::RimeApi {
+            setup: Some(fake_setup),
+            initialize: Some(fake_initialize),
+            finalize: Some(fake_finalize),
+            create_session: Some(fake_create_session),
+            destroy_session: Some(fake_destroy_session),
+            cleanup_all_sessions: Some(fake_cleanup_all_sessions),
+            process_key: Some(fake_process_key),
+            commit_composition: Some(fake_commit_composition),
+            clear_composition: Some(fake_clear_composition),
+            get_commit: Some(fake_get_commit),
+            free_commit: Some(fake_free_commit),
+            get_context: Some(fake_get_context),
+            free_context: Some(fake_free_context),
+            get_status: Some(fake_get_status),
+            free_status: Some(fake_free_status),
+            ..sys::RimeApi::default()
+        }
+    }
+
+    #[test]
+    fn snapshots_are_owned_and_native_outputs_are_released_exactly_once() {
+        let _serial = TEST_SERIAL.lock().expect("test serialization lock");
+        FAKE.lock().expect("fake state").reset();
+        let mut api = fake_api();
+        let config = EngineConfig::new("shared", "user");
+
+        // SAFETY: the fake table remains live until Engine is dropped.
+        let engine = unsafe { Engine::from_raw_api(config, &mut api) }.expect("engine");
+        let mut session = engine.create_session().expect("session");
+        assert_eq!(session.id(), 42);
+        assert!(session.process_key(65, 0));
+        assert!(!session.process_key(66, 0));
+        assert!(session.commit_composition());
+        session.clear_composition();
+
+        let commit = session.take_commit().expect("commit call").expect("commit");
+        assert_eq!(commit.text, "你好");
+
+        let context = session.context().expect("context call").expect("context");
+        assert_eq!(context.composition.preedit, "ni\u{fffd}hao");
+        assert_eq!(context.menu.candidates[1].text, "two");
+        assert_eq!(
+            context.menu.candidates[1].comment.as_deref(),
+            Some("comment")
+        );
+        assert_eq!(context.select_labels, ["1.", "2."]);
+        assert!(context.menu.is_last_page);
+
+        let status = session.status().expect("status call").expect("status");
+        assert_eq!(status.schema_id.as_deref(), Some("mo_pinyin"));
+        assert!(status.is_composing);
+        assert!(status.is_simplified);
+
+        session.close().expect("destroy session");
+        drop(engine);
+
+        let state = FAKE.lock().expect("fake state");
+        assert!(state.traits_are_valid);
+        for paired_call in ["free_commit", "free_context", "free_status"] {
+            assert_eq!(
+                state
+                    .calls
+                    .iter()
+                    .filter(|call| **call == paired_call)
+                    .count(),
+                1,
+                "{paired_call} must run exactly once"
+            );
+        }
+        assert_eq!(
+            &state.calls[state.calls.len() - 3..],
+            ["destroy_session", "cleanup_all_sessions", "finalize"]
+        );
+
+        // All native strings were freed before these owned Rust values are read.
+        assert_eq!(commit.text, "你好");
+        assert_eq!(context.menu.candidates[0].text, "one");
+        assert_eq!(status.schema_name.as_deref(), Some("Mo"));
+    }
+
+    #[test]
+    fn malformed_snapshot_still_runs_matching_free() {
+        let _serial = TEST_SERIAL.lock().expect("test serialization lock");
+        FAKE.lock().expect("fake state").reset();
+        FAKE.lock().expect("fake state").malformed_context = true;
+        let mut api = fake_api();
+        // SAFETY: the fake table remains live until Engine is dropped.
+        let engine = unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }
+            .expect("engine");
+        let mut session = engine.create_session().expect("session");
+
+        assert_eq!(
+            session.context(),
+            Err(Error::NullArray {
+                field: "context.menu.candidates",
+                count: 2,
+            })
+        );
+        drop(session);
+        drop(engine);
+
+        let state = FAKE.lock().expect("fake state");
+        assert_eq!(
+            state
+                .calls
+                .iter()
+                .filter(|call| **call == "free_context")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn old_or_incomplete_api_is_rejected_before_setup() {
+        let _serial = TEST_SERIAL.lock().expect("test serialization lock");
+        FAKE.lock().expect("fake state").reset();
+        let mut api = fake_api();
+        api.data_size = sys::RIME_API_REQUIRED_DATA_SIZE - 1;
+
+        // SAFETY: this is a live fake table; the test intentionally advertises
+        // a shorter compatible prefix.
+        let result = unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) };
+        assert!(matches!(result, Err(Error::ApiTooOld { .. })));
+        assert!(FAKE.lock().expect("fake state").calls.is_empty());
+
+        let mut api = fake_api();
+        api.get_context = None;
+        // SAFETY: this is a live fake table with one intentionally absent slot.
+        let result = unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) };
+        assert!(matches!(result, Err(Error::MissingFunction("get_context"))));
+        assert!(FAKE.lock().expect("fake state").calls.is_empty());
+    }
+
+    #[test]
+    fn interior_nul_is_rejected_before_native_setup() {
+        let _serial = TEST_SERIAL.lock().expect("test serialization lock");
+        FAKE.lock().expect("fake state").reset();
+        let mut api = fake_api();
+        // SAFETY: the fake table remains live for this failed construction.
+        let result =
+            unsafe { Engine::from_raw_api(EngineConfig::new("bad\0path", "user"), &mut api) };
+        assert_eq!(result.err(), Some(Error::InteriorNul("shared_data_dir")));
+        assert!(FAKE.lock().expect("fake state").calls.is_empty());
+    }
+
+    #[test]
+    fn default_config_loads_the_lua_module_required_by_rime_ice() {
+        let config = EngineConfig::new("shared", "user");
+        assert_eq!(config.modules, ["default", "lua"]);
+    }
+}

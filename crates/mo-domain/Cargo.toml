@@ -1,0 +1,10 @@
+[package]
+name = "mo-domain"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "Platform-neutral domain types for the Mo input method"
+
+[dependencies]
+

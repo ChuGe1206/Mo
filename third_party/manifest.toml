@@ -1,0 +1,60 @@
+format = 1
+generated_at = "2026-09-11"
+status = "phase-0-draft"
+
+[[component]]
+id = "librime"
+name = "Rime Input Method Engine"
+repository = "https://github.com/rime/librime"
+license = "BSD-3-Clause"
+version = "1.17.0"
+commit = "33e78140250125871856cdc5b42ddc6a5fcd3cd4"
+source_archive_sha256 = "b22594e1fcf55df5bbf60e76dc49200671410e98540be265f68465d03678c722"
+distribution = "dynamic-library"
+source_required = false
+production_build = "build-from-source-with-audited-plugin-set"
+verified_windows_x64_asset = "rime-33e7814-Windows-msvc-x64.7z"
+verified_windows_x64_asset_sha256 = "7478c7caa4ff6b37de86daba1f7ce4a994a4f5ba24872a820fb2b3a9b01fed15"
+verified_windows_x64_asset_use = "phase-0-development-verification-only"
+verified_windows_x64_asset_redistribution = false
+
+[[component]]
+id = "rime-ice"
+name = "Rime Ice"
+repository = "https://github.com/iDvel/rime-ice"
+license = "GPL-3.0-only"
+version = "2026.06.30"
+commit = "6810e8916d160498620a16fef2135956fecbd485"
+source_archive_sha256 = "cd1895fbc961131a62f23277f636c27a6fb941dac66daf43c4a10d4e9e6adad3"
+distribution = "derived-resource-pack"
+source_required = true
+credits = "https://github.com/iDvel/rime-ice/blob/main/others/docs/Credits.md"
+
+[[component]]
+id = "librime-lua"
+name = "librime-lua"
+repository = "https://github.com/hchunhui/librime-lua"
+license = "BSD-3-Clause"
+commit = "ec52e48ea18f11af37717a01c337f853215cf70b"
+distribution = "planned-static-plugin-in-production-librime"
+source_required = false
+
+[[component]]
+id = "librime-octagram"
+name = "librime-octagram"
+repository = "https://github.com/lotem/librime-octagram"
+license = "GPL-3.0-only"
+commit = "dfcc15115788c828d9dd7b4bff68067d3ce2ffb8"
+distribution = "present-in-phase-0-official-verification-asset-only"
+ship_in_mo = false
+source_required = true
+
+[[component]]
+id = "librime-predict"
+name = "librime-predict"
+repository = "https://github.com/rime/librime-predict"
+license = "BSD-3-Clause"
+commit = "920bd41ebf6f9bf6855d14fbe80212e54e749791"
+distribution = "present-in-phase-0-official-verification-asset-only"
+ship_in_mo = false
+source_required = false

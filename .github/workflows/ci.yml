@@ -1,0 +1,75 @@
+name: phase-0
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt clippy
+      - name: Format
+        run: cargo +1.97.1 fmt --all -- --check
+      - name: Lint
+        run: cargo +1.97.1 clippy --workspace --all-targets -- -D warnings
+      - name: Test
+        run: cargo +1.97.1 test --workspace
+
+  windows-tip:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and load x64/x86 COM shells
+        shell: pwsh
+        run: ./native/windows-tip/build-probe.ps1 -Architecture All -Backend MSBuild
+
+  librime-abi:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Check pinned C and Rust ABI layouts
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'librime'
+          git clone --filter=blob:none --no-checkout https://github.com/rime/librime.git $source
+          git -C $source checkout --detach 33e78140250125871856cdc5b42ddc6a5fcd3cd4
+          ./tools/abi-probe/compare.ps1 -RimeIncludeDir (Join-Path $source 'src') -MsvcArch x64
+
+  real-rime-smoke:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Verify nihao to 你好 with pinned upstreams
+        shell: pwsh
+        run: |
+          $ice = Join-Path $env:RUNNER_TEMP 'rime-ice'
+          git clone --filter=blob:none --no-checkout https://github.com/iDvel/rime-ice.git $ice
+          git -C $ice checkout --detach 6810e8916d160498620a16fef2135956fecbd485
+
+          $archive = Join-Path $env:RUNNER_TEMP 'rime-windows-x64.7z'
+          Invoke-WebRequest -Uri 'https://github.com/rime/librime/releases/download/1.17.0/rime-33e7814-Windows-msvc-x64.7z' -OutFile $archive
+          $expected = '7478C7CAA4FF6B37DE86DABA1F7CE4A994A4F5BA24872A820FB2B3A9B01FED15'
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash
+          if ($actual -ne $expected) { throw "librime asset hash mismatch: $actual" }
+
+          $unpacked = Join-Path $env:RUNNER_TEMP 'librime-dist'
+          New-Item -ItemType Directory -Path $unpacked | Out-Null
+          7z x $archive "-o$unpacked" -y
+          if ($LASTEXITCODE -ne 0) { throw "7z extraction failed: $LASTEXITCODE" }
+
+          $user = Join-Path $env:RUNNER_TEMP 'rime-user'
+          New-Item -ItemType Directory -Path $user | Out-Null
+          ./tools/rime-smoke/run.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Deploy

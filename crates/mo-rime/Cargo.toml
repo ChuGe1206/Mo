@@ -1,0 +1,24 @@
+[package]
+name = "mo-rime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Single-threaded safe ownership boundary around librime for Mo"
+
+[features]
+default = []
+link-dynamic = ["mo-rime-sys/link-dynamic"]
+link-static = ["mo-rime-sys/link-static"]
+
+[dependencies]
+mo-rime-sys = { path = "../mo-rime-sys" }
+
+[[example]]
+name = "real_smoke"
+path = "examples/real_smoke.rs"
+required-features = ["link-dynamic"]
+
+[lints]
+workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "mo-ipc"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Bounded, versioned local IPC primitives for the Mo input method"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+

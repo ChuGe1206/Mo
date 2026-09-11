@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix
+    xmlns="http://wixtoolset.org/schemas/v4/wxs"
+    xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <!-- Standard BA is temporary; the first-run/user-profile finalizer is absent. -->
+  <Bundle
+      Name="Mo (墨) 输入法 — Phase 0 placeholder"
+      Manufacturer="Mo Project"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="{E08C0321-3F73-4D39-BC28-E7DF02C5134E}">
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl="https://www.apache.org/licenses/LICENSE-2.0" />
+    </BootstrapperApplication>
+    <Chain>
+      <MsiPackage SourceFile="$(var.MsiPath)" Visible="no" />
+    </Chain>
+  </Bundle>
+</Wix>
+

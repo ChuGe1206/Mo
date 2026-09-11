@@ -1,0 +1,5 @@
+LIBRARY "mo_tip"
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE
+

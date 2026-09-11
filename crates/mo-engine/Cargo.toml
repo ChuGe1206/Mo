@@ -1,0 +1,11 @@
+[package]
+name = "mo-engine"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "Deterministic engine actor and backend contract for Mo"
+
+[dependencies]
+mo-domain = { path = "../mo-domain" }
+

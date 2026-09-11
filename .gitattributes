@@ -1,0 +1,12 @@
+* text=auto
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.cpp text eol=crlf
+*.hpp text eol=crlf
+*.h text eol=crlf
+*.wxs text eol=crlf
+
