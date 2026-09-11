@@ -5,6 +5,7 @@
 #include <msctf.h>
 #include <new>
 
+#include "mo_broker_client.h"
 #include "mo_tip_ids.h"
 
 namespace {
@@ -85,6 +86,9 @@ public:
         keystroke_manager_ = keystroke_manager;
         client_id_ = client_id;
         activation_flags_ = flags;
+        // Broker absence must never prevent TSF activation. The first bounded
+        // connection attempt is best-effort; key callbacks remain fail-open.
+        broker_.ConnectAndOpen(50);
         return S_OK;
     }
 
@@ -95,6 +99,7 @@ public:
             keystroke_manager_->Release();
             keystroke_manager_ = nullptr;
         }
+        broker_.Close(50);
         if (thread_manager_ != nullptr) {
             thread_manager_->Release();
             thread_manager_ = nullptr;
@@ -189,6 +194,7 @@ private:
     TfClientId client_id_ = TF_CLIENTID_NULL;
     DWORD activation_flags_ = 0;
     bool has_focus_ = false;
+    mo::windows_tip::BrokerClient broker_;
 };
 
 class ClassFactory final : public IClassFactory {

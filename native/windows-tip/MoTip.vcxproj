@@ -43,8 +43,14 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup><ClCompile Include="src\mo_tip.cpp" /></ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\mo_broker_client.cpp" />
+    <ClCompile Include="src\mo_tip.cpp" />
+  </ItemGroup>
   <ItemGroup><None Include="src\mo_tip.def" /></ItemGroup>
-  <ItemGroup><ClInclude Include="include\mo_tip_ids.h" /></ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\mo_broker_client.h" />
+    <ClInclude Include="include\mo_tip_ids.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -26,9 +26,12 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
-      - name: Compile and load x64/x86 COM shells
+      - name: Install pinned Rust toolchain
         shell: pwsh
-        run: ./native/windows-tip/build-probe.ps1 -Architecture All -Backend MSBuild
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Compile x64/x86 TIPs and cross-check the Rust broker
+        shell: pwsh
+        run: ./tools/tip-broker-smoke.ps1 -Architecture All
 
   librime-abi:
     runs-on: windows-2022

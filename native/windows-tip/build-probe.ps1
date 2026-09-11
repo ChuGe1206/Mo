@@ -60,7 +60,7 @@ foreach ($platform in $architectures) {
         Invoke-Checked $cmake @('--build', $buildDirectory, '--config', 'Release')
         $binaryDirectory = Join-Path $buildDirectory 'Release'
     } else {
-        foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj')) {
+        foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj', 'MoTipIpcProbe.vcxproj')) {
             Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform")
         }
         $binaryDirectory = Join-Path $sourceRoot "out\msbuild\$platform\Release"

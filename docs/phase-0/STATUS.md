@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-11
+- 快照日期：2026-09-12
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。项目尚不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -30,6 +30,7 @@
 - 自主 C++ COM 壳以 `/W4 /WX /sdl /GS /guard:cf` 构建 x64 与 x86 DLL，零警告。
 - 两种架构均通过 DLL 加载、导出、未知 CLSID、Server Lock、禁止聚合、`ITfTextInputProcessorEx`/`ITfKeyEventSink` 创建、错误参数和卸载探针。
 - `ActivateEx` 已实现前台 key sink 的 advise/unadvise 对称生命周期；受控 manager + 真实 TSF context 探针证明 client ID/foreground 参数正确，`OnTestKey*` 与 `OnKey*` 当前一致 fail-open、不吞键。
+- x64 与 Win32 原生客户端已对同一个 x64 Rust Broker 完成真实 `Hello -> OpenSession -> KeyEvent(M) -> Snapshot("m") -> CloseSession` 往返；客户端采用 overlapped I/O、端到端硬 deadline、严格帧/CRC/UTF-8/请求号校验，失败或结果不明确时断开并保持 TIP fail-open。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
@@ -37,7 +38,7 @@
 
 未通过：
 
-- 注册后的真实 TSF 宿主 key sink 激活、edit session、composition/candidate UI 以及与 Rust Broker 的真实往返。
+- 注册后的真实 TSF 宿主 key sink 激活、key callback 到 Broker 的派发、edit session 和 composition/candidate UI；当前真实 Broker 往返由同源码的独立原生 probe 验证。
 - Named Pipe 多实例/overlapped I/O、已认证连接逐请求 deadline、DACL 负向访问测试，以及 AppContainer/WinUI 连接测试。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
@@ -59,4 +60,4 @@
 
 ## 下一检查点
 
-Phase 0 的下一检查点继续聚焦同一垂直链路：把 x64/x86 TSF key sink 接入已验证的受限 Named Pipe，再把 Broker 的协议 echo 替换为 Rust Engine Actor → librime，并通过 TSF edit session 上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。
+Phase 0 的下一检查点继续聚焦同一垂直链路：把已经嵌入 TIP DLL 的 BrokerClient 接到 key sink 决策缓存与 TSF edit session，再把 Broker 的协议 echo 替换为 Rust Engine Actor -> librime 并真实上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。
