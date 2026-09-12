@@ -371,29 +371,45 @@ fn normalize_key_event(event: WireKeyEvent) -> DomainKeyEvent {
     } else {
         KeyState::Released
     };
-    let text = infer_ascii_text(event.virtual_key, state, modifiers);
-    DomainKeyEvent::new(event.virtual_key, modifiers, state, text, event.repeat)
+    let keycode = normalized_keycode(event.virtual_key, modifiers);
+    let text = infer_ascii_text(keycode, state, modifiers);
+    DomainKeyEvent::new(keycode, modifiers, state, text, event.repeat)
 }
 
-fn infer_ascii_text(virtual_key: u32, state: KeyState, modifiers: KeyModifiers) -> Option<char> {
+fn normalized_keycode(virtual_key: u32, modifiers: KeyModifiers) -> u32 {
+    match virtual_key {
+        0x08 => 0xff08, // XK_BackSpace
+        0x09 => 0xff09, // XK_Tab
+        0x0d => 0xff0d, // XK_Return
+        0x1b => 0xff1b, // XK_Escape
+        0x25 => 0xff51, // XK_Left
+        0x26 => 0xff52, // XK_Up
+        0x27 => 0xff53, // XK_Right
+        0x28 => 0xff54, // XK_Down
+        0x2e => 0xffff, // XK_Delete
+        0x41..=0x5a => {
+            let uppercase = modifiers.contains(KeyModifiers::SHIFT)
+                ^ modifiers.contains(KeyModifiers::CAPS_LOCK);
+            if uppercase {
+                virtual_key
+            } else {
+                virtual_key + u32::from(b'a' - b'A')
+            }
+        }
+        _ => virtual_key,
+    }
+}
+
+fn infer_ascii_text(keycode: u32, state: KeyState, modifiers: KeyModifiers) -> Option<char> {
     if state != KeyState::Pressed
         || modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
     {
         return None;
     }
 
-    match virtual_key {
-        0x41..=0x5a => {
-            let uppercase = modifiers.contains(KeyModifiers::SHIFT)
-                ^ modifiers.contains(KeyModifiers::CAPS_LOCK);
-            let codepoint = if uppercase {
-                virtual_key
-            } else {
-                virtual_key + u32::from(b'a' - b'A')
-            };
-            char::from_u32(codepoint)
-        }
-        0x30..=0x39 if !modifiers.contains(KeyModifiers::SHIFT) => char::from_u32(virtual_key),
+    match keycode {
+        0x61..=0x7a | 0x41..=0x5a => char::from_u32(keycode),
+        0x30..=0x39 if !modifiers.contains(KeyModifiers::SHIFT) => char::from_u32(keycode),
         _ => None,
     }
 }

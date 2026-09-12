@@ -31,6 +31,8 @@ version = "0.1.0"
 name = "mo-rime"
 version = "0.1.0"
 dependencies = [
+ "mo-domain",
+ "mo-engine",
  "mo-rime-sys",
 ]
 

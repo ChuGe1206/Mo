@@ -174,11 +174,11 @@ impl EngineBackend for FakeBackend {
                     && !event.modifiers.intersects(command_modifiers)
                 {
                     match event.keycode {
-                        0x08 if !session.preedit.is_empty() => {
+                        0xff08 if !session.preedit.is_empty() => {
                             session.preedit.pop();
                             handled = true;
                         }
-                        0x1b if !session.preedit.is_empty() => {
+                        0xff1b if !session.preedit.is_empty() => {
                             session.preedit.clear();
                             handled = true;
                         }

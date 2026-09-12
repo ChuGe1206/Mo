@@ -15,6 +15,10 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
+mod backend;
+
+pub use backend::{RimeBackend, RimeBackendError, RimeBackendSession};
+
 const MAX_CANDIDATES_PER_PAGE: usize = 1_024;
 const MAX_SELECT_LABELS: usize = 256;
 
@@ -335,17 +339,85 @@ impl Engine {
     }
 
     pub fn create_session(&self) -> Result<Session<'_>, Error> {
+        let id = self.create_session_id()?;
+        Ok(Session {
+            engine: self,
+            id,
+            active: true,
+        })
+    }
+
+    fn create_session_id(&self) -> Result<sys::RimeSessionId, Error> {
         // SAFETY: Engine owns an initialized live function table and calls are
         // confined to its owning thread by the type's auto-trait markers.
         let id = unsafe { (self.functions.create_session)() };
         if id == sys::RIME_NO_SESSION {
             return Err(Error::SessionCreationFailed);
         }
-        Ok(Session {
-            engine: self,
-            id,
-            active: true,
-        })
+        Ok(id)
+    }
+
+    fn destroy_session_id(&self, id: sys::RimeSessionId) -> Result<(), Error> {
+        // SAFETY: callers own the live id and retire it after this call.
+        if sys::from_rime_bool(unsafe { (self.functions.destroy_session)(id) }) {
+            Ok(())
+        } else {
+            Err(Error::NativeCallFailed("destroy_session"))
+        }
+    }
+
+    fn process_key_id(&self, id: sys::RimeSessionId, keycode: c_int, modifiers: c_int) -> bool {
+        // SAFETY: callers prove the id belongs to this initialized Engine.
+        sys::from_rime_bool(unsafe { (self.functions.process_key)(id, keycode, modifiers) })
+    }
+
+    fn commit_composition_id(&self, id: sys::RimeSessionId) -> bool {
+        // SAFETY: callers prove the id belongs to this initialized Engine.
+        sys::from_rime_bool(unsafe { (self.functions.commit_composition)(id) })
+    }
+
+    fn clear_composition_id(&self, id: sys::RimeSessionId) {
+        // SAFETY: callers prove the id belongs to this initialized Engine.
+        unsafe { (self.functions.clear_composition)(id) }
+    }
+
+    fn take_commit_id(&self, id: sys::RimeSessionId) -> Result<Option<CommitSnapshot>, Error> {
+        let mut raw = sys::RimeCommit::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.functions.get_commit)(id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.functions.free_commit, "RimeCommit");
+        // SAFETY: a successful get_commit populated the guarded value.
+        let copied = unsafe { copy_commit(guard.get()) };
+        guard.release()?;
+        copied.map(Some)
+    }
+
+    fn context_id(&self, id: sys::RimeSessionId) -> Result<Option<ContextSnapshot>, Error> {
+        let mut raw = sys::RimeContext::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.functions.get_context)(id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.functions.free_context, "RimeContext");
+        // SAFETY: a successful get_context populated the guarded value.
+        let copied = unsafe { copy_context(guard.get()) };
+        guard.release()?;
+        copied.map(Some)
+    }
+
+    fn status_id(&self, id: sys::RimeSessionId) -> Result<Option<StatusSnapshot>, Error> {
+        let mut raw = sys::RimeStatus::default();
+        // SAFETY: raw is correctly initialized and writable for this call.
+        if !sys::from_rime_bool(unsafe { (self.functions.get_status)(id, &mut raw) }) {
+            return Ok(None);
+        }
+        let guard = NativeOutput::new(&mut raw, self.functions.free_status, "RimeStatus");
+        // SAFETY: a successful get_status populated the guarded value.
+        let copied = unsafe { copy_status(guard.get()) };
+        guard.release()?;
+        Ok(Some(copied))
     }
 }
 
@@ -427,59 +499,27 @@ impl Session<'_> {
     }
 
     pub fn process_key(&mut self, keycode: c_int, modifiers: c_int) -> bool {
-        // SAFETY: the session is live and bound to its initialized Engine.
-        sys::from_rime_bool(unsafe {
-            (self.engine.functions.process_key)(self.id, keycode, modifiers)
-        })
+        self.engine.process_key_id(self.id, keycode, modifiers)
     }
 
     pub fn commit_composition(&mut self) -> bool {
-        // SAFETY: the session is live and bound to its initialized Engine.
-        sys::from_rime_bool(unsafe { (self.engine.functions.commit_composition)(self.id) })
+        self.engine.commit_composition_id(self.id)
     }
 
     pub fn clear_composition(&mut self) {
-        // SAFETY: the session is live and bound to its initialized Engine.
-        unsafe { (self.engine.functions.clear_composition)(self.id) }
+        self.engine.clear_composition_id(self.id);
     }
 
     pub fn take_commit(&mut self) -> Result<Option<CommitSnapshot>, Error> {
-        let mut raw = sys::RimeCommit::default();
-        // SAFETY: raw is correctly initialized and writable for this call.
-        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_commit)(self.id, &mut raw) }) {
-            return Ok(None);
-        }
-        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_commit, "RimeCommit");
-        // SAFETY: a successful get_commit populated the guarded value.
-        let copied = unsafe { copy_commit(guard.get()) };
-        guard.release()?;
-        copied.map(Some)
+        self.engine.take_commit_id(self.id)
     }
 
     pub fn context(&mut self) -> Result<Option<ContextSnapshot>, Error> {
-        let mut raw = sys::RimeContext::default();
-        // SAFETY: raw is correctly initialized and writable for this call.
-        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_context)(self.id, &mut raw) }) {
-            return Ok(None);
-        }
-        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_context, "RimeContext");
-        // SAFETY: a successful get_context populated the guarded value.
-        let copied = unsafe { copy_context(guard.get()) };
-        guard.release()?;
-        copied.map(Some)
+        self.engine.context_id(self.id)
     }
 
     pub fn status(&mut self) -> Result<Option<StatusSnapshot>, Error> {
-        let mut raw = sys::RimeStatus::default();
-        // SAFETY: raw is correctly initialized and writable for this call.
-        if !sys::from_rime_bool(unsafe { (self.engine.functions.get_status)(self.id, &mut raw) }) {
-            return Ok(None);
-        }
-        let guard = NativeOutput::new(&mut raw, self.engine.functions.free_status, "RimeStatus");
-        // SAFETY: a successful get_status populated the guarded value.
-        let copied = unsafe { copy_status(guard.get()) };
-        guard.release()?;
-        Ok(Some(copied))
+        self.engine.status_id(self.id)
     }
 
     pub fn close(mut self) -> Result<(), Error> {
@@ -491,12 +531,7 @@ impl Session<'_> {
             return Ok(());
         }
         self.active = false;
-        // SAFETY: this call consumes the only live Rust session handle.
-        if sys::from_rime_bool(unsafe { (self.engine.functions.destroy_session)(self.id) }) {
-            Ok(())
-        } else {
-            Err(Error::NativeCallFailed("destroy_session"))
-        }
+        self.engine.destroy_session_id(self.id)
     }
 }
 
@@ -696,6 +731,8 @@ mod tests {
         calls: Vec<&'static str>,
         traits_are_valid: bool,
         malformed_context: bool,
+        valid_utf8_context: bool,
+        last_key: Option<(c_int, c_int)>,
     }
 
     impl FakeState {
@@ -704,6 +741,8 @@ mod tests {
                 calls: Vec::new(),
                 traits_are_valid: false,
                 malformed_context: false,
+                valid_utf8_context: false,
+                last_key: None,
             }
         }
 
@@ -711,6 +750,8 @@ mod tests {
             self.calls.clear();
             self.traits_are_valid = false;
             self.malformed_context = false;
+            self.valid_utf8_context = false;
+            self.last_key = None;
         }
     }
 
@@ -762,9 +803,12 @@ mod tests {
     unsafe extern "C" fn fake_process_key(
         _: sys::RimeSessionId,
         keycode: c_int,
-        _: c_int,
+        modifiers: c_int,
     ) -> sys::RimeBool {
-        record("process_key");
+        if let Ok(mut state) = FAKE.lock() {
+            state.calls.push("process_key");
+            state.last_key = Some((keycode, modifiers));
+        }
         sys::to_rime_bool(keycode == 65)
     }
 
@@ -811,16 +855,22 @@ mod tests {
         if output.is_null() {
             return sys::RIME_FALSE;
         }
-        let malformed = FAKE
+        let (malformed, valid_utf8) = FAKE
             .lock()
-            .map(|state| state.malformed_context)
-            .unwrap_or(false);
+            .map(|state| (state.malformed_context, state.valid_utf8_context))
+            .unwrap_or((false, false));
         // SAFETY: wrapper provides a live initialized output.
         let output = unsafe { &mut *output };
-        output.composition.length = 6;
-        output.composition.cursor_pos = 6;
-        // Include invalid UTF-8 to prove conversion is owned and non-UB.
-        output.composition.preedit = unsafe { owned_c_string(b"ni\xffhao\0") };
+        if valid_utf8 {
+            output.composition.length = 5;
+            output.composition.cursor_pos = 5;
+            output.composition.preedit = unsafe { owned_c_string(b"nihao\0") };
+        } else {
+            output.composition.length = 6;
+            output.composition.cursor_pos = 6;
+            // Include invalid UTF-8 to prove conversion is owned and non-UB.
+            output.composition.preedit = unsafe { owned_c_string(b"ni\xffhao\0") };
+        }
         output.menu.page_size = 2;
         output.menu.page_no = 0;
         output.menu.is_last_page = -1;
@@ -1028,6 +1078,47 @@ mod tests {
         assert_eq!(commit.text, "你好");
         assert_eq!(context.menu.candidates[0].text, "one");
         assert_eq!(status.schema_name.as_deref(), Some("Mo"));
+    }
+
+    #[test]
+    fn rime_backend_routes_actor_commands_and_projects_owned_output() {
+        use mo_domain::{EngineCommand, KeyEvent, KeyModifiers, SessionOptions};
+        use mo_engine::EngineActor;
+
+        let _serial = TEST_SERIAL.lock().expect("test serialization lock");
+        FAKE.lock().expect("fake state").reset();
+        FAKE.lock().expect("fake state").valid_utf8_context = true;
+        let mut api = fake_api();
+        // SAFETY: the fake table remains live until the actor and backend drop.
+        let engine = unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }
+            .expect("engine");
+        let mut actor = EngineActor::new(RimeBackend::new(engine));
+        let token = actor.create_session(SessionOptions::new()).unwrap();
+        let snapshot = actor
+            .dispatch(
+                token,
+                EngineCommand::Key(
+                    KeyEvent::pressed(65)
+                        .with_modifiers(KeyModifiers::SHIFT | KeyModifiers::CONTROL),
+                ),
+            )
+            .unwrap();
+
+        assert!(snapshot.handled);
+        assert_eq!(snapshot.commit.as_deref(), Some("你好"));
+        assert_eq!(snapshot.composition.unwrap().preedit(), "nihao");
+        assert_eq!(snapshot.candidates.len(), 2);
+        assert_eq!(snapshot.candidates[1].text, "two");
+        assert_eq!(snapshot.candidates[1].comment.as_deref(), Some("comment"));
+        assert_eq!(snapshot.candidates[1].label.as_deref(), Some("2."));
+        assert_eq!(snapshot.status.schema_id, "mo_pinyin");
+        assert!(snapshot.status.composing);
+
+        actor.destroy_session(token).unwrap();
+        drop(actor);
+        let state = FAKE.lock().expect("fake state");
+        assert_eq!(state.last_key, Some((65, 0x0001 | 0x0004)));
+        assert!(state.calls.contains(&"destroy_session"));
     }
 
     #[test]

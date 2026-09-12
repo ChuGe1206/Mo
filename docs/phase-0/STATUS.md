@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 41 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 45 个运行时测试和 1 个 compile-fail 契约测试。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
 - 尚未在 GitHub runner 上产生首个 CI 结果；本地 `main` 已建立 Phase 0 基线提交 `25ef5d7`，未配置 remote。
@@ -20,6 +20,7 @@
 - 官方 x64 验证资产 SHA-256：`7478c7caa4ff6b37de86daba1f7ce4a994a4f5ba24872a820fb2b3a9b01fed15`。
 - `tools/abi-probe/compare.ps1`：官方 C header 与 Rust 声明的 44 项 size/alignment/offset/data_size 断言一致。
 - 安全封装确保 Engine/Session 单线程、Session 借用 Engine、所有 commit/context/status native 输出严格配对 `free_*`，并将返回值复制为 owned Rust snapshot。
+- `RimeBackend` 已实现 Engine Actor 后端契约：私有 native session id 不越过适配层，key/commit/clear、修饰位映射、composition UTF-8 byte offset 校验、候选注释/标签与状态投影均有确定性伪 API 测试。schema/options/选词/翻页仍因最小 ABI 前缀未扩展而显式返回 unsupported，不会静默忽略。
 - 官方 librime + 锁定 rime-ice 完成真实部署和 `nihao -> 你好` 候选及提交验证。
 - 正式发行不得复用该官方预构建 DLL；原因见 G4。
 
@@ -61,4 +62,4 @@
 
 ## 下一检查点
 
-Phase 0 的下一检查点继续聚焦同一垂直链路：实现 librime 的 `EngineBackend` 并替换当前 `FakeBackend`，同时把已经嵌入 TIP DLL 的 BrokerClient 接到 key sink 决策缓存与 TSF edit session 后真实上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。
+Phase 0 的下一检查点继续聚焦同一垂直链路：为 Broker 增加受控的 librime DLL/预编译 rime-ice 资源启动配置，用已完成的 `RimeBackend` 替换当前 `FakeBackend`；同时把已经嵌入 TIP DLL 的 BrokerClient 接到 key sink 决策缓存与 TSF edit session 后真实上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再实现可回滚安装事务。

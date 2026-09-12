@@ -13,6 +13,8 @@ link-dynamic = ["mo-rime-sys/link-dynamic"]
 link-static = ["mo-rime-sys/link-static"]
 
 [dependencies]
+mo-domain = { path = "../mo-domain" }
+mo-engine = { path = "../mo-engine" }
 mo-rime-sys = { path = "../mo-rime-sys" }
 
 [[example]]
