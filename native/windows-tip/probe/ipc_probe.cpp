@@ -25,8 +25,9 @@ int wmain() {
     if (!snapshot.handled
         || snapshot.composition != "m"
         || snapshot.commit.has_value()
-        || snapshot.candidates.size() != 1
-        || snapshot.candidates.front() != "m") {
+        || snapshot.candidates.size() != 2
+        || snapshot.candidates[0] != "m"
+        || snapshot.candidates[1] != "M") {
         std::wcerr << L"Unexpected Broker snapshot\n";
         return 1;
     }

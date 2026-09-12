@@ -9,6 +9,6 @@ pub mod tcp_loopback_spike;
 pub mod windows_named_pipe;
 
 pub use state::{
-    BrokerConnection, BrokerError, ERROR_BAD_HANDSHAKE, ERROR_BAD_REQUEST,
+    BrokerConnection, BrokerError, ERROR_BAD_HANDSHAKE, ERROR_BAD_REQUEST, ERROR_ENGINE_FAILURE,
     ERROR_INCOMPATIBLE_VERSION, ERROR_NO_SUCH_SESSION, ERROR_OUT_OF_ORDER, ERROR_SESSION_LIMIT,
 };

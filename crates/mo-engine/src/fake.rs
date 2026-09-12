@@ -51,10 +51,11 @@ impl std::error::Error for FakeError {}
 
 /// A deterministic, dependency-free backend for actor and frontend tests.
 ///
-/// Printable `KeyEvent::text` presses append to the preedit. `Commit` commits
-/// that text, `Clear` discards it, and candidate zero mirrors the preedit. The
-/// model is intentionally simple; its purpose is contract testing, not language
-/// prediction.
+/// Printable `KeyEvent::text` presses append to the preedit. ASCII-compatible
+/// Backspace, Escape, and Space key symbols remove, clear, and commit it;
+/// explicit `Commit` and `Clear` commands provide the same lifecycle controls.
+/// Candidate zero mirrors the preedit. The model is intentionally simple; its
+/// purpose is contract testing, not language prediction.
 #[derive(Debug, Default)]
 pub struct FakeBackend {
     next_session: u64,
@@ -172,10 +173,28 @@ impl EngineBackend for FakeBackend {
                 if event.state == KeyState::Pressed
                     && !event.modifiers.intersects(command_modifiers)
                 {
-                    if let Some(character) = event.text {
-                        session.preedit.push(character);
+                    match event.keycode {
+                        0x08 if !session.preedit.is_empty() => {
+                            session.preedit.pop();
+                            handled = true;
+                        }
+                        0x1b if !session.preedit.is_empty() => {
+                            session.preedit.clear();
+                            handled = true;
+                        }
+                        0x20 if !session.preedit.is_empty() => {
+                            commit = Some(std::mem::take(&mut session.preedit));
+                            handled = true;
+                        }
+                        _ => {
+                            if let Some(character) = event.text {
+                                session.preedit.push(character);
+                                handled = true;
+                            }
+                        }
+                    }
+                    if handled {
                         session.page = 0;
-                        handled = true;
                     }
                 }
             }

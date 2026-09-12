@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateSet('All', 'x64', 'Win32')]
-    [string]$Architecture = 'All'
+    [string]$Architecture = 'All',
+    [ValidatePattern('^[A-Za-z0-9._-]+$')]
+    [string]$RustToolchain = 'stable'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +14,7 @@ if ($LASTEXITCODE -ne 0) { throw "TIP build/probe failed: $LASTEXITCODE" }
 
 Push-Location $repoRoot
 try {
-    cargo +1.97.1 build -p mo-broker --bin mo-broker
+    & cargo "+$RustToolchain" build -p mo-broker --bin mo-broker
     if ($LASTEXITCODE -ne 0) { throw "Rust broker build failed: $LASTEXITCODE" }
 } finally {
     Pop-Location

@@ -6,6 +6,8 @@ license = "Apache-2.0"
 publish = false
 
 [dependencies]
+mo-domain = { path = "../mo-domain" }
+mo-engine = { path = "../mo-engine" }
 mo-ipc = { path = "../mo-ipc" }
 
 [target.'cfg(windows)'.dependencies]

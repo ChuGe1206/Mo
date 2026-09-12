@@ -1,9 +1,13 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use mo_domain::{
+    EngineCommand, KeyEvent as DomainKeyEvent, KeyModifiers, KeyState, SessionOptions, SessionToken,
+};
+use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
     CURRENT_VERSION, ErrorMessage, FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame,
-    FrameError, Hello, HelloAck, KeyEvent, MAX_COMPOSITION_BYTES, MAX_PAYLOAD_LEN, MessageKind,
+    FrameError, Hello, HelloAck, KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind,
     PayloadCodec, ProtocolVersion, Snapshot, VersionRange, negotiate_version,
 };
 
@@ -13,42 +17,56 @@ pub const ERROR_INCOMPATIBLE_VERSION: u32 = 3;
 pub const ERROR_OUT_OF_ORDER: u32 = 4;
 pub const ERROR_NO_SUCH_SESSION: u32 = 5;
 pub const ERROR_SESSION_LIMIT: u32 = 6;
+pub const ERROR_ENGINE_FAILURE: u32 = 7;
 
 const MAX_SESSIONS_PER_CONNECTION: usize = 64;
-
-#[derive(Debug, Default)]
-struct SessionState {
-    revision: u64,
-    composition: String,
-}
 
 /// Transport-independent state for one authenticated transport connection.
 ///
 /// `connection_generation` and session tokens are opaque correlation values,
-/// not authentication secrets. Production authorization belongs to the future
-/// named-pipe ACL and peer validation layer.
-#[derive(Debug)]
-pub struct BrokerConnection {
+/// not authentication secrets. Transport authorization belongs to the adapter.
+/// Phase 0 serves one connection, so this type owns its Engine Actor directly;
+/// a future listener pool will put the actor behind a process-wide command
+/// channel without changing the wire-token mapping in this state machine.
+pub struct BrokerConnection<B = FakeBackend>
+where
+    B: EngineBackend,
+{
     connection_generation: u64,
     negotiated: Option<ProtocolVersion>,
     last_request_id: u64,
     next_session_token: u64,
-    sessions: BTreeMap<u64, SessionState>,
+    sessions: BTreeMap<u64, SessionToken>,
+    engine: EngineActor<B>,
 }
 
-impl BrokerConnection {
+impl BrokerConnection<FakeBackend> {
     pub fn new(connection_generation: u64) -> Self {
+        Self::with_backend(connection_generation, FakeBackend::new())
+    }
+}
+
+impl<B> BrokerConnection<B>
+where
+    B: EngineBackend,
+{
+    pub fn with_backend(connection_generation: u64, backend: B) -> Self {
         Self {
             connection_generation: connection_generation.max(1),
             negotiated: None,
             last_request_id: 0,
             next_session_token: 1,
             sessions: BTreeMap::new(),
+            engine: EngineActor::new(backend),
         }
     }
 
     pub fn connection_generation(&self) -> u64 {
         self.connection_generation
+    }
+
+    pub fn engine(&self) -> &EngineActor<B> {
+        &self.engine
     }
 
     pub fn handle(&mut self, request: Frame) -> Result<Frame, BrokerError> {
@@ -158,8 +176,18 @@ impl BrokerConnection {
             );
         }
 
+        let engine_token = match self.engine.create_session(SessionOptions::new()) {
+            Ok(token) => token,
+            Err(_) => {
+                return self.error(
+                    &request,
+                    ERROR_ENGINE_FAILURE,
+                    "engine could not create a session",
+                );
+            }
+        };
         let token = self.allocate_session_token();
-        self.sessions.insert(token, SessionState::default());
+        self.sessions.insert(token, engine_token);
         self.response(
             self.selected_version(),
             MessageKind::OpenSessionAck,
@@ -171,60 +199,45 @@ impl BrokerConnection {
 
     fn key_event(&mut self, request: Frame) -> Result<Frame, BrokerError> {
         let token = request.header.session_token;
-        let Some(session) = self.sessions.get_mut(&token) else {
+        let Some(&engine_token) = self.sessions.get(&token) else {
             return self.error(
                 &request,
                 ERROR_NO_SUCH_SESSION,
                 "session token does not belong to this connection",
             );
         };
-        let event = match KeyEvent::decode_payload(&request.payload) {
+        let event = match WireKeyEvent::decode_payload(&request.payload) {
             Ok(event) => event,
             Err(_) => {
                 return self.error(&request, ERROR_BAD_REQUEST, "KeyEvent payload is malformed");
             }
         };
-
-        // This deterministic ASCII echo is a protocol spike, not an IME engine.
-        let mut handled = false;
-        let mut commit = None;
-        if event.key_down {
-            match event.virtual_key {
-                0x41..=0x5a if session.composition.len() < MAX_COMPOSITION_BYTES => {
-                    let character = char::from_u32(event.virtual_key + 0x20)
-                        .expect("ASCII virtual key is a scalar value");
-                    session.composition.push(character);
-                    handled = true;
-                }
-                0x08 if !session.composition.is_empty() => {
-                    session.composition.pop();
-                    handled = true;
-                }
-                0x1b if !session.composition.is_empty() => {
-                    session.composition.clear();
-                    handled = true;
-                }
-                0x20 if !session.composition.is_empty() => {
-                    commit = Some(std::mem::take(&mut session.composition));
-                    handled = true;
-                }
-                _ => {}
+        let engine_snapshot = match self
+            .engine
+            .dispatch(engine_token, EngineCommand::Key(normalize_key_event(event)))
+        {
+            Ok(snapshot) => snapshot,
+            Err(_) => {
+                return self.error(
+                    &request,
+                    ERROR_ENGINE_FAILURE,
+                    "engine rejected the key event",
+                );
             }
-        }
-        if handled {
-            session.revision = session.revision.saturating_add(1);
-        }
-        let candidates = if session.composition.is_empty() {
-            Vec::new()
-        } else {
-            vec![session.composition.clone()]
         };
         let snapshot = Snapshot {
-            revision: session.revision,
-            handled,
-            composition: session.composition.clone(),
-            commit,
-            candidates,
+            revision: engine_snapshot.revision.get(),
+            handled: engine_snapshot.handled,
+            composition: engine_snapshot
+                .composition
+                .map(|composition| composition.preedit().to_owned())
+                .unwrap_or_default(),
+            commit: engine_snapshot.commit,
+            candidates: engine_snapshot
+                .candidates
+                .into_iter()
+                .map(|candidate| candidate.text)
+                .collect(),
         };
         self.response(
             self.selected_version(),
@@ -244,11 +257,18 @@ impl BrokerConnection {
             );
         }
         let token = request.header.session_token;
-        if token == 0 || self.sessions.remove(&token).is_none() {
+        let Some(engine_token) = self.sessions.remove(&token) else {
             return self.error(
                 &request,
                 ERROR_NO_SUCH_SESSION,
                 "session token does not belong to this connection",
+            );
+        };
+        if self.engine.destroy_session(engine_token).is_err() {
+            return self.error(
+                &request,
+                ERROR_ENGINE_FAILURE,
+                "engine could not destroy the session",
             );
         }
         self.response(
@@ -330,6 +350,51 @@ impl BrokerConnection {
             request.header.request_id,
             payload,
         )?)
+    }
+}
+
+impl<B> Drop for BrokerConnection<B>
+where
+    B: EngineBackend,
+{
+    fn drop(&mut self) {
+        for token in std::mem::take(&mut self.sessions).into_values() {
+            let _ = self.engine.destroy_session(token);
+        }
+    }
+}
+
+fn normalize_key_event(event: WireKeyEvent) -> DomainKeyEvent {
+    let modifiers = KeyModifiers::from_bits(u32::from(event.modifiers));
+    let state = if event.key_down {
+        KeyState::Pressed
+    } else {
+        KeyState::Released
+    };
+    let text = infer_ascii_text(event.virtual_key, state, modifiers);
+    DomainKeyEvent::new(event.virtual_key, modifiers, state, text, event.repeat)
+}
+
+fn infer_ascii_text(virtual_key: u32, state: KeyState, modifiers: KeyModifiers) -> Option<char> {
+    if state != KeyState::Pressed
+        || modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+    {
+        return None;
+    }
+
+    match virtual_key {
+        0x41..=0x5a => {
+            let uppercase = modifiers.contains(KeyModifiers::SHIFT)
+                ^ modifiers.contains(KeyModifiers::CAPS_LOCK);
+            let codepoint = if uppercase {
+                virtual_key
+            } else {
+                virtual_key + u32::from(b'a' - b'A')
+            };
+            char::from_u32(codepoint)
+        }
+        0x30..=0x39 if !modifiers.contains(KeyModifiers::SHIFT) => char::from_u32(virtual_key),
+        _ => None,
     }
 }
 

@@ -31,7 +31,7 @@ jobs:
         run: rustup toolchain install 1.97.1 --profile minimal
       - name: Compile x64/x86 TIPs and cross-check the Rust broker
         shell: pwsh
-        run: ./tools/tip-broker-smoke.ps1 -Architecture All
+        run: ./tools/tip-broker-smoke.ps1 -Architecture All -RustToolchain 1.97.1
 
   librime-abi:
     runs-on: windows-2022

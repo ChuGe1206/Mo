@@ -1,4 +1,9 @@
-use mo_broker::{BrokerConnection, ERROR_BAD_HANDSHAKE, ERROR_NO_SUCH_SESSION, ERROR_OUT_OF_ORDER};
+use mo_broker::{
+    BrokerConnection, ERROR_BAD_HANDSHAKE, ERROR_ENGINE_FAILURE, ERROR_NO_SUCH_SESSION,
+    ERROR_OUT_OF_ORDER,
+};
+use mo_domain::{EngineCommand, EngineOutput, SessionOptions};
+use mo_engine::{EngineBackend, FakeEvent};
 use mo_ipc::{
     CURRENT_VERSION, ErrorMessage, FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame, Hello,
     HelloAck, KeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, Snapshot, VersionRange,
@@ -26,7 +31,7 @@ fn frame(
     .unwrap()
 }
 
-fn hello(connection: &mut BrokerConnection, request_id: u64) -> Frame {
+fn hello<B: EngineBackend>(connection: &mut BrokerConnection<B>, request_id: u64) -> Frame {
     let payload = Hello {
         supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
         features: FEATURE_KEY_EVENTS,
@@ -39,7 +44,7 @@ fn hello(connection: &mut BrokerConnection, request_id: u64) -> Frame {
         .unwrap()
 }
 
-fn open(connection: &mut BrokerConnection, request_id: u64) -> u64 {
+fn open<B: EngineBackend>(connection: &mut BrokerConnection<B>, request_id: u64) -> u64 {
     let response = connection
         .handle(frame(
             MessageKind::OpenSession,
@@ -57,6 +62,26 @@ fn error_code(frame: Frame) -> u32 {
     assert_eq!(frame.header.kind, MessageKind::Error);
     assert_eq!(frame.header.flags, FLAG_RESPONSE | FLAG_ERROR);
     ErrorMessage::decode_payload(&frame.payload).unwrap().code
+}
+
+#[derive(Default)]
+struct RejectKeyBackend;
+
+impl EngineBackend for RejectKeyBackend {
+    type Session = ();
+    type Error = &'static str;
+
+    fn create_session(&mut self, _options: SessionOptions) -> Result<Self::Session, Self::Error> {
+        Ok(())
+    }
+
+    fn apply(
+        &mut self,
+        _session: &mut Self::Session,
+        _command: &EngineCommand,
+    ) -> Result<EngineOutput, Self::Error> {
+        Err("injected key failure")
+    }
 }
 
 #[test]
@@ -91,7 +116,32 @@ fn request_ids_must_be_strictly_increasing() {
 }
 
 #[test]
-fn diagnostic_ascii_echo_keeps_sessions_isolated() {
+fn engine_backend_failure_is_a_stable_protocol_error() {
+    let mut connection = BrokerConnection::with_backend(6, RejectKeyBackend);
+    hello(&mut connection, 1);
+    let token = open(&mut connection, 2);
+    let event = KeyEvent {
+        virtual_key: 0x4d,
+        scan_code: 0,
+        modifiers: 0,
+        key_down: true,
+        repeat: false,
+    };
+    let response = connection
+        .handle(frame(
+            MessageKind::KeyEvent,
+            6,
+            token,
+            3,
+            event.encode_payload().unwrap(),
+        ))
+        .unwrap();
+
+    assert_eq!(error_code(response), ERROR_ENGINE_FAILURE);
+}
+
+#[test]
+fn engine_actor_keeps_sessions_isolated_and_globally_orders_snapshots() {
     let mut connection = BrokerConnection::new(9);
     hello(&mut connection, 1);
     let first = open(&mut connection, 2);
@@ -116,8 +166,9 @@ fn diagnostic_ascii_echo_keeps_sessions_isolated() {
         .unwrap();
     let snapshot = Snapshot::decode_payload(&response.payload).unwrap();
     assert!(snapshot.handled);
+    assert_eq!(snapshot.revision, 1);
     assert_eq!(snapshot.composition, "m");
-    assert_eq!(snapshot.candidates, ["m"]);
+    assert_eq!(snapshot.candidates, ["m", "M"]);
 
     let response = connection
         .handle(frame(
@@ -129,7 +180,22 @@ fn diagnostic_ascii_echo_keeps_sessions_isolated() {
         ))
         .unwrap();
     let snapshot = Snapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(snapshot.revision, 2);
     assert_eq!(snapshot.composition, "m");
+
+    let applied_sessions = connection
+        .engine()
+        .backend()
+        .events()
+        .iter()
+        .filter_map(|event| match event {
+            FakeEvent::CommandApplied {
+                backend_session, ..
+            } => Some(*backend_session),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(applied_sessions, [1, 2]);
 }
 
 #[test]
@@ -183,6 +249,14 @@ fn space_commits_diagnostic_composition_and_close_revokes_token() {
         ))
         .unwrap();
     assert_eq!(error_code(response), ERROR_NO_SUCH_SESSION);
+    assert!(
+        connection
+            .engine()
+            .backend()
+            .events()
+            .iter()
+            .any(|event| matches!(event, FakeEvent::SessionDestroyed { backend_session: 1 }))
+    );
 }
 
 #[test]
