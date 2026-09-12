@@ -7,6 +7,7 @@ use std::io::{self, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use mo_engine::EngineBackend;
 use mo_ipc::{Frame, FrameError, read_frame, write_frame};
 use mo_windows_pipe::{AuthenticatedPipe, PipeAddress, PipeListener};
 
@@ -22,12 +23,30 @@ pub fn bind_default() -> io::Result<PipeListener> {
 }
 
 pub fn serve_listener(listener: PipeListener) -> io::Result<()> {
+    serve_listener_with_backend(listener, mo_engine::FakeBackend::new())
+}
+
+pub fn serve_listener_with_backend<B>(listener: PipeListener, backend: B) -> io::Result<()>
+where
+    B: EngineBackend,
+{
     let (mut stream, first_frame) = listener.accept_first_frame(FIRST_FRAME_TIMEOUT)?;
-    serve_authenticated(&mut stream, first_frame)
+    serve_authenticated_with_backend(&mut stream, first_frame, backend)
 }
 
 pub fn serve_authenticated(stream: &mut AuthenticatedPipe, first_frame: Frame) -> io::Result<()> {
-    let mut broker = BrokerConnection::new(next_generation());
+    serve_authenticated_with_backend(stream, first_frame, mo_engine::FakeBackend::new())
+}
+
+pub fn serve_authenticated_with_backend<B>(
+    stream: &mut AuthenticatedPipe,
+    first_frame: Frame,
+    backend: B,
+) -> io::Result<()>
+where
+    B: EngineBackend,
+{
+    let mut broker = BrokerConnection::with_backend(next_generation(), backend);
     dispatch(stream, &mut broker, first_frame)?;
 
     loop {
@@ -50,11 +69,14 @@ pub fn serve_authenticated(stream: &mut AuthenticatedPipe, first_frame: Frame) -
     }
 }
 
-fn dispatch(
+fn dispatch<B>(
     stream: &mut AuthenticatedPipe,
-    broker: &mut BrokerConnection,
+    broker: &mut BrokerConnection<B>,
     request: Frame,
-) -> io::Result<()> {
+) -> io::Result<()>
+where
+    B: EngineBackend,
+{
     let response = broker.handle(request).map_err(io::Error::other)?;
     write_frame(stream, &response)
         .map_err(|error| io::Error::new(io::ErrorKind::BrokenPipe, error))?;

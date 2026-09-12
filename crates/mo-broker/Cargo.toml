@@ -11,6 +11,7 @@ mo-engine = { path = "../mo-engine" }
 mo-ipc = { path = "../mo-ipc" }
 
 [target.'cfg(windows)'.dependencies]
+mo-rime = { path = "../mo-rime" }
 mo-windows-pipe = { path = "../mo-windows-pipe" }
 
 [lib]

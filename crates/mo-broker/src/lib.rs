@@ -7,6 +7,8 @@ mod state;
 pub mod tcp_loopback_spike;
 #[cfg(windows)]
 pub mod windows_named_pipe;
+#[cfg(windows)]
+pub mod windows_runtime;
 
 pub use state::{
     BrokerConnection, BrokerError, ERROR_BAD_HANDSHAKE, ERROR_BAD_REQUEST, ERROR_ENGINE_FAILURE,

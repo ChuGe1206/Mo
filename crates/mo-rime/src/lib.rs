@@ -16,8 +16,12 @@ use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
 mod backend;
+#[cfg(windows)]
+mod windows_loader;
 
 pub use backend::{RimeBackend, RimeBackendError, RimeBackendSession};
+#[cfg(windows)]
+pub use windows_loader::RuntimeLibraryError;
 
 const MAX_CANDIDATES_PER_PAGE: usize = 1_024;
 const MAX_SELECT_LABELS: usize = 256;
@@ -27,7 +31,10 @@ static ENGINE_GATE: Mutex<()> = Mutex::new(());
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     NullApi,
-    ApiTooOld { advertised: c_int, required: c_int },
+    ApiTooOld {
+        advertised: c_int,
+        required: c_int,
+    },
     MissingFunction(&'static str),
     EngineAlreadyActive,
     EngineGatePoisoned,
@@ -35,9 +42,17 @@ pub enum Error {
     SessionCreationFailed,
     NativeReleaseFailed(&'static str),
     NativeCallFailed(&'static str),
-    InvalidCount { field: &'static str, value: c_int },
-    NullArray { field: &'static str, count: usize },
+    InvalidCount {
+        field: &'static str,
+        value: c_int,
+    },
+    NullArray {
+        field: &'static str,
+        count: usize,
+    },
     AllocationFailed(&'static str),
+    #[cfg(windows)]
+    RuntimeLibrary(RuntimeLibraryError),
 }
 
 impl fmt::Display for Error {
@@ -81,11 +96,20 @@ impl fmt::Display for Error {
                     "failed to allocate owned snapshot field `{field}`"
                 )
             }
+            #[cfg(windows)]
+            Self::RuntimeLibrary(error) => error.fmt(formatter),
         }
     }
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(windows)]
+impl From<RuntimeLibraryError> for Error {
+    fn from(error: RuntimeLibraryError) -> Self {
+        Self::RuntimeLibrary(error)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EngineConfig {
@@ -290,9 +314,28 @@ pub struct Engine {
     _traits: Box<TraitStorage>,
     _gate: MutexGuard<'static, ()>,
     _thread_affinity: PhantomData<Rc<()>>,
+    #[cfg(windows)]
+    _runtime_library: Option<windows_loader::LoadedLibrary>,
 }
 
 impl Engine {
+    /// Loads an explicitly configured `rime.dll` without consulting PATH or
+    /// the process current directory, then initializes librime.
+    #[cfg(windows)]
+    pub fn load(
+        config: EngineConfig,
+        dll_path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, Error> {
+        let library = windows_loader::LoadedLibrary::load(dll_path.as_ref())?;
+        // SAFETY: `library` owns the module that exports this table and is moved
+        // into the Engine before this method returns.
+        let api = unsafe { library.rime_api()? };
+        // SAFETY: the API came from the live, explicitly loaded librime module.
+        let mut engine = unsafe { Self::from_raw_api(config, api)? };
+        engine._runtime_library = Some(library);
+        Ok(engine)
+    }
+
     /// Initializes the linked librime selected by a `link-*` Cargo feature.
     #[cfg(any(feature = "link-dynamic", feature = "link-static"))]
     pub fn open(config: EngineConfig) -> Result<Self, Error> {
@@ -335,6 +378,8 @@ impl Engine {
             _traits: traits,
             _gate: gate,
             _thread_affinity: PhantomData,
+            #[cfg(windows)]
+            _runtime_library: None,
         })
     }
 

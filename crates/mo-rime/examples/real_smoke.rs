@@ -34,6 +34,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 io::Error::other(format!("librime rejected input byte 0x{key:02x}")).into(),
             );
         }
+        // A real frontend requests a fresh owned snapshot after every key.
+        // Keep the linked smoke aligned with the Broker path instead of only
+        // observing the final composition.
+        if session.take_commit()?.is_some() {
+            return Err(io::Error::other("librime committed before the selection key").into());
+        }
+        let _ = session.context()?;
+        let _ = session.status()?;
     }
 
     let context = session

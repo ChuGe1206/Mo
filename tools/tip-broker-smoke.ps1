@@ -26,7 +26,7 @@ foreach ($platform in $platforms) {
     $probe = Join-Path $repoRoot "native\windows-tip\out\msbuild\$platform\Release\mo_tip_ipc_probe.exe"
     if (-not (Test-Path -LiteralPath $probe)) { throw "Missing IPC probe: $probe" }
 
-    $process = Start-Process -FilePath $broker -PassThru -WindowStyle Hidden
+    $process = Start-Process -FilePath $broker -ArgumentList '--fake' -PassThru -WindowStyle Hidden
     try {
         & $probe
         if ($LASTEXITCODE -ne 0) { throw "$platform IPC probe failed: $LASTEXITCODE" }

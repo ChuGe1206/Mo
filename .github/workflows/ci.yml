@@ -55,7 +55,7 @@ jobs:
       - name: Install pinned Rust toolchain
         shell: pwsh
         run: rustup toolchain install 1.97.1 --profile minimal
-      - name: Verify nihao to 你好 with pinned upstreams
+      - name: Verify x64/x86 clients through Broker to pinned rime-ice
         shell: pwsh
         run: |
           $ice = Join-Path $env:RUNNER_TEMP 'rime-ice'
@@ -75,4 +75,4 @@ jobs:
 
           $user = Join-Path $env:RUNNER_TEMP 'rime-user'
           New-Item -ItemType Directory -Path $user | Out-Null
-          ./tools/rime-smoke/run.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Deploy
+          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -Deploy

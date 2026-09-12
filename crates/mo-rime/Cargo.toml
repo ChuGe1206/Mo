@@ -17,6 +17,12 @@ mo-domain = { path = "../mo-domain" }
 mo-engine = { path = "../mo-engine" }
 mo-rime-sys = { path = "../mo-rime-sys" }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+] }
+
 [[example]]
 name = "real_smoke"
 path = "examples/real_smoke.rs"
