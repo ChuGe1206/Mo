@@ -275,7 +275,10 @@ HANDLE ConnectPipe(ULONGLONG deadline) noexcept {
         if (error == ERROR_PIPE_BUSY) {
             WaitNamedPipeW(kPipeName, remaining);
         } else if (error == ERROR_FILE_NOT_FOUND) {
-            Sleep(1);
+            // The installed Broker is long-lived. If its endpoint does not
+            // exist, return immediately so TIP activation stays fail-open;
+            // the caller owns throttled reconnect attempts.
+            return INVALID_HANDLE_VALUE;
         } else {
             return INVALID_HANDLE_VALUE;
         }

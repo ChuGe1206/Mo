@@ -4,21 +4,28 @@ This directory contains a Mo-owned, C++17 COM/TSF ABI shell. It implements
 `IClassFactory`, `ITfTextInputProcessorEx`, and the `ITfKeyEventSink`
 advise/unadvise lifecycle. It also contains a small native Broker client that
 uses the versioned MOIP protocol over the protected Windows Named Pipe. TIP
-activation performs a 50 ms best-effort handshake and opens an isolated Broker
-session; failure leaves the host usable. Key callbacks still fail open and do
-not dispatch keys until edit-session and duplicate-event handling are ready.
+activation performs a 400 ms best-effort handshake and opens an isolated Broker
+session; failure leaves the host usable. Key callbacks use a decision cache so
+the matching `OnTestKey*` and `OnKey*` pair advances the engine only once, then
+apply owned Broker snapshots through synchronous read/write edit sessions.
+Missing or failed Broker connections use a bounded, throttled retry and fail
+open.
 
 `build-probe.ps1` builds x64 and Win32 variants and loads each DLL into a probe
 of matching bitness. The probe checks exports, class creation, the
 `ITfTextInputProcessorEx`/`ITfKeyEventSink` interfaces, deterministic sink
 lifecycle against a controlled manager, fail-open key behavior, and unload
-accounting. It never registers or enables the TIP.
+accounting. Its Broker mode supplies a deterministic `ITextStoreACP` backed by
+a real Windows EDIT control and verifies preedit/commit writes through TSF
+ranges for both fake and rime-ice inputs. It never registers or enables the TIP.
 
 `tools/tip-broker-smoke.ps1` starts the x64 Rust Broker and exercises the x64
 and Win32 native clients through a real
 `Hello -> OpenSession -> KeyEvent -> Snapshot -> CloseSession` exchange. Every
 native pipe operation is overlapped and has a hard deadline; ambiguous or
-invalid responses reset the connection.
+invalid responses reset the connection. The smoke also loads the TIP and
+verifies that the test/key callback pair commits exactly once through an edit
+session for both x64 and Win32.
 
 The registrar is a deliberately separate mutation helper. It demonstrates
 `ITfInputProcessorProfileMgr::RegisterProfile`, keyboard-category registration,
@@ -26,8 +33,9 @@ and dynamically loading `InstallLayoutOrTip` from the system `input.dll`. Its
 installer transaction, rollback behavior, elevation boundary, and current-user
 finalization are not validated in Phase 0.
 
-Still unverified: sink activation by a registered TSF host, key callback to
-Broker dispatch, edit sessions, real text input, composition/candidate UI,
-AppContainer hosts, secure desktop behavior, signing, upgrade, repair, and
-uninstall. The standalone IPC probe verifies framed TIP-client transport, but
-does not yet prove Broker identity to the client or a real TSF host path.
+Still unverified: sink activation by a registered TSF host, formal composition
+behavior across the real Notepad/WinUI host matrix, candidate UI, AppContainer
+hosts, secure desktop behavior, signing, upgrade, repair, and uninstall. The
+controlled text store proves the callback/cache/edit-session mechanics but is
+not a substitute for registered end-to-end host testing. Broker identity is
+still not authenticated back to the TIP client.

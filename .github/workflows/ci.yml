@@ -55,7 +55,7 @@ jobs:
       - name: Install pinned Rust toolchain
         shell: pwsh
         run: rustup toolchain install 1.97.1 --profile minimal
-      - name: Verify x64/x86 clients through Broker to pinned rime-ice
+      - name: Verify x64/x86 IPC and TIP edit-session commits through pinned rime-ice
         shell: pwsh
         run: |
           $ice = Join-Path $env:RUNNER_TEMP 'rime-ice'

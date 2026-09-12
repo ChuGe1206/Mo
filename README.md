@@ -11,7 +11,8 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 44 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
 - Mo 自主实现的极薄 C++ TSF/COM 壳，可编译为 x64/x86，并通过加载、类工厂、接口与卸载 probe。
-- x64/x86 原生客户端均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键快照和关闭往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`；所有原生 I/O 均有硬 deadline，Broker 不可用时 fail-open。
+- TSF 壳已实现 `OnTestKey*`/`OnKey*` 单次决策缓存、同步读写 Edit Session、预编辑 Range/Composition 生命周期和严格 UTF-8 转换；x64/x86 受控 TSF 文本存储探针均已把 Broker 提交写入真实 Windows EDIT 控件，且 Broker 不可用时 fail-open。
+- x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键快照和关闭往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`；CI 同时验证该结果经过 TIP Edit Session 上屏，而非仅停留在 IPC 快照。
 - WiX v4 安装器占位工程会主动拒绝生成“看似可发布”的安装包；真实注册、启用、修复与卸载尚未实现。
 
 ## 架构路线
@@ -43,6 +44,6 @@ cargo +stable test --workspace
   -Deploy
 ```
 
-该脚本验证 C++ x64/x86 客户端到真实引擎的完整链路；较小的 Rust FFI 单层验证仍可用 `tools/rime-smoke/run.ps1`。
+该脚本验证 C++ x64/x86 的 IPC 快照与 TIP Edit Session 上屏两条真实引擎链路；较小的 Rust FFI 单层验证仍可用 `tools/rime-smoke/run.ps1`。
 
 设计基线见 [产品与软件架构设计 v0.2](docs/MO-INPUT-METHOD-DESIGN-v0.2.md)，当前实证见 [Phase 0 状态](docs/phase-0/STATUS.md)，硬验收门见 [Phase 0 验收门](docs/phase-0/ACCEPTANCE.md)。

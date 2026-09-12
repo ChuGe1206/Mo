@@ -1,7 +1,7 @@
 # Phase 0 状态
 
 - 快照日期：2026-09-12
-- 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。项目尚不可安装或日常使用。
+- 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通，项目仍不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
 ## G0：工程基线——本机通过，远端 CI 待首次运行
@@ -32,6 +32,8 @@
 - 自主 C++ COM 壳以 `/W4 /WX /sdl /GS /guard:cf` 构建 x64 与 x86 DLL，零警告。
 - 两种架构均通过 DLL 加载、导出、未知 CLSID、Server Lock、禁止聚合、`ITfTextInputProcessorEx`/`ITfKeyEventSink` 创建、错误参数和卸载探针。
 - `ActivateEx` 已实现前台 key sink 的 advise/unadvise 对称生命周期；受控 manager + 真实 TSF context 探针证明 client ID/foreground 参数正确，`OnTestKey*` 与 `OnKey*` 当前一致 fail-open、不吞键。
+- key sink 已用 `(context, virtual key, LPARAM, key direction)` 缓存 Broker 决策；匹配的 test/key 回调只向引擎发送一次按键。handled snapshot 通过同步读写 Edit Session 应用，严格转换 UTF-8，并在预编辑 Range 上执行更新、提交或清除；正式 Composition 被宿主拒绝时保留受控 Range 降级，已发生文档修改的错误路径仍吞键以避免重复上屏。
+- x64 与 Win32 的受控 `ITextStoreACP` 探针均把 fake Broker 的 `M + Space` 经 TIP 写入真实 Windows EDIT 控件为单个 `m`，并从 TSF Context 再次读回核对。TIP 激活、Broker 缺席、协议或 Edit Session 失败均保持 fail-open；断线后使用 250 ms 节流进行有界重连。
 - x64 与 Win32 原生客户端已对同一个 x64 Rust Broker 完成真实 `Hello -> OpenSession -> KeyEvent(M) -> Snapshot("m") -> CloseSession` 往返；并分别通过 `KeyEvent(nihao + Space)` 穿过 Broker、Actor、RimeBackend、运行时加载的 librime 与锁定 rime-ice，核对 `你好` 候选和提交。客户端采用 overlapped I/O、端到端硬 deadline、严格帧/CRC/UTF-8/请求号校验，失败或结果不明确时断开并保持 TIP fail-open。
 - Broker 启动模式已 fail-closed：`--fake` 仅供诊断，`--rime` 必须显式提供 DLL/shared/user 绝对路径和已部署标记；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
@@ -42,7 +44,7 @@
 
 未通过：
 
-- 注册后的真实 TSF 宿主 key sink 激活、key callback 到 Broker 的派发、edit session 和 composition/candidate UI；当前真实 Broker 往返由同源码的独立原生 probe 验证。
+- 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。
 - Named Pipe 多实例/overlapped I/O、已认证连接逐请求 deadline、DACL 负向访问测试，以及 AppContainer/WinUI 连接测试。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
@@ -64,4 +66,4 @@
 
 ## 下一检查点
 
-Phase 0 的下一检查点继续聚焦同一垂直链路：把已经嵌入 TIP DLL 的 BrokerClient 接到 key sink 决策缓存与 TSF edit session，完成真实宿主内的 composition/候选展示和幂等上屏。该链路通过 Notepad、WinUI/AppContainer、Broker 故障注入后，再固化发布版自构建 librime/资源布局并实现可回滚安装事务。
+Phase 0 的下一检查点是将已通过受控探针的垂直链路注册到真实 Windows 宿主，完成 Notepad 中的正式 composition、候选窗和幂等上屏，再覆盖 WinUI/AppContainer 与 Broker 超时/崩溃故障注入。随后固化发布版自构建 librime/资源布局并实现可回滚安装事务。

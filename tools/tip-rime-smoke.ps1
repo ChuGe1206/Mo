@@ -79,31 +79,75 @@ try {
 }
 
 $brokerPath = Join-Path $repoRoot 'target\debug\mo-broker.exe'
-$platforms = if ($Architecture -eq 'All') { @('x64', 'Win32') } else { @($Architecture) }
-foreach ($platform in $platforms) {
-    $probe = Join-Path $repoRoot "native\windows-tip\out\msbuild\$platform\Release\mo_tip_ipc_probe.exe"
-    if (-not (Test-Path -LiteralPath $probe -PathType Leaf)) { throw "Missing IPC probe: $probe" }
 
+function Invoke-RimeBrokerProbe(
+    [string]$Platform,
+    [string]$Probe,
+    [string[]]$ProbeArguments,
+    [string]$Label
+) {
+    if (-not (Test-Path -LiteralPath $Probe -PathType Leaf)) {
+        throw "Missing ${Label}: $Probe"
+    }
+    $probeUser = Join-Path $user ("mo-smoke-" + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $probeUser | Out-Null
+    Copy-Item -LiteralPath (Join-Path $user 'build') -Destination (Join-Path $probeUser 'build') -Recurse
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $brokerPath
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardError = $true
     [void]$startInfo.ArgumentList.Add('--rime')
     [void]$startInfo.ArgumentList.Add($dynamicLibrary)
     [void]$startInfo.ArgumentList.Add($shared)
-    [void]$startInfo.ArgumentList.Add($user)
+    [void]$startInfo.ArgumentList.Add($probeUser)
     $process = [System.Diagnostics.Process]::Start($startInfo)
-    if ($null -eq $process) { throw "Failed to start Broker for $platform probe" }
+    if ($null -eq $process) { throw "Failed to start Broker for $Platform $Label" }
 
     try {
-        & $probe '--rime-ice'
-        if ($LASTEXITCODE -ne 0) { throw "$platform rime-ice IPC probe failed: $LASTEXITCODE" }
-        if (-not $process.WaitForExit(5000)) { throw "$platform Broker did not exit after client close" }
-        if ($process.ExitCode -ne 0) { throw "$platform Broker failed: $($process.ExitCode)" }
+        # Wait for the Broker's explicit readiness line rather than guessing at
+        # librime startup time. This wait belongs to the harness, not the TIP.
+        $readyTask = $process.StandardError.ReadLineAsync()
+        if (-not $readyTask.Wait(30000)) {
+            throw "$Platform Broker readiness timed out during $Label"
+        }
+        $readyLine = $readyTask.Result
+        if ($readyLine -notmatch ' listening on ') {
+            $brokerError = $process.StandardError.ReadToEnd()
+            throw "$Platform Broker failed before ${Label}: $readyLine $brokerError"
+        }
+        & $Probe @ProbeArguments
+        if ($LASTEXITCODE -ne 0) { throw "$Platform $Label failed: $LASTEXITCODE" }
+        if (-not $process.WaitForExit(5000)) {
+            throw "$Platform Broker did not exit after $Label closed"
+        }
+        if ($process.ExitCode -ne 0) {
+            throw "$Platform Broker failed during ${Label}: $($process.ExitCode)"
+        }
     } finally {
         if (-not $process.HasExited) { $process.Kill($true) }
         $process.Dispose()
+        if (Test-Path -LiteralPath $probeUser -PathType Container) {
+            $resolvedProbeUser = (Resolve-Path -LiteralPath $probeUser).Path
+            $expectedPrefix = $user.TrimEnd('\') + '\'
+            if (-not $resolvedProbeUser.StartsWith(
+                    $expectedPrefix,
+                    [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Refusing to clean probe directory outside disposable user root: $resolvedProbeUser"
+            }
+            Remove-Item -LiteralPath $resolvedProbeUser -Recurse -Force
+        }
     }
 }
 
-Write-Host "C++ $($platforms -join '/') clients completed Broker -> librime -> rime-ice candidate and commit I/O."
+$platforms = if ($Architecture -eq 'All') { @('x64', 'Win32') } else { @($Architecture) }
+foreach ($platform in $platforms) {
+    $binaryDirectory = Join-Path $repoRoot "native\windows-tip\out\msbuild\$platform\Release"
+    $ipcProbe = Join-Path $binaryDirectory 'mo_tip_ipc_probe.exe'
+    $abiProbe = Join-Path $binaryDirectory 'mo_tip_abi_probe.exe'
+    $tip = Join-Path $binaryDirectory 'mo_tip.dll'
+    Invoke-RimeBrokerProbe $platform $ipcProbe @('--rime-ice') 'rime-ice IPC probe'
+    Invoke-RimeBrokerProbe $platform $abiProbe @($tip, '--broker-rime-ice') 'rime-ice TIP edit-session probe'
+}
+
+Write-Host "C++ $($platforms -join '/') clients committed nihao -> 你好 through TIP -> Broker -> librime/rime-ice."
