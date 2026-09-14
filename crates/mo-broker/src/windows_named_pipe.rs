@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use mo_engine::{EngineBackend, FakeBackend};
-use mo_ipc::{Frame, FrameError, read_frame, write_frame};
+use mo_ipc::{Frame, write_frame};
 use mo_windows_pipe::{AuthenticatedPipe, PipeAddress, PipeListener};
 
 use crate::BrokerConnection;
@@ -18,6 +18,7 @@ use crate::engine_service::{EngineClient, EngineService};
 
 pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
 pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
+pub const FRAME_ASSEMBLY_TIMEOUT: Duration = Duration::from_secs(2);
 
 static GENERATION_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -135,9 +136,9 @@ where
     dispatch(stream, broker, first_frame)?;
 
     loop {
-        let request = match read_frame(stream) {
+        let request = match stream.read_frame_after_activity(FRAME_ASSEMBLY_TIMEOUT) {
             Ok(frame) => frame,
-            Err(FrameError::Io(error))
+            Err(error)
                 if matches!(
                     error.kind(),
                     io::ErrorKind::UnexpectedEof
@@ -148,7 +149,7 @@ where
             {
                 return Ok(());
             }
-            Err(error) => return Err(io::Error::new(io::ErrorKind::InvalidData, error)),
+            Err(error) => return Err(error),
         };
         dispatch(stream, broker, request)?;
     }

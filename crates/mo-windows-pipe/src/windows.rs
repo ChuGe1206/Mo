@@ -8,7 +8,7 @@ use std::os::windows::io::{AsRawHandle, FromRawHandle, RawHandle};
 use std::ptr::{null, null_mut};
 use std::time::{Duration, Instant};
 
-use mo_ipc::{Frame, read_frame};
+use mo_ipc::{Frame, FrameError, read_frame};
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_INSUFFICIENT_BUFFER, ERROR_PIPE_CONNECTED, GetLastError, HANDLE,
     INVALID_HANDLE_VALUE, LocalFree,
@@ -196,6 +196,19 @@ pub struct AuthenticatedPipe {
 impl Read for AuthenticatedPipe {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         self.file.read(buffer)
+    }
+}
+
+impl AuthenticatedPipe {
+    /// Reads one frame after bounding the time between its first available byte
+    /// and complete assembly. An entirely idle connection is not expired.
+    pub fn read_frame_after_activity(&mut self, assembly_timeout: Duration) -> io::Result<Frame> {
+        wait_for_complete_frame_after_activity(&self.file, assembly_timeout)?;
+        match read_frame(self) {
+            Ok(frame) => Ok(frame),
+            Err(FrameError::Io(error)) => Err(error),
+            Err(error) => Err(io::Error::new(io::ErrorKind::InvalidData, error)),
+        }
     }
 }
 
@@ -507,6 +520,48 @@ fn wait_for_complete_frame(server: &File, timeout: Duration) -> io::Result<()> {
     }
 }
 
+fn wait_for_complete_frame_after_activity(server: &File, timeout: Duration) -> io::Result<()> {
+    let mut deadline = None;
+    let mut header = [0_u8; mo_ipc::HEADER_LEN];
+
+    loop {
+        let (peeked, available) = peek_pipe(server, &mut header)?;
+        if available != 0 && deadline.is_none() {
+            deadline = Some(
+                Instant::now()
+                    .checked_add(timeout)
+                    .unwrap_or_else(Instant::now),
+            );
+        }
+        if peeked >= mo_ipc::HEADER_LEN {
+            let declared = u32::from_le_bytes(
+                header[16..20]
+                    .try_into()
+                    .expect("payload length has a fixed header position"),
+            ) as usize;
+            if declared > mo_ipc::MAX_PAYLOAD_LEN {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "declared payload length {declared} exceeds maximum {}",
+                        mo_ipc::MAX_PAYLOAD_LEN
+                    ),
+                ));
+            }
+            if available >= mo_ipc::HEADER_LEN + declared {
+                return Ok(());
+            }
+        }
+        if deadline.is_some_and(|value| Instant::now() >= value) {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "timed out assembling an IPC frame after receiving its first byte",
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
 fn peek_pipe(server: &File, header: &mut [u8; mo_ipc::HEADER_LEN]) -> io::Result<(usize, usize)> {
     let mut bytes_read = 0_u32;
     let mut bytes_available = 0_u32;
@@ -742,6 +797,17 @@ mod tests {
     }
 
     #[test]
+    fn protected_dacl_denies_a_second_server_instance() {
+        let address = test_address("second-instance-denied");
+        let listener = PipeListener::bind(address.clone()).unwrap();
+        let logon_sid = process_logon_sid().unwrap();
+        let security = SecurityDescriptor::for_logon_sid(&logon_sid).unwrap();
+        let error = create_server(&address, &security).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+        drop(listener);
+    }
+
+    #[test]
     fn same_logon_client_is_authenticated_after_bounded_frame() {
         let listener = PipeListener::bind(test_address("roundtrip")).unwrap();
         let address = listener.address().clone();
@@ -781,5 +847,26 @@ mod tests {
         let error = PipeClient::connect(&address, Duration::from_millis(20)).unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::TimedOut);
         assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn authenticated_partial_frame_hits_assembly_deadline() {
+        let listener = PipeListener::bind(test_address("partial-frame-timeout")).unwrap();
+        let address = listener.address().clone();
+        let client = thread::spawn(move || {
+            let mut stream = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+            let frame =
+                Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, Vec::new()).unwrap();
+            write_frame(&mut stream, &frame).unwrap();
+            stream.write_all(b"M").unwrap();
+            thread::sleep(Duration::from_millis(100));
+        });
+
+        let (mut server, _) = listener.accept_first_frame(Duration::from_secs(2)).unwrap();
+        let error = server
+            .read_frame_after_activity(Duration::from_millis(20))
+            .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        client.join().unwrap();
     }
 }
