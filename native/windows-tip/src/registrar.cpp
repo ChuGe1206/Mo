@@ -94,6 +94,25 @@ bool is_64_bit_windows() noexcept {
 #endif
 }
 
+HRESULT require_elevated_process() noexcept {
+    HANDLE token = nullptr;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    TOKEN_ELEVATION elevation{};
+    DWORD bytes = 0;
+    const BOOL queried = GetTokenInformation(
+        token, TokenElevation, &elevation, sizeof(elevation), &bytes);
+    const DWORD last_error = queried != FALSE ? ERROR_SUCCESS : GetLastError();
+    CloseHandle(token);
+    if (queried == FALSE) {
+        return HRESULT_FROM_WIN32(last_error);
+    }
+    return elevation.TokenIsElevated != 0
+        ? S_OK
+        : HRESULT_FROM_WIN32(ERROR_ELEVATION_REQUIRED);
+}
+
 HRESULT create_profile_manager(ComPtr<ITfInputProcessorProfileMgr>& manager) noexcept {
     return CoCreateInstance(
         CLSID_TF_InputProcessorProfiles,
@@ -291,7 +310,11 @@ HRESULT unregister_com_current_user() noexcept {
     return FAILED(x64_result) ? x64_result : x86_result;
 }
 
-HRESULT register_profile(const std::wstring& icon_path) noexcept {
+HRESULT register_machine_profile(const std::wstring& icon_path) noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
     if (!is_absolute_file(icon_path)) {
         return E_INVALIDARG;
     }
@@ -338,7 +361,11 @@ HRESULT register_profile(const std::wstring& icon_path) noexcept {
     return result;
 }
 
-HRESULT unregister_profile() noexcept {
+HRESULT unregister_machine_profile() noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
     ComPtr<ITfCategoryMgr> categories;
     HRESULT category_result = create_category_manager(categories);
     if (SUCCEEDED(category_result)) {
@@ -578,13 +605,14 @@ void print_usage() {
         << L"Usage:\n"
         << L"  mo_tip_registrar register-com-user <absolute-x64-dll> <absolute-x86-dll>\n"
         << L"  mo_tip_registrar unregister-com-user\n"
-        << L"  mo_tip_registrar register-profile <absolute-icon-module-path>\n"
-        << L"  mo_tip_registrar unregister-profile\n"
+        << L"  mo_tip_registrar register-machine-profile <absolute-icon-module-path>\n"
+        << L"  mo_tip_registrar unregister-machine-profile\n"
         << L"  mo_tip_registrar enable-current-user\n"
         << L"  mo_tip_registrar disable-current-user\n"
         << L"  mo_tip_registrar status\n"
         << L"  mo_tip_registrar self-test-registry <absolute-x64-dll> <absolute-x86-dll>\n\n"
         << L"COM development registration is scoped to HKCU and writes both WOW64 views.\n"
+        << L"Machine profile/category commands require an elevated process.\n"
         << L"TSF mutation commands are separate so an installer can own transaction rollback.\n";
 }
 
@@ -608,10 +636,10 @@ int wmain(int argument_count, wchar_t** arguments) {
         result = register_com_current_user(arguments[2], arguments[3]);
     } else if (command == L"unregister-com-user" && argument_count == 2) {
         result = unregister_com_current_user();
-    } else if (command == L"register-profile" && argument_count == 3) {
-        result = register_profile(arguments[2]);
-    } else if (command == L"unregister-profile" && argument_count == 2) {
-        result = unregister_profile();
+    } else if (command == L"register-machine-profile" && argument_count == 3) {
+        result = register_machine_profile(arguments[2]);
+    } else if (command == L"unregister-machine-profile" && argument_count == 2) {
+        result = unregister_machine_profile();
     } else if (command == L"enable-current-user" && argument_count == 2) {
         result = set_enabled_for_current_user(true);
     } else if (command == L"disable-current-user" && argument_count == 2) {

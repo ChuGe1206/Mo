@@ -752,6 +752,41 @@ bool SendTestedKey(
     return true;
 }
 
+bool SendSystemTestedKey(
+    ITfKeystrokeMgr* key_manager,
+    EditTextStore* text_store,
+    WPARAM virtual_key) {
+    const UINT scan_code = MapVirtualKeyW(static_cast<UINT>(virtual_key), MAPVK_VK_TO_VSC);
+    const LPARAM key_data = 1 | (static_cast<LPARAM>(scan_code) << 16);
+    BOOL tested_eaten = FALSE;
+    HRESULT result = key_manager->TestKeyDown(virtual_key, key_data, &tested_eaten);
+    if (result != S_OK || tested_eaten == FALSE) {
+        if (FAILED(result)) {
+            fail(L"ITfKeystrokeMgr::TestKeyDown", result);
+        } else {
+            std::wcerr << L"Registered TIP did not consume virtual key 0x"
+                       << std::hex << virtual_key << L"; result=0x" << result << L'\n';
+        }
+        return false;
+    }
+    BOOL handled_eaten = FALSE;
+    result = key_manager->KeyDown(virtual_key, key_data, &handled_eaten);
+    if (result != S_OK || handled_eaten != tested_eaten) {
+        if (FAILED(result)) {
+            fail(L"ITfKeystrokeMgr::KeyDown", result);
+        } else {
+            std::wcerr << L"Registered TIP key callback disagreed with its test callback for key 0x"
+                       << std::hex << virtual_key << L"; result=0x" << result << L'\n';
+        }
+        return false;
+    }
+    if (FAILED(text_store->last_lock_result())) {
+        fail(L"registered TIP edit-session text-store lock", text_store->last_lock_result());
+        return false;
+    }
+    return true;
+}
+
 int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
     ComPtr<ITfThreadMgr> thread_manager;
     HRESULT result = CoCreateInstance(
@@ -883,7 +918,13 @@ int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
     return outcome;
 }
 
-int probe_broker_input(ITfTextInputProcessorEx* service, bool rime_ice) {
+int probe_broker_input(
+    ITfTextInputProcessorEx* service,
+    bool rime_ice,
+    bool registered) {
+    if (!registered && service == nullptr) {
+        return fail(L"probe_broker_input service", E_POINTER);
+    }
     BYTE original_keyboard_state[256]{};
     const bool keyboard_state_saved = GetKeyboardState(original_keyboard_state) != FALSE;
     BYTE neutral_keyboard_state[256]{};
@@ -907,19 +948,25 @@ int probe_broker_input(ITfTextInputProcessorEx* service, bool rime_ice) {
 
     int outcome = 0;
     bool service_active = false;
+    bool profile_active = false;
     bool context_pushed = false;
     HWND edit_window = nullptr;
-    auto* fake_manager = new (std::nothrow) FakeThreadManager();
-    if (fake_manager == nullptr) {
-        thread_manager->Deactivate();
-        return fail(L"FakeThreadManager allocation", E_OUTOFMEMORY);
-    }
     ComPtr<ITfThreadMgr> service_thread_manager;
-    service_thread_manager.Attach(static_cast<ITfThreadMgr*>(fake_manager));
+    if (!registered) {
+        auto* fake_manager = new (std::nothrow) FakeThreadManager();
+        if (fake_manager == nullptr) {
+            thread_manager->Deactivate();
+            return fail(L"FakeThreadManager allocation", E_OUTOFMEMORY);
+        }
+        service_thread_manager.Attach(static_cast<ITfThreadMgr*>(fake_manager));
+    }
     ComPtr<ITextStoreACP> text_store;
     EditTextStore* edit_store = nullptr;
     ComPtr<ITfDocumentMgr> document_manager;
     ComPtr<ITfContext> context;
+    ComPtr<ITfKeystrokeMgr> system_key_manager;
+    ComPtr<ITfInputProcessorProfileMgr> profile_manager;
+    ComPtr<ITfKeyEventSink> direct_key_sink;
     do {
         edit_window = CreateWindowExW(
             WS_EX_TOOLWINDOW,
@@ -972,42 +1019,78 @@ int probe_broker_input(ITfTextInputProcessorEx* service, bool rime_ice) {
             outcome = fail(L"ITfThreadMgr::SetFocus", result);
             break;
         }
-        // The real context recognizes the client id returned above. The fake
-        // manager captures the service key sink so the probe can invoke it
-        // deterministically without registering Mo as a system TIP.
-        result = service->ActivateEx(service_thread_manager.Get(), client_id, 0);
-        if (FAILED(result)) {
-            outcome = fail(L"ITfTextInputProcessorEx::ActivateEx", result);
-            break;
-        }
-        service_active = true;
+        if (registered) {
+            result = CoCreateInstance(
+                CLSID_TF_InputProcessorProfiles,
+                nullptr,
+                CLSCTX_INPROC_SERVER,
+                IID_PPV_ARGS(profile_manager.GetAddressOf()));
+            if (FAILED(result)) {
+                outcome = fail(L"CoCreateInstance(CLSID_TF_InputProcessorProfiles)", result);
+                break;
+            }
+            result = profile_manager->ActivateProfile(
+                TF_PROFILETYPE_INPUTPROCESSOR,
+                MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED),
+                mo::windows_tip::kTextServiceClsid,
+                mo::windows_tip::kSimplifiedChineseProfileGuid,
+                nullptr,
+                TF_IPPMF_FORPROCESS | TF_IPPMF_DONTCARECURRENTINPUTLANGUAGE);
+            if (result != S_OK) {
+                outcome = fail(L"ITfInputProcessorProfileMgr::ActivateProfile", result);
+                break;
+            }
+            profile_active = true;
+            result = thread_manager.As(&system_key_manager);
+            if (FAILED(result)) {
+                outcome = fail(L"QueryInterface(ITfKeystrokeMgr)", result);
+                break;
+            }
+        } else {
+            // The real context recognizes the client id returned above. The fake
+            // manager captures the service key sink so the probe can invoke it
+            // deterministically without registering Mo as a system TIP.
+            result = service->ActivateEx(service_thread_manager.Get(), client_id, 0);
+            if (FAILED(result)) {
+                outcome = fail(L"ITfTextInputProcessorEx::ActivateEx", result);
+                break;
+            }
+            service_active = true;
 
-        ComPtr<ITfKeyEventSink> key_sink;
-        result = service->QueryInterface(IID_PPV_ARGS(key_sink.GetAddressOf()));
-        if (FAILED(result)) {
-            outcome = fail(L"QueryInterface(ITfKeyEventSink)", result);
-            break;
-        }
-        result = key_sink->OnSetFocus(TRUE);
-        if (FAILED(result)) {
-            outcome = fail(L"ITfKeyEventSink::OnSetFocus", result);
-            break;
+            result = service->QueryInterface(IID_PPV_ARGS(direct_key_sink.GetAddressOf()));
+            if (FAILED(result)) {
+                outcome = fail(L"QueryInterface(ITfKeyEventSink)", result);
+                break;
+            }
+            result = direct_key_sink->OnSetFocus(TRUE);
+            if (FAILED(result)) {
+                outcome = fail(L"ITfKeyEventSink::OnSetFocus", result);
+                break;
+            }
         }
 
         const std::string input = rime_ice ? "NIHAO" : "M";
         bool keys_succeeded = true;
         for (const char key : input) {
-            if (!SendTestedKey(
-                    key_sink.Get(),
+            const bool key_succeeded = registered
+                ? SendSystemTestedKey(system_key_manager.Get(), edit_store, static_cast<WPARAM>(key))
+                : SendTestedKey(
+                    direct_key_sink.Get(),
                     context.Get(),
                     edit_store,
-                    static_cast<WPARAM>(key))) {
+                    static_cast<WPARAM>(key));
+            if (!key_succeeded) {
                 keys_succeeded = false;
                 break;
             }
         }
-        if (!keys_succeeded
-            || !SendTestedKey(key_sink.Get(), context.Get(), edit_store, VK_SPACE)) {
+        bool space_succeeded = false;
+        if (keys_succeeded) {
+            space_succeeded = registered
+                ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
+                : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
+        }
+        if (!keys_succeeded || !space_succeeded) {
             outcome = 1;
             break;
         }
@@ -1035,6 +1118,18 @@ int probe_broker_input(ITfTextInputProcessorEx* service, bool rime_ice) {
         }
     } while (false);
 
+    if (profile_active) {
+        result = profile_manager->DeactivateProfile(
+            TF_PROFILETYPE_INPUTPROCESSOR,
+            MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED),
+            mo::windows_tip::kTextServiceClsid,
+            mo::windows_tip::kSimplifiedChineseProfileGuid,
+            nullptr,
+            TF_IPPMF_FORPROCESS);
+        if (FAILED(result) && outcome == 0) {
+            outcome = fail(L"ITfInputProcessorProfileMgr::DeactivateProfile", result);
+        }
+    }
     if (service_active) {
         result = service->Deactivate();
         if (FAILED(result) && outcome == 0) {
@@ -1066,20 +1161,38 @@ int probe_broker_input(ITfTextInputProcessorEx* service, bool rime_ice) {
 }  // namespace
 
 int wmain(int argument_count, wchar_t** arguments) {
+    const bool registered_broker_input = argument_count == 2
+        && std::wstring(arguments[1]) == L"--registered-broker-input";
+    const bool registered_broker_rime_ice = argument_count == 2
+        && std::wstring(arguments[1]) == L"--registered-broker-rime-ice";
     const bool broker_input = argument_count == 3
         && std::wstring(arguments[2]) == L"--broker-input";
     const bool broker_rime_ice = argument_count == 3
         && std::wstring(arguments[2]) == L"--broker-rime-ice";
-    if (argument_count != 2 && !broker_input && !broker_rime_ice) {
+    if ((!registered_broker_input && !registered_broker_rime_ice)
+        && argument_count != 2 && !broker_input && !broker_rime_ice) {
         std::wcerr
             << L"Usage: mo_tip_abi_probe <absolute-path-to-mo_tip.dll> "
-               L"[--broker-input|--broker-rime-ice]\n";
+               L"[--broker-input|--broker-rime-ice]\n"
+            << L"       mo_tip_abi_probe "
+               L"--registered-broker-input|--registered-broker-rime-ice\n";
         return 2;
     }
 
     const ComApartment apartment;
     if (FAILED(apartment.result())) {
         return fail(L"CoInitializeEx", apartment.result());
+    }
+
+    if (registered_broker_input || registered_broker_rime_ice) {
+        const bool rime_ice = registered_broker_rime_ice;
+        if (probe_broker_input(nullptr, rime_ice, true) != 0) {
+            return 1;
+        }
+        std::wcout << (rime_ice
+            ? L"Registered Mo TIP Broker/librime/rime-ice system key route probe passed.\n"
+            : L"Registered Mo TIP Broker system key route probe passed.\n");
+        return 0;
     }
 
     const HMODULE module = LoadLibraryExW(
@@ -1184,7 +1297,7 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
 
     if ((broker_input || broker_rime_ice
-             ? probe_broker_input(service, broker_rime_ice)
+             ? probe_broker_input(service, broker_rime_ice, false)
              : probe_key_sink_activation(service))
         != 0) {
         service->Release();

@@ -3,14 +3,51 @@ param(
     [ValidateSet('All', 'x64', 'Win32')]
     [string]$Architecture = 'All',
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$RustToolchain = 'stable'
+    [string]$RustToolchain = 'stable',
+    [switch]$Registered
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
+if ($Registered -and $Architecture -ne 'All') {
+    throw 'Registered smoke requires -Architecture All so both COM views are present.'
+}
+
 & (Join-Path $repoRoot 'native\windows-tip\build-probe.ps1') -Architecture $Architecture -Backend MSBuild
 if ($LASTEXITCODE -ne 0) { throw "TIP build/probe failed: $LASTEXITCODE" }
+
+$registrar = $null
+$tipX64 = $null
+$tipX86 = $null
+if ($Registered) {
+    $x64Directory = Join-Path $repoRoot 'native\windows-tip\out\msbuild\x64\Release'
+    $x86Directory = Join-Path $repoRoot 'native\windows-tip\out\msbuild\Win32\Release'
+    $registrar = Join-Path $x64Directory 'mo_tip_registrar.exe'
+    $tipX64 = Join-Path $x64Directory 'mo_tip.dll'
+    $tipX86 = Join-Path $x86Directory 'mo_tip.dll'
+    foreach ($artifact in @($registrar, $tipX64, $tipX86)) {
+        if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
+            throw "Missing registered smoke artifact: $artifact"
+        }
+    }
+
+    $initialStatus = (& $registrar status | Out-String)
+    if ($LASTEXITCODE -ne 0) { throw "Registrar status failed: $LASTEXITCODE" }
+    $initialStatusLines = @($initialStatus -split "\r?\n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $cleanStatus = @(
+        'com.x64=missing',
+        'com.x86=missing',
+        'profile.registered=true',
+        'profile.enabled=false',
+        'profile.active=false'
+    )
+    foreach ($line in $cleanStatus) {
+        if ($initialStatusLines -notcontains $line) {
+            throw "Registered smoke requires a clean user state and a pre-registered machine profile. Run tools\machine-profile.ps1 -Action Register from an elevated PowerShell first.`n$initialStatus"
+        }
+    }
+}
 
 Push-Location $repoRoot
 try {
@@ -61,3 +98,36 @@ foreach ($platform in $platforms) {
 }
 
 Write-Host "C++ $($platforms -join '/') clients completed framed I/O and TIP edit-session commits through the Rust Broker."
+
+if ($Registered) {
+    $comOwned = $false
+    $enabledOwned = $false
+    try {
+        & $registrar register-com-user $tipX64 $tipX86
+        if ($LASTEXITCODE -ne 0) { throw "COM registration failed: $LASTEXITCODE" }
+        $comOwned = $true
+
+        & $registrar enable-current-user
+        if ($LASTEXITCODE -ne 0) { throw "Current-user profile enable failed: $LASTEXITCODE" }
+        $enabledOwned = $true
+
+        foreach ($platform in @('x64', 'Win32')) {
+            $binaryDirectory = Join-Path $repoRoot "native\windows-tip\out\msbuild\$platform\Release"
+            $abiProbe = Join-Path $binaryDirectory 'mo_tip_abi_probe.exe'
+            Invoke-BrokerProbe $platform $abiProbe @('--registered-broker-input') 'registered TSF system-key route probe'
+        }
+    } finally {
+        if ($enabledOwned) {
+            & $registrar disable-current-user
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Profile disable cleanup failed: $LASTEXITCODE" }
+        }
+        if ($comOwned) {
+            & $registrar unregister-com-user
+            if ($LASTEXITCODE -ne 0) { Write-Warning "COM unregister cleanup failed: $LASTEXITCODE" }
+        }
+        & $registrar status
+    }
+
+    Write-Host 'Registered x64/Win32 TSF system-key routes passed; temporary current-user enablement and HKCU COM state were removed.'
+    Write-Host 'The machine profile/category remains registered; remove it from an elevated PowerShell with tools\machine-profile.ps1 -Action Unregister.'
+}

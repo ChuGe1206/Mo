@@ -27,14 +27,26 @@ invalid responses reset the connection. The smoke also loads the TIP and
 verifies that the test/key callback pair commits exactly once through an edit
 session for both x64 and Win32.
 
+The optional registered-host probe deliberately separates privileges. From an
+elevated PowerShell, run `tools\machine-profile.ps1 -Action Register` once to
+create only the machine-wide TSF profile/category. Return to a normal
+PowerShell and run `tools\tip-broker-smoke.ps1 -Registered`; it temporarily
+owns the two HKCU COM views and current-user enablement, routes keys through the
+real system `ITfKeystrokeMgr`, then removes that temporary user state in a
+`finally` block. Finish from an elevated PowerShell with
+`tools\machine-profile.ps1 -Action Unregister`. The scripts never make Mo the
+default input method.
+
 The registrar is a deliberately separate mutation helper. In development it
 can write the x64 and x86 `InprocServer32` values to their explicit HKCU COM
-views, register the TSF profile and keyboard category, and dynamically load
-`InstallLayoutOrTip` from the system `input.dll`. Registration rejects relative
-or missing binaries and conflicting existing paths. `status` is read-only;
+views. Its explicitly named machine-profile commands require elevation to
+register the TSF profile and keyboard category; current-user enable/disable is
+a separate operation that dynamically loads `InstallLayoutOrTip` from the
+system `input.dll`. Registration rejects relative or missing binaries and
+conflicting existing paths. `status` is read-only;
 `test-registrar.ps1` writes and removes only an isolated test CLSID and never
-registers or enables Mo. The production installer transaction, elevation
-boundary, and current-user finalization remain separate work.
+registers or enables Mo. The production installer transaction and current-user
+finalization remain separate work.
 
 Still unverified: sink activation by a registered TSF host, formal composition
 behavior across the real Notepad/WinUI host matrix, candidate UI, AppContainer

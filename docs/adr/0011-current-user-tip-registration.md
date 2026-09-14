@@ -16,12 +16,13 @@ Windows 不会仅凭 TSF language profile 找到 Mo TIP。一个可被宿主加�
 - `InprocServer32` 的 `ThreadingModel` 固定为 `Apartment`，与 TIP 当前 COM/TSF 生命周期模型一致。
 - 注册只接受存在的绝对文件路径。已有相同路径视为幂等；已有不同路径立即失败，避免静默劫持或覆盖未知注册。
 - profile 的 `bEnabledByDefault` 设为 `FALSE`。注册与加入当前用户输入法列表保持为两个显式阶段，绝不把 Mo 设为默认输入法。
+- TSF profile/category 实际写入机器级 TSF 注册状态；对应命令显式命名为 `register-machine-profile` / `unregister-machine-profile` 并在任何写入前验证进程已提升权限。HKCU COM 注册和当前用户启用保持为普通权限阶段。
 - registrar 提供只读 `status`；隔离自测使用独立测试 CLSID，在两个真实 COM 视图写入、读回并清理，不触碰 Mo 正式 CLSID 或 TSF profile。
 - 正式 MSI 仍由 per-machine 组件拥有 HKLM 双视图，用户态 finalizer 只负责 profile/启用。安装、修复和卸载事务不能依赖开发态 HKCU 命令。
 
 ## 结果
 
-开发构建现在具备系统宿主加载前所需的 COM 注册原语，并能重复验证双视图与清理逻辑。它尚未证明注册后的 Notepad/WinUI 激活，也尚未形成 Setup 的跨提权事务；这些仍属于 G2/G3 后续验收。
+开发构建现在具备系统宿主加载前所需的 COM 注册原语，并能重复验证双视图与清理逻辑。机器级 profile 注册不会被伪装成“当前用户注册”，非提升调用会在写入前失败。它尚未证明注册后的 Notepad/WinUI 激活，也尚未形成 Setup 的跨提权事务；这些仍属于 G2/G3 后续验收。
 
 ## 依据
 
