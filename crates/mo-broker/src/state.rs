@@ -11,6 +11,8 @@ use mo_ipc::{
     PayloadCodec, ProtocolVersion, Snapshot, VersionRange, negotiate_version,
 };
 
+use crate::engine_service::EngineClient;
+
 pub const ERROR_BAD_REQUEST: u32 = 1;
 pub const ERROR_BAD_HANDSHAKE: u32 = 2;
 pub const ERROR_INCOMPATIBLE_VERSION: u32 = 3;
@@ -25,9 +27,10 @@ const MAX_SESSIONS_PER_CONNECTION: usize = 64;
 ///
 /// `connection_generation` and session tokens are opaque correlation values,
 /// not authentication secrets. Transport authorization belongs to the adapter.
-/// Phase 0 serves one connection, so this type owns its Engine Actor directly;
-/// a future listener pool will put the actor behind a process-wide command
-/// channel without changing the wire-token mapping in this state machine.
+/// The local constructor owns an Engine Actor directly for deterministic tests.
+/// The production listener gives every connection a clone of a process-wide
+/// engine client, preserving this connection's wire-token ownership while all
+/// backend calls remain serialized on the engine thread.
 pub struct BrokerConnection<B = FakeBackend>
 where
     B: EngineBackend,
@@ -37,8 +40,63 @@ where
     last_request_id: u64,
     next_session_token: u64,
     sessions: BTreeMap<u64, SessionToken>,
-    engine: EngineActor<B>,
+    engine: EngineOwner<B>,
 }
+
+enum EngineOwner<B>
+where
+    B: EngineBackend,
+{
+    Local(EngineActor<B>),
+    Shared(EngineClient),
+}
+
+impl<B> EngineOwner<B>
+where
+    B: EngineBackend,
+{
+    fn create_session(
+        &mut self,
+        options: SessionOptions,
+    ) -> Result<SessionToken, EngineOperationError> {
+        match self {
+            Self::Local(actor) => actor
+                .create_session(options)
+                .map_err(|_| EngineOperationError),
+            Self::Shared(client) => client
+                .create_session(options)
+                .map_err(|_| EngineOperationError),
+        }
+    }
+
+    fn dispatch(
+        &mut self,
+        token: SessionToken,
+        command: EngineCommand,
+    ) -> Result<mo_domain::EngineSnapshot, EngineOperationError> {
+        match self {
+            Self::Local(actor) => actor
+                .dispatch(token, command)
+                .map_err(|_| EngineOperationError),
+            Self::Shared(client) => client
+                .dispatch(token, command)
+                .map_err(|_| EngineOperationError),
+        }
+    }
+
+    fn destroy_session(&mut self, token: SessionToken) -> Result<(), EngineOperationError> {
+        match self {
+            Self::Local(actor) => actor
+                .destroy_session(token)
+                .map_err(|_| EngineOperationError),
+            Self::Shared(client) => client
+                .destroy_session(token)
+                .map_err(|_| EngineOperationError),
+        }
+    }
+}
+
+struct EngineOperationError;
 
 impl BrokerConnection<FakeBackend> {
     pub fn new(connection_generation: u64) -> Self {
@@ -57,7 +115,18 @@ where
             last_request_id: 0,
             next_session_token: 1,
             sessions: BTreeMap::new(),
-            engine: EngineActor::new(backend),
+            engine: EngineOwner::Local(EngineActor::new(backend)),
+        }
+    }
+
+    pub(crate) fn with_engine_client(connection_generation: u64, engine: EngineClient) -> Self {
+        Self {
+            connection_generation: connection_generation.max(1),
+            negotiated: None,
+            last_request_id: 0,
+            next_session_token: 1,
+            sessions: BTreeMap::new(),
+            engine: EngineOwner::Shared(engine),
         }
     }
 
@@ -66,7 +135,12 @@ where
     }
 
     pub fn engine(&self) -> &EngineActor<B> {
-        &self.engine
+        match &self.engine {
+            EngineOwner::Local(actor) => actor,
+            EngineOwner::Shared(_) => {
+                unreachable!("shared production engine is not exposed through BrokerConnection")
+            }
+        }
     }
 
     pub fn handle(&mut self, request: Frame) -> Result<Frame, BrokerError> {

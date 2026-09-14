@@ -3,6 +3,7 @@
 //! The TCP module remains diagnostic-only. On Windows, `windows_named_pipe`
 //! connects the state machine to Mo's authenticated local transport.
 
+mod engine_service;
 mod state;
 pub mod tcp_loopback_spike;
 #[cfg(windows)]

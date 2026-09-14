@@ -25,7 +25,11 @@ and Win32 native clients through a real
 native pipe operation is overlapped and has a hard deadline; ambiguous or
 invalid responses reset the connection. The smoke also loads the TIP and
 verifies that the test/key callback pair commits exactly once through an edit
-session for both x64 and Win32.
+session for both x64 and Win32. The production Broker now remains alive across
+successive client connections and keeps its thread-affine engine on one
+dedicated thread; the smoke owns and stops that persistent process explicitly.
+Concurrent long-lived pipe instances remain gated on TIP-side Broker identity
+verification so the protected DACL is not weakened.
 
 The optional registered-host probe deliberately separates privileges. From an
 elevated PowerShell, run `tools\machine-profile.ps1 -Action Register` once to

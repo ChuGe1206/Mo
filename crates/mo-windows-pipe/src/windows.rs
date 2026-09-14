@@ -42,6 +42,9 @@ const SDDL_REVISION_1: u32 = 1;
 const CLIENT_PIPE_ACCESS: u32 = 0x0012_019b;
 const SECURITY_IDENTIFICATION: u32 = 0x0001_0000;
 const SECURITY_SQOS_PRESENT: u32 = 0x0010_0000;
+const ERROR_FILE_NOT_FOUND_CODE: i32 = 2;
+const ERROR_SEM_TIMEOUT_CODE: i32 = 121;
+const ERROR_PIPE_BUSY_CODE: i32 = 231;
 
 /// A validated local named-pipe address.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -107,11 +110,19 @@ impl PipeListener {
 
     /// Accepts one client, reads its first bounded frame, then authenticates it.
     ///
-    /// Consuming the listener makes the initial single-instance constraint
-    /// explicit. A later overlapped listener pool can extend concurrency without
-    /// weakening the DACL or peer check.
+    /// This compatibility entry point consumes the listener. Long-running
+    /// servers can accept through [`Self::accept_next_first_frame`] and re-arm
+    /// the protected first instance after the authenticated stream closes.
     pub fn accept_first_frame(
         mut self,
+        first_frame_timeout: Duration,
+    ) -> io::Result<(AuthenticatedPipe, Frame)> {
+        self.accept_next_first_frame(first_frame_timeout)
+    }
+
+    /// Accepts one client from this listener instance.
+    pub fn accept_next_first_frame(
+        &mut self,
         first_frame_timeout: Duration,
     ) -> io::Result<(AuthenticatedPipe, Frame)> {
         let mut server = self
@@ -124,6 +135,23 @@ impl PipeListener {
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         authenticate_client_logon_sid(&server, &self.logon_sid)?;
         Ok((AuthenticatedPipe { file: server }, frame))
+    }
+
+    /// Recreates the protected first instance after the prior stream closed.
+    ///
+    /// Mo deliberately withholds `FILE_CREATE_PIPE_INSTANCE` from clients. A
+    /// concurrent pool therefore requires an additional server-authentication
+    /// design rather than weakening this DACL.
+    pub fn rearm(&mut self) -> io::Result<()> {
+        if self.server.is_some() {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "named-pipe listener is already armed",
+            ));
+        }
+        let security = SecurityDescriptor::for_logon_sid(&self.logon_sid)?;
+        self.server = Some(create_server(&self.address, &security)?);
+        Ok(())
     }
 
     /// Confirms that the kernel marked this listener as rejecting remote clients.
@@ -195,30 +223,69 @@ pub struct PipeClient;
 
 impl PipeClient {
     pub fn connect(address: &PipeAddress, timeout: Duration) -> io::Result<File> {
-        let timeout_ms = u32::try_from(timeout.as_millis()).unwrap_or(u32::MAX);
         let address_wide = address.wide();
-        let waited = unsafe {
-            // SAFETY: the address is NUL-terminated and remains alive for the call.
-            WaitNamedPipeW(address_wide.as_ptr(), timeout_ms)
-        };
-        if waited == 0 {
-            return Err(io::Error::last_os_error());
-        }
+        let deadline = Instant::now()
+            .checked_add(timeout)
+            .unwrap_or_else(Instant::now);
+        loop {
+            let now = Instant::now();
+            if now >= deadline {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "timed out waiting for the named-pipe Broker",
+                ));
+            }
+            let remaining_ms = u32::try_from(deadline.duration_since(now).as_millis())
+                .unwrap_or(u32::MAX)
+                .max(1);
+            let waited = unsafe {
+                // SAFETY: the address is NUL-terminated and remains alive for the call.
+                WaitNamedPipeW(address_wide.as_ptr(), remaining_ms)
+            };
+            if waited == 0 {
+                let error = io::Error::last_os_error();
+                match error.raw_os_error() {
+                    Some(ERROR_FILE_NOT_FOUND_CODE) if Instant::now() < deadline => {
+                        std::thread::sleep(Duration::from_millis(1));
+                        continue;
+                    }
+                    Some(ERROR_SEM_TIMEOUT_CODE) => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "timed out waiting for an available named-pipe Broker instance",
+                        ));
+                    }
+                    _ => return Err(error),
+                }
+            }
 
-        let handle = unsafe {
-            // SAFETY: arguments follow CreateFileW's named-pipe contract. The SQOS
-            // flags let the server identify, but not act as, this client.
-            CreateFileW(
-                address_wide.as_ptr(),
-                CLIENT_PIPE_ACCESS,
-                0,
-                null(),
-                OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION,
-                null_mut(),
-            )
-        };
-        file_from_handle(handle)
+            let handle = unsafe {
+                // SAFETY: arguments follow CreateFileW's named-pipe contract. The SQOS
+                // flags let the server identify, but not act as, this client.
+                CreateFileW(
+                    address_wide.as_ptr(),
+                    CLIENT_PIPE_ACCESS,
+                    0,
+                    null(),
+                    OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION,
+                    null_mut(),
+                )
+            };
+            if handle != INVALID_HANDLE_VALUE {
+                return file_from_handle(handle);
+            }
+            let error = io::Error::last_os_error();
+            if matches!(
+                error.raw_os_error(),
+                Some(ERROR_FILE_NOT_FOUND_CODE) | Some(ERROR_PIPE_BUSY_CODE)
+            ) && Instant::now() < deadline
+            {
+                std::thread::sleep(Duration::from_millis(1));
+                continue;
+            }
+            return Err(error);
+        }
     }
 }
 
@@ -705,5 +772,14 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::TimedOut);
         client.join().unwrap();
+    }
+
+    #[test]
+    fn missing_listener_honors_the_total_connect_deadline() {
+        let address = test_address("missing-listener");
+        let started = Instant::now();
+        let error = PipeClient::connect(&address, Duration::from_millis(20)).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 }

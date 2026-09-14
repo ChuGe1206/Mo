@@ -14,7 +14,7 @@
 - `OpenSession`、`KeyEvent`、`CloseSession` 分别调用 Actor 的 create、dispatch、destroy；连接释放时尽力销毁所有尚存 Actor session。
 - snapshot 的 revision 取自 Actor 的全局命令顺序，composition、commit 和候选从 owned `EngineSnapshot` 投影到有硬上限的 IPC 格式。
 - 当前 IPC 尚未携带布局解析后的 Unicode 文本。过渡适配器只为 ASCII 字母与数字推断文本，并把已知 Windows 导航/编辑键转换为 X11 keysym 形状的领域逻辑键码；完整 Unicode、死键与 AltGr 布局转换必须在真实 TSF 前端验证后落定。
-- Phase 0 Named Pipe 仍只服务一个连接，所以 Actor 暂由连接直接持有。引入多连接 listener pool 时，Actor 移到进程级专用线程，通过命令通道共享，wire token 映射仍保留在各连接状态机内。
+- 最初的 Phase 0 Named Pipe 一次服务一个连接，所以 Actor 暂由连接直接持有；该过渡状态已由 ADR 0013 更新为进程级专用线程与命令通道，wire token 映射仍保留在各连接状态机内。
 
 ## Consequences
 

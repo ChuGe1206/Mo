@@ -21,4 +21,4 @@ Broker 已能通过 `RimeBackend` 驱动 Engine Actor，但链接期 `rime.lib` 
 - Broker 不需要链接或随构建定位 `rime.lib`，部署位置也不需要加入 PATH；启动配置与错误原因是可观察且确定的。
 - DLL 同目录依赖仍被允许，因此正式安装目录必须由安装器写入并用 ACL 防止普通进程篡改；本决策不替代签名、hash、SBOM 或插件允许列表验证。
 - 当前官方 librime 资产只用于开发/CI 实证。正式发行仍必须切换到 Mo 从锁定源码构建、符合许可证策略的 DLL 和预编译资源包。
-- 当前 listener 一次服务一个连接并让该连接拥有 Engine；多客户端 listener pool 与进程级 actor channel 留到后续实现。
+- listener 的后续演进见 ADR 0013：Engine 已移入进程级线程并跨连续连接保活；在客户端具备 Broker 身份校验前，安全 DACL 仍只开放一个 pipe instance。

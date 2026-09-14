@@ -75,11 +75,8 @@ function Invoke-BrokerProbe(
         Start-Sleep -Milliseconds 250
         & $Probe @ProbeArguments
         if ($LASTEXITCODE -ne 0) { throw "$Platform $Label failed: $LASTEXITCODE" }
-        if (-not $process.WaitForExit(5000)) {
-            throw "$Platform Broker did not exit after $Label closed"
-        }
-        if ($process.ExitCode -ne 0) {
-            throw "$Platform Broker failed during ${Label}: $($process.ExitCode)"
+        if ($process.HasExited -and $process.ExitCode -ne 0) {
+            throw "$Platform Broker exited unexpectedly during ${Label}: $($process.ExitCode)"
         }
     } finally {
         if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }

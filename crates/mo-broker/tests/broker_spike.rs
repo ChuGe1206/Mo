@@ -337,3 +337,81 @@ fn authenticated_named_pipe_round_trips_broker_handshake() {
     drop(stream);
     server.join().unwrap().unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn named_pipe_broker_rearms_and_preserves_global_engine_order() {
+    use mo_engine::FakeBackend;
+    use mo_windows_pipe::{PipeAddress, PipeClient, PipeListener};
+
+    fn transact(address: &PipeAddress, virtual_key: u32) -> u64 {
+        let mut stream = PipeClient::connect(address, Duration::from_secs(2)).unwrap();
+        let hello_payload = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features: FEATURE_KEY_EVENTS,
+            max_payload_len: u32::try_from(MAX_PAYLOAD_LEN).unwrap(),
+        }
+        .encode_payload()
+        .unwrap();
+        mo_ipc::write_frame(
+            &mut stream,
+            &frame(MessageKind::Hello, 0, 0, 1, hello_payload),
+        )
+        .unwrap();
+        let hello_ack = mo_ipc::read_frame(&mut stream).unwrap();
+        let generation = hello_ack.header.connection_generation;
+
+        mo_ipc::write_frame(
+            &mut stream,
+            &frame(MessageKind::OpenSession, generation, 0, 2, Vec::new()),
+        )
+        .unwrap();
+        let opened = mo_ipc::read_frame(&mut stream).unwrap();
+        let token = opened.header.session_token;
+
+        let key = KeyEvent {
+            virtual_key,
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        mo_ipc::write_frame(
+            &mut stream,
+            &frame(
+                MessageKind::KeyEvent,
+                generation,
+                token,
+                3,
+                key.encode_payload().unwrap(),
+            ),
+        )
+        .unwrap();
+        let snapshot_frame = mo_ipc::read_frame(&mut stream).unwrap();
+        let snapshot = Snapshot::decode_payload(&snapshot_frame.payload).unwrap();
+
+        mo_ipc::write_frame(
+            &mut stream,
+            &frame(MessageKind::CloseSession, generation, token, 4, Vec::new()),
+        )
+        .unwrap();
+        let closed = mo_ipc::read_frame(&mut stream).unwrap();
+        assert_eq!(closed.header.kind, MessageKind::CloseSessionAck);
+        snapshot.revision
+    }
+
+    let address = PipeAddress::new(&format!("broker-rearm-test-{}", std::process::id())).unwrap();
+    let listener = PipeListener::bind(address.clone()).unwrap();
+    let server = thread::spawn(move || {
+        mo_broker::windows_named_pipe::serve_listener_loop_with_backend_factory(
+            listener,
+            || Ok::<_, std::io::Error>(FakeBackend::new()),
+            Some(2),
+        )
+    });
+
+    let first_revision = transact(&address, u32::from(b'A'));
+    let second_revision = transact(&address, u32::from(b'B'));
+    assert!(second_revision > first_revision);
+    server.join().unwrap().unwrap();
+}

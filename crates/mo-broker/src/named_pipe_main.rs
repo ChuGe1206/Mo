@@ -7,21 +7,27 @@ fn main() -> std::io::Result<()> {
     let listener = mo_broker::windows_named_pipe::bind_default()?;
     match mode {
         StartupMode::Fake => {
-            eprintln!(
-                "Mo broker diagnostic backend listening on {}",
-                listener.address().as_str()
-            );
-            mo_broker::windows_named_pipe::serve_listener(listener)
+            let endpoint = listener.address().as_str().to_owned();
+            mo_broker::windows_named_pipe::serve_listener_loop_with_backend_factory(
+                listener,
+                move || {
+                    eprintln!("Mo broker diagnostic backend listening on {endpoint}");
+                    Ok::<_, io::Error>(mo_engine::FakeBackend::new())
+                },
+                None,
+            )
         }
         StartupMode::Rime(startup) => {
-            let engine = mo_rime::Engine::load(startup.engine_config, startup.dll_path)
-                .map_err(io::Error::other)?;
-            let backend = mo_rime::RimeBackend::new(engine);
-            eprintln!(
-                "Mo broker librime backend listening on {}",
-                listener.address().as_str()
-            );
-            mo_broker::windows_named_pipe::serve_listener_with_backend(listener, backend)
+            let endpoint = listener.address().as_str().to_owned();
+            mo_broker::windows_named_pipe::serve_listener_loop_with_backend_factory(
+                listener,
+                move || {
+                    mo_rime::Engine::load(startup.engine_config, startup.dll_path)
+                        .map(mo_rime::RimeBackend::new)
+                        .inspect(|_| eprintln!("Mo broker librime backend listening on {endpoint}"))
+                },
+                None,
+            )
         }
     }
 }
