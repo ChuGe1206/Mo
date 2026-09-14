@@ -27,11 +27,14 @@ invalid responses reset the connection. The smoke also loads the TIP and
 verifies that the test/key callback pair commits exactly once through an edit
 session for both x64 and Win32.
 
-The registrar is a deliberately separate mutation helper. It demonstrates
-`ITfInputProcessorProfileMgr::RegisterProfile`, keyboard-category registration,
-and dynamically loading `InstallLayoutOrTip` from the system `input.dll`. Its
-installer transaction, rollback behavior, elevation boundary, and current-user
-finalization are not validated in Phase 0.
+The registrar is a deliberately separate mutation helper. In development it
+can write the x64 and x86 `InprocServer32` values to their explicit HKCU COM
+views, register the TSF profile and keyboard category, and dynamically load
+`InstallLayoutOrTip` from the system `input.dll`. Registration rejects relative
+or missing binaries and conflicting existing paths. `status` is read-only;
+`test-registrar.ps1` writes and removes only an isolated test CLSID and never
+registers or enables Mo. The production installer transaction, elevation
+boundary, and current-user finalization remain separate work.
 
 Still unverified: sink activation by a registered TSF host, formal composition
 behavior across the real Notepad/WinUI host matrix, candidate UI, AppContainer

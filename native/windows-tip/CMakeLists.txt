@@ -19,7 +19,7 @@ set_target_properties(mo_tip PROPERTIES OUTPUT_NAME "mo_tip")
 
 add_executable(mo_tip_registrar src/registrar.cpp)
 mo_apply_compile_policy(mo_tip_registrar)
-target_link_libraries(mo_tip_registrar PRIVATE ole32 uuid)
+target_link_libraries(mo_tip_registrar PRIVATE advapi32 ole32 uuid)
 
 add_executable(mo_tip_abi_probe probe/abi_probe.cpp)
 mo_apply_compile_policy(mo_tip_abi_probe)
