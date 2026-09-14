@@ -33,6 +33,7 @@
 - 两种架构均通过 DLL 加载、导出、未知 CLSID、Server Lock、禁止聚合、`ITfTextInputProcessorEx`/`ITfKeyEventSink` 创建、错误参数和卸载探针。
 - `ActivateEx` 已实现前台 key sink 的 advise/unadvise 对称生命周期；受控 manager + 真实 TSF context 探针证明 client ID/foreground 参数正确，`OnTestKey*` 与 `OnKey*` 当前一致 fail-open、不吞键。
 - key sink 已用 `(context, virtual key, LPARAM, key direction)` 缓存 Broker 决策；匹配的 test/key 回调只向引擎发送一次按键。handled snapshot 通过同步读写 Edit Session 应用，严格转换 UTF-8，并在预编辑 Range 上执行更新、提交或清除；正式 Composition 被宿主拒绝时保留受控 Range 降级，已发生文档修改的错误路径仍吞键以避免重复上屏。
+- TIP 已实现 `ITfCompositionSink` 并把自身交给 `StartComposition`：宿主主动终止时只清理匹配的 owned composition；TIP 主动提交/清空则先稳定 COM 引用并清除成员，再调用 `EndComposition`，可安全承受同步回调。x64/Win32 受控探针连续完成两轮 `M + Space`，核对最终 `mm`，证明结束后能立即创建下一 composition。
 - x64 与 Win32 的受控 `ITextStoreACP` 探针均把 fake Broker 的 `M + Space` 经 TIP 写入真实 Windows EDIT 控件为单个 `m`，并从 TSF Context 再次读回核对。TIP 激活、Broker 缺席、协议或 Edit Session 失败均保持 fail-open；断线后使用 250 ms 节流进行有界重连。
 - x64 与 Win32 原生客户端已对同一个 x64 Rust Broker 完成真实 `Hello -> OpenSession -> KeyEvent(M) -> Snapshot("m") -> CloseSession` 往返；并分别通过 `KeyEvent(nihao + Space)` 穿过 Broker、Actor、RimeBackend、运行时加载的 librime 与锁定 rime-ice，核对 `你好` 候选和提交。客户端采用 overlapped I/O、端到端硬 deadline、严格帧/CRC/UTF-8/请求号校验，失败或结果不明确时断开并保持 TIP fail-open。
 - Broker 启动模式已 fail-closed：`--fake` 仅供诊断，`--rime` 必须显式提供 DLL/shared/user 绝对路径和已部署标记；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。

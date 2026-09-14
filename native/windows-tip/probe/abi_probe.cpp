@@ -1071,26 +1071,30 @@ int probe_broker_input(
 
         const std::string input = rime_ice ? "NIHAO" : "M";
         bool keys_succeeded = true;
-        for (const char key : input) {
-            const bool key_succeeded = registered
-                ? SendSystemTestedKey(system_key_manager.Get(), edit_store, static_cast<WPARAM>(key))
-                : SendTestedKey(
-                    direct_key_sink.Get(),
-                    context.Get(),
-                    edit_store,
-                    static_cast<WPARAM>(key));
-            if (!key_succeeded) {
-                keys_succeeded = false;
+        for (int composition_index = 0; composition_index < 2 && keys_succeeded;
+             ++composition_index) {
+            for (const char key : input) {
+                const bool key_succeeded = registered
+                    ? SendSystemTestedKey(
+                        system_key_manager.Get(), edit_store, static_cast<WPARAM>(key))
+                    : SendTestedKey(
+                        direct_key_sink.Get(),
+                        context.Get(),
+                        edit_store,
+                        static_cast<WPARAM>(key));
+                if (!key_succeeded) {
+                    keys_succeeded = false;
+                    break;
+                }
+            }
+            if (!keys_succeeded) {
                 break;
             }
-        }
-        bool space_succeeded = false;
-        if (keys_succeeded) {
-            space_succeeded = registered
+            keys_succeeded = registered
                 ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
                 : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
         }
-        if (!keys_succeeded || !space_succeeded) {
+        if (!keys_succeeded) {
             outcome = 1;
             break;
         }
@@ -1098,7 +1102,7 @@ int probe_broker_input(
         wchar_t text_buffer[16]{};
         const int text_length = GetWindowTextW(edit_window, text_buffer, ARRAYSIZE(text_buffer));
         const std::wstring text(text_buffer, static_cast<std::size_t>(text_length));
-        const std::wstring expected = rime_ice ? L"你好" : L"m";
+        const std::wstring expected = rime_ice ? L"你好你好" : L"mm";
         if (text != expected) {
             std::wcerr << L"TIP edit session committed unexpected EDIT text: " << text << L'\n';
             outcome = 1;
@@ -1281,6 +1285,24 @@ int wmain(int argument_count, wchar_t** arguments) {
     if (FAILED(result)) {
         FreeLibrary(module);
         return fail(L"IClassFactory::CreateInstance", result);
+    }
+
+    ITfCompositionSink* composition_sink = nullptr;
+    result = service->QueryInterface(
+        IID_ITfCompositionSink,
+        reinterpret_cast<void**>(&composition_sink));
+    if (FAILED(result)) {
+        service->Release();
+        FreeLibrary(module);
+        return fail(L"QueryInterface(ITfCompositionSink)", result);
+    }
+    result = composition_sink->OnCompositionTerminated(0, nullptr);
+    composition_sink->Release();
+    if (expect_result(L"ITfCompositionSink::OnCompositionTerminated(NULL)", result, E_INVALIDARG)
+        != 0) {
+        service->Release();
+        FreeLibrary(module);
+        return 1;
     }
 
     result = service->ActivateEx(nullptr, TF_CLIENTID_NULL, 0);

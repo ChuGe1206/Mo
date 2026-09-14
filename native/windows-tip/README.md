@@ -1,8 +1,9 @@
 # Mo Windows TIP — Phase 0 shell
 
 This directory contains a Mo-owned, C++17 COM/TSF ABI shell. It implements
-`IClassFactory`, `ITfTextInputProcessorEx`, and the `ITfKeyEventSink`
-advise/unadvise lifecycle. It also contains a small native Broker client that
+`IClassFactory`, `ITfTextInputProcessorEx`, `ITfKeyEventSink`, and
+`ITfCompositionSink`, including symmetric key advise/unadvise and host-owned
+composition termination. It also contains a small native Broker client that
 uses the versioned MOIP protocol over the protected Windows Named Pipe. TIP
 activation performs a 400 ms best-effort handshake and opens an isolated Broker
 session; failure leaves the host usable. Key callbacks use a decision cache so
@@ -17,7 +18,9 @@ of matching bitness. The probe checks exports, class creation, the
 lifecycle against a controlled manager, fail-open key behavior, and unload
 accounting. Its Broker mode supplies a deterministic `ITextStoreACP` backed by
 a real Windows EDIT control and verifies preedit/commit writes through TSF
-ranges for both fake and rime-ice inputs. It never registers or enables the TIP.
+ranges for both fake and rime-ice inputs. Two consecutive composition/commit
+cycles verify that termination leaves no stale range. It never registers or
+enables the TIP.
 
 `tools/tip-broker-smoke.ps1` starts the x64 Rust Broker and exercises the x64
 and Win32 native clients through a real

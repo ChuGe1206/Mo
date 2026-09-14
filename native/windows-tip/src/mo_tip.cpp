@@ -89,7 +89,10 @@ bool Utf8ToUtf16(const std::string& input, std::wstring* output) noexcept {
         == required;
 }
 
-class TextService final : public ITfTextInputProcessorEx, public ITfKeyEventSink {
+class TextService final
+    : public ITfTextInputProcessorEx,
+      public ITfKeyEventSink,
+      public ITfCompositionSink {
 public:
     TextService() noexcept { InterlockedIncrement(&g_live_objects); }
 
@@ -110,6 +113,11 @@ public:
         }
         if (IsEqualIID(interface_id, IID_ITfKeyEventSink)) {
             *object = static_cast<ITfKeyEventSink*>(this);
+            AddRef();
+            return S_OK;
+        }
+        if (IsEqualIID(interface_id, IID_ITfCompositionSink)) {
+            *object = static_cast<ITfCompositionSink*>(this);
             AddRef();
             return S_OK;
         }
@@ -240,6 +248,20 @@ public:
         REFGUID,
         BOOL* eaten) noexcept override {
         return ValidateKeyArguments(context, eaten);
+    }
+
+    STDMETHODIMP OnCompositionTerminated(
+        TfEditCookie,
+        ITfComposition* composition) noexcept override {
+        if (composition == nullptr) {
+            return E_INVALIDARG;
+        }
+        if (composition_.Get() == composition) {
+            composition_.Reset();
+            active_range_.Reset();
+            composition_context_.Reset();
+        }
+        return S_OK;
     }
 
 private:
@@ -540,7 +562,7 @@ private:
         result = context_composition->StartComposition(
             edit_cookie,
             range.Get(),
-            nullptr,
+            static_cast<ITfCompositionSink*>(this),
             composition.GetAddressOf());
         if (SUCCEEDED(result) && composition != nullptr) {
             composition_ = composition;
@@ -583,13 +605,7 @@ private:
             return result;
         }
         *applied = true;
-        if (composition_ != nullptr) {
-            result = composition_->EndComposition(edit_cookie);
-        }
-        composition_.Reset();
-        active_range_.Reset();
-        composition_context_.Reset();
-        return result;
+        return EndOwnedComposition(edit_cookie);
     }
 
     HRESULT ClearComposition(
@@ -611,13 +627,15 @@ private:
             return result;
         }
         *applied = true;
-        if (composition_ != nullptr) {
-            result = composition_->EndComposition(edit_cookie);
-        }
+        return EndOwnedComposition(edit_cookie);
+    }
+
+    HRESULT EndOwnedComposition(TfEditCookie edit_cookie) noexcept {
+        ComPtr<ITfComposition> ending = composition_;
         composition_.Reset();
         active_range_.Reset();
         composition_context_.Reset();
-        return result;
+        return ending != nullptr ? ending->EndComposition(edit_cookie) : S_OK;
     }
 
     void CancelActiveComposition() noexcept {
