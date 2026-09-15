@@ -5,10 +5,31 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "mo_broker_client.h"
 
 namespace {
+
+bool ProbeRejectsUnexpectedServerImage() {
+    std::wstring own_path(32768, L'\0');
+    const DWORD length = GetModuleFileNameW(
+        nullptr,
+        own_path.data(),
+        static_cast<DWORD>(own_path.size()));
+    if (length == 0 || length >= own_path.size()) {
+        std::wcerr << L"GetModuleFileNameW failed while preparing identity probe\n";
+        return false;
+    }
+    own_path.resize(length);
+
+    mo::windows_tip::BrokerClient wrong_identity(std::move(own_path));
+    if (wrong_identity.ConnectAndOpen(500)) {
+        std::wcerr << L"BrokerClient accepted an unexpected server image\n";
+        return false;
+    }
+    return true;
+}
 
 bool ProbeFake(mo::windows_tip::BrokerClient* broker) {
     mo::windows_tip::BrokerSnapshot snapshot;
@@ -66,15 +87,27 @@ bool ProbeRimeIce(mo::windows_tip::BrokerClient* broker) {
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
-    const bool rime_ice = argc == 2 && std::wstring(argv[1]) == L"--rime-ice";
-    if (argc != 1 && !rime_ice) {
-        std::wcerr << L"usage: mo_tip_ipc_probe.exe [--rime-ice]\n";
+    const bool rime_ice = argc == 3 && std::wstring(argv[2]) == L"--rime-ice";
+    const bool reject_unexpected =
+        argc == 3 && std::wstring(argv[2]) == L"--reject-unexpected";
+    if ((argc != 2 && !rime_ice && !reject_unexpected) || argv[1][0] == L'\0') {
+        std::wcerr << L"usage: mo_tip_ipc_probe.exe <absolute-broker-path> "
+                      L"[--rime-ice|--reject-unexpected]\n";
         return 2;
     }
 
-    mo::windows_tip::BrokerClient broker;
+    if (reject_unexpected) {
+        if (!ProbeRejectsUnexpectedServerImage()) {
+            return 1;
+        }
+        std::wcout << L"Mo TIP client rejected an unexpected Broker server image.\n";
+        return 0;
+    }
+
+    mo::windows_tip::BrokerClient broker(argv[1]);
     if (!broker.ConnectAndOpen(2000)) {
-        std::wcerr << L"BrokerClient::ConnectAndOpen failed\n";
+        std::wcerr << L"BrokerClient::ConnectAndOpen failed with Win32 error "
+                   << GetLastError() << L'\n';
         return 1;
     }
     if (broker.generation() == 0 || broker.session_token() == 0) {

@@ -38,17 +38,18 @@
 - x64 与 Win32 原生客户端已对同一个 x64 Rust Broker 完成真实 `Hello -> OpenSession -> KeyEvent(M) -> Snapshot("m") -> CloseSession` 往返；并分别通过 `KeyEvent(nihao + Space)` 穿过 Broker、Actor、RimeBackend、运行时加载的 librime 与锁定 rime-ice，核对 `你好` 候选和提交。客户端采用 overlapped I/O、端到端硬 deadline、严格帧/CRC/UTF-8/请求号校验，失败或结果不明确时断开并保持 TIP fail-open。
 - Broker 启动模式已 fail-closed：`--fake` 仅供诊断，`--rime` 必须显式提供 DLL/shared/user 绝对路径和已部署标记；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
-- Engine Actor 已移入进程级专用线程，thread-affine librime backend 在线程内创建和销毁。Broker 在连接断开后以原受保护 DACL 重建 first pipe instance，不再随首个客户端退出；两个连续真实 Named Pipe 连接已验证会话回收与跨连接全局 revision。并发多实例仍等待 TIP 反向认证 Broker，当前不会为获得并发而授予客户端 `FILE_CREATE_PIPE_INSTANCE`。
+- Engine Actor 已移入进程级专用线程，thread-affine librime backend 在线程内创建和销毁。Broker 在连接断开后以原受保护 DACL 重建 first pipe instance，不再随首个客户端退出；两个连续真实 Named Pipe 连接已验证会话回收与跨连接全局 revision。并发多实例仍等待发布模式收口、签名安装路径和 listener pool 设计，当前不会仅凭映像身份校验就授予客户端 `FILE_CREATE_PIPE_INSTANCE`。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
 - Named Pipe 负向测试已证明当前登录会话不能创建第二服务端实例；已认证连接从首个可用字节起采用 2 秒完整帧 assembly deadline，半帧超时会断开并重建监听，完全空闲连接不会被误杀。客户端在自己的总 deadline 内跨越安全重建产生的短暂 endpoint 缺口。
+- TIP 在发送 `Hello` 前用 `GetNamedPipeServerProcessId` 锁定服务端 PID，复核服务端进程与宿主属于同一 logon SID，并比较进程映像与预期 `mo-broker.exe` 的卷序列号/文件索引。x64/Win32 负向探针均证明错误映像身份被拒绝，随后正确身份仍可完成 IPC 与两轮 Edit Session 上屏。生产路径只从 TIP 自身固定安装布局推导；不接受环境变量或当前目录覆盖。
 - 诊断 TCP transport 已通过真实 loopback framed I/O 测试；它不构成生产传输安全结论。
 
 未通过：
 
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。
-- Named Pipe 安全多实例/服务端 overlapped I/O、TIP 对 Broker 服务端的反向认证、已认证连接空闲租约/完整逐请求 deadline，以及 AppContainer/WinUI 连接测试。
+- Named Pipe 安全多实例/服务端 overlapped I/O、发布版 Broker 模式/签名与受保护安装路径闭环、已认证连接空闲租约/完整逐请求 deadline，以及 AppContainer/WinUI 连接测试。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 

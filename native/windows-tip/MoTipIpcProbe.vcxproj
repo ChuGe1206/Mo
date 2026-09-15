@@ -26,7 +26,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Link><SubSystem>Console</SubSystem><ControlFlowGuard>Guard</ControlFlowGuard></Link>
+    <Link><SubSystem>Console</SubSystem><ControlFlowGuard>Guard</ControlFlowGuard><AdditionalDependencies>advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="probe\ipc_probe.cpp" />

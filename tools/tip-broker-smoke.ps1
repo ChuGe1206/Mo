@@ -90,7 +90,8 @@ foreach ($platform in $platforms) {
     $ipcProbe = Join-Path $binaryDirectory 'mo_tip_ipc_probe.exe'
     $abiProbe = Join-Path $binaryDirectory 'mo_tip_abi_probe.exe'
     $tip = Join-Path $binaryDirectory 'mo_tip.dll'
-    Invoke-BrokerProbe $platform $ipcProbe @() 'IPC probe'
+    Invoke-BrokerProbe $platform $ipcProbe @($broker, '--reject-unexpected') 'IPC server identity rejection probe'
+    Invoke-BrokerProbe $platform $ipcProbe @($broker) 'IPC probe'
     Invoke-BrokerProbe $platform $abiProbe @($tip, '--broker-input') 'TIP edit-session probe'
 }
 

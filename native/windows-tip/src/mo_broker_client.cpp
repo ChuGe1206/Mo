@@ -31,6 +31,25 @@ constexpr std::uint32_t kResponseFlag = 1U;
 constexpr std::uint32_t kErrorFlag = 2U;
 constexpr std::uint64_t kKeyEventsFeature = 1ULL;
 constexpr DWORD kClientPipeAccess = 0x0012019bUL;
+constexpr std::size_t kMaximumWindowsPathLength = 32768;
+
+class ScopedHandle final {
+public:
+    explicit ScopedHandle(HANDLE handle = nullptr) noexcept : handle_(handle) {}
+    ~ScopedHandle() noexcept {
+        if (handle_ != nullptr && handle_ != INVALID_HANDLE_VALUE) {
+            CloseHandle(handle_);
+        }
+    }
+
+    ScopedHandle(const ScopedHandle&) = delete;
+    ScopedHandle& operator=(const ScopedHandle&) = delete;
+
+    HANDLE get() const noexcept { return handle_; }
+
+private:
+    HANDLE handle_;
+};
 
 enum class MessageKind : std::uint16_t {
     Hello = 1,
@@ -253,7 +272,154 @@ bool Exchange(
     return true;
 }
 
-HANDLE ConnectPipe(ULONGLONG deadline) noexcept {
+bool IsDriveAbsolutePath(const std::wstring& path) noexcept {
+    return path.size() >= 3
+        && ((path[0] >= L'A' && path[0] <= L'Z')
+            || (path[0] >= L'a' && path[0] <= L'z'))
+        && path[1] == L':'
+        && (path[2] == L'\\' || path[2] == L'/');
+}
+
+bool QueryTokenLogonSid(HANDLE token, std::vector<Byte>* storage, PSID* sid) {
+    DWORD required = 0;
+    if (GetTokenInformation(token, TokenGroups, nullptr, 0, &required) != FALSE
+        || GetLastError() != ERROR_INSUFFICIENT_BUFFER
+        || required == 0) {
+        return false;
+    }
+    storage->resize(required);
+    if (GetTokenInformation(
+            token,
+            TokenGroups,
+            storage->data(),
+            required,
+            &required)
+        == FALSE) {
+        return false;
+    }
+    const auto* token_groups = reinterpret_cast<const TOKEN_GROUPS*>(storage->data());
+    for (DWORD index = 0; index < token_groups->GroupCount; ++index) {
+        const SID_AND_ATTRIBUTES& group = token_groups->Groups[index];
+        if ((group.Attributes & SE_GROUP_LOGON_ID) == SE_GROUP_LOGON_ID
+            && group.Sid != nullptr
+            && IsValidSid(group.Sid) != FALSE) {
+            *sid = group.Sid;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsSameWindowsLogon(HANDLE process) {
+    HANDLE server_token_raw = nullptr;
+    HANDLE client_token_raw = nullptr;
+    if (OpenProcessToken(process, TOKEN_QUERY, &server_token_raw) == FALSE) {
+        return false;
+    }
+    ScopedHandle server_token(server_token_raw);
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &client_token_raw) == FALSE) {
+        return false;
+    }
+    ScopedHandle client_token(client_token_raw);
+
+    std::vector<Byte> server_storage;
+    std::vector<Byte> client_storage;
+    PSID server_sid = nullptr;
+    PSID client_sid = nullptr;
+    return QueryTokenLogonSid(server_token.get(), &server_storage, &server_sid)
+        && QueryTokenLogonSid(client_token.get(), &client_storage, &client_sid)
+        && EqualSid(server_sid, client_sid) != FALSE;
+}
+
+bool QueryProcessImagePath(HANDLE process, std::wstring* path) {
+    std::vector<wchar_t> buffer(kMaximumWindowsPathLength);
+    DWORD length = static_cast<DWORD>(buffer.size());
+    if (QueryFullProcessImageNameW(process, 0, buffer.data(), &length) == FALSE
+        || length == 0
+        || length >= buffer.size()) {
+        return false;
+    }
+    path->assign(buffer.data(), length);
+    return true;
+}
+
+bool IsSameFile(const std::wstring& first_path, const std::wstring& second_path) noexcept {
+    constexpr DWORD share_mode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+    ScopedHandle first(CreateFileW(
+        first_path.c_str(),
+        FILE_READ_ATTRIBUTES,
+        share_mode,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr));
+    if (first.get() == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    ScopedHandle second(CreateFileW(
+        second_path.c_str(),
+        FILE_READ_ATTRIBUTES,
+        share_mode,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr));
+    if (second.get() == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    BY_HANDLE_FILE_INFORMATION first_info{};
+    BY_HANDLE_FILE_INFORMATION second_info{};
+    return GetFileInformationByHandle(first.get(), &first_info) != FALSE
+        && GetFileInformationByHandle(second.get(), &second_info) != FALSE
+        && (first_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0
+        && (second_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0
+        && first_info.dwVolumeSerialNumber == second_info.dwVolumeSerialNumber
+        && first_info.nFileIndexHigh == second_info.nFileIndexHigh
+        && first_info.nFileIndexLow == second_info.nFileIndexLow;
+}
+
+bool IsExpectedBrokerServer(HANDLE pipe, const std::wstring& expected_path) {
+    if (!IsDriveAbsolutePath(expected_path)) {
+        SetLastError(ERROR_BAD_PATHNAME);
+        return false;
+    }
+
+    ULONG server_process_id = 0;
+    if (GetNamedPipeServerProcessId(pipe, &server_process_id) == FALSE) {
+        return false;
+    }
+    if (server_process_id == 0 || server_process_id == GetCurrentProcessId()) {
+        SetLastError(ERROR_INVALID_OWNER);
+        return false;
+    }
+
+    ScopedHandle process(OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE,
+        server_process_id));
+    if (process.get() == nullptr) {
+        return false;
+    }
+    if (!IsSameWindowsLogon(process.get())) {
+        SetLastError(ERROR_ACCESS_DENIED);
+        return false;
+    }
+
+    std::wstring actual_path;
+    if (!QueryProcessImagePath(process.get(), &actual_path)) {
+        return false;
+    }
+    if (!IsSameFile(expected_path, actual_path)) {
+        SetLastError(ERROR_INVALID_IMAGE_HASH);
+        return false;
+    }
+    return true;
+}
+
+HANDLE ConnectPipe(
+    const std::wstring& expected_broker_path,
+    ULONGLONG deadline) noexcept {
     for (;;) {
         const HANDLE pipe = CreateFileW(
             kPipeName,
@@ -265,6 +431,18 @@ HANDLE ConnectPipe(ULONGLONG deadline) noexcept {
                 | SECURITY_IDENTIFICATION,
             nullptr);
         if (pipe != INVALID_HANDLE_VALUE) {
+            try {
+                if (!IsExpectedBrokerServer(pipe, expected_broker_path)) {
+                    const DWORD identity_error = GetLastError();
+                    CloseHandle(pipe);
+                    SetLastError(identity_error);
+                    return INVALID_HANDLE_VALUE;
+                }
+            } catch (...) {
+                CloseHandle(pipe);
+                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                return INVALID_HANDLE_VALUE;
+            }
             return pipe;
         }
         const DWORD error = GetLastError();
@@ -422,6 +600,9 @@ bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapsho
 
 namespace mo::windows_tip {
 
+BrokerClient::BrokerClient(std::wstring expected_broker_path) noexcept
+    : expected_broker_path_(std::move(expected_broker_path)) {}
+
 BrokerClient::~BrokerClient() noexcept {
     Close(20);
 }
@@ -430,7 +611,7 @@ bool BrokerClient::ConnectAndOpen(DWORD timeout_ms) noexcept {
     try {
         Reset();
         const ULONGLONG deadline = DeadlineFromNow(timeout_ms);
-        pipe_ = ConnectPipe(deadline);
+        pipe_ = ConnectPipe(expected_broker_path_, deadline);
         if (pipe_ == INVALID_HANDLE_VALUE) {
             return false;
         }

@@ -3,10 +3,13 @@
 #include <windows.h>
 
 #include <msctf.h>
+#include <array>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <new>
 #include <string>
+#include <utility>
 #include <wrl/client.h>
 
 #include "mo_broker_client.h"
@@ -18,6 +21,7 @@ using Microsoft::WRL::ComPtr;
 
 volatile LONG g_live_objects = 0;
 volatile LONG g_server_locks = 0;
+HINSTANCE g_module = nullptr;
 
 constexpr DWORD kBrokerActivationTimeoutMs = 400;
 constexpr DWORD kBrokerKeyTimeoutMs = 50;
@@ -27,6 +31,57 @@ constexpr std::uint16_t kControlModifier = 1U << 1U;
 constexpr std::uint16_t kAltModifier = 1U << 2U;
 constexpr std::uint16_t kSuperModifier = 1U << 3U;
 constexpr std::uint16_t kCapsLockModifier = 1U << 4U;
+
+bool PathComponentEquals(
+    const std::filesystem::path& component,
+    const wchar_t* expected) noexcept {
+    return _wcsicmp(component.c_str(), expected) == 0;
+}
+
+std::wstring ExpectedBrokerPath() {
+    std::array<wchar_t, 32768> module_path{};
+    const DWORD length = GetModuleFileNameW(
+        g_module,
+        module_path.data(),
+        static_cast<DWORD>(module_path.size()));
+    if (length == 0 || length >= module_path.size()) {
+        return {};
+    }
+
+    const std::filesystem::path module(module_path.data());
+    const std::filesystem::path directory = module.parent_path();
+    const auto is_known_architecture = [](const std::filesystem::path& component) noexcept {
+        return PathComponentEquals(component, L"x64")
+            || PathComponentEquals(component, L"x86")
+            || PathComponentEquals(component, L"Win32");
+    };
+
+    // Installed layout: <root>\tip\<architecture>\mo-tip.dll and
+    // <root>\bin\mo-broker.exe.
+    const std::filesystem::path tip_directory = directory.parent_path();
+    if (is_known_architecture(directory.filename())
+        && PathComponentEquals(tip_directory.filename(), L"tip")) {
+        return (tip_directory.parent_path() / L"bin" / L"mo-broker.exe").wstring();
+    }
+
+    // Repository-only layout used by the native probes. This exact component
+    // check prevents a shipping DLL from honoring an environment or cwd-based
+    // development override.
+    const std::filesystem::path msbuild_directory = directory.parent_path().parent_path();
+    const std::filesystem::path out_directory = msbuild_directory.parent_path();
+    const std::filesystem::path windows_tip_directory = out_directory.parent_path();
+    const std::filesystem::path native_directory = windows_tip_directory.parent_path();
+    if (is_known_architecture(directory.parent_path().filename())
+        && PathComponentEquals(directory.filename(), L"Release")
+        && PathComponentEquals(msbuild_directory.filename(), L"msbuild")
+        && PathComponentEquals(out_directory.filename(), L"out")
+        && PathComponentEquals(windows_tip_directory.filename(), L"windows-tip")
+        && PathComponentEquals(native_directory.filename(), L"native")) {
+        return (native_directory.parent_path() / L"target" / L"debug" / L"mo-broker.exe")
+            .wstring();
+    }
+    return {};
+}
 
 bool IsKeyDown(int virtual_key) noexcept {
     return (GetKeyState(virtual_key) & 0x8000) != 0;
@@ -94,7 +149,10 @@ class TextService final
       public ITfKeyEventSink,
       public ITfCompositionSink {
 public:
-    TextService() noexcept { InterlockedIncrement(&g_live_objects); }
+    explicit TextService(std::wstring expected_broker_path) noexcept
+        : broker_(std::move(expected_broker_path)) {
+        InterlockedIncrement(&g_live_objects);
+    }
 
     TextService(const TextService&) = delete;
     TextService& operator=(const TextService&) = delete;
@@ -721,7 +779,15 @@ public:
             return CLASS_E_NOAGGREGATION;
         }
 
-        auto* service = new (std::nothrow) TextService();
+        std::wstring expected_broker_path;
+        try {
+            expected_broker_path = ExpectedBrokerPath();
+        } catch (...) {
+            // An unrecognized or unrepresentable module location keeps the TIP
+            // loadable but makes Broker activation fail closed and key input
+            // fail open.
+        }
+        auto* service = new (std::nothrow) TextService(std::move(expected_broker_path));
         if (service == nullptr) {
             return E_OUTOFMEMORY;
         }
@@ -753,6 +819,7 @@ private:
 
 extern "C" BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, void*) noexcept {
     if (reason == DLL_PROCESS_ATTACH) {
+        g_module = module;
         DisableThreadLibraryCalls(module);
     }
     return TRUE;

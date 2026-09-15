@@ -7,7 +7,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 ## 已落地的基线
 
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。
-- 有大小上限、版本协商、严格 request id 和会话隔离的二进制 IPC 协议；Windows Named Pipe 已具备登录会话 DACL、拒绝远程客户端、首帧/半帧硬超时和客户端 SID 复核，且 Broker/Engine 可跨连续连接常驻，TCP 仅保留为诊断 spike。
+- 有大小上限、版本协商、严格 request id 和会话隔离的二进制 IPC 协议；Windows Named Pipe 已具备双向登录会话 SID 复核、TIP 侧 Broker PID/映像身份校验、拒绝远程客户端和首帧/半帧硬超时，且 Broker/Engine 可跨连续连接常驻，TCP 仅保留为诊断 spike。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 44 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
 - Mo 自主实现的极薄 C++ TSF/COM 壳，可编译为 x64/x86，并通过加载、类工厂、接口与卸载 probe。

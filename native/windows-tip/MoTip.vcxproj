@@ -38,7 +38,7 @@
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>$(ProjectDir)src\mo_tip.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>

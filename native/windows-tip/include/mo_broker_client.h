@@ -22,7 +22,7 @@ struct BrokerSnapshot final {
 // ambiguous I/O or protocol state.
 class BrokerClient final {
 public:
-    BrokerClient() noexcept = default;
+    explicit BrokerClient(std::wstring expected_broker_path) noexcept;
     ~BrokerClient() noexcept;
 
     BrokerClient(const BrokerClient&) = delete;
@@ -46,6 +46,7 @@ public:
 private:
     void Reset() noexcept;
 
+    std::wstring expected_broker_path_;
     HANDLE pipe_ = INVALID_HANDLE_VALUE;
     std::uint64_t generation_ = 0;
     std::uint64_t session_token_ = 0;
