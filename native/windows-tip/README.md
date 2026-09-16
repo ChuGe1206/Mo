@@ -57,8 +57,14 @@ clients cannot create another server instance. Each slot retains its original
 server handle across disconnects, avoiding a namespace rearm gap. The native
 pool probe holds all 16 clients, checks bounded failure of a 17th, frees and
 reuses a middle slot, and commits each original connection's own candidate page
-with fake and real rime-ice backends. The smoke owns and stops the persistent
-process explicitly. See ADR 0019 for capacity and remaining lifecycle limits.
+with fake and real rime-ice backends. It also runs three full-pool saturation,
+release and recovery cycles, checking fresh preedit and no replay of the prior
+word on the next Space. The server now uses overlapped connect/read/write;
+assembly and whole-response budgets are bounded, while ordinary idle waits
+remain open without millisecond polling. Flush does not wait for peer
+consumption. Cancellation is drained before freeing OVERLAPPED or buffers.
+The smoke owns and stops the persistent process explicitly. See ADR 0019/0020
+for capacity, timeout semantics and remaining engine/shutdown/fault limits.
 
 The optional registered-host probe deliberately separates privileges. From an
 elevated PowerShell, run `tools\machine-profile.ps1 -Action Register` once to

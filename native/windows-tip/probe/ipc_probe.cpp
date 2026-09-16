@@ -93,7 +93,47 @@ bool ProbePool(const wchar_t* expected_broker, bool real_rime) {
         }
         last_revision = selected.revision;
     }
-    std::wcout << L"16 live clients, bounded saturation, retained slot reuse and isolated candidate commits passed.\n";
+    for (auto& peer : peers) { peer->Close(500); }
+    replacement->Close(500);
+    // Refill every slot several times, not just the middle slot. Verify fresh
+    // compositions and exactly one commit after prior saturated connections.
+    for (std::size_t round = 0; round < 3; ++round) {
+        peers.clear();
+        for (std::size_t index = 0; index < count; ++index) {
+            auto peer = std::make_unique<mo::windows_tip::BrokerClient>(expected_broker);
+            if (!peer->ConnectAndOpen(2000)) { return false; }
+            mo::windows_tip::BrokerSnapshot snapshot;
+            const std::string input = real_rime ? "NIHAO" : "M";
+            bool first_key = true;
+            for (const unsigned char key : input) {
+                if (!peer->SendKey(key, 0, 0, true, false, &snapshot, 2000)) { return false; }
+                if (first_key && (snapshot.composition != (real_rime ? "n" : "m") || snapshot.commit.has_value())) {
+                    std::cerr << "Recovered session inherited preedit: " << snapshot.composition << '\n'; return false;
+                }
+                first_key = false;
+            }
+            if (snapshot.commit.has_value() || snapshot.revision <= last_revision
+                || snapshot.composition.empty()) {
+                std::wcerr << L"Recovered composition failed at round/client " << round << L'/' << index << L'\n'; return false;
+            }
+            if (!peer->SendKey(VK_SPACE, 0, 0, true, false, &snapshot, 2000)
+                || snapshot.commit != (real_rime ? u8"你好" : "m")
+                || !snapshot.composition.empty() || snapshot.revision <= last_revision) {
+                std::wcerr << L"Recovered commit failed at round/client " << round << L'/' << index << L'\n'; return false;
+            }
+            last_revision = snapshot.revision;
+            if (!peer->SendKey(VK_SPACE, 0, 0, true, false, &snapshot, 2000)
+                || snapshot.commit == (real_rime ? u8"你好" : "m")
+                || !snapshot.composition.empty() || snapshot.revision <= last_revision) {
+                std::wcerr << L"Recovered session replayed commit at round/client " << round << L'/' << index << L'\n'; return false;
+            }
+            last_revision = snapshot.revision;
+            peers.push_back(std::move(peer));
+        }
+        if (overflow.ConnectAndOpen(40) || overflow.connected()) { return false; }
+        for (auto& peer : peers) { peer->Close(500); }
+    }
+    std::wcout << L"16 live clients, bounded saturation, retained slot reuse, isolated candidate commits and three full-pool recovery cycles passed.\n";
     return true;
 }
 

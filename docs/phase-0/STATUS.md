@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 77 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 84 个运行时测试和 1 个 compile-fail 契约测试。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
@@ -48,6 +48,8 @@
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
 - Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
 - x64/Win32 fake 与真实 rime-ice 客户端均同时保持 16 路连接，第 17 路在设置的总时限内失败，释放中间槽后新会话成功接入；原连接分别以自己的候选页 revision 提交自己的词，不被其他连接推进全局 revision 干扰。Rust 测试另行验证静默首帧客户端不会阻塞另一槽、重复 live accept 被拒绝、断开期间名称/DACL 不变、次槽冲突导致整池绑定回滚，以及并发生成的 1024 个 generation 非零且无重复。就绪信号在引擎初始化及工作线程创建后发出；真实 smoke 的错误分支已改为终止 owned 子进程并有界读取日志。
+- 服务端 connect/read/write 已改为 overlapped I/O，固定槽/权限/唯一 Actor 不变。首帧整个解码共用 2 秒；已认证空闲连接用 pending 单字节 read 等待活动，随后完整 header/payload/短读共用 2 秒 assembly 时限，移除 1 ms Peek 轮询。完整编码回复的 header/payload/短写共用 2 秒；flush 不调用会等待对端读空的 FlushFileBuffers。超时按操作 CancelIoEx 并等待完成，歧义结果退出连接，不重发字节或引擎命令，见 ADR 0020。
+- 新增真实内核故障测试验证未读回复填满管道后写超时、pending read 取消排空后复用、零预算不提交字节、flush 在客户端尚未读取时返回、分片 payload 不续期及正常空闲不耗 assembly 预算。Broker/共享 Actor 测试对截断与 CRC 损坏的 Space 请求核对错误、每个旧 backend session 销毁、恢复后空预编辑起步与一次提交；两个坏 Space 均未进入引擎。x64/Win32 fake 与真实词库 probe 另行通过三轮整池满载/释放/重新连接，核对新会话与不重放旧词。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
@@ -58,7 +60,7 @@
 未通过：
 
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
-- 连接池真实多应用宿主/满载恢复矩阵、服务端 overlapped I/O、已认证连接空闲租约/完整逐请求 deadline、工作线程异常与协调停机；当前同步服务端有固定 16 槽容量，不能把受控并发通过视为不限连接的日常服务。发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环，以及 AppContainer/WinUI 连接测试仍未完成。
+- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、包含引擎执行/回收的完整逐请求 deadline、工作线程异常与协调停机；当前 overlapped 内核 I/O 仍在固定 16 个连接线程内等待，不是 IOCP 全异步调度。取消后正常完成有测试，但极端内核/驱动不完成时的进程 fail-stop 尚未注入。不能把受控并发通过视为不限连接的日常服务。发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环，以及 AppContainer/WinUI 连接测试仍未完成。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 

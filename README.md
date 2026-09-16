@@ -9,6 +9,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。
 - 有大小上限、版本协商、严格 request id 和会话隔离的二进制 IPC 协议；Windows Named Pipe 已具备双向登录会话 SID 复核、TIP 侧 Broker PID/映像身份校验、拒绝远程客户端和首帧/半帧硬超时，且 Broker/Engine 可跨连续连接常驻，TCP 仅保留为诊断 spike。
 - Broker 已接入 16 个独立受保护的连接槽，共享唯一 Engine Actor；每槽保留原始服务端 handle，断线复用不产生名称重建缺口，也不向客户端授予创建服务端实例的权限。x64/x86 fake 与真实词库探针已通过 16 路同时连接、满载限时返回、槽复用和跨连接候选隔离，见 ADR 0019。
+- 服务端 connect/read/write 使用 overlapped I/O，首帧、收到首字节后的整帧组装、完整回复各有独立时限；超时取消并等待内核完成后才释放存储，不重试歧义提交。flush 不等待客户端读空管道，正常空闲等待不再每毫秒轮询。非读客户端、分片超时、旧会话回收及三轮整池满载恢复已有测试，见 ADR 0020；引擎长操作与进程崩溃仍未验收。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 51 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。Actor 的当前页候选选择和前后翻页已用真实 rime-ice 验证。
 - 默认 release Broker 只接受无参数的固定安装布局，路径来自 Windows Known Folder API；`--fake`/调用者指定运行时仅在启用 debug assertions 的开发构建可用。发布版目录 ACL、签名资源和首次启动准备仍未验收。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。

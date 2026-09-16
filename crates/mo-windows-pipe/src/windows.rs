@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, c_void};
 use std::fmt;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Cursor, Read, Write};
 use std::mem::size_of;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, RawHandle};
@@ -12,8 +12,8 @@ use std::time::{Duration, Instant};
 
 use mo_ipc::{Frame, FrameError, read_frame};
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_INSUFFICIENT_BUFFER, ERROR_PIPE_CONNECTED, GetLastError, HANDLE,
-    INVALID_HANDLE_VALUE, LocalFree,
+    CloseHandle, ERROR_INSUFFICIENT_BUFFER, ERROR_IO_PENDING, ERROR_PIPE_CONNECTED, GetLastError,
+    HANDLE, INVALID_HANDLE_VALUE, LocalFree, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::Security::Authorization::{
     ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, GetSecurityInfo,
@@ -25,17 +25,19 @@ use windows_sys::Win32::Security::{
     RevertToSelf, SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, TOKEN_GROUPS, TOKEN_QUERY, TokenGroups,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_FIRST_PIPE_INSTANCE, OPEN_EXISTING,
-    PIPE_ACCESS_DUPLEX,
+    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED,
+    OPEN_EXISTING, PIPE_ACCESS_DUPLEX, ReadFile, WriteFile,
 };
+use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
 use windows_sys::Win32::System::Pipes::{
     ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, GetNamedPipeInfo,
     ImpersonateNamedPipeClient, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE,
-    PeekNamedPipe, WaitNamedPipeW,
+    WaitNamedPipeW,
 };
 use windows_sys::Win32::System::SystemServices::{ACCESS_ALLOWED_ACE_TYPE, SE_GROUP_LOGON_ID};
 use windows_sys::Win32::System::Threading::{
-    GetCurrentProcess, GetCurrentThread, OpenProcessToken, OpenThreadToken,
+    CreateEventW, GetCurrentProcess, GetCurrentThread, INFINITE, OpenProcessToken, OpenThreadToken,
+    WaitForSingleObject,
 };
 
 const PIPE_PREFIX: &str = r"\\.\pipe\LOCAL\Mo.Input.";
@@ -48,6 +50,8 @@ const ERROR_FILE_NOT_FOUND_CODE: i32 = 2;
 const ERROR_SEM_TIMEOUT_CODE: i32 = 121;
 const ERROR_PIPE_BUSY_CODE: i32 = 231;
 pub const MAX_PIPE_SLOTS: usize = 16;
+const STREAM_IO_TIMEOUT: Duration = Duration::from_secs(2);
+const CANCELLATION_DRAIN_MS: u32 = 1000;
 
 /// Deterministic bounded slot family. Slot zero preserves the legacy endpoint.
 pub fn pool_slot_address(base: &PipeAddress, slot: usize) -> io::Result<PipeAddress> {
@@ -180,14 +184,12 @@ impl PipeListener {
             .server
             .as_ref()
             .ok_or_else(|| io::Error::other("listener is not armed"))?;
-        let mut stream = AuthenticatedPipe {
+        let stream = AuthenticatedPipe {
             file: server.try_clone()?,
             _reuse_lease: Some(lease),
         };
         connect_server(&stream.file)?;
-        wait_for_complete_frame(&stream.file, timeout)?;
-        let frame = read_frame(&mut stream)
-            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+        let frame = read_server_frame(&stream.file, timeout)?;
         authenticate_client_logon_sid(&stream.file, &self.logon_sid)?;
         Ok((stream, frame))
     }
@@ -215,14 +217,12 @@ impl PipeListener {
                 "previous reusable stream is still active",
             ));
         }
-        let mut server = self
+        let server = self
             .server
             .take()
             .expect("listener owns its server instance");
         connect_server(&server)?;
-        wait_for_complete_frame(&server, first_frame_timeout)?;
-        let frame = read_frame(&mut server)
-            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+        let frame = read_server_frame(&server, first_frame_timeout)?;
         authenticate_client_logon_sid(&server, &self.logon_sid)?;
         Ok((
             AuthenticatedPipe {
@@ -301,7 +301,7 @@ impl Drop for ReuseLease {
 
 impl Read for AuthenticatedPipe {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        self.file.read(buffer)
+        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT).read(buffer)
     }
 }
 
@@ -309,22 +309,38 @@ impl AuthenticatedPipe {
     /// Reads one frame after bounding the time between its first available byte
     /// and complete assembly. An entirely idle connection is not expired.
     pub fn read_frame_after_activity(&mut self, assembly_timeout: Duration) -> io::Result<Frame> {
-        wait_for_complete_frame_after_activity(&self.file, assembly_timeout)?;
-        match read_frame(self) {
-            Ok(frame) => Ok(frame),
-            Err(FrameError::Io(error)) => Err(error),
-            Err(error) => Err(io::Error::new(io::ErrorKind::InvalidData, error)),
+        let mut first_byte = [0];
+        // Only the first byte may wait indefinitely on a normal idle client.
+        // No 1 ms polling loop. Once it arrives, header/payload/short reads all
+        // share one assembly deadline; decoder validation bounds allocation.
+        DeadlineIo {
+            file: &self.file,
+            deadline: None,
         }
+        .read_exact(&mut first_byte)?;
+        let mut reader =
+            Cursor::new(first_byte).chain(DeadlineIo::new(&self.file, assembly_timeout));
+        read_frame(&mut reader).map_err(frame_io_error)
+    }
+
+    /// The entire encoded reply (header and payload, including short writes)
+    /// shares one deadline. Completion is not an acknowledgement by the peer.
+    pub fn write_frame_with_timeout(&mut self, frame: &Frame, timeout: Duration) -> io::Result<()> {
+        mo_ipc::write_frame(&mut DeadlineIo::new(&self.file, timeout), frame)
+            .map_err(frame_io_error)
     }
 }
 
 impl Write for AuthenticatedPipe {
     fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        self.file.write(buffer)
+        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT).write(buffer)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.file.flush()
+        // FlushFileBuffers on a pipe waits for the client to read everything.
+        // Each overlapped write is already complete; MOIP handles responses,
+        // and flush must not add an unbounded peer-consumption wait.
+        Ok(())
     }
 }
 
@@ -364,7 +380,13 @@ impl PipeClient {
             if waited == 0 {
                 let error = io::Error::last_os_error();
                 match error.raw_os_error() {
-                    Some(ERROR_FILE_NOT_FOUND_CODE) if Instant::now() < deadline => {
+                    Some(ERROR_FILE_NOT_FOUND_CODE) => {
+                        if Instant::now() >= deadline {
+                            return Err(io::Error::new(
+                                io::ErrorKind::TimedOut,
+                                "timed out waiting for the named-pipe Broker",
+                            ));
+                        }
                         std::thread::sleep(Duration::from_millis(1));
                         continue;
                     }
@@ -398,8 +420,13 @@ impl PipeClient {
             if matches!(
                 error.raw_os_error(),
                 Some(ERROR_FILE_NOT_FOUND_CODE) | Some(ERROR_PIPE_BUSY_CODE)
-            ) && Instant::now() < deadline
-            {
+            ) {
+                if Instant::now() >= deadline {
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "timed out waiting for the named-pipe Broker",
+                    ));
+                }
                 std::thread::sleep(Duration::from_millis(1));
                 continue;
             }
@@ -487,7 +514,7 @@ fn create_server(address: &PipeAddress, security: &SecurityDescriptor) -> io::Re
         // self-relative; the returned handle is converted to a uniquely owned File.
         CreateNamedPipeW(
             address_wide.as_ptr(),
-            PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
             1,
             PIPE_BUFFER_BYTES,
@@ -500,9 +527,15 @@ fn create_server(address: &PipeAddress, security: &SecurityDescriptor) -> io::Re
 }
 
 fn connect_server(server: &File) -> io::Result<()> {
+    let event = io_event()?;
+    let mut overlapped = OVERLAPPED {
+        hEvent: event.0,
+        ..Default::default()
+    };
     let connected = unsafe {
-        // SAFETY: server owns a synchronous named-pipe server handle.
-        ConnectNamedPipe(raw_handle(server), null_mut())
+        // SAFETY: server is overlapped; the event and record remain live until
+        // the operation completes. Listening has no client-consumption wait.
+        ConnectNamedPipe(raw_handle(server), &mut overlapped)
     };
     if connected != 0 {
         return Ok(());
@@ -510,8 +543,170 @@ fn connect_server(server: &File) -> io::Result<()> {
     let error = unsafe { GetLastError() };
     if error == ERROR_PIPE_CONNECTED {
         Ok(())
+    } else if error == ERROR_IO_PENDING {
+        complete_pending(server, &mut overlapped, INFINITE).map(|_| ())
     } else {
         Err(io::Error::from_raw_os_error(error as i32))
+    }
+}
+
+/// One outstanding operation at a time, borrowing the handle and sharing a
+/// frame-level absolute deadline. The stack record and caller buffer are never
+/// released while Windows can still access them.
+struct DeadlineIo<'a> {
+    file: &'a File,
+    deadline: Option<Instant>,
+}
+
+impl<'a> DeadlineIo<'a> {
+    fn new(file: &'a File, timeout: Duration) -> Self {
+        Self {
+            file,
+            deadline: Some(
+                Instant::now()
+                    .checked_add(timeout)
+                    .unwrap_or_else(Instant::now),
+            ),
+        }
+    }
+
+    fn transfer(&mut self, buffer: *mut u8, len: usize, writing: bool) -> io::Result<usize> {
+        if len == 0 {
+            return Ok(0);
+        }
+        self.remaining_ms()?;
+        let event = io_event()?;
+        let mut overlapped = OVERLAPPED {
+            hEvent: event.0,
+            ..Default::default()
+        };
+        let length = u32::try_from(len).unwrap_or(u32::MAX);
+        let mut transferred = 0;
+        let started = unsafe {
+            // SAFETY: callers provide a valid readable/writable slice. This
+            // function waits for completion or drains cancellation before
+            // returning, retaining the borrowed buffer, event and OVERLAPPED.
+            if writing {
+                WriteFile(
+                    raw_handle(self.file),
+                    buffer.cast(),
+                    length,
+                    &mut transferred,
+                    &mut overlapped,
+                )
+            } else {
+                ReadFile(
+                    raw_handle(self.file),
+                    buffer.cast(),
+                    length,
+                    &mut transferred,
+                    &mut overlapped,
+                )
+            }
+        };
+        if started != 0 {
+            return Ok(transferred as usize);
+        }
+        let error = unsafe { GetLastError() };
+        if error != ERROR_IO_PENDING {
+            return Err(io::Error::from_raw_os_error(error as i32));
+        }
+        // Recompute after event allocation/submission; do not renew the budget
+        // for a pending operation or a short write.
+        let millis = self.remaining_ms().unwrap_or(0);
+        complete_pending(self.file, &mut overlapped, millis).map(|value| value as usize)
+    }
+
+    fn remaining_ms(&self) -> io::Result<u32> {
+        match self.deadline {
+            None => Ok(INFINITE),
+            Some(deadline) => {
+                let remaining = deadline
+                    .checked_duration_since(Instant::now())
+                    .filter(|value| !value.is_zero())
+                    .ok_or_else(|| {
+                        io::Error::new(io::ErrorKind::TimedOut, "pipe I/O deadline expired")
+                    })?;
+                Ok(u32::try_from(remaining.as_millis()).unwrap_or(INFINITE - 1))
+            }
+        }
+    }
+}
+
+impl Read for DeadlineIo<'_> {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.transfer(buffer.as_mut_ptr(), buffer.len(), false)
+    }
+}
+
+impl Write for DeadlineIo<'_> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        self.transfer(buffer.as_ptr().cast_mut(), buffer.len(), true)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+fn read_server_frame(file: &File, timeout: Duration) -> io::Result<Frame> {
+    read_frame(&mut DeadlineIo::new(file, timeout)).map_err(frame_io_error)
+}
+
+fn frame_io_error(error: FrameError) -> io::Error {
+    match error {
+        FrameError::Io(error) => error,
+        error => io::Error::new(io::ErrorKind::InvalidData, error),
+    }
+}
+
+fn io_event() -> io::Result<OwnedHandle> {
+    let event = unsafe {
+        // SAFETY: unnamed, manual-reset, initially nonsignaled owned event.
+        CreateEventW(null(), 1, 0, null())
+    };
+    if event.is_null() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(OwnedHandle(event))
+    }
+}
+
+fn complete_pending(file: &File, overlapped: &mut OVERLAPPED, timeout_ms: u32) -> io::Result<u32> {
+    let wait = unsafe {
+        // SAFETY: the event belongs to this live pending operation.
+        WaitForSingleObject(overlapped.hEvent, timeout_ms)
+    };
+    if wait != WAIT_OBJECT_0 {
+        let error = if wait == WAIT_TIMEOUT {
+            io::Error::new(io::ErrorKind::TimedOut, "pipe I/O operation timed out")
+        } else {
+            io::Error::last_os_error()
+        };
+        unsafe {
+            // SAFETY: cancel only this operation; cancellation does NOT itself
+            // mean completion. Keep all storage alive until the event signals.
+            CancelIoEx(raw_handle(file), overlapped);
+            if WaitForSingleObject(overlapped.hEvent, CANCELLATION_DRAIN_MS) != WAIT_OBJECT_0 {
+                // A kernel/driver failure must not produce use-after-free or an
+                // unbounded wait. Fail the broker process, not the host process.
+                std::process::abort();
+            }
+            let mut discarded = 0;
+            GetOverlappedResult(raw_handle(file), overlapped, &mut discarded, 0);
+        }
+        // Even if completion won the cancellation race, the expired request is
+        // ambiguous and must close; never retry its bytes or engine command.
+        return Err(error);
+    }
+    let mut transferred = 0;
+    let completed = unsafe {
+        // SAFETY: the signaled event proves the pending operation completed.
+        GetOverlappedResult(raw_handle(file), overlapped, &mut transferred, 0)
+    };
+    if completed == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(transferred)
     }
 }
 
@@ -588,87 +783,9 @@ fn audit_dacl(server: &File, expected_sid: &SidBytes) -> io::Result<bool> {
     } != 0)
 }
 
-fn wait_for_complete_frame(server: &File, timeout: Duration) -> io::Result<()> {
-    let deadline = Instant::now()
-        .checked_add(timeout)
-        .unwrap_or_else(Instant::now);
-    let mut header = [0_u8; mo_ipc::HEADER_LEN];
-
-    loop {
-        let (peeked, available) = peek_pipe(server, &mut header)?;
-        if peeked >= mo_ipc::HEADER_LEN {
-            let declared = u32::from_le_bytes(
-                header[16..20]
-                    .try_into()
-                    .expect("payload length has a fixed header position"),
-            ) as usize;
-            if declared > mo_ipc::MAX_PAYLOAD_LEN {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "declared payload length {declared} exceeds maximum {}",
-                        mo_ipc::MAX_PAYLOAD_LEN
-                    ),
-                ));
-            }
-            let frame_len = mo_ipc::HEADER_LEN + declared;
-            if available >= frame_len {
-                return Ok(());
-            }
-        }
-        if Instant::now() >= deadline {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "timed out waiting for the first complete IPC frame",
-            ));
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-}
-
-fn wait_for_complete_frame_after_activity(server: &File, timeout: Duration) -> io::Result<()> {
-    let mut deadline = None;
-    let mut header = [0_u8; mo_ipc::HEADER_LEN];
-
-    loop {
-        let (peeked, available) = peek_pipe(server, &mut header)?;
-        if available != 0 && deadline.is_none() {
-            deadline = Some(
-                Instant::now()
-                    .checked_add(timeout)
-                    .unwrap_or_else(Instant::now),
-            );
-        }
-        if peeked >= mo_ipc::HEADER_LEN {
-            let declared = u32::from_le_bytes(
-                header[16..20]
-                    .try_into()
-                    .expect("payload length has a fixed header position"),
-            ) as usize;
-            if declared > mo_ipc::MAX_PAYLOAD_LEN {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "declared payload length {declared} exceeds maximum {}",
-                        mo_ipc::MAX_PAYLOAD_LEN
-                    ),
-                ));
-            }
-            if available >= mo_ipc::HEADER_LEN + declared {
-                return Ok(());
-            }
-        }
-        if deadline.is_some_and(|value| Instant::now() >= value) {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "timed out assembling an IPC frame after receiving its first byte",
-            ));
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-}
-
+#[cfg(test)]
 fn peek_pipe(server: &File, header: &mut [u8; mo_ipc::HEADER_LEN]) -> io::Result<(usize, usize)> {
+    use windows_sys::Win32::System::Pipes::PeekNamedPipe;
     let mut bytes_read = 0_u32;
     let mut bytes_available = 0_u32;
     let result = unsafe {
@@ -965,6 +1082,238 @@ mod tests {
         drop(client);
         let mut next = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
         write_frame(&mut next, &first).unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn reply_flush_does_not_wait_for_peer_consumption() {
+        let address = test_address("nonblocking-flush");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (done, received) = std::sync::mpsc::sync_channel(1);
+        let (release, wait) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, request) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            stream
+                .write_frame_with_timeout(&request, Duration::from_millis(100))
+                .unwrap();
+            stream.flush().unwrap();
+            done.send(()).unwrap();
+            wait.recv_timeout(Duration::from_secs(2)).unwrap();
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        let request = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap();
+        write_frame(&mut client, &request).unwrap();
+        // Keep the client connected and deliberately do not read until flush
+        // has returned. FlushFileBuffers would deadlock this handshake.
+        received.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap(), request);
+        release.send(()).unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn unread_replies_timeout_and_retained_slot_accepts_a_fresh_client() {
+        let address = test_address("unread-reply");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (done, received) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            let reply = Frame::new(
+                CURRENT_VERSION,
+                MessageKind::Ping,
+                0,
+                0,
+                0,
+                1,
+                vec![b'x'; mo_ipc::MAX_PAYLOAD_LEN],
+            )
+            .unwrap();
+            let started = Instant::now();
+            let mut timed_out = false;
+            for _ in 0..16 {
+                match stream.write_frame_with_timeout(&reply, Duration::from_millis(30)) {
+                    Ok(()) => {}
+                    Err(error) => {
+                        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+                        timed_out = true;
+                        break;
+                    }
+                }
+            }
+            assert!(
+                timed_out,
+                "the test must actually fill the kernel pipe buffer"
+            );
+            assert!(started.elapsed() < Duration::from_secs(1));
+            drop(stream);
+            assert!(listener.has_expected_dacl().unwrap());
+            done.send(()).unwrap();
+            let (_, fresh) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            assert_eq!(fresh.header.request_id, 2);
+            assert!(fresh.payload.is_empty());
+        });
+        let mut unread = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        let hello = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap();
+        write_frame(&mut unread, &hello).unwrap();
+        received.recv_timeout(Duration::from_secs(2)).unwrap();
+        drop(unread);
+        let mut fresh = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        let hello = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 2, vec![]).unwrap();
+        write_frame(&mut fresh, &hello).unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn pending_read_cancellation_drains_before_handle_reuse() {
+        let address = test_address("cancel-read");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (done, received) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            let mut byte = [0];
+            let error = DeadlineIo::new(&stream.file, Duration::from_millis(20))
+                .read(&mut byte)
+                .unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+            drop(stream);
+            done.send(()).unwrap();
+            let (_, frame) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            assert_eq!(frame.header.request_id, 2);
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(
+            &mut client,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap(),
+        )
+        .unwrap();
+        received.recv_timeout(Duration::from_secs(2)).unwrap();
+        drop(client);
+        let mut fresh = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(
+            &mut fresh,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 2, vec![]).unwrap(),
+        )
+        .unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn activity_frame_deadline_is_not_renewed_by_payload_fragments() {
+        let address = test_address("drip-payload");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (ready, received) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            ready.send(()).unwrap();
+            let started = Instant::now();
+            let error = stream
+                .read_frame_after_activity(Duration::from_millis(40))
+                .unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+            assert!(started.elapsed() < Duration::from_secs(1));
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        let hello = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap();
+        write_frame(&mut client, &hello).unwrap();
+        received.recv_timeout(Duration::from_secs(2)).unwrap();
+        let next = Frame::new(
+            CURRENT_VERSION,
+            MessageKind::Ping,
+            0,
+            0,
+            0,
+            2,
+            vec![b'x'; 24],
+        )
+        .unwrap();
+        let mut bytes = Vec::new();
+        write_frame(&mut bytes, &next).unwrap();
+        client.write_all(&bytes[..mo_ipc::HEADER_LEN + 8]).unwrap();
+        thread::sleep(Duration::from_millis(20));
+        let _ = client.write_all(&bytes[mo_ipc::HEADER_LEN + 8..mo_ipc::HEADER_LEN + 16]);
+        thread::sleep(Duration::from_millis(60));
+        let _ = client.write_all(&bytes[mo_ipc::HEADER_LEN + 16..]);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn idle_wait_does_not_consume_the_next_frame_assembly_budget() {
+        let address = test_address("idle-activity");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (ready, received) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            ready.send(()).unwrap();
+            let next = stream
+                .read_frame_after_activity(Duration::from_millis(20))
+                .unwrap();
+            assert_eq!(next.header.request_id, 2);
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(
+            &mut client,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap(),
+        )
+        .unwrap();
+        received.recv_timeout(Duration::from_secs(2)).unwrap();
+        thread::sleep(Duration::from_millis(80));
+        write_frame(
+            &mut client,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 2, vec![]).unwrap(),
+        )
+        .unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn expired_frame_budget_does_not_write_any_bytes() {
+        let address = test_address("expired-write");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (done, received) = std::sync::mpsc::sync_channel(1);
+        let (release, wait) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, request) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            assert_eq!(
+                stream
+                    .write_frame_with_timeout(&request, Duration::ZERO)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::TimedOut
+            );
+            done.send(()).unwrap();
+            wait.recv_timeout(Duration::from_secs(2)).unwrap();
+            // A zero budget never submitted I/O. This explicit test can still
+            // send a complete reply; production drops any ambiguous failure.
+            stream
+                .write_frame_with_timeout(&request, Duration::from_secs(1))
+                .unwrap();
+            wait.recv_timeout(Duration::from_secs(2)).unwrap();
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        let request = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap();
+        write_frame(&mut client, &request).unwrap();
+        received.recv_timeout(Duration::from_secs(2)).unwrap();
+        let mut header = [0; mo_ipc::HEADER_LEN];
+        assert_eq!(peek_pipe(&client, &mut header).unwrap().1, 0);
+        release.send(()).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap(), request);
+        release.send(()).unwrap();
         server.join().unwrap();
     }
 
