@@ -190,3 +190,43 @@ fn hello_rejects_peer_limit_too_small_for_a_valid_snapshot() {
         Err(CodecError::InvalidValue(_))
     ));
 }
+#[test]
+fn candidate_actions_are_fixed_bounded_and_canonical() {
+    use mo_ipc::{CandidateAction, CandidateActionKind};
+    for action in [
+        CandidateActionKind::Select,
+        CandidateActionKind::PreviousPage,
+        CandidateActionKind::NextPage,
+    ] {
+        let value = CandidateAction {
+            expected_revision: 7,
+            action,
+            index: 0,
+        };
+        let payload = value.encode_payload().unwrap();
+        assert_eq!(payload.len(), 13);
+        assert_eq!(CandidateAction::decode_payload(&payload).unwrap(), value);
+        for length in 0..13 {
+            assert!(CandidateAction::decode_payload(&payload[..length]).is_err());
+        }
+        let mut extra = payload.clone();
+        extra.push(0);
+        assert!(CandidateAction::decode_payload(&extra).is_err());
+    }
+    let value = CandidateAction {
+        expected_revision: 7,
+        action: CandidateActionKind::Select,
+        index: 31,
+    };
+    let mut payload = value.encode_payload().unwrap();
+    payload[8] = 3;
+    assert!(CandidateAction::decode_payload(&payload).is_err());
+    payload[8] = 1;
+    assert!(CandidateAction::decode_payload(&payload).is_err());
+    payload[8] = 0;
+    payload[9..13].copy_from_slice(&32u32.to_le_bytes());
+    assert!(CandidateAction::decode_payload(&payload).is_err());
+    payload[9..13].copy_from_slice(&0u32.to_le_bytes());
+    payload[..8].fill(0);
+    assert!(CandidateAction::decode_payload(&payload).is_err());
+}

@@ -95,7 +95,7 @@ foreach ($platform in $platforms) {
     Invoke-BrokerProbe $platform $abiProbe @($tip, '--broker-input') 'TIP edit-session probe'
 }
 
-Write-Host "C++ $($platforms -join '/') clients completed framed I/O and TIP edit-session commits through the Rust Broker."
+Write-Host "C++ $($platforms -join '/') IPC and TIP candidate window, mouse paging/selection, layout, deferred cancellation and reconnect checks passed."
 
 if ($Registered) {
     $comOwned = $false

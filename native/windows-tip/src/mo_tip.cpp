@@ -13,6 +13,7 @@
 #include <wrl/client.h>
 
 #include "mo_broker_client.h"
+#include "mo_candidate_window.h"
 #include "mo_tip_ids.h"
 
 namespace {
@@ -147,7 +148,8 @@ bool Utf8ToUtf16(const std::string& input, std::wstring* output) noexcept {
 class TextService final
     : public ITfTextInputProcessorEx,
       public ITfKeyEventSink,
-      public ITfCompositionSink {
+      public ITfCompositionSink,
+      public ITfTextLayoutSink {
 public:
     explicit TextService(std::wstring expected_broker_path) noexcept
         : broker_(std::move(expected_broker_path)) {
@@ -178,6 +180,9 @@ public:
             *object = static_cast<ITfCompositionSink*>(this);
             AddRef();
             return S_OK;
+        }
+        if (IsEqualIID(interface_id, IID_ITfTextLayoutSink)) {
+            *object = static_cast<ITfTextLayoutSink*>(this); AddRef(); return S_OK;
         }
         return E_NOINTERFACE;
     }
@@ -232,11 +237,15 @@ public:
         // connection attempt is best-effort; key callbacks remain fail-open.
         if (!broker_.ConnectAndOpen(kBrokerActivationTimeoutMs)) {
             next_reconnect_tick_ = GetTickCount64() + kBrokerReconnectBackoffMs;
-        }
+        } else { broker_was_connected_ = true; }
         return S_OK;
     }
 
     STDMETHODIMP Deactivate() noexcept override {
+        has_focus_ = false;
+        cached_key_.valid = false;
+        candidate_window_.Destroy();
+        latest_revision_ = 0;
         CancelActiveComposition();
         HRESULT result = S_OK;
         if (keystroke_manager_ != nullptr) {
@@ -253,6 +262,7 @@ public:
         activation_flags_ = 0;
         has_focus_ = false;
         next_reconnect_tick_ = 0;
+        broker_was_connected_ = false;
         cached_key_.valid = false;
         return result;
     }
@@ -261,9 +271,12 @@ public:
         has_focus_ = foreground != FALSE;
         cached_key_.valid = false;
         if (!has_focus_) {
+            candidate_window_.Hide();
+            latest_revision_ = 0;
             CancelActiveComposition();
             broker_.Close(kBrokerActivationTimeoutMs);
         } else {
+            next_reconnect_tick_ = 0;
             EnsureBrokerConnected(kBrokerActivationTimeoutMs);
         }
         return S_OK;
@@ -315,14 +328,126 @@ public:
             return E_INVALIDARG;
         }
         if (composition_.Get() == composition) {
-            composition_.Reset();
-            active_range_.Reset();
-            composition_context_.Reset();
+            candidate_window_.Hide();
+            ResetCompositionState();
+            DisconnectBroker(kBrokerKeyTimeoutMs);
+        }
+        return S_OK;
+    }
+
+    STDMETHODIMP OnLayoutChange(ITfContext* context, TfLayoutCode code,
+        ITfContextView*) noexcept override {
+        if (context == nullptr) { return E_INVALIDARG; }
+        if (context != composition_context_.Get()) { return S_OK; }
+        candidate_window_.Hide();
+        has_candidate_anchor_ = false;
+        if (code == TF_LC_DESTROY) {
+            ResetCompositionState();
+            DisconnectBroker(kBrokerKeyTimeoutMs);
+        } else if (code == TF_LC_CHANGE) {
+            QueueCandidateLayout(context);
         }
         return S_OK;
     }
 
 private:
+    class CandidateLayoutEditSession final : public ITfEditSession {
+    public:
+        CandidateLayoutEditSession(TextService* owner, ITfContext* context, std::uint64_t request) noexcept
+            : owner_(owner), context_(context), revision_(owner->latest_revision_),
+              generation_(owner->broker_.generation()), token_(owner->broker_.session_token()), request_(request) {
+            owner_->AddRef(); context_->AddRef();
+        }
+        STDMETHODIMP QueryInterface(REFIID id, void** object) noexcept override {
+            if (object == nullptr) { return E_POINTER; }
+            *object = nullptr;
+            if (IsEqualIID(id, IID_IUnknown) || IsEqualIID(id, IID_ITfEditSession)) {
+                *object = static_cast<ITfEditSession*>(this); AddRef(); return S_OK;
+            }
+            return E_NOINTERFACE;
+        }
+        STDMETHODIMP_(ULONG) AddRef() noexcept override {
+            return static_cast<ULONG>(InterlockedIncrement(&references_));
+        }
+        STDMETHODIMP_(ULONG) Release() noexcept override {
+            const LONG count = InterlockedDecrement(&references_);
+            if (count == 0) { delete this; return 0; }
+            return static_cast<ULONG>(count);
+        }
+        STDMETHODIMP DoEditSession(TfEditCookie cookie) noexcept override {
+            if (owner_->pending_layout_request_ != request_) { return S_OK; }
+            owner_->pending_layout_request_ = 0;
+            if (owner_->has_focus_ && context_ == owner_->composition_context_.Get()
+                && revision_ == owner_->latest_revision_
+                && generation_ == owner_->broker_.generation() && token_ == owner_->broker_.session_token()
+                && owner_->display_snapshot_.has_value()) {
+                try {
+                    const auto snapshot = owner_->display_snapshot_.value();
+                    owner_->RefreshCandidateAnchor(context_, cookie, snapshot);
+                } catch (...) { owner_->candidate_window_.Hide(); }
+            } else if (owner_->has_focus_ && owner_->composition_context_ != nullptr
+                && owner_->display_snapshot_.has_value()) {
+                // A newer key/context superseded the queued read. Recompute
+                // against the current identity instead of reviving the old UI.
+                owner_->QueueCandidateLayout(owner_->composition_context_.Get());
+            }
+            return S_OK;
+        }
+    private:
+        ~CandidateLayoutEditSession() noexcept { context_->Release(); owner_->Release(); }
+        volatile LONG references_ = 1;
+        TextService* owner_;
+        ITfContext* context_;
+        std::uint64_t revision_;
+        std::uint64_t generation_;
+        std::uint64_t token_;
+        std::uint64_t request_;
+    };
+
+    // Mouse callbacks are not documented synchronous-write entry points.
+    // Queue an owned action, not an engine commit or a borrowed key snapshot.
+    // Revalidate identity and revision inside the edit lock before dispatch.
+    class CandidateEditSession final : public ITfEditSession {
+    public:
+        CandidateEditSession(TextService* owner, ITfContext* context,
+            std::uint64_t revision, mo::windows_tip::CandidateAction action,
+            std::uint32_t index) noexcept
+            : owner_(owner), context_(context), revision_(revision), action_(action), index_(index),
+              generation_(owner->broker_.generation()), token_(owner->broker_.session_token()) {
+            owner_->AddRef();
+            context_->AddRef();
+        }
+        STDMETHODIMP QueryInterface(REFIID id, void** object) noexcept override {
+            if (object == nullptr) { return E_POINTER; }
+            *object = nullptr;
+            if (IsEqualIID(id, IID_IUnknown) || IsEqualIID(id, IID_ITfEditSession)) {
+                *object = static_cast<ITfEditSession*>(this); AddRef(); return S_OK;
+            }
+            return E_NOINTERFACE;
+        }
+        STDMETHODIMP_(ULONG) AddRef() noexcept override {
+            return static_cast<ULONG>(InterlockedIncrement(&references_));
+        }
+        STDMETHODIMP_(ULONG) Release() noexcept override {
+            const LONG count = InterlockedDecrement(&references_);
+            if (count == 0) { delete this; return 0; }
+            return static_cast<ULONG>(count);
+        }
+        STDMETHODIMP DoEditSession(TfEditCookie cookie) noexcept override {
+            return owner_->ApplyCandidateAction(context_, cookie, generation_, token_, revision_, action_, index_);
+        }
+    private:
+        ~CandidateEditSession() noexcept { context_->Release(); owner_->Release(); }
+        volatile LONG references_ = 1;
+        TextService* owner_;
+        ITfContext* context_;
+        std::uint64_t revision_;
+        mo::windows_tip::CandidateAction action_;
+        std::uint32_t index_;
+        std::uint64_t generation_;
+        std::uint64_t token_;
+    };
+
     class SnapshotEditSession final : public ITfEditSession {
     public:
         SnapshotEditSession(
@@ -427,7 +552,8 @@ private:
         if (now < next_reconnect_tick_) {
             return false;
         }
-        if (broker_.ConnectAndOpen(timeout_ms)) {
+        if (broker_.ConnectAndOpen(timeout_ms, broker_was_connected_)) {
+            broker_was_connected_ = true;
             next_reconnect_tick_ = 0;
             return true;
         }
@@ -436,6 +562,10 @@ private:
     }
 
     void DisconnectBroker(DWORD timeout_ms) noexcept {
+        candidate_window_.Hide();
+        latest_revision_ = 0;
+        display_snapshot_.reset();
+        pending_layout_request_ = 0;
         broker_.Close(timeout_ms);
         next_reconnect_tick_ = GetTickCount64() + kBrokerReconnectBackoffMs;
     }
@@ -458,6 +588,12 @@ private:
         LPARAM key_data,
         bool key_down) noexcept {
         cached_key_.valid = false;
+        if (composition_context_ != nullptr && composition_context_.Get() != context) {
+            candidate_window_.Hide();
+            CancelActiveComposition();
+            broker_.Close(kBrokerKeyTimeoutMs);
+            latest_revision_ = 0;
+        }
         if (!has_focus_ || !EnsureBrokerConnected(kBrokerKeyTimeoutMs)) {
             return false;
         }
@@ -469,7 +605,17 @@ private:
                 IsRepeat(key_data),
                 &cached_key_.snapshot,
                 kBrokerKeyTimeoutMs)) {
+            DisconnectBroker(kBrokerKeyTimeoutMs);
             return false;
+        }
+        latest_revision_ = cached_key_.snapshot.revision;
+        StoreCandidateSnapshot(cached_key_.snapshot);
+        if (cached_key_.snapshot.handled) {
+            candidate_window_.Hide();
+        } else if (composition_context_.Get() == context && has_candidate_anchor_) {
+            // Unconsumed key-up/modifier events still carry a new authoritative
+            // page revision. Refresh without borrowing an expired edit cookie.
+            ShowCandidateWindow(cached_key_.snapshot);
         }
         cached_key_.context = context;
         cached_key_.virtual_key = virtual_key;
@@ -556,13 +702,150 @@ private:
             return E_INVALIDARG;
         }
 
+        HRESULT result;
         if (snapshot.commit.has_value()) {
-            return CommitText(context, edit_cookie, text, applied);
+            result = CommitText(context, edit_cookie, text, applied);
+            if (SUCCEEDED(result) && !snapshot.composition.empty()) {
+                // Some schemas commit one segment while retaining a new
+                // preedit. The committed prefix must not be lost or duplicated.
+                if (!Utf8ToUtf16(snapshot.composition, &text)) { return E_INVALIDARG; }
+                bool preedit_applied = false;
+                result = UpdateComposition(context, edit_cookie, text, &preedit_applied);
+            }
+        } else if (text.empty()) {
+            result = ClearComposition(context, edit_cookie, applied);
+        } else {
+            result = UpdateComposition(context, edit_cookie, text, applied);
         }
-        if (text.empty()) {
-            return ClearComposition(context, edit_cookie, applied);
+        if (SUCCEEDED(result)) {
+            StoreCandidateSnapshot(snapshot);
+            RefreshCandidateAnchor(context, edit_cookie, snapshot);
         }
-        return UpdateComposition(context, edit_cookie, text, applied);
+        else { candidate_window_.Hide(); }
+        return result;
+    }
+
+    void ShowCandidateWindow(const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
+        if (!has_focus_ || !has_candidate_anchor_
+            || (activation_flags_ & TF_TMAE_UIELEMENTENABLEDONLY) != 0
+            || !broker_.candidate_actions_supported()) {
+            candidate_window_.Hide();
+            return;
+        }
+        candidate_window_.Update(g_module, candidate_owner_, candidate_anchor_, snapshot,
+            CandidateActionCallback, this);
+    }
+
+    void StoreCandidateSnapshot(const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
+        try { display_snapshot_ = snapshot; }
+        catch (...) { display_snapshot_.reset(); candidate_window_.Hide(); }
+    }
+
+    void QueueCandidateLayout(ITfContext* context) noexcept {
+        if (pending_layout_request_ != 0 || !has_focus_ || !display_snapshot_.has_value()
+            || active_range_ == nullptr || layout_request_id_ == std::numeric_limits<std::uint64_t>::max()) { return; }
+        const auto request = ++layout_request_id_;
+        auto* session = new (std::nothrow) CandidateLayoutEditSession(this, context, request);
+        if (session == nullptr) { return; }
+        pending_layout_request_ = request;
+        HRESULT session_result = E_FAIL;
+        const HRESULT result = context->RequestEditSession(client_id_, session,
+            TF_ES_ASYNC | TF_ES_READ, &session_result);
+        session->Release();
+        if ((FAILED(result) || FAILED(session_result)) && pending_layout_request_ == request) {
+            pending_layout_request_ = 0;
+        }
+    }
+
+    void AdviseCandidateLayout(ITfContext* context) noexcept {
+        if (layout_source_ != nullptr) { return; }
+        ComPtr<ITfSource> source;
+        DWORD cookie = TF_INVALID_COOKIE;
+        if (SUCCEEDED(context->QueryInterface(IID_PPV_ARGS(source.GetAddressOf())))
+            && SUCCEEDED(source->AdviseSink(IID_ITfTextLayoutSink,
+                static_cast<ITfTextLayoutSink*>(this), &cookie))) {
+            layout_source_ = source;
+            layout_cookie_ = cookie;
+        }
+    }
+
+    void ResetCompositionState() noexcept {
+        composition_.Reset();
+        active_range_.Reset();
+        composition_context_.Reset();
+        has_candidate_anchor_ = false;
+        display_snapshot_.reset();
+        pending_layout_request_ = 0;
+        ComPtr<ITfSource> source = layout_source_;
+        const DWORD cookie = layout_cookie_;
+        layout_source_.Reset();
+        layout_cookie_ = TF_INVALID_COOKIE;
+        if (source != nullptr && cookie != TF_INVALID_COOKIE) { source->UnadviseSink(cookie); }
+    }
+
+    void RefreshCandidateAnchor(ITfContext* context, TfEditCookie cookie,
+        const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
+        has_candidate_anchor_ = false;
+        if (active_range_ == nullptr || composition_context_.Get() != context) {
+            candidate_window_.Hide(); return;
+        }
+        ComPtr<ITfContextView> view;
+        ComPtr<ITfRange> caret;
+        BOOL clipped = TRUE;
+        HWND owner = nullptr;
+        RECT anchor{};
+        if (FAILED(context->GetActiveView(view.GetAddressOf())) || view == nullptr
+            || FAILED(active_range_->Clone(caret.GetAddressOf()))
+            || FAILED(caret->Collapse(cookie, TF_ANCHOR_START))
+            || FAILED(view->GetTextExt(cookie, caret.Get(), &anchor, &clipped))
+            || clipped || anchor.bottom <= anchor.top || anchor.right < anchor.left
+            || FAILED(view->GetWnd(&owner)) || !IsWindow(owner)) {
+            candidate_window_.Hide(); return;
+        }
+        candidate_anchor_ = anchor;
+        candidate_owner_ = owner;
+        has_candidate_anchor_ = true;
+        ShowCandidateWindow(snapshot);
+    }
+
+    static void CandidateActionCallback(void* context, std::uint64_t revision,
+        mo::windows_tip::CandidateAction action, std::uint32_t index) noexcept {
+        auto* owner = static_cast<TextService*>(context);
+        owner->AddRef();
+        owner->QueueCandidateAction(revision, action, index);
+        owner->Release();
+    }
+
+    void QueueCandidateAction(std::uint64_t revision, mo::windows_tip::CandidateAction action,
+        std::uint32_t index) noexcept {
+        if (!has_focus_ || !broker_.connected() || revision != latest_revision_
+            || composition_context_ == nullptr || active_range_ == nullptr) { return; }
+        auto* session = new (std::nothrow) CandidateEditSession(this, composition_context_.Get(), revision, action, index);
+        if (session == nullptr) { return; }
+        candidate_window_.Hide();
+        HRESULT session_result = E_FAIL;
+        const HRESULT result = composition_context_->RequestEditSession(client_id_, session,
+            TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &session_result);
+        session->Release();
+        if (FAILED(result) || FAILED(session_result)) { DisconnectBroker(kBrokerKeyTimeoutMs); }
+    }
+
+    HRESULT ApplyCandidateAction(ITfContext* context, TfEditCookie cookie,
+        std::uint64_t generation, std::uint64_t token, std::uint64_t revision,
+        mo::windows_tip::CandidateAction action, std::uint32_t index) noexcept {
+        if (!has_focus_ || !broker_.connected() || generation != broker_.generation()
+            || token != broker_.session_token() || revision != latest_revision_
+            || composition_context_.Get() != context || active_range_ == nullptr) { return S_OK; }
+        cached_key_.valid = false;
+        mo::windows_tip::BrokerSnapshot snapshot;
+        if (!broker_.SendCandidateAction(revision, action, index, &snapshot, kBrokerKeyTimeoutMs)) {
+            DisconnectBroker(kBrokerKeyTimeoutMs); return E_FAIL;
+        }
+        latest_revision_ = snapshot.revision;
+        bool applied = false;
+        const HRESULT result = ApplySnapshot(context, cookie, snapshot, &applied);
+        if (FAILED(result)) { DisconnectBroker(kBrokerKeyTimeoutMs); }
+        return result;
     }
 
     HRESULT UpdateComposition(
@@ -580,9 +863,7 @@ private:
                 text.data(),
                 static_cast<LONG>(text.size()));
             if (FAILED(result)) {
-                composition_.Reset();
-                active_range_.Reset();
-                composition_context_.Reset();
+                ResetCompositionState();
             }
             *applied = SUCCEEDED(result);
             return result;
@@ -614,6 +895,7 @@ private:
         // stores without letting an already-handled key leak to the host.
         active_range_ = range;
         composition_context_ = context;
+        AdviseCandidateLayout(context);
         *applied = true;
 
         ComPtr<ITfComposition> composition;
@@ -657,9 +939,7 @@ private:
             text.data(),
             static_cast<LONG>(text.size()));
         if (FAILED(result)) {
-            composition_.Reset();
-            active_range_.Reset();
-            composition_context_.Reset();
+            ResetCompositionState();
             return result;
         }
         *applied = true;
@@ -679,9 +959,7 @@ private:
         }
         HRESULT result = active_range_->SetText(edit_cookie, 0, nullptr, 0);
         if (FAILED(result)) {
-            composition_.Reset();
-            active_range_.Reset();
-            composition_context_.Reset();
+            ResetCompositionState();
             return result;
         }
         *applied = true;
@@ -690,17 +968,15 @@ private:
 
     HRESULT EndOwnedComposition(TfEditCookie edit_cookie) noexcept {
         ComPtr<ITfComposition> ending = composition_;
-        composition_.Reset();
-        active_range_.Reset();
-        composition_context_.Reset();
+        ResetCompositionState();
         return ending != nullptr ? ending->EndComposition(edit_cookie) : S_OK;
     }
 
     void CancelActiveComposition() noexcept {
+        candidate_window_.Hide();
+        has_candidate_anchor_ = false;
         if (active_range_ == nullptr || composition_context_ == nullptr) {
-            composition_.Reset();
-            active_range_.Reset();
-            composition_context_.Reset();
+            ResetCompositionState();
             return;
         }
         auto* edit_session = new (std::nothrow)
@@ -714,9 +990,7 @@ private:
                 &session_result);
             edit_session->Release();
         }
-        composition_.Reset();
-        active_range_.Reset();
-        composition_context_.Reset();
+        ResetCompositionState();
     }
 
     volatile LONG reference_count_ = 1;
@@ -725,8 +999,19 @@ private:
     TfClientId client_id_ = TF_CLIENTID_NULL;
     DWORD activation_flags_ = 0;
     bool has_focus_ = false;
+    bool broker_was_connected_ = false;
     ULONGLONG next_reconnect_tick_ = 0;
     mo::windows_tip::BrokerClient broker_;
+    mo::windows_tip::CandidateWindow candidate_window_;
+    std::uint64_t latest_revision_ = 0;
+    RECT candidate_anchor_{};
+    HWND candidate_owner_ = nullptr;
+    bool has_candidate_anchor_ = false;
+    std::optional<mo::windows_tip::BrokerSnapshot> display_snapshot_;
+    ComPtr<ITfSource> layout_source_;
+    DWORD layout_cookie_ = TF_INVALID_COOKIE;
+    std::uint64_t layout_request_id_ = 0;
+    std::uint64_t pending_layout_request_ = 0;
     CachedKey cached_key_;
     ComPtr<ITfComposition> composition_;
     ComPtr<ITfRange> active_range_;

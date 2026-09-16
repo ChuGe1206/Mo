@@ -165,4 +165,4 @@ foreach ($platform in $platforms) {
     Invoke-RimeBrokerProbe $platform $abiProbe @($tip, '--broker-rime-ice') 'rime-ice TIP edit-session probe'
 }
 
-Write-Host "Real Actor candidate APIs and C++ $($platforms -join '/') IPC paging/numeric selection passed; TIP edit sessions committed nihao -> 你好."
+Write-Host "Real Actor APIs and C++ $($platforms -join '/') IPC actions passed; TIP candidate window/mouse/layout/deferred cancellation/reconnect committed nihao -> 你好."

@@ -38,18 +38,20 @@
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>$(ProjectDir)src\mo_tip.def</ModuleDefinitionFile>
-      <AdditionalDependencies>advapi32.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;gdi32.lib;ole32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\mo_broker_client.cpp" />
+    <ClCompile Include="src\mo_candidate_window.cpp" />
     <ClCompile Include="src\mo_tip.cpp" />
   </ItemGroup>
   <ItemGroup><None Include="src\mo_tip.def" /></ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\mo_broker_client.h" />
+    <ClInclude Include="include\mo_candidate_window.h" />
     <ClInclude Include="include\mo_tip_ids.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

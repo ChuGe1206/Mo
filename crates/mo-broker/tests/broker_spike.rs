@@ -468,3 +468,224 @@ fn named_pipe_broker_rearms_and_preserves_global_engine_order() {
     assert!(second_revision > first_revision);
     server.join().unwrap().unwrap();
 }
+fn candidate_hello(connection: &mut BrokerConnection) {
+    let payload = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features: FEATURE_KEY_EVENTS | mo_ipc::FEATURE_CANDIDATE_ACTIONS,
+        max_payload_len: MAX_PAYLOAD_LEN as u32,
+    }
+    .encode_payload()
+    .unwrap();
+    let ack = connection
+        .handle(frame(MessageKind::Hello, 0, 0, 1, payload))
+        .unwrap();
+    assert_eq!(HelloAck::decode_payload(&ack.payload).unwrap().features, 3);
+}
+
+fn candidate_key(
+    connection: &mut BrokerConnection,
+    token: u64,
+    id: u64,
+    key: u32,
+    down: bool,
+) -> Snapshot {
+    let payload = KeyEvent {
+        virtual_key: key,
+        scan_code: 0,
+        modifiers: 0,
+        key_down: down,
+        repeat: false,
+    }
+    .encode_payload()
+    .unwrap();
+    let response = connection
+        .handle(frame(
+            MessageKind::KeyEvent,
+            connection.connection_generation(),
+            token,
+            id,
+            payload,
+        ))
+        .unwrap();
+    Snapshot::decode_payload(&response.payload).unwrap()
+}
+
+fn candidate_request(
+    connection: &mut BrokerConnection,
+    token: u64,
+    id: u64,
+    revision: u64,
+    action: mo_ipc::CandidateActionKind,
+    index: u32,
+) -> Frame {
+    let payload = mo_ipc::CandidateAction {
+        expected_revision: revision,
+        action,
+        index,
+    }
+    .encode_payload()
+    .unwrap();
+    connection
+        .handle(frame(
+            MessageKind::CandidateAction,
+            connection.connection_generation(),
+            token,
+            id,
+            payload,
+        ))
+        .unwrap()
+}
+
+#[test]
+fn candidate_actions_require_negotiation_and_a_current_session_page() {
+    use mo_ipc::CandidateActionKind::Select;
+    let mut old = BrokerConnection::new(80);
+    hello(&mut old, 1);
+    let token = open(&mut old, 2);
+    let page = candidate_key(&mut old, token, 3, 0x4d, true);
+    let events = old.engine().backend().events().len();
+    let response = candidate_request(&mut old, token, 4, page.revision, Select, 0);
+    assert_eq!(error_code(response), mo_broker::ERROR_BAD_REQUEST);
+    assert_eq!(old.engine().backend().events().len(), events);
+
+    let mut connection = BrokerConnection::new(81);
+    candidate_hello(&mut connection);
+    let token = open(&mut connection, 2);
+    let response = candidate_request(&mut connection, token, 3, 1, Select, 0);
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+    let page = candidate_key(&mut connection, token, 4, 0x4d, true);
+    let other = open(&mut connection, 5);
+    let events = connection.engine().backend().events().len();
+    let response = candidate_request(&mut connection, other, 6, page.revision, Select, 0);
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+    let response = candidate_request(&mut connection, 999, 7, page.revision, Select, 0);
+    assert_eq!(error_code(response), ERROR_NO_SUCH_SESSION);
+    let response = candidate_request(&mut connection, token, 8, page.revision, Select, 2);
+    assert_eq!(error_code(response), mo_broker::ERROR_BAD_REQUEST);
+    assert_eq!(connection.engine().backend().events().len(), events);
+}
+
+#[test]
+fn candidate_actions_page_select_and_reject_replays_before_backend_dispatch() {
+    use mo_ipc::CandidateActionKind::{NextPage, PreviousPage, Select};
+    let mut connection = BrokerConnection::new(82);
+    candidate_hello(&mut connection);
+    let token = open(&mut connection, 2);
+    let first = candidate_key(&mut connection, token, 3, 0x4d, true);
+    let response = candidate_request(&mut connection, token, 4, first.revision, NextPage, 0);
+    let next = Snapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(next.candidates, vec!["m#2", "M#2"]);
+    assert!(next.commit.is_none());
+    let events = connection.engine().backend().events().len();
+    let response = candidate_request(&mut connection, token, 5, first.revision, Select, 1);
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+    assert_eq!(connection.engine().backend().events().len(), events);
+    let response = candidate_request(&mut connection, token, 6, next.revision, PreviousPage, 0);
+    let previous = Snapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(previous.candidates, first.candidates);
+    let response = candidate_request(&mut connection, token, 7, previous.revision, Select, 1);
+    let selected = Snapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(selected.commit.as_deref(), Some("M"));
+    assert!(selected.composition.is_empty());
+    let events = connection.engine().backend().events().len();
+    let response = candidate_request(&mut connection, token, 8, selected.revision, Select, 0);
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+    assert_eq!(connection.engine().backend().events().len(), events);
+}
+
+#[test]
+fn even_unhandled_key_up_invalidates_the_previous_candidate_revision() {
+    use mo_ipc::CandidateActionKind::Select;
+    let mut connection = BrokerConnection::new(83);
+    candidate_hello(&mut connection);
+    let token = open(&mut connection, 2);
+    let first = candidate_key(&mut connection, token, 3, 0x4d, true);
+    let release = candidate_key(&mut connection, token, 4, 0x4d, false);
+    assert!(!release.handled);
+    assert_eq!(release.candidates, first.candidates);
+    let response = candidate_request(&mut connection, token, 5, first.revision, Select, 1);
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+    let response = candidate_request(&mut connection, token, 6, release.revision, Select, 1);
+    assert_eq!(
+        Snapshot::decode_payload(&response.payload)
+            .unwrap()
+            .commit
+            .as_deref(),
+        Some("M")
+    );
+}
+#[derive(Default)]
+struct FailCandidateBackend(mo_engine::FakeBackend);
+
+impl EngineBackend for FailCandidateBackend {
+    type Session = <mo_engine::FakeBackend as EngineBackend>::Session;
+    type Error = &'static str;
+    fn create_session(&mut self, options: SessionOptions) -> Result<Self::Session, Self::Error> {
+        self.0.create_session(options).map_err(|_| "create")
+    }
+    fn apply(
+        &mut self,
+        session: &mut Self::Session,
+        command: &EngineCommand,
+    ) -> Result<EngineOutput, Self::Error> {
+        if matches!(command, EngineCommand::SelectCandidate { .. }) {
+            return Err("candidate failure");
+        }
+        self.0.apply(session, command).map_err(|_| "apply")
+    }
+}
+
+#[test]
+fn a_backend_failure_revokes_the_previous_candidate_page() {
+    use mo_ipc::{CandidateAction, CandidateActionKind, FEATURE_CANDIDATE_ACTIONS};
+    let mut connection = BrokerConnection::with_backend(84, FailCandidateBackend::default());
+    let payload = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features: FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_ACTIONS,
+        max_payload_len: MAX_PAYLOAD_LEN as u32,
+    }
+    .encode_payload()
+    .unwrap();
+    connection
+        .handle(frame(MessageKind::Hello, 0, 0, 1, payload))
+        .unwrap();
+    let token = open(&mut connection, 2);
+    let key = KeyEvent {
+        virtual_key: 0x4d,
+        scan_code: 0,
+        modifiers: 0,
+        key_down: true,
+        repeat: false,
+    };
+    let response = connection
+        .handle(frame(
+            MessageKind::KeyEvent,
+            84,
+            token,
+            3,
+            key.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    let page = Snapshot::decode_payload(&response.payload).unwrap();
+    let payload = CandidateAction {
+        expected_revision: page.revision,
+        action: CandidateActionKind::Select,
+        index: 0,
+    }
+    .encode_payload()
+    .unwrap();
+    let response = connection
+        .handle(frame(
+            MessageKind::CandidateAction,
+            84,
+            token,
+            4,
+            payload.clone(),
+        ))
+        .unwrap();
+    assert_eq!(error_code(response), ERROR_ENGINE_FAILURE);
+    let response = connection
+        .handle(frame(MessageKind::CandidateAction, 84, token, 5, payload))
+        .unwrap();
+    assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
+}

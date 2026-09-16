@@ -2,7 +2,7 @@
 
 This directory contains a Mo-owned, C++17 COM/TSF ABI shell. It implements
 `IClassFactory`, `ITfTextInputProcessorEx`, `ITfKeyEventSink`, and
-`ITfCompositionSink`, including symmetric key advise/unadvise and host-owned
+`ITfCompositionSink`, and `ITfTextLayoutSink`, including symmetric advise/unadvise and host-owned
 composition termination. It also contains a small native Broker client that
 uses the versioned MOIP protocol over the protected Windows Named Pipe. TIP
 activation performs a 400 ms best-effort handshake and opens an isolated Broker
@@ -12,15 +12,36 @@ apply owned Broker snapshots through synchronous read/write edit sessions.
 Missing or failed Broker connections use a bounded, throttled retry and fail
 open.
 
+The first candidate view is a separate Mo-owned Win32/GDI presentation module:
+vertical display ordinals, mouse paging/selection, owner DPI scaling and monitor
+work-area placement. It does not own a language engine or candidate ordering.
+The popup uses NOACTIVATE/TOOLWINDOW and MA_NOACTIVATE. UI-element-only hosts do
+not receive this self-drawn window. CandidateAction is an additive feature-gated
+IPC 1.0 request; old peers keep the unchanged key/Snapshot layout. UI actions
+require an exact current session/page revision and an in-page ordinal.
+
+Mouse callbacks queue an owned action with ASYNCDONTCARE/READWRITE and dispatch
+only inside the edit lock after revalidating context, focus, generation, token
+and revision. New keys or lost focus cancel stale queued actions without an
+engine commit. Layout notifications hide the stale view and request an
+identity-checked asynchronous read lock to query the caret again. Zero-width
+caret rectangles remain valid; unavailable, hidden or clipped layouts hide the
+popup. A previously authenticated Broker can be retried across its short
+endpoint-rearm gap within the original hard deadline. Initial Broker absence
+still returns immediately.
+
 `build-probe.ps1` builds x64 and Win32 variants and loads each DLL into a probe
 of matching bitness. The probe checks exports, class creation, the
 `ITfTextInputProcessorEx`/`ITfKeyEventSink` interfaces, deterministic sink
 lifecycle against a controlled manager, fail-open key behavior, and unload
 accounting. Its Broker mode supplies a deterministic `ITextStoreACP` backed by
 a real Windows EDIT control and verifies preedit/commit writes through TSF
-ranges for both fake and rime-ice inputs. Two consecutive composition/commit
-cycles verify that termination leaves no stale range. It never registers or
-enables the TIP.
+ranges for both fake and rime-ice inputs. Its controlled Broker mode now checks
+keyboard commit, candidate popup visibility/nonactivation, mouse paging and
+selection, unhandled key-up revision refresh, stale mouse presses, moved text
+layout, forced deferred-lock cancellation by newer keys and lost focus, then
+reconnection and a third commit. Final EDIT and TSF context text must both
+match. This mode never registers or enables the TIP.
 
 `tools/tip-broker-smoke.ps1` starts the x64 Rust Broker and exercises the x64
 and Win32 native clients through a real
@@ -31,8 +52,9 @@ verifies that the test/key callback pair commits exactly once through an edit
 session for both x64 and Win32. The production Broker now remains alive across
 successive client connections and keeps its thread-affine engine on one
 dedicated thread; the smoke owns and stops that persistent process explicitly.
-Concurrent long-lived pipe instances remain gated on TIP-side Broker identity
-verification so the protected DACL is not weakened.
+Concurrent long-lived pipe instances remain unimplemented; TIP-side Broker
+PID/logon/image identity is now verified before Hello, but the protected DACL
+has not been weakened to support multiple instances.
 
 The optional registered-host probe deliberately separates privileges. From an
 elevated PowerShell, run `tools\machine-profile.ps1 -Action Register` once to
@@ -56,8 +78,9 @@ registers or enables Mo. The production installer transaction and current-user
 finalization remain separate work.
 
 Still unverified: sink activation by a registered TSF host, formal composition
-behavior across the real Notepad/WinUI host matrix, candidate UI, AppContainer
+behavior and candidate UI across the real Notepad/WinUI host matrix, mixed DPI,
+TSF UIElement cooperation, candidate metadata, AppContainer
 hosts, secure desktop behavior, signing, upgrade, repair, and uninstall. The
 controlled text store proves the callback/cache/edit-session mechanics but is
-not a substitute for registered end-to-end host testing. Broker identity is
-still not authenticated back to the TIP client.
+not a substitute for registered end-to-end host testing. See ADR 0018 for the
+first native view's staged Rust-first boundary and remaining release gates.

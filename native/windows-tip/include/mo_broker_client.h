@@ -9,6 +9,12 @@
 
 namespace mo::windows_tip {
 
+enum class CandidateAction : std::uint8_t {
+    Select = 0,
+    PreviousPage = 1,
+    NextPage = 2,
+};
+
 struct BrokerSnapshot final {
     std::uint64_t revision = 0;
     bool handled = false;
@@ -28,7 +34,7 @@ public:
     BrokerClient(const BrokerClient&) = delete;
     BrokerClient& operator=(const BrokerClient&) = delete;
 
-    bool ConnectAndOpen(DWORD timeout_ms) noexcept;
+    bool ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint = false) noexcept;
     bool SendKey(
         UINT virtual_key,
         UINT scan_code,
@@ -38,6 +44,13 @@ public:
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
     void Close(DWORD timeout_ms) noexcept;
+    bool SendCandidateAction(
+        std::uint64_t expected_revision,
+        CandidateAction action,
+        std::uint32_t index,
+        BrokerSnapshot* snapshot,
+        DWORD timeout_ms) noexcept;
+    bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
 
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }
     std::uint64_t generation() const noexcept { return generation_; }
@@ -51,6 +64,7 @@ private:
     std::uint64_t generation_ = 0;
     std::uint64_t session_token_ = 0;
     std::uint64_t next_request_id_ = 1;
+    bool candidate_actions_supported_ = false;
 };
 
 }  // namespace mo::windows_tip

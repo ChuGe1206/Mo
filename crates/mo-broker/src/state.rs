@@ -6,9 +6,10 @@ use mo_domain::{
 };
 use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
-    CURRENT_VERSION, ErrorMessage, FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame,
-    FrameError, Hello, HelloAck, KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind,
-    PayloadCodec, ProtocolVersion, Snapshot, VersionRange, negotiate_version,
+    CURRENT_VERSION, CandidateAction, CandidateActionKind, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
+    FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck,
+    KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, ProtocolVersion,
+    Snapshot, VersionRange, negotiate_version,
 };
 
 use crate::engine_service::EngineClient;
@@ -20,6 +21,7 @@ pub const ERROR_OUT_OF_ORDER: u32 = 4;
 pub const ERROR_NO_SUCH_SESSION: u32 = 5;
 pub const ERROR_SESSION_LIMIT: u32 = 6;
 pub const ERROR_ENGINE_FAILURE: u32 = 7;
+pub const ERROR_STALE_CANDIDATES: u32 = 8;
 
 const MAX_SESSIONS_PER_CONNECTION: usize = 64;
 
@@ -37,10 +39,17 @@ where
 {
     connection_generation: u64,
     negotiated: Option<ProtocolVersion>,
+    negotiated_features: u64,
     last_request_id: u64,
     next_session_token: u64,
-    sessions: BTreeMap<u64, SessionToken>,
+    sessions: BTreeMap<u64, WireSession>,
     engine: EngineOwner<B>,
+}
+
+struct WireSession {
+    engine_token: SessionToken,
+    /// Only successfully encoded pages authorize a subsequent UI action.
+    page: Option<(u64, usize)>,
 }
 
 enum EngineOwner<B>
@@ -112,6 +121,7 @@ where
         Self {
             connection_generation: connection_generation.max(1),
             negotiated: None,
+            negotiated_features: 0,
             last_request_id: 0,
             next_session_token: 1,
             sessions: BTreeMap::new(),
@@ -123,6 +133,7 @@ where
         Self {
             connection_generation: connection_generation.max(1),
             negotiated: None,
+            negotiated_features: 0,
             last_request_id: 0,
             next_session_token: 1,
             sessions: BTreeMap::new(),
@@ -179,6 +190,7 @@ where
         match request.header.kind {
             MessageKind::OpenSession => self.open_session(request),
             MessageKind::KeyEvent => self.key_event(request),
+            MessageKind::CandidateAction => self.candidate_action(request),
             MessageKind::CloseSession => self.close_session(request),
             MessageKind::Ping => self.pong(request),
             _ => self.error(
@@ -217,10 +229,12 @@ where
             );
         };
         self.negotiated = Some(selected);
+        self.negotiated_features =
+            hello.features & (FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_ACTIONS);
 
         let ack = HelloAck {
             selected,
-            features: hello.features & FEATURE_KEY_EVENTS,
+            features: self.negotiated_features,
             max_payload_len: hello
                 .max_payload_len
                 .min(u32::try_from(MAX_PAYLOAD_LEN).expect("hard limit fits u32")),
@@ -261,7 +275,13 @@ where
             }
         };
         let token = self.allocate_session_token();
-        self.sessions.insert(token, engine_token);
+        self.sessions.insert(
+            token,
+            WireSession {
+                engine_token,
+                page: None,
+            },
+        );
         self.response(
             self.selected_version(),
             MessageKind::OpenSessionAck,
@@ -273,29 +293,106 @@ where
 
     fn key_event(&mut self, request: Frame) -> Result<Frame, BrokerError> {
         let token = request.header.session_token;
-        let Some(&engine_token) = self.sessions.get(&token) else {
+        let Some(session) = self.sessions.get(&token) else {
             return self.error(
                 &request,
                 ERROR_NO_SUCH_SESSION,
                 "session token does not belong to this connection",
             );
         };
+        let engine_token = session.engine_token;
         let event = match WireKeyEvent::decode_payload(&request.payload) {
             Ok(event) => event,
             Err(_) => {
                 return self.error(&request, ERROR_BAD_REQUEST, "KeyEvent payload is malformed");
             }
         };
-        let engine_snapshot = match self
-            .engine
-            .dispatch(engine_token, EngineCommand::Key(normalize_key_event(event)))
-        {
-            Ok(snapshot) => snapshot,
+        self.dispatch_snapshot(
+            &request,
+            engine_token,
+            EngineCommand::Key(normalize_key_event(event)),
+        )
+    }
+
+    fn candidate_action(&mut self, request: Frame) -> Result<Frame, BrokerError> {
+        if self.negotiated_features & FEATURE_CANDIDATE_ACTIONS == 0 {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "candidate actions were not negotiated",
+            );
+        }
+        let Some(session) = self.sessions.get(&request.header.session_token) else {
+            return self.error(
+                &request,
+                ERROR_NO_SUCH_SESSION,
+                "session token does not belong to this connection",
+            );
+        };
+        let action = match CandidateAction::decode_payload(&request.payload) {
+            Ok(action) => action,
             Err(_) => {
                 return self.error(
                     &request,
+                    ERROR_BAD_REQUEST,
+                    "CandidateAction payload is malformed",
+                );
+            }
+        };
+        let Some((revision, count)) = session.page else {
+            return self.error(
+                &request,
+                ERROR_STALE_CANDIDATES,
+                "no displayed candidate page is current",
+            );
+        };
+        if action.expected_revision != revision {
+            return self.error(
+                &request,
+                ERROR_STALE_CANDIDATES,
+                "displayed candidate revision is stale",
+            );
+        }
+        let command = match action.action {
+            CandidateActionKind::Select => {
+                if action.index as usize >= count {
+                    return self.error(
+                        &request,
+                        ERROR_BAD_REQUEST,
+                        "candidate ordinal is outside the displayed page",
+                    );
+                }
+                EngineCommand::SelectCandidate {
+                    index: action.index,
+                }
+            }
+            CandidateActionKind::PreviousPage => EngineCommand::ChangePage { backward: true },
+            CandidateActionKind::NextPage => EngineCommand::ChangePage { backward: false },
+        };
+        let engine_token = session.engine_token;
+        self.dispatch_snapshot(&request, engine_token, command)
+    }
+
+    fn dispatch_snapshot(
+        &mut self,
+        request: &Frame,
+        engine_token: SessionToken,
+        command: EngineCommand,
+    ) -> Result<Frame, BrokerError> {
+        let token = request.header.session_token;
+        // A backend error may follow a native state change. Never authorize an
+        // old UI page after an attempted command, even when encoding fails.
+        self.sessions
+            .get_mut(&token)
+            .expect("validated session")
+            .page = None;
+        let engine_snapshot = match self.engine.dispatch(engine_token, command) {
+            Ok(snapshot) => snapshot,
+            Err(_) => {
+                return self.error(
+                    request,
                     ERROR_ENGINE_FAILURE,
-                    "engine rejected the key event",
+                    "engine rejected the input command",
                 );
             }
         };
@@ -313,12 +410,19 @@ where
                 .map(|candidate| candidate.text)
                 .collect(),
         };
+        let payload = snapshot.encode_payload()?;
+        if !snapshot.composition.is_empty() && !snapshot.candidates.is_empty() {
+            self.sessions
+                .get_mut(&token)
+                .expect("validated session")
+                .page = Some((snapshot.revision, snapshot.candidates.len()));
+        }
         self.response(
             self.selected_version(),
             MessageKind::Snapshot,
             token,
             request.header.request_id,
-            snapshot.encode_payload()?,
+            payload,
         )
     }
 
@@ -331,14 +435,14 @@ where
             );
         }
         let token = request.header.session_token;
-        let Some(engine_token) = self.sessions.remove(&token) else {
+        let Some(session) = self.sessions.remove(&token) else {
             return self.error(
                 &request,
                 ERROR_NO_SUCH_SESSION,
                 "session token does not belong to this connection",
             );
         };
-        if self.engine.destroy_session(engine_token).is_err() {
+        if self.engine.destroy_session(session.engine_token).is_err() {
             return self.error(
                 &request,
                 ERROR_ENGINE_FAILURE,
@@ -432,8 +536,8 @@ where
     B: EngineBackend,
 {
     fn drop(&mut self) {
-        for token in std::mem::take(&mut self.sessions).into_values() {
-            let _ = self.engine.destroy_session(token);
+        for session in std::mem::take(&mut self.sessions).into_values() {
+            let _ = self.engine.destroy_session(session.engine_token);
         }
     }
 }

@@ -30,6 +30,7 @@ constexpr std::uint16_t kProtocolMinor = 0;
 constexpr std::uint32_t kResponseFlag = 1U;
 constexpr std::uint32_t kErrorFlag = 2U;
 constexpr std::uint64_t kKeyEventsFeature = 1ULL;
+constexpr std::uint64_t kCandidateActionsFeature = 2ULL;
 constexpr DWORD kClientPipeAccess = 0x0012019bUL;
 constexpr std::size_t kMaximumWindowsPathLength = 32768;
 
@@ -60,6 +61,7 @@ enum class MessageKind : std::uint16_t {
     Snapshot = 6,
     CloseSession = 7,
     CloseSessionAck = 8,
+    CandidateAction = 12,
 };
 
 struct Frame final {
@@ -419,7 +421,8 @@ bool IsExpectedBrokerServer(HANDLE pipe, const std::wstring& expected_path) {
 
 HANDLE ConnectPipe(
     const std::wstring& expected_broker_path,
-    ULONGLONG deadline) noexcept {
+    ULONGLONG deadline,
+    bool retry_missing_endpoint) noexcept {
     for (;;) {
         const HANDLE pipe = CreateFileW(
             kPipeName,
@@ -456,7 +459,11 @@ HANDLE ConnectPipe(
             // The installed Broker is long-lived. If its endpoint does not
             // exist, return immediately so TIP activation stays fail-open;
             // the caller owns throttled reconnect attempts.
-            return INVALID_HANDLE_VALUE;
+            if (!retry_missing_endpoint) { return INVALID_HANDLE_VALUE; }
+            // A previously authenticated Broker can be between protected pipe
+            // instances. Retry this short gap inside the same hard deadline;
+            // every newly opened handle still undergoes server authentication.
+            Sleep(std::min<DWORD>(remaining, 5));
         } else {
             return INVALID_HANDLE_VALUE;
         }
@@ -607,11 +614,11 @@ BrokerClient::~BrokerClient() noexcept {
     Close(20);
 }
 
-bool BrokerClient::ConnectAndOpen(DWORD timeout_ms) noexcept {
+bool BrokerClient::ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint) noexcept {
     try {
         Reset();
         const ULONGLONG deadline = DeadlineFromNow(timeout_ms);
-        pipe_ = ConnectPipe(expected_broker_path_, deadline);
+        pipe_ = ConnectPipe(expected_broker_path_, deadline, retry_missing_endpoint);
         if (pipe_ == INVALID_HANDLE_VALUE) {
             return false;
         }
@@ -623,7 +630,7 @@ bool BrokerClient::ConnectAndOpen(DWORD timeout_ms) noexcept {
         AppendU16(&hello.payload, kProtocolMinor);
         AppendU16(&hello.payload, kProtocolMajor);
         AppendU16(&hello.payload, kProtocolMinor);
-        AppendU64(&hello.payload, kKeyEventsFeature);
+        AppendU64(&hello.payload, kKeyEventsFeature | kCandidateActionsFeature);
         AppendU32(&hello.payload, static_cast<std::uint32_t>(kMaximumPayloadLength));
 
         Frame hello_ack;
@@ -640,6 +647,8 @@ bool BrokerClient::ConnectAndOpen(DWORD timeout_ms) noexcept {
             return false;
         }
         generation_ = hello_ack.generation;
+        candidate_actions_supported_ =
+            (GetU64(hello_ack.payload.data() + 4) & kCandidateActionsFeature) != 0;
 
         Frame open;
         open.kind = MessageKind::OpenSession;
@@ -703,6 +712,43 @@ bool BrokerClient::SendKey(
     }
 }
 
+bool BrokerClient::SendCandidateAction(
+    std::uint64_t expected_revision,
+    CandidateAction action,
+    std::uint32_t index,
+    BrokerSnapshot* snapshot,
+    DWORD timeout_ms) noexcept {
+    if (!connected() || !candidate_actions_supported_ || snapshot == nullptr
+        || expected_revision == 0
+        || (action == CandidateAction::Select ? index >= 32 : index != 0)
+        || static_cast<std::uint8_t>(action) > 2) {
+        return false;
+    }
+    try {
+        Frame request;
+        request.kind = MessageKind::CandidateAction;
+        request.generation = generation_;
+        request.session_token = session_token_;
+        request.request_id = next_request_id_++;
+        AppendU64(&request.payload, expected_revision);
+        request.payload.push_back(static_cast<Byte>(action));
+        AppendU32(&request.payload, index);
+        Frame response;
+        if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, DeadlineFromNow(timeout_ms))
+            || response.generation != generation_
+            || response.session_token != session_token_
+            || !DecodeSnapshot(response, snapshot)
+            || snapshot->revision <= expected_revision) {
+            Reset();
+            return false;
+        }
+        return true;
+    } catch (...) {
+        Reset();
+        return false;
+    }
+}
+
 void BrokerClient::Close(DWORD timeout_ms) noexcept {
     if (!connected()) {
         Reset();
@@ -733,6 +779,7 @@ void BrokerClient::Reset() noexcept {
     generation_ = 0;
     session_token_ = 0;
     next_request_id_ = 1;
+    candidate_actions_supported_ = false;
 }
 
 }  // namespace mo::windows_tip

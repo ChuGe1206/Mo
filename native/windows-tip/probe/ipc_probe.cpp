@@ -46,6 +46,20 @@ bool ProbeFake(mo::windows_tip::BrokerClient* broker) {
         std::wcerr << L"Unexpected diagnostic Broker snapshot\n";
         return false;
     }
+    const auto original_revision = snapshot.revision;
+    if (!broker->candidate_actions_supported()
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::NextPage, 0, &snapshot, 500)
+        || snapshot.candidates != std::vector<std::string>{"m#2", "M#2"}
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::PreviousPage, 0, &snapshot, 500)
+        || snapshot.candidates != std::vector<std::string>{"m", "M"}
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::Select, 1, &snapshot, 500)
+        || snapshot.commit != "M") {
+        std::wcerr << L"Fake candidate actions did not page and select\n"; return false;
+    }
+    if (broker->SendCandidateAction(original_revision, mo::windows_tip::CandidateAction::Select, 0, &snapshot, 500)
+        || broker->connected()) {
+        std::wcerr << L"Stale candidate action was not rejected/reset\n"; return false;
+    }
     return true;
 }
 
@@ -114,6 +128,26 @@ bool ProbeRimeIce(mo::windows_tip::BrokerClient* broker) {
         || snapshot.commit != second_candidate) {
         std::wcerr << L"rime-ice numeric selection did not commit the second candidate\n";
         return false;
+    }
+    for (const char key : std::string("NI")) {
+        if (!broker->SendKey(static_cast<std::uint32_t>(key), 0, 0, true, false, &snapshot, 2000)) { return false; }
+    }
+    const auto action_first_page = snapshot.candidates;
+    if (action_first_page.size() < 2) { return false; }
+    const auto action_second_candidate = action_first_page[1];
+    const auto original_revision = snapshot.revision;
+    if (!broker->candidate_actions_supported()
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::NextPage, 0, &snapshot, 2000)
+        || snapshot.commit.has_value() || snapshot.candidates.empty() || snapshot.candidates == action_first_page
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::PreviousPage, 0, &snapshot, 2000)
+        || snapshot.commit.has_value() || snapshot.candidates != action_first_page
+        || !broker->SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::Select, 1, &snapshot, 2000)
+        || snapshot.commit != action_second_candidate) {
+        std::wcerr << L"Real candidate action IPC paging/selection failed\n"; return false;
+    }
+    if (broker->SendCandidateAction(original_revision, mo::windows_tip::CandidateAction::Select, 0, &snapshot, 2000)
+        || broker->connected()) {
+        std::wcerr << L"Real stale candidate action was not rejected/reset\n"; return false;
     }
     return true;
 }

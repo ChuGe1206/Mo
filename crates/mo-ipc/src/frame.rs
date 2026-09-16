@@ -26,6 +26,7 @@ pub enum MessageKind {
     Error = 9,
     Ping = 10,
     Pong = 11,
+    CandidateAction = 12,
 }
 
 impl TryFrom<u16> for MessageKind {
@@ -44,6 +45,7 @@ impl TryFrom<u16> for MessageKind {
             9 => Ok(Self::Error),
             10 => Ok(Self::Ping),
             11 => Ok(Self::Pong),
+            12 => Ok(Self::CandidateAction),
             other => Err(FrameError::UnknownMessageKind(other)),
         }
     }

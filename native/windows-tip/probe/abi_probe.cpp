@@ -193,6 +193,21 @@ private:
 class EditTextStore final : public ITextStoreACP, public ITfContextOwnerCompositionSink {
 public:
     explicit EditTextStore(HWND window) noexcept : window_(window) {}
+    const std::wstring& text() const noexcept { return text_; }
+    void NotifyLayoutChanged() noexcept {
+        if (sink_ != nullptr) { sink_->OnLayoutChange(TS_LC_CHANGE, 1); }
+    }
+    void DeferLocks(bool defer) noexcept { defer_locks_ = defer; }
+    bool has_deferred_lock() const noexcept { return deferred_lock_flags_ != 0; }
+    void GrantDeferredLock() noexcept {
+        const DWORD flags = deferred_lock_flags_;
+        deferred_lock_flags_ = 0;
+        if (flags != 0 && sink_ != nullptr) {
+            lock_flags_ = flags;
+            last_lock_result_ = sink_->OnLockGranted(flags);
+            lock_flags_ = 0;
+        }
+    }
 
     STDMETHODIMP QueryInterface(REFIID interface_id, void** object) noexcept override {
         if (object == nullptr) {
@@ -266,6 +281,11 @@ public:
         }
         if (lock_flags_ != 0) {
             *session_result = TS_E_SYNCHRONOUS;
+            return S_OK;
+        }
+        if (defer_locks_) {
+            if ((lock_flags & TS_LF_SYNC) != 0) { *session_result = TS_E_SYNCHRONOUS; }
+            else { deferred_lock_flags_ = lock_flags; *session_result = TS_S_ASYNC; }
             return S_OK;
         }
         lock_flags_ = lock_flags;
@@ -526,8 +546,8 @@ public:
     }
     STDMETHODIMP GetTextExt(
         TsViewCookie,
-        LONG,
-        LONG,
+        LONG start,
+        LONG end,
         RECT* rectangle,
         BOOL* clipped) noexcept override {
         if (rectangle == nullptr || clipped == nullptr) {
@@ -539,6 +559,7 @@ public:
         ClientToScreen(window_, &origin);
         ClientToScreen(window_, &extent);
         *rectangle = {origin.x, origin.y, extent.x, extent.y};
+        if (start == end) { rectangle->right = rectangle->left; }
         *clipped = FALSE;
         return S_OK;
     }
@@ -570,6 +591,8 @@ public:
 
 private:
     ~EditTextStore() noexcept = default;
+    bool defer_locks_ = false;
+    DWORD deferred_lock_flags_ = 0;
 
     bool HasReadLock() const noexcept { return (lock_flags_ & TS_LF_READ) != 0; }
     bool HasWriteLock() const noexcept {
@@ -918,6 +941,61 @@ int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
     return outcome;
 }
 
+HWND CandidateWindowForCurrentThread() noexcept {
+    HWND result = nullptr;
+    EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM data) -> BOOL {
+        wchar_t name[64]{};
+        GetClassNameW(window, name, ARRAYSIZE(name));
+        if (wcscmp(name, L"Mo.CandidateWindow.v1") == 0 && IsWindowVisible(window)) {
+            *reinterpret_cast<HWND*>(data) = window; return FALSE;
+        }
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&result));
+    return result;
+}
+
+void PumpProbeMessages() noexcept {
+    MSG message{};
+    while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&message); DispatchMessageW(&message);
+    }
+}
+
+bool WaitForCandidateWindow(bool visible) noexcept {
+    const ULONGLONG deadline = GetTickCount64() + 2000;
+    do {
+        PumpProbeMessages();
+        if ((CandidateWindowForCurrentThread() != nullptr) == visible) { return true; }
+        MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+    } while (GetTickCount64() < deadline);
+    std::wcerr << L"Candidate window visibility did not match expected state\n";
+    return false;
+}
+
+bool ClickCandidateWindow(int item) noexcept {
+    const HWND window = CandidateWindowForCurrentThread();
+    if (window == nullptr) { return false; }
+    const auto styles = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    if ((styles & WS_EX_NOACTIVATE) == 0 || (styles & WS_EX_TOOLWINDOW) == 0
+        || SendMessageW(window, WM_MOUSEACTIVATE, 0, 0) != MA_NOACTIVATE) {
+        std::wcerr << L"Candidate window could steal document focus\n"; return false;
+    }
+    RECT client{}; GetClientRect(window, &client);
+    const int dpi = static_cast<int>(GetDpiForWindow(window));
+    const int x = item == 33 ? client.right * 3 / 4 : client.right / 4;
+    const int y = item >= 32 ? client.bottom - MulDiv(16, dpi, 96)
+        : MulDiv(40 + item * 32 + 16, dpi, 96);
+    const HWND original_focus = GetFocus();
+    const LPARAM position = MAKELPARAM(x, y);
+    SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, position);
+    SendMessageW(window, WM_LBUTTONUP, 0, position);
+    PumpProbeMessages();
+    if (GetFocus() != original_focus) {
+        std::wcerr << L"Candidate click changed document focus\n"; return false;
+    }
+    return true;
+}
+
 int probe_broker_input(
     ITfTextInputProcessorEx* service,
     bool rime_ice,
@@ -1090,19 +1168,109 @@ int probe_broker_input(
             if (!keys_succeeded) {
                 break;
             }
-            keys_succeeded = registered
-                ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
-                : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
+            if (!WaitForCandidateWindow(true)) { keys_succeeded = false; break; }
+            if (composition_index == 1 && !registered) {
+                RECT before_layout{};
+                GetWindowRect(CandidateWindowForCurrentThread(), &before_layout);
+                SetWindowPos(edit_window, nullptr, 200, 180, 240, 32, SWP_NOACTIVATE | SWP_NOZORDER);
+                edit_store->NotifyLayoutChanged();
+                if (!WaitForCandidateWindow(true)) { keys_succeeded = false; break; }
+                RECT after_layout{};
+                GetWindowRect(CandidateWindowForCurrentThread(), &after_layout);
+                if (EqualRect(&before_layout, &after_layout)) {
+                    std::wcerr << L"Candidate window did not follow the changed text layout\n";
+                    keys_succeeded = false; break;
+                }
+                // A key-up returns an unhandled snapshot with a fresh revision.
+                // A mouse press from before that refresh must not commit.
+                const HWND candidate = CandidateWindowForCurrentThread();
+                const int dpi = static_cast<int>(GetDpiForWindow(candidate));
+                const LPARAM position = MAKELPARAM(20, MulDiv(56, dpi, 96));
+                const auto before_release = edit_store->text();
+                SendMessageW(candidate, WM_LBUTTONDOWN, MK_LBUTTON, position);
+                BOOL release_eaten = TRUE;
+                result = direct_key_sink->OnTestKeyUp(context.Get(), 'N', 0, &release_eaten);
+                SendMessageW(candidate, WM_LBUTTONUP, 0, position);
+                PumpProbeMessages();
+                if (FAILED(result) || release_eaten || edit_store->text() != before_release
+                    || !WaitForCandidateWindow(true)) {
+                    std::wcerr << L"Candidate key-up refresh/stale press protection failed\n";
+                    keys_succeeded = false; break;
+                }
+                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true)
+                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true)
+                    || !ClickCandidateWindow(0)) {
+                    std::wcerr << L"Candidate mouse paging/selection failed\n";
+                    keys_succeeded = false; break;
+                }
+            } else {
+                keys_succeeded = registered
+                    ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
+                    : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
+            }
+            if (keys_succeeded && !WaitForCandidateWindow(false)) { keys_succeeded = false; }
         }
         if (!keys_succeeded) {
             outcome = 1;
             break;
         }
 
+        if (!registered) {
+            // Force an actual deferred write lock. A newer synchronous key
+            // supersedes the queued mouse action before it reaches the engine.
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            edit_store->DeferLocks(true);
+            const bool queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+            edit_store->DeferLocks(false);
+            const bool advanced = queued && SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, 'A');
+            edit_store->GrantDeferredLock();
+            PumpProbeMessages();
+            if (!keys_succeeded || !advanced || !WaitForCandidateWindow(true)
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)) {
+                std::wcerr << L"Deferred candidate action did not cancel after a newer key\n";
+                outcome = 1; break;
+            }
+
+            // Focus loss must also cancel a queued action, clear only the
+            // preedit and close the old engine session. Reconnection is tested
+            // by another complete mouse-selection cycle below.
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            edit_store->DeferLocks(true);
+            const bool focus_queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+            edit_store->DeferLocks(false);
+            result = direct_key_sink->OnSetFocus(FALSE);
+            edit_store->GrantDeferredLock();
+            PumpProbeMessages();
+            if (!keys_succeeded || !focus_queued || FAILED(result) || !WaitForCandidateWindow(false)) {
+                std::wcerr << L"Deferred candidate action survived focus loss\n";
+                outcome = 1; break;
+            }
+            result = direct_key_sink->OnSetFocus(TRUE);
+            if (FAILED(result)) { outcome = fail(L"Candidate focus regain", result); break; }
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false)) {
+                std::wcerr << L"Candidate selection did not recover after focus regain\n";
+                outcome = 1; break;
+            }
+        }
+
         wchar_t text_buffer[16]{};
         const int text_length = GetWindowTextW(edit_window, text_buffer, ARRAYSIZE(text_buffer));
         const std::wstring text(text_buffer, static_cast<std::size_t>(text_length));
-        const std::wstring expected = rime_ice ? L"你好你好" : L"mm";
+        const std::wstring expected = rime_ice
+            ? (registered ? L"你好你好" : L"你好你好你好") : (registered ? L"mm" : L"mmm");
         if (text != expected) {
             std::wcerr << L"TIP edit session committed unexpected EDIT text: " << text << L'\n';
             outcome = 1;
@@ -1306,6 +1474,16 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
 
     result = service->ActivateEx(nullptr, TF_CLIENTID_NULL, 0);
+    ITfTextLayoutSink* layout_sink = nullptr;
+    const HRESULT layout_query = service->QueryInterface(IID_PPV_ARGS(&layout_sink));
+    if (FAILED(layout_query)) {
+        service->Release(); FreeLibrary(module); return fail(L"QueryInterface(ITfTextLayoutSink)", layout_query);
+    }
+    const HRESULT layout_result = layout_sink->OnLayoutChange(nullptr, TF_LC_CHANGE, nullptr);
+    layout_sink->Release();
+    if (expect_result(L"OnLayoutChange(NULL)", layout_result, E_INVALIDARG) != 0) {
+        service->Release(); FreeLibrary(module); return 1;
+    }
     if (expect_result(L"ITfTextInputProcessorEx::ActivateEx(NULL)", result, E_INVALIDARG) != 0) {
         service->Release();
         FreeLibrary(module);
@@ -1336,9 +1514,9 @@ int wmain(int argument_count, wchar_t** arguments) {
 
     FreeLibrary(module);
     std::wcout << (broker_rime_ice
-        ? L"Mo TIP Broker/librime/rime-ice edit-session commit probe passed.\n"
+        ? L"Mo TIP real rime-ice candidate window/mouse/layout/deferred cancellation/reconnect probe passed.\n"
         : broker_input
-            ? L"Mo TIP Broker key cache/edit-session commit probe passed.\n"
+            ? L"Mo TIP fake candidate window/mouse/layout/deferred cancellation/reconnect probe passed.\n"
             : L"Mo TIP ABI probe passed (load, exports, class factory, Ex/key sink lifecycle, unload).\n");
     return 0;
 }

@@ -13,12 +13,13 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
 - Mo 自主实现的极薄 C++ TSF/COM 壳，可编译为 x64/x86，并通过加载、类工厂、接口与卸载 probe。
 - TSF 壳已实现 `OnTestKey*`/`OnKey*` 单次决策缓存、同步读写 Edit Session、预编辑 Range/Composition 生命周期和严格 UTF-8 转换；x64/x86 受控 TSF 文本存储探针均已把 Broker 提交写入真实 Windows EDIT 控件，且 Broker 不可用时 fail-open。
-- x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键快照和关闭往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`、PageUp/PageDown 和数字选词；CI 同时验证 `你好` 经过 TIP Edit Session 上屏，而非仅停留在 IPC 快照。可见候选窗尚未接入。
+- 已接入自主 Win32 纵向候选窗、鼠标选词/翻页、DPI 缩放和屏幕边缘避让。候选动作通过协商 feature 绑定当前会话的 revision，拒绝陈旧/越界点击；鼠标在可同步或异步的 TSF 编辑锁内执行，并在锁内再次复核身份。布局变化使用异步只读定位。x64/x86 受控真实词库探针已通过鼠标上屏、松键刷新、延迟动作取消与焦点恢复；普通软件尚未验收。
+- x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键与候选动作往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`、PageUp/PageDown、数字选词、前后翻页和当前页第二候选提交；CI 同时核对 TIP Edit Session 写入 EDIT 和 TSF context 的最终文本，而非仅停留在 IPC 快照。
 - WiX v4 安装器占位工程会主动拒绝生成“看似可发布”的安装包；真实注册、启用、修复与卸载尚未实现。
 
 ## 架构路线
 
-- Rust-first 混合架构：Rust 承担 Core、Broker、候选窗、包管理和工具；librime 保持上游 C++；Mo 自主实现极薄 C++ TSF 壳。
+- Rust-first 混合架构：Rust 承担 Core、Broker、候选命令/页版本授权、包管理和工具；librime 保持上游 C++；Mo 自主实现 C++ TSF 壳，首版候选表现层为独立的小型 Win32/GDI 模块，后续可替换为 Rust 跨平台界面，见 ADR 0018。
 - 当前正式支持目标为 Windows 11 x64；Windows 10 22H2 仅尽力兼容。其他平台保留稳定领域模型、C ABI、数据格式和 golden tests 边界，待后续阶段确认。
 - 输入热路径完全离线；设置、更新和未来同步与输入进程隔离。
 - rime-ice 是锁定的构建输入，由 Mo 生成预编译资源包，最终用户不直接维护它。

@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 66 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 71 个运行时测试和 1 个 compile-fail 契约测试。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
@@ -38,7 +38,11 @@
 - TIP 已实现 `ITfCompositionSink` 并把自身交给 `StartComposition`：宿主主动终止时只清理匹配的 owned composition；TIP 主动提交/清空则先稳定 COM 引用并清除成员，再调用 `EndComposition`，可安全承受同步回调。x64/Win32 受控探针连续完成两轮 `M + Space`，核对最终 `mm`，证明结束后能立即创建下一 composition。
 - x64 与 Win32 的受控 `ITextStoreACP` 探针均把 fake Broker 的 `M + Space` 经 TIP 写入真实 Windows EDIT 控件为单个 `m`，并从 TSF Context 再次读回核对。TIP 激活、Broker 缺席、协议或 Edit Session 失败均保持 fail-open；断线后使用 250 ms 节流进行有界重连。
 - x64 与 Win32 原生客户端已对同一个 x64 Rust Broker 完成真实 `Hello -> OpenSession -> KeyEvent(M) -> Snapshot("m") -> CloseSession` 往返；并分别通过 `KeyEvent(nihao + Space)` 穿过 Broker、Actor、RimeBackend、运行时加载的 librime 与锁定 rime-ice，核对 `你好` 候选和提交。客户端采用 overlapped I/O、端到端硬 deadline、严格帧/CRC/UTF-8/请求号校验，失败或结果不明确时断开并保持 TIP fail-open。
-- Broker 已补齐 PageUp/PageDown/Home/End 的 Windows VK -> X11 keysym 映射。x64/Win32 真实 IPC 探针均验证 `ni -> PageDown -> PageUp -> 2`：新页与原页不同、前页恢复、翻页不提交，数字选词准确提交原页第二候选。候选点击命令仍未进入 IPC；可见候选窗及普通宿主候选体验未据此验收。
+- Broker 已补齐 PageUp/PageDown/Home/End 的 Windows VK -> X11 keysym 映射。x64/Win32 真实 IPC 探针均验证 `ni -> PageDown -> PageUp -> 2`：新页与原页不同、前页恢复、翻页不提交，数字选词准确提交原页第二候选。
+- IPC 1.0 已新增协商 feature 的 13 字节 CandidateAction（kind 12），保持原 Snapshot 布局不变。Broker 按会话核对当前成功编码的候选 revision/count，未协商、空页、跨会话、越界、陈旧/重放、松键后旧版本与后端失败撤销授权均有测试；不符合条件的动作不会进入引擎。x64/Win32 C++ 真实探针均通过显式候选翻页/第二候选提交及陈旧动作拒绝后客户端 reset。
+- 首版自主 Win32/GDI 候选表现层已接入 TIP：纵向 ordinal 列表、鼠标翻页/选词、不激活窗口、按宿主 DPI 缩放、monitor work area 避让、长文本省略和本页滚轮。collapsed caret 的零宽度矩形可定位，全零/裁剪/无 layout 则隐藏。布局 sink 对称 advise/unadvise，以带身份的异步只读锁更新锚点。UI-element-only 宿主不显示自绘窗；尚未实现 TSF UIElement 协作。
+- 鼠标动作在持有 owner/context 的 TSF 可同步或异步写锁内重新验证焦点/context/generation/session/revision，排队期间不预先生成 commit。x64/Win32 fake 与真实词库受控探针均核对显隐、不抢焦点、旧按下保护、鼠标翻页/上屏与文档布局跟随；强制延迟写锁后，新按键或焦点丢失使旧动作取消。焦点恢复后完成第三轮选词，最终从 EDIT 和 TSF context 核对 `mmm`/`你好你好你好`。候选窗仅原生表现层，业务与授权仍在 Rust，阶段性边界见 ADR 0018。
+- 曾连接成功的 TIP 在受保护管道重建的 endpoint 缺口内做短重试，仍受原有端到端硬时限约束并复核新 handle 的服务端身份；首次 Broker 缺席立即 fail-open。前景焦点恢复重置退避，该时序已由上述焦点恢复探针覆盖。
 - Broker 启动模式已 fail-closed：启用 debug assertions 的开发构建才接受 `--fake` 或带显式 DLL/shared/user 路径及部署标记的 `--rime`。默认 release 只接受无参数启动，从 Known Folder API 构造固定 Program Files/LocalAppData 布局并核对当前映像位置；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
 - 安装模式将 DLL/shared/prebuilt 固定在机器安装根，把 user/staging 固定在当前用户根；缺少目录或 default/schema 标记时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证配置字段及缺资源拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。真实安装资产加载、签名/ACL、reparse 防护与用户配置覆盖策略仍未完成。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
@@ -52,7 +56,7 @@
 
 未通过：
 
-- 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。
+- 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
 - Named Pipe 安全多实例/服务端 overlapped I/O、发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环、已认证连接空闲租约/完整逐请求 deadline，以及 AppContainer/WinUI 连接测试。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
