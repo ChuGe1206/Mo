@@ -8,8 +8,11 @@ non-elevated current-user finalizer.
 This is deliberately not a deployable installer. It does **not** call
 `ITfInputProcessorProfileMgr::RegisterProfile`, enable the profile with
 `InstallLayoutOrTip`, start a per-user broker, stop TSF hosts, implement rollback
-for TSF state, or sign either package. The installed broker input is currently
-the TCP diagnostic spike, not a production named-pipe broker.
+for TSF state, or sign either package. The intended broker artifact is now the
+default release named-pipe broker, which accepts no arguments and requires the
+fixed Known Folder layout recorded by ADR 0016. The placeholder builder still
+accepts arbitrary input artifacts and does not verify their build provenance;
+it must not be treated as a production packaging path.
 
 The build script has two safety gates:
 
@@ -23,5 +26,8 @@ registration plus a user-context finalizer; define repair/uninstall recovery;
 use versioned binaries to tolerate loaded TIP DLLs; validate clean install,
 upgrade, rollback, repair, and uninstall in disposable VMs; sign the x64/x86
 DLLs, broker, MSI, and Burn EXE with timestamping; and enforce signature checks
-in CI. Never run an updater or broker as LocalSystem.
-
+in CI. Package the allowlisted self-built librime at `runtime/librime/rime.dll`
+and precompiled rime-ice at `data/rime-ice/build`; prepare the current user's
+`LocalAppData/Mo/Rime` data and staging directories without running deployment
+on the input hot path. Reject diagnostic/debug-assertions artifacts in the
+release packaging pipeline. Never run an updater or broker as LocalSystem.

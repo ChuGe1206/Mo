@@ -21,6 +21,11 @@ jobs:
         run: cargo +1.97.1 clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo +1.97.1 test --workspace
+      - name: Lint installed-mode build
+        run: cargo +1.97.1 clippy --release --workspace --all-targets -- -D warnings
+      - name: Verify release Broker rejects diagnostic startup
+        shell: pwsh
+        run: ./tools/broker-startup-smoke.ps1 -RustToolchain 1.97.1
 
   windows-tip:
     runs-on: windows-2022

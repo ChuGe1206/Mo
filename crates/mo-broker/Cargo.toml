@@ -13,6 +13,7 @@ mo-ipc = { path = "../mo-ipc" }
 [target.'cfg(windows)'.dependencies]
 mo-rime = { path = "../mo-rime" }
 mo-windows-pipe = { path = "../mo-windows-pipe" }
+mo-windows-platform = { path = "../mo-windows-platform" }
 
 [lib]
 path = "src/lib.rs"

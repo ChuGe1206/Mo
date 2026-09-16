@@ -11,6 +11,7 @@ dependencies = [
  "mo-ipc",
  "mo-rime",
  "mo-windows-pipe",
+ "mo-windows-platform",
 ]
 
 [[package]]
@@ -47,6 +48,13 @@ name = "mo-windows-pipe"
 version = "0.1.0"
 dependencies = [
  "mo-ipc",
+ "windows-sys",
+]
+
+[[package]]
+name = "mo-windows-platform"
+version = "0.1.0"
+dependencies = [
  "windows-sys",
 ]
 

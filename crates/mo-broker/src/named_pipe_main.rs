@@ -1,11 +1,13 @@
 #[cfg(windows)]
 fn main() -> std::io::Result<()> {
     use mo_broker::windows_runtime::{StartupMode, parse_startup};
+    #[cfg(debug_assertions)]
     use std::io;
 
     let mode = parse_startup(std::env::args_os().skip(1).collect())?;
     let listener = mo_broker::windows_named_pipe::bind_default()?;
     match mode {
+        #[cfg(debug_assertions)]
         StartupMode::Fake => {
             let endpoint = listener.address().as_str().to_owned();
             mo_broker::windows_named_pipe::serve_listener_loop_with_backend_factory(
