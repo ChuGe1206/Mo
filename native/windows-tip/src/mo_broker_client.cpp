@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -18,7 +19,28 @@ namespace {
 
 using Byte = std::uint8_t;
 
-constexpr wchar_t kPipeName[] = L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1";
+// Must match mo-windows-pipe's bounded independent slot family. Slot zero
+// preserves the legacy endpoint and every handle undergoes the same identity
+// check before Hello. No endpoint is accepted from a peer or environment.
+constexpr std::array<const wchar_t*, 16> kPipeNames = {
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s01",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s02",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s03",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s04",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s05",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s06",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s07",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s08",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s09",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s10",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s11",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s12",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s13",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s14",
+    L"\\\\.\\pipe\\LOCAL\\Mo.Input.Broker.v1.s15",
+};
+std::atomic<std::uint32_t> g_next_pipe_slot{0};
 constexpr std::array<Byte, 4> kMagic = {'M', 'O', 'I', 'P'};
 constexpr std::size_t kHeaderLength = 48;
 constexpr std::size_t kMaximumPayloadLength = 64 * 1024;
@@ -423,50 +445,48 @@ HANDLE ConnectPipe(
     const std::wstring& expected_broker_path,
     ULONGLONG deadline,
     bool retry_missing_endpoint) noexcept {
+    const auto first_slot = g_next_pipe_slot.fetch_add(1, std::memory_order_relaxed) % kPipeNames.size();
     for (;;) {
-        const HANDLE pipe = CreateFileW(
-            kPipeName,
-            kClientPipeAccess,
-            0,
-            nullptr,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT
-                | SECURITY_IDENTIFICATION,
-            nullptr);
-        if (pipe != INVALID_HANDLE_VALUE) {
-            try {
-                if (!IsExpectedBrokerServer(pipe, expected_broker_path)) {
-                    const DWORD identity_error = GetLastError();
+        bool busy = false;
+        for (std::size_t offset = 0; offset < kPipeNames.size(); ++offset) {
+            if (RemainingMilliseconds(deadline) == 0) {
+                SetLastError(ERROR_SEM_TIMEOUT); return INVALID_HANDLE_VALUE;
+            }
+            const HANDLE pipe = CreateFileW(
+                kPipeNames[(first_slot + offset) % kPipeNames.size()],
+                kClientPipeAccess,
+                0,
+                nullptr,
+                OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT
+                    | SECURITY_IDENTIFICATION,
+                nullptr);
+            if (pipe != INVALID_HANDLE_VALUE) {
+                try {
+                    if (!IsExpectedBrokerServer(pipe, expected_broker_path)) {
+                        const DWORD identity_error = GetLastError();
+                        CloseHandle(pipe);
+                        SetLastError(identity_error);
+                        return INVALID_HANDLE_VALUE;
+                    }
+                } catch (...) {
                     CloseHandle(pipe);
-                    SetLastError(identity_error);
+                    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
                     return INVALID_HANDLE_VALUE;
                 }
-            } catch (...) {
-                CloseHandle(pipe);
-                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-                return INVALID_HANDLE_VALUE;
+                return pipe;
             }
-            return pipe;
+            const DWORD error = GetLastError();
+            if (error == ERROR_PIPE_BUSY) { busy = true; }
+            else if (error != ERROR_FILE_NOT_FOUND) { return INVALID_HANDLE_VALUE; }
         }
-        const DWORD error = GetLastError();
+        // Never wait only on slot zero: any other worker may become available.
+        if (!busy && !retry_missing_endpoint) {
+            SetLastError(ERROR_FILE_NOT_FOUND); return INVALID_HANDLE_VALUE;
+        }
         const DWORD remaining = RemainingMilliseconds(deadline);
-        if (remaining == 0) {
-            return INVALID_HANDLE_VALUE;
-        }
-        if (error == ERROR_PIPE_BUSY) {
-            WaitNamedPipeW(kPipeName, remaining);
-        } else if (error == ERROR_FILE_NOT_FOUND) {
-            // The installed Broker is long-lived. If its endpoint does not
-            // exist, return immediately so TIP activation stays fail-open;
-            // the caller owns throttled reconnect attempts.
-            if (!retry_missing_endpoint) { return INVALID_HANDLE_VALUE; }
-            // A previously authenticated Broker can be between protected pipe
-            // instances. Retry this short gap inside the same hard deadline;
-            // every newly opened handle still undergoes server authentication.
-            Sleep(std::min<DWORD>(remaining, 5));
-        } else {
-            return INVALID_HANDLE_VALUE;
-        }
+        if (remaining == 0) { SetLastError(ERROR_SEM_TIMEOUT); return INVALID_HANDLE_VALUE; }
+        Sleep(std::min<DWORD>(remaining, 5));
     }
 }
 

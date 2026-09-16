@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-16
+- 快照日期：2026-09-17
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通，项目仍不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 71 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 77 个运行时测试和 1 个 compile-fail 契约测试。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
@@ -42,22 +42,23 @@
 - IPC 1.0 已新增协商 feature 的 13 字节 CandidateAction（kind 12），保持原 Snapshot 布局不变。Broker 按会话核对当前成功编码的候选 revision/count，未协商、空页、跨会话、越界、陈旧/重放、松键后旧版本与后端失败撤销授权均有测试；不符合条件的动作不会进入引擎。x64/Win32 C++ 真实探针均通过显式候选翻页/第二候选提交及陈旧动作拒绝后客户端 reset。
 - 首版自主 Win32/GDI 候选表现层已接入 TIP：纵向 ordinal 列表、鼠标翻页/选词、不激活窗口、按宿主 DPI 缩放、monitor work area 避让、长文本省略和本页滚轮。collapsed caret 的零宽度矩形可定位，全零/裁剪/无 layout 则隐藏。布局 sink 对称 advise/unadvise，以带身份的异步只读锁更新锚点。UI-element-only 宿主不显示自绘窗；尚未实现 TSF UIElement 协作。
 - 鼠标动作在持有 owner/context 的 TSF 可同步或异步写锁内重新验证焦点/context/generation/session/revision，排队期间不预先生成 commit。x64/Win32 fake 与真实词库受控探针均核对显隐、不抢焦点、旧按下保护、鼠标翻页/上屏与文档布局跟随；强制延迟写锁后，新按键或焦点丢失使旧动作取消。焦点恢复后完成第三轮选词，最终从 EDIT 和 TSF context 核对 `mmm`/`你好你好你好`。候选窗仅原生表现层，业务与授权仍在 Rust，阶段性边界见 ADR 0018。
-- 曾连接成功的 TIP 在受保护管道重建的 endpoint 缺口内做短重试，仍受原有端到端硬时限约束并复核新 handle 的服务端身份；首次 Broker 缺席立即 fail-open。前景焦点恢复重置退避，该时序已由上述焦点恢复探针覆盖。
+- TIP 在固定的 16 个管道槽中轮转扫描，有忙槽时在原端到端硬时限内短重试；每个新 handle 都重新复核服务端身份，身份异常直接拒绝而不跳过。首次全部端点缺席立即 fail-open；曾认证后允许在同一时限内等待 Broker 重启。前景焦点恢复重置退避，该时序已由上述焦点恢复探针覆盖。
 - Broker 启动模式已 fail-closed：启用 debug assertions 的开发构建才接受 `--fake` 或带显式 DLL/shared/user 路径及部署标记的 `--rime`。默认 release 只接受无参数启动，从 Known Folder API 构造固定 Program Files/LocalAppData 布局并核对当前映像位置；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
 - 安装模式将 DLL/shared/prebuilt 固定在机器安装根，把 user/staging 固定在当前用户根；缺少目录或 default/schema 标记时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证配置字段及缺资源拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。真实安装资产加载、签名/ACL、reparse 防护与用户配置覆盖策略仍未完成。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
-- Engine Actor 已移入进程级专用线程，thread-affine librime backend 在线程内创建和销毁。Broker 在连接断开后以原受保护 DACL 重建 first pipe instance，不再随首个客户端退出；两个连续真实 Named Pipe 连接已验证会话回收与跨连接全局 revision。并发多实例仍等待发布模式收口、签名安装路径和 listener pool 设计，当前不会仅凭映像身份校验就授予客户端 `FILE_CREATE_PIPE_INSTANCE`。
+- Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
+- x64/Win32 fake 与真实 rime-ice 客户端均同时保持 16 路连接，第 17 路在设置的总时限内失败，释放中间槽后新会话成功接入；原连接分别以自己的候选页 revision 提交自己的词，不被其他连接推进全局 revision 干扰。Rust 测试另行验证静默首帧客户端不会阻塞另一槽、重复 live accept 被拒绝、断开期间名称/DACL 不变、次槽冲突导致整池绑定回滚，以及并发生成的 1024 个 generation 非零且无重复。就绪信号在引擎初始化及工作线程创建后发出；真实 smoke 的错误分支已改为终止 owned 子进程并有界读取日志。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
-- Named Pipe 负向测试已证明当前登录会话不能创建第二服务端实例；已认证连接从首个可用字节起采用 2 秒完整帧 assembly deadline，半帧超时会断开并重建监听，完全空闲连接不会被误杀。客户端在自己的总 deadline 内跨越安全重建产生的短暂 endpoint 缺口。
+- Named Pipe 负向测试已证明当前登录会话不能在任一槽创建第二服务端实例；已认证连接从首个可用字节起采用 2 秒完整帧 assembly deadline，半帧超时断开客户端后复用 retained listener，完全空闲连接不会被误杀。静默首帧连接采用 2 秒时限，但已认证空闲连接仍占用一个槽。
 - TIP 在发送 `Hello` 前用 `GetNamedPipeServerProcessId` 锁定服务端 PID，复核服务端进程与宿主属于同一 logon SID，并比较进程映像与预期 `mo-broker.exe` 的卷序列号/文件索引。x64/Win32 负向探针均证明错误映像身份被拒绝，随后正确身份仍可完成 IPC 与两轮 Edit Session 上屏。生产路径只从 TIP 自身固定安装布局推导；不接受环境变量或当前目录覆盖。
 - 诊断 TCP transport 已通过真实 loopback framed I/O 测试；它不构成生产传输安全结论。
 
 未通过：
 
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
-- Named Pipe 安全多实例/服务端 overlapped I/O、发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环、已认证连接空闲租约/完整逐请求 deadline，以及 AppContainer/WinUI 连接测试。
+- 连接池真实多应用宿主/满载恢复矩阵、服务端 overlapped I/O、已认证连接空闲租约/完整逐请求 deadline、工作线程异常与协调停机；当前同步服务端有固定 16 槽容量，不能把受控并发通过视为不限连接的日常服务。发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环，以及 AppContainer/WinUI 连接测试仍未完成。
 - Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 

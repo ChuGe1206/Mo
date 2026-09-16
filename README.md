@@ -8,6 +8,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。
 - 有大小上限、版本协商、严格 request id 和会话隔离的二进制 IPC 协议；Windows Named Pipe 已具备双向登录会话 SID 复核、TIP 侧 Broker PID/映像身份校验、拒绝远程客户端和首帧/半帧硬超时，且 Broker/Engine 可跨连续连接常驻，TCP 仅保留为诊断 spike。
+- Broker 已接入 16 个独立受保护的连接槽，共享唯一 Engine Actor；每槽保留原始服务端 handle，断线复用不产生名称重建缺口，也不向客户端授予创建服务端实例的权限。x64/x86 fake 与真实词库探针已通过 16 路同时连接、满载限时返回、槽复用和跨连接候选隔离，见 ADR 0019。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 51 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。Actor 的当前页候选选择和前后翻页已用真实 rime-ice 验证。
 - 默认 release Broker 只接受无参数的固定安装布局，路径来自 Windows Known Folder API；`--fake`/调用者指定运行时仅在启用 debug assertions 的开发构建可用。发布版目录 ACL、签名资源和首次启动准备仍未验收。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
@@ -47,6 +48,6 @@ cargo +stable test --workspace
   -Deploy
 ```
 
-该脚本验证 C++ x64/x86 的 IPC 快照与 TIP Edit Session 上屏两条真实引擎链路；较小的 Rust FFI 单层验证仍可用 `tools/rime-smoke/run.ps1`。
+该脚本验证 C++ x64/x86 的 IPC 快照、16 路连接池与 TIP Edit Session 上屏真实引擎链路；较小的 Rust FFI 单层验证仍可用 `tools/rime-smoke/run.ps1`。
 
 设计基线见 [产品与软件架构设计 v0.2](docs/MO-INPUT-METHOD-DESIGN-v0.2.md)，当前实证见 [Phase 0 状态](docs/phase-0/STATUS.md)，硬验收门见 [Phase 0 验收门](docs/phase-0/ACCEPTANCE.md)。

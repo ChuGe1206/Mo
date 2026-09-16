@@ -689,3 +689,155 @@ fn a_backend_failure_revokes_the_previous_candidate_page() {
         .unwrap();
     assert_eq!(error_code(response), mo_broker::ERROR_STALE_CANDIDATES);
 }
+#[cfg(windows)]
+#[test]
+fn concurrent_pipe_slots_isolate_pages_and_reuse_without_blocking_other_clients() {
+    use mo_windows_pipe::{PipeAddress, PipeClient, PipePool, pool_slot_address};
+
+    struct Peer {
+        pipe: std::fs::File,
+        generation: u64,
+        token: u64,
+        next: u64,
+    }
+    impl Peer {
+        fn connect(address: &PipeAddress) -> Self {
+            let mut pipe = PipeClient::connect(address, Duration::from_secs(2)).unwrap();
+            let payload = Hello {
+                supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+                features: FEATURE_KEY_EVENTS | mo_ipc::FEATURE_CANDIDATE_ACTIONS,
+                max_payload_len: MAX_PAYLOAD_LEN as u32,
+            }
+            .encode_payload()
+            .unwrap();
+            mo_ipc::write_frame(&mut pipe, &frame(MessageKind::Hello, 0, 0, 1, payload)).unwrap();
+            let hello = mo_ipc::read_frame(&mut pipe).unwrap();
+            let generation = hello.header.connection_generation;
+            mo_ipc::write_frame(
+                &mut pipe,
+                &frame(MessageKind::OpenSession, generation, 0, 2, vec![]),
+            )
+            .unwrap();
+            let opened = mo_ipc::read_frame(&mut pipe).unwrap();
+            Self {
+                pipe,
+                generation,
+                token: opened.header.session_token,
+                next: 3,
+            }
+        }
+        fn send(&mut self, kind: MessageKind, payload: Vec<u8>) -> Frame {
+            let request = frame(kind, self.generation, self.token, self.next, payload);
+            self.next += 1;
+            mo_ipc::write_frame(&mut self.pipe, &request).unwrap();
+            mo_ipc::read_frame(&mut self.pipe).unwrap()
+        }
+        fn key(&mut self, key: u32) -> Snapshot {
+            let event = KeyEvent {
+                virtual_key: key,
+                scan_code: 0,
+                modifiers: 0,
+                key_down: true,
+                repeat: false,
+            };
+            Snapshot::decode_payload(
+                &self
+                    .send(MessageKind::KeyEvent, event.encode_payload().unwrap())
+                    .payload,
+            )
+            .unwrap()
+        }
+        fn select(&mut self, revision: u64) -> Frame {
+            let action = mo_ipc::CandidateAction {
+                expected_revision: revision,
+                action: mo_ipc::CandidateActionKind::Select,
+                index: 1,
+            };
+            self.send(
+                MessageKind::CandidateAction,
+                action.encode_payload().unwrap(),
+            )
+        }
+    }
+    let base = PipeAddress::new(&format!("broker-pool-{}", std::process::id())).unwrap();
+    let second = pool_slot_address(&base, 1).unwrap();
+    let pool = PipePool::bind(base.clone(), 2).unwrap();
+    let server = thread::spawn(move || {
+        mo_broker::windows_named_pipe::serve_pool_with_backend_factory(
+            pool,
+            || Ok::<_, std::io::Error>(mo_engine::FakeBackend::new()),
+            Some(2),
+        )
+    });
+    let mut a = Peer::connect(&base);
+    let first = a.key(u32::from(b'M'));
+    // A remains open and idle while B opens and advances the shared actor.
+    let mut b = Peer::connect(&second);
+    assert_ne!(a.generation, b.generation);
+    let other = b.key(u32::from(b'N'));
+    assert_eq!(first.candidates, vec!["m", "M"]);
+    assert_eq!(other.candidates, vec!["n", "N"]);
+    assert!(other.revision > first.revision);
+    let wrong = b.select(first.revision);
+    assert_eq!(error_code(wrong), mo_broker::ERROR_STALE_CANDIDATES);
+    let selected = Snapshot::decode_payload(&a.select(first.revision).payload).unwrap();
+    assert_eq!(selected.commit.as_deref(), Some("M"));
+    assert!(selected.revision > other.revision);
+    let old_generation = a.generation;
+    drop(a);
+    let mut next_a = Peer::connect(&base);
+    assert_ne!(next_a.generation, old_generation);
+    let fresh = next_a.key(u32::from(b'Z'));
+    assert_eq!(fresh.composition, "z");
+    let selected_b = Snapshot::decode_payload(&b.select(other.revision).payload).unwrap();
+    assert_eq!(selected_b.commit.as_deref(), Some("N"));
+    assert!(selected_b.revision > fresh.revision);
+    drop(next_a);
+    drop(b);
+    // Each slot has served two independent connections before shutdown.
+    let next_b = Peer::connect(&second);
+    drop(next_b);
+    server.join().unwrap().unwrap();
+}
+#[cfg(windows)]
+#[test]
+fn a_silent_client_in_one_slot_does_not_block_another_slot_handshake() {
+    use mo_windows_pipe::{PipeAddress, PipeClient, PipePool, pool_slot_address};
+    fn handshake(address: &PipeAddress) -> std::fs::File {
+        let mut pipe = PipeClient::connect(address, Duration::from_secs(2)).unwrap();
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features: FEATURE_KEY_EVENTS,
+            max_payload_len: MAX_PAYLOAD_LEN as u32,
+        };
+        mo_ipc::write_frame(
+            &mut pipe,
+            &frame(MessageKind::Hello, 0, 0, 1, hello.encode_payload().unwrap()),
+        )
+        .unwrap();
+        assert_eq!(
+            mo_ipc::read_frame(&mut pipe).unwrap().header.kind,
+            MessageKind::HelloAck
+        );
+        pipe
+    }
+    let base = PipeAddress::new(&format!("broker-pool-silent-{}", std::process::id())).unwrap();
+    let other = pool_slot_address(&base, 1).unwrap();
+    let pool = PipePool::bind(base.clone(), 2).unwrap();
+    let server = thread::spawn(move || {
+        mo_broker::windows_named_pipe::serve_pool_with_backend_factory(
+            pool,
+            || Ok::<_, std::io::Error>(mo_engine::FakeBackend::new()),
+            Some(1),
+        )
+    });
+    let silent = PipeClient::connect(&base, Duration::from_secs(2)).unwrap();
+    let started = std::time::Instant::now();
+    let second = handshake(&other);
+    assert!(started.elapsed() < Duration::from_secs(1));
+    drop(second);
+    drop(silent);
+    let recovered = handshake(&base);
+    drop(recovered);
+    server.join().unwrap().unwrap();
+}

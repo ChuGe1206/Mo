@@ -140,7 +140,13 @@ function Invoke-RimeBrokerProbe(
         }
         $readyLine = $readyTask.Result
         if ($readyLine -notmatch ' listening on ') {
-            $brokerError = $process.StandardError.ReadToEnd()
+            # A bad readiness line is not evidence that a live process will
+            # exit. Stop only this harness-owned child before draining stderr.
+            if (-not $process.HasExited) { $process.Kill($true) }
+            if (-not $process.WaitForExit(3000)) { throw "$Platform Broker did not exit after failed readiness" }
+            $drainTask = $process.StandardError.ReadToEndAsync()
+            if (-not $drainTask.Wait(1000)) { throw "$Platform Broker stderr did not close after failed readiness" }
+            $brokerError = $drainTask.Result
             throw "$Platform Broker failed before ${Label}: $readyLine $brokerError"
         }
         & $Probe @ProbeArguments
@@ -162,7 +168,8 @@ foreach ($platform in $platforms) {
     $abiProbe = Join-Path $binaryDirectory 'mo_tip_abi_probe.exe'
     $tip = Join-Path $binaryDirectory 'mo_tip.dll'
     Invoke-RimeBrokerProbe $platform $ipcProbe @($brokerPath, '--rime-ice') 'rime-ice IPC probe'
+    Invoke-RimeBrokerProbe $platform $ipcProbe @($brokerPath, '--pool-rime-ice') 'rime-ice 16-client pipe pool probe'
     Invoke-RimeBrokerProbe $platform $abiProbe @($tip, '--broker-rime-ice') 'rime-ice TIP edit-session probe'
 }
 
-Write-Host "Real Actor APIs and C++ $($platforms -join '/') IPC actions passed; TIP candidate window/mouse/layout/deferred cancellation/reconnect committed nihao -> 你好."
+Write-Host "Real Actor APIs and C++ $($platforms -join '/') IPC actions/16-client pool capacity/isolation/reuse passed; TIP candidate window/mouse/layout/deferred cancellation/reconnect committed nihao -> 你好."

@@ -3,7 +3,9 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <array>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -28,6 +30,70 @@ bool ProbeRejectsUnexpectedServerImage() {
         std::wcerr << L"BrokerClient accepted an unexpected server image\n";
         return false;
     }
+    return true;
+}
+
+bool ProbePool(const wchar_t* expected_broker, bool real_rime) {
+    constexpr std::size_t count = 16;
+    std::vector<std::unique_ptr<mo::windows_tip::BrokerClient>> peers;
+    std::vector<std::uint64_t> revisions;
+    std::vector<std::string> selected_texts;
+    std::vector<std::uint32_t> selected_ordinals;
+    const std::array<std::string, 4> inputs = {"NIHAO", "ZHONGGUO", "SHIJIE", "SHURU"};
+    const std::array<std::string, 4> words = {u8"你好", u8"中国", u8"世界", u8"输入"};
+    std::uint64_t last_revision = 0;
+    for (std::size_t index = 0; index < count; ++index) {
+        auto peer = std::make_unique<mo::windows_tip::BrokerClient>(expected_broker);
+        if (!peer->ConnectAndOpen(2000)) {
+            std::wcerr << L"Could not open pool client " << index << L'\n'; return false;
+        }
+        // All earlier connections stay open; a single-instance Broker fails
+        // here before any candidate assertions can pass.
+        mo::windows_tip::BrokerSnapshot snapshot;
+        const std::string input = real_rime ? inputs[index % inputs.size()]
+            : std::string(1, static_cast<char>('A' + index));
+        for (const unsigned char key : input) {
+            if (!peer->SendKey(key, 0, 0, true, false, &snapshot, 2000)) { return false; }
+        }
+        if (!snapshot.handled || snapshot.commit.has_value() || snapshot.revision <= last_revision) { return false; }
+        const std::string expected = real_rime ? words[index % words.size()] : input;
+        const auto candidate = std::find(snapshot.candidates.begin(), snapshot.candidates.end(), expected);
+        if (candidate == snapshot.candidates.end()) {
+            std::cerr << "Missing pool candidate: " << expected << '\n'; return false;
+        }
+        last_revision = snapshot.revision;
+        revisions.push_back(snapshot.revision);
+        selected_texts.push_back(expected);
+        selected_ordinals.push_back(static_cast<std::uint32_t>(candidate - snapshot.candidates.begin()));
+        peers.push_back(std::move(peer));
+    }
+    mo::windows_tip::BrokerClient overflow(expected_broker);
+    const ULONGLONG started = GetTickCount64();
+    if (overflow.ConnectAndOpen(40) || overflow.connected() || GetTickCount64() - started > 1000) {
+        std::wcerr << L"Saturated pool did not fail within a bounded deadline\n"; return false;
+    }
+    // Free a middle slot while all other clients remain live. The new session
+    // must start empty, not inherit that client's preedit.
+    peers[7]->Close(500);
+    auto replacement = std::make_unique<mo::windows_tip::BrokerClient>(expected_broker);
+    mo::windows_tip::BrokerSnapshot fresh;
+    if (!replacement->ConnectAndOpen(2000)
+        || !replacement->SendKey('Z', 0, 0, true, false, &fresh, 2000)
+        || fresh.composition != "z" || fresh.commit.has_value() || fresh.revision <= last_revision) {
+        std::wcerr << L"Pool slot did not reset/reuse correctly\n"; return false;
+    }
+    last_revision = fresh.revision;
+    for (std::size_t index = 0; index < peers.size(); ++index) {
+        if (index == 7) { continue; }
+        mo::windows_tip::BrokerSnapshot selected;
+        if (!peers[index]->SendCandidateAction(revisions[index], mo::windows_tip::CandidateAction::Select,
+                selected_ordinals[index], &selected, 2000)
+            || selected.commit != selected_texts[index] || selected.revision <= last_revision) {
+            std::wcerr << L"Concurrent candidate page was not isolated for client " << index << L'\n'; return false;
+        }
+        last_revision = selected.revision;
+    }
+    std::wcout << L"16 live clients, bounded saturation, retained slot reuse and isolated candidate commits passed.\n";
     return true;
 }
 
@@ -155,15 +221,18 @@ bool ProbeRimeIce(mo::windows_tip::BrokerClient* broker) {
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+    const bool pool = argc == 3 && std::wstring(argv[2]) == L"--pool";
+    const bool pool_rime = argc == 3 && std::wstring(argv[2]) == L"--pool-rime-ice";
     const bool rime_ice = argc == 3 && std::wstring(argv[2]) == L"--rime-ice";
     const bool reject_unexpected =
         argc == 3 && std::wstring(argv[2]) == L"--reject-unexpected";
-    if ((argc != 2 && !rime_ice && !reject_unexpected) || argv[1][0] == L'\0') {
+    if ((argc != 2 && !rime_ice && !reject_unexpected && !pool && !pool_rime) || argv[1][0] == L'\0') {
         std::wcerr << L"usage: mo_tip_ipc_probe.exe <absolute-broker-path> "
-                      L"[--rime-ice|--reject-unexpected]\n";
+                      L"[--rime-ice|--reject-unexpected|--pool|--pool-rime-ice]\n";
         return 2;
     }
 
+    if (pool || pool_rime) { return ProbePool(argv[1], pool_rime) ? 0 : 1; }
     if (reject_unexpected) {
         if (!ProbeRejectsUnexpectedServerImage()) {
             return 1;

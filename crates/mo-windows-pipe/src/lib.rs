@@ -10,4 +10,7 @@
 mod windows;
 
 #[cfg(windows)]
-pub use windows::{AuthenticatedPipe, PipeAddress, PipeClient, PipeListener};
+pub use windows::{
+    AuthenticatedPipe, MAX_PIPE_SLOTS, PipeAddress, PipeClient, PipeListener, PipePool,
+    pool_slot_address,
+};

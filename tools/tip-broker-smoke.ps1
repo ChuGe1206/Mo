@@ -92,10 +92,11 @@ foreach ($platform in $platforms) {
     $tip = Join-Path $binaryDirectory 'mo_tip.dll'
     Invoke-BrokerProbe $platform $ipcProbe @($broker, '--reject-unexpected') 'IPC server identity rejection probe'
     Invoke-BrokerProbe $platform $ipcProbe @($broker) 'IPC probe'
+    Invoke-BrokerProbe $platform $ipcProbe @($broker, '--pool') '16-client pipe pool probe'
     Invoke-BrokerProbe $platform $abiProbe @($tip, '--broker-input') 'TIP edit-session probe'
 }
 
-Write-Host "C++ $($platforms -join '/') IPC and TIP candidate window, mouse paging/selection, layout, deferred cancellation and reconnect checks passed."
+Write-Host "C++ $($platforms -join '/') IPC, 16-client pool capacity/isolation/reuse and TIP candidate window, mouse paging/selection, layout, deferred cancellation and reconnect checks passed."
 
 if ($Registered) {
     $comOwned = $false

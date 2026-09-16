@@ -6,6 +6,8 @@ use std::mem::size_of;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, RawHandle};
 use std::ptr::{null, null_mut};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use mo_ipc::{Frame, FrameError, read_frame};
@@ -45,6 +47,55 @@ const SECURITY_SQOS_PRESENT: u32 = 0x0010_0000;
 const ERROR_FILE_NOT_FOUND_CODE: i32 = 2;
 const ERROR_SEM_TIMEOUT_CODE: i32 = 121;
 const ERROR_PIPE_BUSY_CODE: i32 = 231;
+pub const MAX_PIPE_SLOTS: usize = 16;
+
+/// Deterministic bounded slot family. Slot zero preserves the legacy endpoint.
+pub fn pool_slot_address(base: &PipeAddress, slot: usize) -> io::Result<PipeAddress> {
+    if slot >= MAX_PIPE_SLOTS {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "pipe slot exceeds pool bound",
+        ));
+    }
+    if slot == 0 {
+        return Ok(base.clone());
+    }
+    let endpoint = base
+        .as_str()
+        .strip_prefix(PIPE_PREFIX)
+        .expect("validated pipe namespace");
+    PipeAddress::new(&format!("{endpoint}.s{slot:02}"))
+}
+
+/// Fixed independent first-instance pipes: no client is granted the right to
+/// create another instance. Bind the entire family before accepting any input.
+#[derive(Debug)]
+pub struct PipePool {
+    listeners: Vec<PipeListener>,
+}
+
+impl PipePool {
+    pub fn bind(base: PipeAddress, slots: usize) -> io::Result<Self> {
+        if slots == 0 || slots > MAX_PIPE_SLOTS {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "pipe pool size must be 1-16",
+            ));
+        }
+        let mut listeners = Vec::with_capacity(slots);
+        for slot in 0..slots {
+            listeners.push(PipeListener::bind(pool_slot_address(&base, slot)?)?);
+        }
+        Ok(Self { listeners })
+    }
+
+    pub fn listeners(&self) -> &[PipeListener] {
+        &self.listeners
+    }
+    pub fn into_listeners(self) -> Vec<PipeListener> {
+        self.listeners
+    }
+}
 
 /// A validated local named-pipe address.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -81,6 +132,7 @@ pub struct PipeListener {
     address: PipeAddress,
     server: Option<File>,
     logon_sid: SidBytes,
+    reusable_active: Arc<AtomicBool>,
 }
 
 impl fmt::Debug for PipeListener {
@@ -101,11 +153,43 @@ impl PipeListener {
             address,
             server: Some(server),
             logon_sid,
+            reusable_active: Arc::new(AtomicBool::new(false)),
         })
     }
 
     pub fn address(&self) -> &PipeAddress {
         &self.address
+    }
+
+    /// One worker owns this retained first-instance handle for its whole
+    /// lifetime. The stream gets a duplicate handle to the same kernel instance,
+    /// so dropping/erroring a client disconnects it without vacating the name.
+    /// Never call this again until the previous AuthenticatedPipe has dropped.
+    pub fn accept_reusable_first_frame(
+        &mut self,
+        timeout: Duration,
+    ) -> io::Result<(AuthenticatedPipe, Frame)> {
+        if self.reusable_active.swap(true, Ordering::AcqRel) {
+            return Err(io::Error::new(
+                io::ErrorKind::WouldBlock,
+                "previous reusable stream is still active",
+            ));
+        }
+        let lease = ReuseLease(self.reusable_active.clone());
+        let server = self
+            .server
+            .as_ref()
+            .ok_or_else(|| io::Error::other("listener is not armed"))?;
+        let mut stream = AuthenticatedPipe {
+            file: server.try_clone()?,
+            _reuse_lease: Some(lease),
+        };
+        connect_server(&stream.file)?;
+        wait_for_complete_frame(&stream.file, timeout)?;
+        let frame = read_frame(&mut stream)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+        authenticate_client_logon_sid(&stream.file, &self.logon_sid)?;
+        Ok((stream, frame))
     }
 
     /// Accepts one client, reads its first bounded frame, then authenticates it.
@@ -125,6 +209,12 @@ impl PipeListener {
         &mut self,
         first_frame_timeout: Duration,
     ) -> io::Result<(AuthenticatedPipe, Frame)> {
+        if self.reusable_active.load(Ordering::Acquire) {
+            return Err(io::Error::new(
+                io::ErrorKind::WouldBlock,
+                "previous reusable stream is still active",
+            ));
+        }
         let mut server = self
             .server
             .take()
@@ -134,14 +224,20 @@ impl PipeListener {
         let frame = read_frame(&mut server)
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
         authenticate_client_logon_sid(&server, &self.logon_sid)?;
-        Ok((AuthenticatedPipe { file: server }, frame))
+        Ok((
+            AuthenticatedPipe {
+                file: server,
+                _reuse_lease: None,
+            },
+            frame,
+        ))
     }
 
     /// Recreates the protected first instance after the prior stream closed.
     ///
-    /// Mo deliberately withholds `FILE_CREATE_PIPE_INSTANCE` from clients. A
-    /// concurrent pool therefore requires an additional server-authentication
-    /// design rather than weakening this DACL.
+    /// Legacy consuming-accept helper. The concurrent pool instead retains each
+    /// independent first instance; neither path grants clients the right to
+    /// create another server instance.
     pub fn rearm(&mut self) -> io::Result<()> {
         if self.server.is_some() {
             return Err(io::Error::new(
@@ -191,6 +287,16 @@ impl PipeListener {
 #[derive(Debug)]
 pub struct AuthenticatedPipe {
     file: File,
+    _reuse_lease: Option<ReuseLease>,
+}
+
+#[derive(Debug)]
+struct ReuseLease(Arc<AtomicBool>);
+
+impl Drop for ReuseLease {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
 }
 
 impl Read for AuthenticatedPipe {
@@ -780,6 +886,86 @@ mod tests {
 
     fn test_address(name: &str) -> PipeAddress {
         PipeAddress::new(&format!("test-{name}-{}", std::process::id())).unwrap()
+    }
+
+    #[test]
+    fn pool_slots_keep_the_protected_dacl_and_remote_rejection() {
+        let base = test_address("pool-acl");
+        assert_eq!(pool_slot_address(&base, 0).unwrap(), base);
+        assert!(pool_slot_address(&base, MAX_PIPE_SLOTS).is_err());
+        assert!(PipePool::bind(base.clone(), 0).is_err());
+        assert!(PipePool::bind(base.clone(), MAX_PIPE_SLOTS + 1).is_err());
+        let pool = PipePool::bind(base, MAX_PIPE_SLOTS).unwrap();
+        let security = SecurityDescriptor::for_logon_sid(&process_logon_sid().unwrap()).unwrap();
+        for listener in pool.listeners() {
+            assert!(listener.has_expected_dacl().unwrap());
+            assert!(listener.rejects_remote_clients().unwrap());
+            assert_eq!(
+                create_server(listener.address(), &security)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::PermissionDenied
+            );
+        }
+    }
+
+    #[test]
+    fn a_conflicting_secondary_slot_rolls_back_the_entire_pool_bind() {
+        let base = test_address("pool-conflict");
+        let occupied = PipeListener::bind(pool_slot_address(&base, 1).unwrap()).unwrap();
+        assert_eq!(
+            PipePool::bind(base.clone(), 2).unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        // The unsuccessfully created primary was closed; the preexisting
+        // secondary remains owned by its original listener.
+        let primary = PipeListener::bind(base).unwrap();
+        assert!(primary.has_expected_dacl().unwrap());
+        assert!(occupied.has_expected_dacl().unwrap());
+    }
+
+    #[test]
+    fn reusable_listener_retains_ownership_and_rejects_a_second_live_stream() {
+        let address = test_address("retained-listener");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let (done, wait) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            assert_eq!(
+                listener
+                    .accept_reusable_first_frame(Duration::ZERO)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::WouldBlock
+            );
+            assert_eq!(
+                listener
+                    .accept_next_first_frame(Duration::ZERO)
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::WouldBlock
+            );
+            drop(stream);
+            assert!(listener.has_expected_dacl().unwrap());
+            done.send(()).unwrap();
+            listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+        });
+        let first = Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap();
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(&mut client, &first).unwrap();
+        wait.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert_eq!(
+            PipeListener::bind(address.clone()).unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        drop(client);
+        let mut next = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(&mut next, &first).unwrap();
+        server.join().unwrap();
     }
 
     #[test]

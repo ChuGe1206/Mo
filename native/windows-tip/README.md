@@ -26,9 +26,10 @@ and revision. New keys or lost focus cancel stale queued actions without an
 engine commit. Layout notifications hide the stale view and request an
 identity-checked asynchronous read lock to query the caret again. Zero-width
 caret rectangles remain valid; unavailable, hidden or clipped layouts hide the
-popup. A previously authenticated Broker can be retried across its short
-endpoint-rearm gap within the original hard deadline. Initial Broker absence
-still returns immediately.
+popup. The client scans 16 fixed protected pipe slots, retrying saturation or a
+previously authenticated Broker restart within the original hard deadline.
+Initial absence of all slots still returns immediately; an unexpected server
+identity fails closed rather than being skipped.
 
 `build-probe.ps1` builds x64 and Win32 variants and loads each DLL into a probe
 of matching bitness. The probe checks exports, class creation, the
@@ -49,12 +50,15 @@ and Win32 native clients through a real
 native pipe operation is overlapped and has a hard deadline; ambiguous or
 invalid responses reset the connection. The smoke also loads the TIP and
 verifies that the test/key callback pair commits exactly once through an edit
-session for both x64 and Win32. The production Broker now remains alive across
-successive client connections and keeps its thread-affine engine on one
-dedicated thread; the smoke owns and stops that persistent process explicitly.
-Concurrent long-lived pipe instances remain unimplemented; TIP-side Broker
-PID/logon/image identity is now verified before Hello, but the protected DACL
-has not been weakened to support multiple instances.
+session for both x64 and Win32. The production Broker serves 16 simultaneous
+connections through independent single-instance pipe slots, keeping its
+thread-affine engine on one dedicated thread. The protected DACL is unchanged:
+clients cannot create another server instance. Each slot retains its original
+server handle across disconnects, avoiding a namespace rearm gap. The native
+pool probe holds all 16 clients, checks bounded failure of a 17th, frees and
+reuses a middle slot, and commits each original connection's own candidate page
+with fake and real rime-ice backends. The smoke owns and stops the persistent
+process explicitly. See ADR 0019 for capacity and remaining lifecycle limits.
 
 The optional registered-host probe deliberately separates privileges. From an
 elevated PowerShell, run `tools\machine-profile.ps1 -Action Register` once to
