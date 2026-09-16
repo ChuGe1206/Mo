@@ -251,6 +251,8 @@ struct Functions {
     free_context: unsafe extern "C" fn(*mut sys::RimeContext) -> sys::RimeBool,
     get_status: unsafe extern "C" fn(sys::RimeSessionId, *mut sys::RimeStatus) -> sys::RimeBool,
     free_status: unsafe extern "C" fn(*mut sys::RimeStatus) -> sys::RimeBool,
+    select_candidate_on_current_page: sys::SelectCandidateOnCurrentPageFn,
+    change_page: sys::ChangePageFn,
 }
 
 impl Functions {
@@ -272,6 +274,7 @@ impl Functions {
 
         // SAFETY: the range check above proves the entire committed prefix is
         // present, and the caller guarantees the table remains live.
+        let raw_api = api.as_ptr();
         let api = unsafe { api.as_ref() };
         macro_rules! required {
             ($field:ident) => {
@@ -296,7 +299,49 @@ impl Functions {
             free_context: required!(free_context),
             get_status: required!(get_status),
             free_status: required!(free_status),
+            // SAFETY: the caller supplies a live table; the helper checks each
+            // complete field range before reading optional tail members.
+            select_candidate_on_current_page: unsafe {
+                Self::load_select_candidate(raw_api, advertised)
+            },
+            // SAFETY: same table/range guarantees, independently checked.
+            change_page: unsafe { Self::load_change_page(raw_api, advertised) },
         })
+    }
+
+    unsafe fn load_select_candidate(
+        api: *const sys::RimeApi,
+        advertised: c_int,
+    ) -> sys::SelectCandidateOnCurrentPageFn {
+        if !sys::advertised_range_available(
+            advertised,
+            sys::RIME_API_SELECT_CURRENT_PAGE_OFFSET,
+            size_of::<sys::SelectCandidateOnCurrentPageFn>(),
+        ) {
+            return None;
+        }
+        // SAFETY: complete typed slot is advertised. addr_of! forms no
+        // reference to the extension or intervening unmodeled functions.
+        unsafe {
+            std::ptr::addr_of!(
+                (*api.cast::<sys::RimeApiCandidateExtension>()).select_candidate_on_current_page
+            )
+            .read()
+        }
+    }
+
+    unsafe fn load_change_page(api: *const sys::RimeApi, advertised: c_int) -> sys::ChangePageFn {
+        if !sys::advertised_range_available(
+            advertised,
+            sys::RIME_API_CHANGE_PAGE_OFFSET,
+            size_of::<sys::ChangePageFn>(),
+        ) {
+            return None;
+        }
+        // SAFETY: complete typed slot is advertised; no full-tail reference.
+        unsafe {
+            std::ptr::addr_of!((*api.cast::<sys::RimeApiCandidateExtension>()).change_page).read()
+        }
     }
 }
 
@@ -426,6 +471,27 @@ impl Engine {
         unsafe { (self.functions.clear_composition)(id) }
     }
 
+    fn select_candidate_id(&self, id: sys::RimeSessionId, index: usize) -> Result<bool, Error> {
+        let select = self
+            .functions
+            .select_candidate_on_current_page
+            .ok_or(Error::MissingFunction("select_candidate_on_current_page"))?;
+        // SAFETY: id is owned by this Engine; native API validates the
+        // zero-based page-local index and reports unavailable candidates.
+        Ok(sys::from_rime_bool(unsafe { select(id, index) }))
+    }
+
+    fn change_page_id(&self, id: sys::RimeSessionId, backward: bool) -> Result<bool, Error> {
+        let change = self
+            .functions
+            .change_page
+            .ok_or(Error::MissingFunction("change_page"))?;
+        // SAFETY: id is live and confined to the Engine's owning thread.
+        Ok(sys::from_rime_bool(unsafe {
+            change(id, sys::to_rime_bool(backward))
+        }))
+    }
+
     fn take_commit_id(&self, id: sys::RimeSessionId) -> Result<Option<CommitSnapshot>, Error> {
         let mut raw = sys::RimeCommit::default();
         // SAFETY: raw is correctly initialized and writable for this call.
@@ -553,6 +619,17 @@ impl Session<'_> {
 
     pub fn clear_composition(&mut self) {
         self.engine.clear_composition_id(self.id);
+    }
+
+    /// Selects a zero-based index on the current candidate page. False means
+    /// the native engine did not select it; old APIs explicitly report missing.
+    pub fn select_candidate_on_current_page(&mut self, index: usize) -> Result<bool, Error> {
+        self.engine.select_candidate_id(self.id, index)
+    }
+
+    /// Changes the candidate page without synthesizing schema-specific keys.
+    pub fn change_page(&mut self, backward: bool) -> Result<bool, Error> {
+        self.engine.change_page_id(self.id, backward)
     }
 
     pub fn take_commit(&mut self) -> Result<Option<CommitSnapshot>, Error> {
@@ -778,6 +855,8 @@ mod tests {
         malformed_context: bool,
         valid_utf8_context: bool,
         last_key: Option<(c_int, c_int)>,
+        last_candidate: Option<usize>,
+        last_page_backward: Option<bool>,
     }
 
     impl FakeState {
@@ -788,6 +867,8 @@ mod tests {
                 malformed_context: false,
                 valid_utf8_context: false,
                 last_key: None,
+                last_candidate: None,
+                last_page_backward: None,
             }
         }
 
@@ -797,6 +878,8 @@ mod tests {
             self.malformed_context = false;
             self.valid_utf8_context = false;
             self.last_key = None;
+            self.last_candidate = None;
+            self.last_page_backward = None;
         }
     }
 
@@ -864,6 +947,26 @@ mod tests {
 
     unsafe extern "C" fn fake_clear_composition(_: sys::RimeSessionId) {
         record("clear_composition");
+    }
+
+    unsafe extern "C" fn fake_select_candidate(
+        _: sys::RimeSessionId,
+        index: usize,
+    ) -> sys::RimeBool {
+        let mut state = FAKE.lock().unwrap();
+        state.calls.push("select_candidate_on_current_page");
+        state.last_candidate = Some(index);
+        sys::to_rime_bool(index < 2)
+    }
+
+    unsafe extern "C" fn fake_change_page(
+        _: sys::RimeSessionId,
+        backward: sys::RimeBool,
+    ) -> sys::RimeBool {
+        let mut state = FAKE.lock().unwrap();
+        state.calls.push("change_page");
+        state.last_page_backward = Some(sys::from_rime_bool(backward));
+        sys::to_rime_bool(!sys::from_rime_bool(backward))
     }
 
     unsafe extern "C" fn fake_get_commit(
@@ -1062,6 +1165,115 @@ mod tests {
             free_status: Some(fake_free_status),
             ..sys::RimeApi::default()
         }
+    }
+
+    fn fake_candidate_api() -> sys::RimeApiCandidateExtension {
+        sys::RimeApiCandidateExtension {
+            prefix: sys::RimeApi {
+                data_size: sys::RIME_API_CANDIDATE_DATA_SIZE,
+                ..fake_api()
+            },
+            select_candidate_on_current_page: Some(fake_select_candidate),
+            change_page: Some(fake_change_page),
+            ..sys::RimeApiCandidateExtension::default()
+        }
+    }
+
+    #[test]
+    fn optional_candidate_slots_require_complete_advertised_fields() {
+        let mut api = fake_candidate_api();
+        // Keep the raw pointer derived from the full allocation, not a
+        // reference to only the prefix subobject.
+        let select_end = sys::RIME_API_SELECT_CURRENT_PAGE_OFFSET
+            + size_of::<sys::SelectCandidateOnCurrentPageFn>()
+            - size_of::<c_int>();
+        api.prefix.data_size = select_end as c_int - 1;
+        // SAFETY: live test allocation/table, with intentionally reduced size.
+        let functions = unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }.unwrap();
+        assert!(functions.select_candidate_on_current_page.is_none());
+        assert!(functions.change_page.is_none());
+        api.prefix.data_size += 1;
+        // SAFETY: select field is now exactly advertised; page remains absent.
+        let functions = unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }.unwrap();
+        assert!(functions.select_candidate_on_current_page.is_some());
+        assert!(functions.change_page.is_none());
+        api.prefix.data_size = sys::RIME_API_CANDIDATE_DATA_SIZE - 1;
+        // SAFETY: last byte of page slot is intentionally outside the range.
+        assert!(
+            unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }
+                .unwrap()
+                .change_page
+                .is_none()
+        );
+        api.prefix.data_size += 1;
+        api.change_page = None;
+        // SAFETY: full slot is advertised but null; it remains unavailable.
+        assert!(
+            unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }
+                .unwrap()
+                .change_page
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn older_api_keeps_key_input_but_reports_missing_candidate_commands() {
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        let mut api = fake_api();
+        // SAFETY: base-prefix table remains live throughout Engine ownership.
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
+        let mut session = engine.create_session().unwrap();
+        assert!(session.process_key(65, 0));
+        assert_eq!(
+            session.select_candidate_on_current_page(0),
+            Err(Error::MissingFunction("select_candidate_on_current_page"))
+        );
+        assert_eq!(
+            session.change_page(false),
+            Err(Error::MissingFunction("change_page"))
+        );
+        assert!(FAKE.lock().unwrap().last_candidate.is_none());
+    }
+
+    #[test]
+    fn candidate_commands_route_through_actor_and_preserve_native_false() {
+        use mo_domain::{EngineCommand, SessionOptions};
+        use mo_engine::EngineActor;
+
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        FAKE.lock().unwrap().valid_utf8_context = true;
+        let mut api = fake_candidate_api();
+        let raw = std::ptr::addr_of_mut!(api).cast::<sys::RimeApi>();
+        // SAFETY: complete fake table and callbacks remain live until drop.
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), raw) }.unwrap();
+        let mut actor = EngineActor::new(RimeBackend::new(engine));
+        let token = actor.create_session(SessionOptions::new()).unwrap();
+        let selected = actor
+            .dispatch(token, EngineCommand::SelectCandidate { index: 1 })
+            .unwrap();
+        assert!(selected.handled);
+        assert_eq!(selected.commit.as_deref(), Some("你好"));
+        assert_eq!(FAKE.lock().unwrap().last_candidate, Some(1));
+        let missing = actor
+            .dispatch(token, EngineCommand::SelectCandidate { index: u32::MAX })
+            .unwrap();
+        assert!(!missing.handled);
+        assert_eq!(FAKE.lock().unwrap().last_candidate, Some(u32::MAX as usize));
+        let next = actor
+            .dispatch(token, EngineCommand::ChangePage { backward: false })
+            .unwrap();
+        assert!(next.handled);
+        assert_eq!(FAKE.lock().unwrap().last_page_backward, Some(false));
+        let previous = actor
+            .dispatch(token, EngineCommand::ChangePage { backward: true })
+            .unwrap();
+        assert!(!previous.handled);
+        assert_eq!(FAKE.lock().unwrap().last_page_backward, Some(true));
+        assert!(previous.revision > selected.revision);
     }
 
     #[test]

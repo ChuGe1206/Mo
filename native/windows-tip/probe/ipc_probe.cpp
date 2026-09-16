@@ -81,6 +81,40 @@ bool ProbeRimeIce(mo::windows_tip::BrokerClient* broker) {
         std::wcerr << L"rime-ice did not commit the expected candidate\n";
         return false;
     }
+
+    for (const char key : std::string("NI")) {
+        if (!broker->SendKey(static_cast<std::uint32_t>(key), 0, 0, true, false, &snapshot, 2000)) {
+            std::wcerr << L"rime-ice candidate navigation input failed\n";
+            return false;
+        }
+    }
+    if (snapshot.candidates.size() < 2) {
+        std::wcerr << L"rime-ice ni did not produce two selectable candidates\n";
+        return false;
+    }
+    const auto original_page = snapshot.candidates;
+    const auto second_candidate = snapshot.candidates[1];
+    if (!broker->SendKey(VK_NEXT, 0, 0, true, false, &snapshot, 2000)
+        || !snapshot.handled
+        || snapshot.commit.has_value()
+        || snapshot.candidates.empty()
+        || snapshot.candidates == original_page) {
+        std::wcerr << L"rime-ice PageDown did not move to another candidate page\n";
+        return false;
+    }
+    if (!broker->SendKey(VK_PRIOR, 0, 0, true, false, &snapshot, 2000)
+        || !snapshot.handled
+        || snapshot.commit.has_value()
+        || snapshot.candidates != original_page) {
+        std::wcerr << L"rime-ice PageUp did not restore the original candidate page\n";
+        return false;
+    }
+    if (!broker->SendKey('2', 0, 0, true, false, &snapshot, 2000)
+        || !snapshot.handled
+        || snapshot.commit != second_candidate) {
+        std::wcerr << L"rime-ice numeric selection did not commit the second candidate\n";
+        return false;
+    }
     return true;
 }
 

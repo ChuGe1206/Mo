@@ -329,6 +329,53 @@ impl Default for RimeApi {
 /// Minimum advertised API payload needed to read the prefix above.
 pub const RIME_API_REQUIRED_DATA_SIZE: c_int = rime_struct_data_size::<RimeApi>();
 
+pub type SelectCandidateOnCurrentPageFn =
+    Option<unsafe extern "C" fn(RimeSessionId, usize) -> RimeBool>;
+pub type ChangePageFn = Option<unsafe extern "C" fn(RimeSessionId, RimeBool) -> RimeBool>;
+
+/// Layout-only function pointer. These intervening slots are never read or
+/// called: their signatures are intentionally outside Mo's allowlist. C ABI
+/// probes verify the reserved spans and both typed slots on each target.
+pub type OpaqueApiFn = Option<unsafe extern "C" fn()>;
+
+/// Optional tail of the pinned `RimeApi` through `change_page`.
+///
+/// The 47 slots run from set_option through set_caret_pos; the 22 slots run
+/// from candidate_list_begin through highlight_candidate_on_current_page.
+/// The base ABI requirement is unchanged. Callers must range-check each
+/// optional typed slot before reading it, without forming a reference to this
+/// entire extension when an older native table only supplies the base prefix.
+#[repr(C)]
+pub struct RimeApiCandidateExtension {
+    pub prefix: RimeApi,
+    pub reserved_before_select: [OpaqueApiFn; 47],
+    pub select_candidate_on_current_page: SelectCandidateOnCurrentPageFn,
+    pub reserved_after_select: [OpaqueApiFn; 22],
+    pub change_page: ChangePageFn,
+}
+
+impl Default for RimeApiCandidateExtension {
+    fn default() -> Self {
+        Self {
+            prefix: RimeApi {
+                data_size: RIME_API_CANDIDATE_DATA_SIZE,
+                ..RimeApi::default()
+            },
+            reserved_before_select: [None; 47],
+            select_candidate_on_current_page: None,
+            reserved_after_select: [None; 22],
+            change_page: None,
+        }
+    }
+}
+
+pub const RIME_API_CANDIDATE_DATA_SIZE: c_int =
+    rime_struct_data_size::<RimeApiCandidateExtension>();
+pub const RIME_API_SELECT_CURRENT_PAGE_OFFSET: usize =
+    std::mem::offset_of!(RimeApiCandidateExtension, select_candidate_on_current_page);
+pub const RIME_API_CHANGE_PAGE_OFFSET: usize =
+    std::mem::offset_of!(RimeApiCandidateExtension, change_page);
+
 #[cfg(any(feature = "link-dynamic", feature = "link-static"))]
 unsafe extern "C" {
     pub fn rime_get_api() -> *mut RimeApi;
@@ -338,6 +385,30 @@ unsafe extern "C" {
 mod tests {
     use super::*;
     use std::mem::{align_of, offset_of, size_of};
+
+    #[test]
+    fn candidate_extension_preserves_base_and_full_slot_boundaries() {
+        assert_eq!(offset_of!(RimeApiCandidateExtension, prefix), 0);
+        assert_eq!(
+            offset_of!(RimeApiCandidateExtension, reserved_before_select),
+            size_of::<RimeApi>()
+        );
+        assert!(advertised_range_available(
+            RIME_API_CANDIDATE_DATA_SIZE,
+            RIME_API_CHANGE_PAGE_OFFSET,
+            size_of::<ChangePageFn>()
+        ));
+        assert!(!advertised_range_available(
+            RIME_API_CANDIDATE_DATA_SIZE - 1,
+            RIME_API_CHANGE_PAGE_OFFSET,
+            size_of::<ChangePageFn>()
+        ));
+        assert!(!advertised_range_available(
+            RIME_API_REQUIRED_DATA_SIZE,
+            RIME_API_SELECT_CURRENT_PAGE_OFFSET,
+            size_of::<SelectCandidateOnCurrentPageFn>()
+        ));
+    }
 
     #[test]
     fn c_integer_and_handle_widths_are_not_rust_bool_or_fixed_u64() {

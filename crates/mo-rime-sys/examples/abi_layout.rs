@@ -61,4 +61,29 @@ fn main() {
     field_offset!("RimeApi", RimeApi, free_context);
     field_offset!("RimeApi", RimeApi, get_status);
     field_offset!("RimeApi", RimeApi, free_status);
+    type_layout!("RimeApi.candidate_extension", RimeApiCandidateExtension);
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        reserved_before_select
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        select_candidate_on_current_page
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        reserved_after_select
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        change_page
+    );
+    println!(
+        "RimeApi.candidate_extension.required_data_size={}",
+        RIME_API_CANDIDATE_DATA_SIZE
+    );
 }

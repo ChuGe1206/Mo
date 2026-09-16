@@ -61,5 +61,11 @@ int main(void) {
   PRINT_OFFSET("RimeApi", RimeApi, free_context);
   PRINT_OFFSET("RimeApi", RimeApi, get_status);
   PRINT_OFFSET("RimeApi", RimeApi, free_status);
+  PRINT_TYPE("RimeApi.candidate_extension", RimeApi);
+  printf("RimeApi.candidate_extension.offset.reserved_before_select=%zu\n", offsetof(RimeApi, set_option));
+  PRINT_OFFSET("RimeApi.candidate_extension", RimeApi, select_candidate_on_current_page);
+  printf("RimeApi.candidate_extension.offset.reserved_after_select=%zu\n", offsetof(RimeApi, candidate_list_begin));
+  PRINT_OFFSET("RimeApi.candidate_extension", RimeApi, change_page);
+  printf("RimeApi.candidate_extension.required_data_size=%zu\n", sizeof(RimeApi) - sizeof(((RimeApi*)0)->data_size));
   return 0;
 }

@@ -456,6 +456,10 @@ fn normalized_keycode(virtual_key: u32, modifiers: KeyModifiers) -> u32 {
         0x09 => 0xff09, // XK_Tab
         0x0d => 0xff0d, // XK_Return
         0x1b => 0xff1b, // XK_Escape
+        0x21 => 0xff55, // XK_Page_Up
+        0x22 => 0xff56, // XK_Page_Down
+        0x23 => 0xff57, // XK_End
+        0x24 => 0xff50, // XK_Home
         0x25 => 0xff51, // XK_Left
         0x26 => 0xff52, // XK_Up
         0x27 => 0xff53, // XK_Right

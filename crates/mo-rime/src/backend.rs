@@ -162,11 +162,11 @@ impl EngineBackend for RimeBackend {
                 self.engine.clear_composition_id(session.id);
                 was_composing
             }
-            EngineCommand::SelectCandidate { .. } => {
-                return Err(RimeBackendError::UnsupportedCommand("select_candidate"));
-            }
-            EngineCommand::ChangePage { .. } => {
-                return Err(RimeBackendError::UnsupportedCommand("change_page"));
+            EngineCommand::SelectCandidate { index } => self
+                .engine
+                .select_candidate_id(session.id, *index as usize)?,
+            EngineCommand::ChangePage { backward } => {
+                self.engine.change_page_id(session.id, *backward)?
             }
             EngineCommand::SetOption { .. } => {
                 return Err(RimeBackendError::UnsupportedCommand("set_option"));

@@ -141,6 +141,59 @@ fn engine_backend_failure_is_a_stable_protocol_error() {
 }
 
 #[test]
+fn candidate_navigation_keys_are_x11_keysyms_not_windows_virtual_keys() {
+    let mut connection = BrokerConnection::new(13);
+    hello(&mut connection, 1);
+    let token = open(&mut connection, 2);
+    for (index, (virtual_key, expected)) in [
+        (0x21, 0xff55),
+        (0x22, 0xff56),
+        (0x23, 0xff57),
+        (0x24, 0xff50),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let event = KeyEvent {
+            virtual_key,
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        connection
+            .handle(frame(
+                MessageKind::KeyEvent,
+                13,
+                token,
+                index as u64 + 3,
+                event.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let applied = connection
+            .engine()
+            .backend()
+            .events()
+            .iter()
+            .rev()
+            .find_map(|event| {
+                if let FakeEvent::CommandApplied {
+                    command: EngineCommand::Key(key),
+                    ..
+                } = event
+                {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(applied.keycode, expected);
+        assert_eq!(applied.text, None);
+    }
+}
+
+#[test]
 fn engine_actor_keeps_sessions_isolated_and_globally_orders_snapshots() {
     let mut connection = BrokerConnection::new(9);
     hello(&mut connection, 1);

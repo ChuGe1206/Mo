@@ -80,6 +80,33 @@ try {
 
 $brokerPath = Join-Path $repoRoot 'target\debug\mo-broker.exe'
 
+function Remove-ProbeUser([string]$ProbeUser) {
+    if (Test-Path -LiteralPath $ProbeUser -PathType Container) {
+        $resolvedProbeUser = (Resolve-Path -LiteralPath $ProbeUser).Path
+        $expectedPrefix = $user.TrimEnd('\') + '\'
+        if (-not $resolvedProbeUser.StartsWith(
+                $expectedPrefix,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to clean probe directory outside disposable user root: $resolvedProbeUser"
+        }
+        Remove-Item -LiteralPath $resolvedProbeUser -Recurse -Force
+    }
+}
+
+$candidateUser = Join-Path $user ('mo-candidates-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $candidateUser | Out-Null
+try {
+    Copy-Item -LiteralPath (Join-Path $user 'build') -Destination (Join-Path $candidateUser 'build') -Recurse
+    Push-Location $repoRoot
+    try {
+        Invoke-Checked 'cargo' @("+$RustToolchain", 'run', '--quiet', '-p', 'mo-rime', '--example', 'candidate_smoke', '--', $dynamicLibrary, $shared, $candidateUser)
+    } finally {
+        Pop-Location
+    }
+} finally {
+    Remove-ProbeUser $candidateUser
+}
+
 function Invoke-RimeBrokerProbe(
     [string]$Platform,
     [string]$Probe,
@@ -124,16 +151,7 @@ function Invoke-RimeBrokerProbe(
     } finally {
         if (-not $process.HasExited) { $process.Kill($true) }
         $process.Dispose()
-        if (Test-Path -LiteralPath $probeUser -PathType Container) {
-            $resolvedProbeUser = (Resolve-Path -LiteralPath $probeUser).Path
-            $expectedPrefix = $user.TrimEnd('\') + '\'
-            if (-not $resolvedProbeUser.StartsWith(
-                    $expectedPrefix,
-                    [System.StringComparison]::OrdinalIgnoreCase)) {
-                throw "Refusing to clean probe directory outside disposable user root: $resolvedProbeUser"
-            }
-            Remove-Item -LiteralPath $resolvedProbeUser -Recurse -Force
-        }
+        Remove-ProbeUser $probeUser
     }
 }
 
@@ -147,4 +165,4 @@ foreach ($platform in $platforms) {
     Invoke-RimeBrokerProbe $platform $abiProbe @($tip, '--broker-rime-ice') 'rime-ice TIP edit-session probe'
 }
 
-Write-Host "C++ $($platforms -join '/') clients committed nihao -> 你好 through TIP -> Broker -> librime/rime-ice."
+Write-Host "Real Actor candidate APIs and C++ $($platforms -join '/') IPC paging/numeric selection passed; TIP edit sessions committed nihao -> 你好."
