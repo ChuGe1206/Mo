@@ -10,3 +10,6 @@
 *.h text eol=crlf
 *.wxs text eol=crlf
 
+# Unified diffs require their single-space blank context lines. Keep them LF on
+# Windows too, so they apply to the hash-pinned Git archives without CRLF drift.
+*.patch text eol=lf whitespace=-blank-at-eol

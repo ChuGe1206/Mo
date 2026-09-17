@@ -17,8 +17,12 @@ fn main() -> std::io::Result<()> {
             mo_broker::windows_named_pipe::serve_pool_with_backend_factory(
                 pool,
                 move || {
-                    mo_rime::Engine::load(startup.engine_config, startup.dll_path)
-                        .and_then(mo_rime::RimeBackend::with_resource_anchor)
+                    let engine = mo_rime::Engine::load(startup.engine_config, startup.dll_path)?;
+                    if startup.require_prepared_resources {
+                        mo_rime::RimeBackend::with_prepared_resources(engine)
+                    } else {
+                        mo_rime::RimeBackend::with_resource_anchor(engine)
+                    }
                 },
                 None,
             )

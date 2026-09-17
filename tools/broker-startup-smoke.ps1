@@ -42,6 +42,7 @@ function Assert-Rejected([string[]]$Arguments, [string]$ExpectedError, [string]$
 
 Assert-Rejected @('--fake') 'installed mo-broker accepts no command-line arguments' 'Release fake mode'
 Assert-Rejected @('--rime', 'C:\untrusted\rime.dll', 'C:\untrusted\shared', 'C:\untrusted\user') 'installed mo-broker accepts no command-line arguments' 'Release caller-selected runtime'
+Assert-Rejected @('--rime-prepared', 'C:\untrusted\rime.dll', 'C:\untrusted\shared', 'C:\untrusted\user') 'installed mo-broker accepts no command-line arguments' 'Release caller-selected prepared runtime'
 Assert-Rejected @('--installed') 'installed mo-broker accepts no command-line arguments' 'Release unknown argument'
 Assert-Rejected @() 'Broker must run from its fixed installed path' 'Repository release image'
 Write-Host 'Release Broker startup policy passed without installing files or modifying system/user registration.'

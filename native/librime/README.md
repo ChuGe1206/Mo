@@ -1,6 +1,8 @@
 # librime native boundary
 
-Mo consumes only librime's public C API.  `UPSTREAM.toml` identifies the exact
+Mo consumes librime's public C API plus a versioned Mo-only, input-free resource
+preparation export in its experimental self-built runtime (ADR 0024).
+`UPSTREAM.toml` identifies the exact
 source revision used to generate and probe the Rust declarations.  Native
 headers, libraries and transitive dependencies are intentionally not committed
 at this Phase 0 step.
@@ -27,3 +29,10 @@ Production packages must build the pinned librime source themselves with an
 audited plugin allow-list. The current minimum is the BSD-3-Clause core plus
 BSD-3-Clause `librime-lua`, because the pinned rime-ice schemas require Lua.
 Adding any other plugin requires a manifest and license-policy change.
+
+`tools/runtime-build` now builds the pinned core plus Lua into a fresh development
+runtime, with external plugins disabled. The tracked preparation patch does not
+change `rime_api.h` or add upstream API-table slots. Installed-mode Broker requires
+the extension to succeed before readiness; official verification DLLs remain
+usable only via the explicit legacy debug entry point. Build provenance is not
+release approval, and OpenCC relocation/CWD lookup remains a separate gate.

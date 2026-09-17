@@ -20,6 +20,7 @@ param(
     [ValidateRange(1, 100)]
     [int]$FaultRepetitions = 1,
     [switch]$LatencyTrace,
+    [switch]$PreparedResources,
     [string]$OpenccDataDir
 )
 
@@ -94,6 +95,7 @@ try {
 }
 
 $brokerPath = Join-Path $repoRoot 'target\debug\mo-broker.exe'
+$rimeMode = if ($PreparedResources) { '--rime-prepared' } else { '--rime' }
 
 function Remove-ProbeUser([string]$ProbeUser) {
     if (Test-Path -LiteralPath $ProbeUser -PathType Container) {
@@ -139,7 +141,7 @@ function Invoke-RimeBrokerProbe(
     if ($OpenccDataDir) { Copy-MoCompiledOpenccData $OpenccDataDir $probeUser }
     if ($Fault) {
         try {
-            Invoke-MoBrokerFaultProbe $brokerPath @('--rime', $dynamicLibrary, $shared, $probeUser) `
+            Invoke-MoBrokerFaultProbe $brokerPath @($rimeMode, $dynamicLibrary, $shared, $probeUser) `
                 $Probe $ProbeArguments[0] -RimeIce -LatencyTrace:$LatencyTrace
         } finally { Remove-ProbeUser $probeUser }
         return
@@ -149,7 +151,7 @@ function Invoke-RimeBrokerProbe(
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardError = $true
-    [void]$startInfo.ArgumentList.Add('--rime')
+    [void]$startInfo.ArgumentList.Add($rimeMode)
     [void]$startInfo.ArgumentList.Add($dynamicLibrary)
     [void]$startInfo.ArgumentList.Add($shared)
     [void]$startInfo.ArgumentList.Add($probeUser)

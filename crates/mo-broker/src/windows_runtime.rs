@@ -7,8 +7,7 @@ use std::path::{Path, PathBuf};
 use mo_rime::EngineConfig;
 
 #[cfg(debug_assertions)]
-pub const USAGE: &str =
-    "usage: mo-broker --fake | --rime <absolute-rime.dll> <shared-data-dir> <user-data-dir>";
+pub const USAGE: &str = "usage: mo-broker --fake | (--rime | --rime-prepared) <absolute-rime.dll> <shared-data-dir> <user-data-dir>";
 pub const INSTALLED_USAGE: &str = "installed mo-broker accepts no command-line arguments";
 
 #[cfg(not(debug_assertions))]
@@ -23,6 +22,7 @@ pub enum StartupMode {
 pub struct RimeStartup {
     pub dll_path: PathBuf,
     pub engine_config: EngineConfig,
+    pub require_prepared_resources: bool,
 }
 
 /// Release builds only use OS Known Folders and the fixed installed layout.
@@ -38,7 +38,7 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
 pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
     match arguments.as_slice() {
         [flag] if flag == "--fake" => Ok(StartupMode::Fake),
-        [flag, dll, shared, user] if flag == "--rime" => {
+        [flag, dll, shared, user] if flag == "--rime" || flag == "--rime-prepared" => {
             let shared = runtime_directory(Path::new(shared), "shared data directory")?;
             let user = runtime_directory(Path::new(user), "user data directory")?;
             require_file(&shared, "default.yaml", "shared data directory")?;
@@ -47,6 +47,7 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
             require_file(&user, "build/rime_ice.schema.yaml", "deployed user data")?;
             Ok(StartupMode::Rime(Box::new(RimeStartup {
                 dll_path: PathBuf::from(dll),
+                require_prepared_resources: flag == "--rime-prepared",
                 engine_config: EngineConfig::new(
                     librime_path(&shared, "shared data directory")?,
                     librime_path(&user, "user data directory")?,
@@ -140,6 +141,7 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
     Ok(StartupMode::Rime(Box::new(RimeStartup {
         dll_path: dll,
         engine_config: config,
+        require_prepared_resources: true,
     })))
 }
 
@@ -235,6 +237,33 @@ mod tests {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
+    fn debug_preparation_is_explicit_and_never_a_legacy_fallback() {
+        let fixture = Fixture::new();
+        let shared = fixture.0.join("shared");
+        let user = fixture.0.join("user");
+        std::fs::create_dir_all(&shared).unwrap();
+        std::fs::create_dir_all(user.join("build")).unwrap();
+        for file in ["default.yaml", "rime_ice.schema.yaml"] {
+            std::fs::write(shared.join(file), b"fixture").unwrap();
+            std::fs::write(user.join("build").join(file), b"fixture").unwrap();
+        }
+        for (flag, required) in [("--rime", false), ("--rime-prepared", true)] {
+            let mode = parse_startup(vec![
+                flag.into(),
+                fixture.0.join("rime.dll").into_os_string(),
+                shared.clone().into_os_string(),
+                user.clone().into_os_string(),
+            ])
+            .unwrap();
+            let StartupMode::Rime(startup) = mode else {
+                panic!("explicit native mode must not fall back to fake");
+            };
+            assert_eq!(startup.require_prepared_resources, required);
+        }
+    }
+
+    #[test]
     fn installed_policy_rejects_diagnostic_and_unknown_arguments() {
         assert!(parse_installed_arguments(&[]).is_ok());
         for arguments in [
@@ -244,6 +273,7 @@ mod tests {
                 OsString::from(r"C:\untrusted\rime.dll"),
             ],
             vec![OsString::from("--installed")],
+            vec![OsString::from("--rime-prepared")],
         ] {
             let error = parse_installed_arguments(&arguments).unwrap_err();
             assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
@@ -326,6 +356,7 @@ mod tests {
             startup.dll_path,
             std::fs::canonicalize(&layout.dll_path).unwrap()
         );
+        assert!(startup.require_prepared_resources);
         assert_eq!(
             startup.engine_config.prebuilt_data_dir,
             Some(

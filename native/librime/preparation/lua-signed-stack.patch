@@ -1,0 +1,35 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 42f2ebb..597f26b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -19,6 +19,8 @@ else()
+   message(STATUS "Using in-tree lua source")
+   include_directories(thirdparty/lua5.4)
+   aux_source_directory(thirdparty/lua5.4 LUA_SRC)
++  # Embed the library only, never the lua/luac executable entry points.
++  list(FILTER LUA_SRC EXCLUDE REGEX "/lua(c)?\\.c$")
+   add_definitions(-DLUA_COMPAT_5_3)
+   if(WIN32)
+     set_property(SOURCE ${LUA_SRC} PROPERTY COMPILE_DEFINITIONS LUA_BUILD_AS_DLL)
+diff --git a/src/types.cc b/src/types.cc
+index 69cf24a..05e5949 100644
+--- a/src/types.cc
++++ b/src/types.cc
+@@ -254,7 +254,7 @@ namespace CandidateReg {
+   }
+ 
+   int raw_shadow_candidate(lua_State* L) {
+-    size_t n = lua_gettop(L);
++    const int n = lua_gettop(L);
+     if (2 > n) {
+       return (1 == n) ?
+         luaL_error(L, "bad argument #2 to func (string expected, got no value)") :
+@@ -281,7 +281,7 @@ namespace CandidateReg {
+     return New<UniquifiedCandidate>(item, type, text, comment);
+   }
+   int raw_uniquified_candidate(lua_State* L) {
+-    size_t n = lua_gettop(L);
++    const int n = lua_gettop(L);
+     if (2 > n) {
+       return (1 == n) ?
+         luaL_error(L, "bad argument #2 to func (string expected, got no value)") :

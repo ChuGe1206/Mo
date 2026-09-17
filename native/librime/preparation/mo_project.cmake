@@ -1,0 +1,16 @@
+# Included immediately after the upstream project(), deferred until rime exists.
+function(mo_finish_project)
+  if(NOT TARGET rime OR ENABLE_EXTERNAL_PLUGINS OR BUILD_SEPARATE_LIBS)
+    message(FATAL_ERROR "Mo requires one merged DLL with no external plugins")
+  endif()
+  if(NOT "${rime_plugins_modules}" STREQUAL "lua")
+    message(FATAL_ERROR "Mo permits only the Lua plugin")
+  endif()
+  target_sources(rime PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_preparation.cc")
+  set_source_files_properties("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_preparation.cc"
+    PROPERTIES COMPILE_OPTIONS "/W4;/WX")
+  target_compile_options(rime PRIVATE /MP4 /utf-8 /sdl /GS /guard:cf)
+  target_compile_options(rime-lua-objs PRIVATE /MP4 /utf-8 /sdl /GS /guard:cf)
+  target_link_options(rime PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+endfunction()
+cmake_language(DEFER CALL mo_finish_project)

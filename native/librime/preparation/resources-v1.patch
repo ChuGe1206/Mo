@@ -1,0 +1,128 @@
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+index 4a54f64..c720c6b 100644
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -11,6 +11,7 @@
+ #include <rime/engine.h>
+ #include <rime/filter.h>
+ #include <rime/formatter.h>
++#include <rime/gear/simplifier.h>
+ #include <rime/key_event.h>
+ #include <rime/menu.h>
+ #include <rime/processor.h>
+@@ -33,6 +34,7 @@ class ConcreteEngine : public Engine {
+   virtual void ApplySchema(Schema* schema);
+   virtual void CommitText(string text);
+   virtual void Compose(Context* ctx);
++  bool PrepareResources() override;
+ 
+  protected:
+   void InitializeComponents();
+@@ -57,6 +59,22 @@ class ConcreteEngine : public Engine {
+ 
+ // implementations
+ 
++bool ConcreteEngine::PrepareResources() {
++  if (!schema_ || schema_->schema_id() != "rime_ice" || !context_
++      || !context_->input().empty() || context_->IsComposing()) {
++    return false;
++  }
++  size_t prepared = 0;
++  for (const auto& filter : filters_) {
++    if (auto* simplifier = dynamic_cast<Simplifier*>(filter.get())) {
++      if (!simplifier->PrepareResources()) { return false; }
++      ++prepared;
++    }
++  }
++  // The locked default schema has Emoji and traditionalization filters.
++  return prepared == 2;
++}
++
+ Engine* Engine::Create() {
+   return new ConcreteEngine;
+ }
+diff --git a/src/rime/engine.h b/src/rime/engine.h
+index 6b51a68..2ac2972 100644
+--- a/src/rime/engine.h
++++ b/src/rime/engine.h
+@@ -26,6 +26,8 @@ class Engine : public Messenger {
+   virtual void ApplySchema(Schema* schema) {}
+   virtual void CommitText(string text) { sink_(text); }
+   virtual void Compose(Context* ctx) {}
++  // Mo-only input-free resource preparation, not part of librime's public API.
++  virtual bool PrepareResources() { return false; }
+ 
+   Schema* schema() const { return schema_.get(); }
+   Context* context() const { return context_.get(); }
+diff --git a/src/rime/gear/simplifier.cc b/src/rime/gear/simplifier.cc
+index b337cf1..744e9f8 100644
+--- a/src/rime/gear/simplifier.cc
++++ b/src/rime/gear/simplifier.cc
+@@ -156,6 +156,7 @@ class Opencc {
+     *simplified = converter_->Convert(text);
+     return *simplified != text;
+   }
++  bool ready() const { return converter_ != nullptr && dict_ != nullptr; }
+ 
+  private:
+   bool initialized_;
+@@ -165,6 +166,12 @@ class Opencc {
+ };
+ 
+ // Simplifier
++bool Simplifier::PrepareResources() {
++  if (!opencc_) { return false; }
++  opencc_->Initialize();
++  return opencc_->ready();
++}
++
+ 
+ Simplifier::Simplifier(const Ticket& ticket, an<Opencc> opencc)
+     : Filter(ticket), TagMatching(ticket), opencc_(opencc) {
+diff --git a/src/rime/gear/simplifier.h b/src/rime/gear/simplifier.h
+index ffe8e32..864cf86 100644
+--- a/src/rime/gear/simplifier.h
++++ b/src/rime/gear/simplifier.h
+@@ -25,6 +25,7 @@ class Simplifier : public Filter, TagMatching {
+   virtual bool AppliesToSegment(Segment* segment) { return TagsMatch(segment); }
+ 
+   bool Convert(const an<Candidate>& original, CandidateQueue* result);
++  bool PrepareResources();
+ 
+  protected:
+   enum TipsLevel { kTipsNone, kTipsChar, kTipsAll };
+diff --git a/src/rime/service.cc b/src/rime/service.cc
+index d30f991..9ce6417 100644
+--- a/src/rime/service.cc
++++ b/src/rime/service.cc
+@@ -27,6 +27,18 @@ bool Session::ProcessKey(const KeyEvent& key_event) {
+   return engine_->ProcessKey(key_event);
+ }
+ 
++bool Session::PrepareResources() {
++  return engine_ && engine_->active_engine() == engine_.get()
++      && commit_text_.empty() && engine_->PrepareResources();
++}
++
++bool PrepareResourcesForSession(SessionId id) {
++  auto& service = Service::instance();
++  if (service.disabled()) { return false; }
++  const auto session = service.GetSession(id);
++  return session && session->PrepareResources();
++}
++
+ void Session::Activate() {
+   last_active_time_ = time(NULL);
+ }
+diff --git a/src/rime/service.h b/src/rime/service.h
+index a69ae74..2bdef0d 100644
+--- a/src/rime/service.h
++++ b/src/rime/service.h
+@@ -34,6 +34,7 @@ class Session {
+ 
+   Session();
+   bool ProcessKey(const KeyEvent& key_event);
++  bool PrepareResources();
+   void Activate();
+   void ResetCommitText();
+   bool CommitComposition();

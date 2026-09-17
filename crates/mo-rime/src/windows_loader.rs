@@ -145,6 +145,23 @@ impl LoadedLibrary {
         // SAFETY: the caller requested the native API and keeps `self` alive.
         Ok(unsafe { get_api() })
     }
+
+    pub(crate) unsafe fn prepare_resources(&self) -> Option<crate::PrepareResources> {
+        // SAFETY: this module is live and the export name is NUL-terminated.
+        let symbol = unsafe {
+            GetProcAddress(
+                self.module.as_ptr(),
+                c"mo_rime_prepare_resources_v1".as_ptr().cast(),
+            )
+        }?;
+        // SAFETY: the exact v1 name fixes the C signature and return contract;
+        // its containing module remains owned until after native finalization.
+        Some(unsafe {
+            std::mem::transmute::<unsafe extern "system" fn() -> isize, crate::PrepareResources>(
+                symbol,
+            )
+        })
+    }
 }
 
 impl Drop for LoadedLibrary {

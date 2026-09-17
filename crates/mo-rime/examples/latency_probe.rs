@@ -10,11 +10,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .skip(1)
         .map(PathBuf::from)
         .collect::<Vec<_>>();
-    let (paths, keep_resources) = match arguments.as_slice() {
-        [dll, shared, user] => ([dll, shared, user], false),
-        [dll, shared, user, flag] if flag == std::path::Path::new("--keep-resources") => ([dll, shared, user], true),
+    let (paths, keep_resources, prepare_resources) = match arguments.as_slice() {
+        [dll, shared, user] => ([dll, shared, user], false, false),
+        [dll, shared, user, flag] if flag == std::path::Path::new("--keep-resources") => ([dll, shared, user], true, false),
+        [dll, shared, user, flag] if flag == std::path::Path::new("--prepare-resources") => ([dll, shared, user], true, true),
         _ => return Err(io::Error::new(io::ErrorKind::InvalidInput,
-            "usage: latency_probe <absolute-rime.dll> <absolute-shared> <absolute-disposable-user> [--keep-resources]").into()),
+            "usage: latency_probe <absolute-rime.dll> <absolute-shared> <absolute-disposable-user> [--keep-resources | --prepare-resources]").into()),
     };
     let [dll, shared, user] = paths;
     if paths.iter().any(|path| !path.is_absolute()) || !user.join("mo-latency-fixture").is_file() {
@@ -31,9 +32,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let engine = Engine::load(EngineConfig::new(unicode(shared)?, unicode(user)?), dll)?;
     // No synthetic key or commit is ever sent to this resource owner.
-    let _resource_owner = keep_resources
+    let mut resource_owner = keep_resources
         .then(|| engine.create_session())
         .transpose()?;
+    if prepare_resources {
+        let owner = resource_owner.as_mut().expect("preparation keeps an owner");
+        let before = owner.context()?;
+        assert!(owner.take_commit()?.is_none());
+        let started = Instant::now();
+        owner.prepare_resources()?;
+        let prepare_us = started.elapsed().as_micros();
+        assert_eq!(
+            owner.context()?,
+            before,
+            "preparation must not change context"
+        );
+        assert!(owner.take_commit()?.is_none());
+        assert!(owner.status()?.is_some_and(|status| !status.is_composing));
+        println!("MO_PREPARE prepare_us={prepare_us} input_free=true");
+    }
     for trial in 0..20 {
         let started = Instant::now();
         let mut session = engine.create_session()?;

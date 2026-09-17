@@ -28,6 +28,9 @@ const MAX_SELECT_LABELS: usize = 256;
 
 static ENGINE_GATE: Mutex<()> = Mutex::new(());
 
+// Versioned Mo-only C export, not an upstream RimeApi slot.
+type PrepareResources = unsafe extern "C" fn(sys::RimeSessionId) -> c_int;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     NullApi,
@@ -356,6 +359,7 @@ impl Functions {
 /// ```
 pub struct Engine {
     functions: Functions,
+    prepare_resources: Option<PrepareResources>,
     _traits: Box<TraitStorage>,
     _gate: MutexGuard<'static, ()>,
     _thread_affinity: PhantomData<Rc<()>>,
@@ -375,8 +379,11 @@ impl Engine {
         // SAFETY: `library` owns the module that exports this table and is moved
         // into the Engine before this method returns.
         let api = unsafe { library.rime_api()? };
+        // SAFETY: the optional versioned export belongs to this same live DLL.
+        let prepare_resources = unsafe { library.prepare_resources() };
         // SAFETY: the API came from the live, explicitly loaded librime module.
         let mut engine = unsafe { Self::from_raw_api(config, api)? };
+        engine.prepare_resources = prepare_resources;
         engine._runtime_library = Some(library);
         Ok(engine)
     }
@@ -420,6 +427,7 @@ impl Engine {
 
         Ok(Self {
             functions,
+            prepare_resources: None,
             _traits: traits,
             _gate: gate,
             _thread_affinity: PhantomData,
@@ -453,6 +461,20 @@ impl Engine {
             Ok(())
         } else {
             Err(Error::NativeCallFailed("destroy_session"))
+        }
+    }
+
+    fn prepare_resources_id(&self, id: sys::RimeSessionId) -> Result<(), Error> {
+        let prepare = self
+            .prepare_resources
+            .ok_or(Error::MissingFunction("mo_rime_prepare_resources_v1"))?;
+        // SAFETY: the owner keeps the DLL and session alive on the engine thread.
+        // The versioned extension accepts only an empty fixed-schema session and
+        // reads converters without process_key, context mutation or commit.
+        if unsafe { prepare(id) } == 1 {
+            Ok(())
+        } else {
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v1"))
         }
     }
 
@@ -605,6 +627,14 @@ pub struct Session<'engine> {
 }
 
 impl Session<'_> {
+    /// Reads the actual session's conversion dictionaries without sending input.
+    ///
+    /// Requires Mo's v1 native extension and an empty `rime_ice` session. The
+    /// native boundary rejects busy/other-schema sessions; it never clears them.
+    pub fn prepare_resources(&mut self) -> Result<(), Error> {
+        self.engine.prepare_resources_id(self.id)
+    }
+
     pub fn id(&self) -> sys::RimeSessionId {
         self.id
     }
@@ -1326,6 +1356,96 @@ mod tests {
                 "setup",
                 "initialize",
                 "create_session",
+                "cleanup_all_sessions",
+                "finalize"
+            ]
+        );
+    }
+
+    #[test]
+    fn prepared_anchor_requires_extension_without_creating_a_session() {
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        let mut api = fake_api();
+        // SAFETY: the fake table stays live through failure/finalization.
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
+        assert!(matches!(
+            RimeBackend::with_prepared_resources(engine),
+            Err(Error::MissingFunction("mo_rime_prepare_resources_v1"))
+        ));
+        assert_eq!(
+            FAKE.lock().unwrap().calls,
+            ["setup", "initialize", "cleanup_all_sessions", "finalize"]
+        );
+    }
+
+    #[test]
+    fn prepared_anchor_rejects_failure_and_noncanonical_returns_then_reclaims() {
+        use std::sync::atomic::{AtomicI32, Ordering};
+        static RESULT: AtomicI32 = AtomicI32::new(0);
+        unsafe extern "C" fn prepare(id: sys::RimeSessionId) -> c_int {
+            assert_eq!(id, 42);
+            record("prepare_resources");
+            RESULT.load(Ordering::Relaxed)
+        }
+        let _serial = TEST_SERIAL.lock().unwrap();
+        for result in [0, -1, 2] {
+            RESULT.store(result, Ordering::Relaxed);
+            FAKE.lock().unwrap().reset();
+            let mut api = fake_api();
+            // SAFETY: all test callbacks/table outlive this engine.
+            let mut engine =
+                unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }
+                    .unwrap();
+            engine.prepare_resources = Some(prepare);
+            assert!(matches!(
+                RimeBackend::with_prepared_resources(engine),
+                Err(Error::NativeCallFailed("mo_rime_prepare_resources_v1"))
+            ));
+            assert_eq!(
+                FAKE.lock().unwrap().calls,
+                [
+                    "setup",
+                    "initialize",
+                    "create_session",
+                    "prepare_resources",
+                    "destroy_session",
+                    "cleanup_all_sessions",
+                    "finalize"
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn prepared_anchor_success_reads_only_resources_and_remains_owned_until_drop() {
+        unsafe extern "C" fn prepare(id: sys::RimeSessionId) -> c_int {
+            assert_eq!(id, 42);
+            record("prepare_resources");
+            1
+        }
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        let mut api = fake_api();
+        // SAFETY: all test callbacks/table remain live until backend teardown.
+        let mut engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
+        engine.prepare_resources = Some(prepare);
+        let backend = RimeBackend::with_prepared_resources(engine).unwrap();
+        assert_eq!(
+            FAKE.lock().unwrap().calls,
+            ["setup", "initialize", "create_session", "prepare_resources"]
+        );
+        drop(backend);
+        assert_eq!(
+            FAKE.lock().unwrap().calls,
+            [
+                "setup",
+                "initialize",
+                "create_session",
+                "prepare_resources",
+                "destroy_session",
                 "cleanup_all_sessions",
                 "finalize"
             ]

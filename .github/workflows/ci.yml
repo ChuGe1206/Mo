@@ -100,3 +100,29 @@ jobs:
           ./tools/test-opencc-data.ps1 -OpenccDataDir $openccPack -CompilerPath $compiler
           ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -Deploy -OpenccDataDir $openccPack
           ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -LatencyTrace -OpenccDataDir $openccPack
+      - name: Build and verify the allowlisted input-free preparation runtime
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'mo-runtime-source'
+          git clone --filter=blob:none --no-checkout https://github.com/rime/librime.git $source
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime core fetch failed' }
+          git -C $source checkout --detach 33e78140250125871856cdc5b42ddc6a5fcd3cd4
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime core checkout failed' }
+          git -C $source submodule update --init --depth 1 deps/leveldb deps/marisa-trie deps/opencc deps/yaml-cpp
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime dependencies fetch failed' }
+          git clone --filter=blob:none --no-checkout https://github.com/hchunhui/librime-lua.git (Join-Path $source 'plugins/lua')
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime Lua fetch failed' }
+          git -C (Join-Path $source 'plugins/lua') checkout --detach ec52e48ea18f11af37717a01c337f853215cf70b
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime Lua checkout failed' }
+          $cmakeArchive = Join-Path $env:RUNNER_TEMP 'cmake-3.31.10.zip'
+          $boostArchive = Join-Path $env:RUNNER_TEMP 'boost-1.84.0.zip'
+          $luaArchive = Join-Path $env:RUNNER_TEMP 'lua-5.4.9.tar.gz'
+          Invoke-WebRequest 'https://github.com/Kitware/CMake/releases/download/v3.31.10/cmake-3.31.10-windows-x86_64.zip' -OutFile $cmakeArchive
+          Invoke-WebRequest 'https://archives.boost.io/release/1.84.0/source/boost_1_84_0.zip' -OutFile $boostArchive
+          Invoke-WebRequest 'https://www.lua.org/ftp/lua-5.4.9.tar.gz' -OutFile $luaArchive
+          $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
+          ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OutputDirectory $runtime
+          ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source
+          ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+          ./tools/runtime-build/test-preparation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -OfficialDistDir (Join-Path $env:RUNNER_TEMP 'librime-dist/dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -RustToolchain 1.97.1 -BrokerPath (Join-Path $PWD 'target/debug/mo-broker.exe')
+          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')

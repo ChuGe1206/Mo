@@ -5,12 +5,14 @@ param(
     [Parameter(Mandatory = $true)][string]$UserDataDir,
     [switch]$OmitEmoji,
     [string]$OpenccDataDir,
-    [switch]$KeepResources
+    [switch]$KeepResources,
+    [switch]$PrepareResources
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'opencc-data.ps1')
 if ($OmitEmoji -and $OpenccDataDir) { throw 'Ablation and compiled dictionaries must be tested separately.' }
+if ($PrepareResources -and $OmitEmoji) { throw 'Preparation requires the intact locked schema.' }
 if ($OpenccDataDir) { $OpenccDataDir = Assert-MoCompiledOpenccData $OpenccDataDir }
 $dist = (Resolve-Path -LiteralPath $LibrimeDistDir).Path
 $shared = (Resolve-Path -LiteralPath $SharedDataDir).Path
@@ -33,7 +35,7 @@ try {
     New-Item -ItemType File -Path (Join-Path $fixture 'mo-latency-fixture') | Out-Null
     Push-Location $repoRoot
     try {
-        [string[]]$probeOptions = if ($KeepResources) { @('--keep-resources') } else { @() }
+        [string[]]$probeOptions = if ($PrepareResources) { @('--prepare-resources') } elseif ($KeepResources) { @('--keep-resources') } else { @() }
         & cargo +stable run --quiet -p mo-rime --example latency_probe -- (Join-Path $dist 'lib/rime.dll') $shared $fixture @probeOptions
         if ($LASTEXITCODE -ne 0) { throw "Direct latency probe failed: $LASTEXITCODE" }
     } finally { Pop-Location }
