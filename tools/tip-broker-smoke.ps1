@@ -4,12 +4,15 @@ param(
     [string]$Architecture = 'All',
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
     [string]$RustToolchain = 'stable',
-    [switch]$Registered
+    [switch]$Registered,
+    [ValidateRange(1, 100)]
+    [int]$FaultRepetitions = 1
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'registered-tip-state.ps1')
+. (Join-Path $PSScriptRoot 'broker-fault-harness.ps1')
 
 if ($Registered -and $Architecture -ne 'All') {
     throw 'Registered smoke requires -Architecture All so both COM views are present.'
@@ -68,8 +71,10 @@ function Invoke-BrokerProbe(
             throw "$Platform Broker exited unexpectedly during ${Label}: $($process.ExitCode)"
         }
     } finally {
-        if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
-        $process.Dispose()
+        try {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+            if (-not $process.WaitForExit(3000)) { throw 'Owned fake Broker did not exit before the next probe.' }
+        } finally { $process.Dispose() }
     }
 }
 
@@ -83,9 +88,13 @@ foreach ($platform in $platforms) {
     Invoke-BrokerProbe $platform $ipcProbe @($broker) 'IPC probe'
     Invoke-BrokerProbe $platform $ipcProbe @($broker, '--pool') '16-client pipe pool probe'
     Invoke-BrokerProbe $platform $abiProbe @($tip, '--broker-input') 'TIP edit-session probe'
+    foreach ($faultTrial in 1..$FaultRepetitions) {
+        Write-Host "$platform fake fault trial $faultTrial/$FaultRepetitions"
+        Invoke-MoBrokerFaultProbe $broker @('--fake') $abiProbe $tip
+    }
 }
 
-Write-Host "C++ $($platforms -join '/') IPC, 16-client pool capacity/isolation/reuse and TIP candidate window, mouse paging/selection, layout, deferred cancellation and reconnect checks passed."
+Write-Host "C++ $($platforms -join '/') IPC, pool and TIP UI/edit checks passed, including $FaultRepetitions fault repetitions per architecture (two Broker crashes/restarts each) and no commit replay."
 
 if ($Registered) {
     Invoke-MoRegisteredUserTest $registrar $tipX64 $tipX86 {

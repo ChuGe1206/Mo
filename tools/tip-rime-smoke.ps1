@@ -16,12 +16,15 @@ param(
     [string]$RustToolchain = 'stable',
 
     [switch]$Deploy,
-    [switch]$Registered
+    [switch]$Registered,
+    [ValidateRange(1, 100)]
+    [int]$FaultRepetitions = 1
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'registered-tip-state.ps1')
+. (Join-Path $PSScriptRoot 'broker-fault-harness.ps1')
 if ($Registered -and $Architecture -ne 'All') { throw 'Registered smoke requires -Architecture All.' }
 if ($Registered) {
     # Gate before deploying/copying assets or starting any Broker.
@@ -118,7 +121,8 @@ function Invoke-RimeBrokerProbe(
     [string]$Platform,
     [string]$Probe,
     [string[]]$ProbeArguments,
-    [string]$Label
+    [string]$Label,
+    [switch]$Fault
 ) {
     if (-not (Test-Path -LiteralPath $Probe -PathType Leaf)) {
         throw "Missing ${Label}: $Probe"
@@ -126,6 +130,13 @@ function Invoke-RimeBrokerProbe(
     $probeUser = Join-Path $user ("mo-smoke-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $probeUser | Out-Null
     Copy-Item -LiteralPath (Join-Path $user 'build') -Destination (Join-Path $probeUser 'build') -Recurse
+    if ($Fault) {
+        try {
+            Invoke-MoBrokerFaultProbe $brokerPath @('--rime', $dynamicLibrary, $shared, $probeUser) `
+                $Probe $ProbeArguments[0] -RimeIce
+        } finally { Remove-ProbeUser $probeUser }
+        return
+    }
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $brokerPath
     $startInfo.UseShellExecute = $false
@@ -138,6 +149,7 @@ function Invoke-RimeBrokerProbe(
     $process = [System.Diagnostics.Process]::Start($startInfo)
     if ($null -eq $process) { throw "Failed to start Broker for $Platform $Label" }
 
+    $runtimeLog = $null
     try {
         # Wait for the Broker's explicit readiness line rather than guessing at
         # librime startup time. This wait belongs to the harness, not the TIP.
@@ -156,14 +168,24 @@ function Invoke-RimeBrokerProbe(
             $brokerError = $drainTask.Result
             throw "$Platform Broker failed before ${Label}: $readyLine $brokerError"
         }
+        $runtimeLog = $process.StandardError.ReadToEndAsync()
         & $Probe @ProbeArguments
         if ($LASTEXITCODE -ne 0) { throw "$Platform $Label failed: $LASTEXITCODE" }
         if ($process.HasExited -and $process.ExitCode -ne 0) {
             throw "$Platform Broker exited unexpectedly during ${Label}: $($process.ExitCode)"
         }
-    } finally {
+    } catch {
+        $probeFailure = $_.Exception.Message
         if (-not $process.HasExited) { $process.Kill($true) }
-        $process.Dispose()
+        if ($process.WaitForExit(3000) -and $null -ne $runtimeLog -and $runtimeLog.Wait(1000)) {
+            $probeFailure += "`nOwned Broker stderr: $($runtimeLog.Result)"
+        }
+        throw $probeFailure
+    } finally {
+        try {
+            if (-not $process.HasExited) { $process.Kill($true) }
+            if (-not $process.WaitForExit(3000)) { throw 'Owned Rime Broker did not exit before data cleanup.' }
+        } finally { $process.Dispose() }
         Remove-ProbeUser $probeUser
     }
 }
@@ -177,9 +199,13 @@ foreach ($platform in $platforms) {
     Invoke-RimeBrokerProbe $platform $ipcProbe @($brokerPath, '--rime-ice') 'rime-ice IPC probe'
     Invoke-RimeBrokerProbe $platform $ipcProbe @($brokerPath, '--pool-rime-ice') 'rime-ice 16-client pipe pool probe'
     Invoke-RimeBrokerProbe $platform $abiProbe @($tip, '--broker-rime-ice') 'rime-ice TIP edit-session probe'
+    foreach ($faultTrial in 1..$FaultRepetitions) {
+        Write-Host "$platform real rime-ice fault trial $faultTrial/$FaultRepetitions"
+        Invoke-RimeBrokerProbe $platform $abiProbe @($tip) 'rime-ice Broker fault/recovery probe' -Fault
+    }
 }
 
-Write-Host "Real Actor APIs and C++ $($platforms -join '/') IPC actions/16-client pool capacity/isolation/reuse passed; TIP candidate window/mouse/layout/deferred cancellation/reconnect committed nihao -> 你好."
+Write-Host "Real Actor/C++ $($platforms -join '/') IPC/pool/TIP checks passed; $FaultRepetitions fault repetitions per architecture preserved text and recovered nihao -> 你好 without replay."
 
 if ($Registered) {
     $x64Directory = Join-Path $repoRoot 'native\windows-tip\out\msbuild\x64\Release'

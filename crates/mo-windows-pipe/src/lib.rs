@@ -11,6 +11,6 @@ mod windows;
 
 #[cfg(windows)]
 pub use windows::{
-    AuthenticatedPipe, MAX_PIPE_SLOTS, PipeAddress, PipeClient, PipeListener, PipePool,
-    pool_slot_address,
+    AuthenticatedPipe, MAX_PIPE_SLOTS, PipeAddress, PipeCancellation, PipeClient, PipeListener,
+    PipePool, pool_slot_address,
 };

@@ -839,7 +839,14 @@ private:
         cached_key_.valid = false;
         mo::windows_tip::BrokerSnapshot snapshot;
         if (!broker_.SendCandidateAction(revision, action, index, &snapshot, kBrokerKeyTimeoutMs)) {
-            DisconnectBroker(kBrokerKeyTimeoutMs); return E_FAIL;
+            // We already own the RW cookie. Discard ONLY our uncommitted range
+            // here, never request a nested lock or return a transport failure
+            // that lets TSF abandon the composition with literal preedit left
+            // behind. The uncertain engine action is not replayed on reconnect.
+            bool discarded = false;
+            const HRESULT cleared = ClearComposition(context, cookie, &discarded);
+            DisconnectBroker(kBrokerKeyTimeoutMs);
+            return cleared;
         }
         latest_revision_ = snapshot.revision;
         bool applied = false;

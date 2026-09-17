@@ -37,7 +37,7 @@ use windows_sys::Win32::System::Pipes::{
 use windows_sys::Win32::System::SystemServices::{ACCESS_ALLOWED_ACE_TYPE, SE_GROUP_LOGON_ID};
 use windows_sys::Win32::System::Threading::{
     CreateEventW, GetCurrentProcess, GetCurrentThread, INFINITE, OpenProcessToken, OpenThreadToken,
-    WaitForSingleObject,
+    SetEvent, WaitForMultipleObjects, WaitForSingleObject,
 };
 
 const PIPE_PREFIX: &str = r"\\.\pipe\LOCAL\Mo.Input.";
@@ -52,6 +52,65 @@ const ERROR_PIPE_BUSY_CODE: i32 = 231;
 pub const MAX_PIPE_SLOTS: usize = 16;
 const STREAM_IO_TIMEOUT: Duration = Duration::from_secs(2);
 const CANCELLATION_DRAIN_MS: u32 = 1000;
+
+/// Process-local, one-way shutdown signal. No named event or peer-controlled
+/// command. `Arc<File>` keeps the kernel event alive throughout every wait.
+#[derive(Clone, Debug)]
+pub struct PipeCancellation {
+    event: Arc<File>,
+}
+
+impl PipeCancellation {
+    pub fn new() -> io::Result<Self> {
+        let event = io_event()?;
+        let handle = event.0;
+        std::mem::forget(event);
+        Ok(Self {
+            event: Arc::new(file_from_handle(handle)?),
+        })
+    }
+
+    pub fn cancel(&self) -> io::Result<()> {
+        let signaled = unsafe {
+            // SAFETY: the Arc owns a live manual-reset event, not a pipe.
+            SetEvent(raw_handle(&self.event))
+        };
+        if signaled == 0 {
+            Err(io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        unsafe {
+            // SAFETY: the event cannot close while this Arc reference exists.
+            WaitForSingleObject(raw_handle(&self.event), 0) == WAIT_OBJECT_0
+        }
+    }
+
+    /// Wait without polling. Completion wins if both process-local signals are
+    /// set. Both Arc owners remain live until the kernel wait has returned.
+    pub fn wait_until_or_completed(&self, completed: &Self) -> io::Result<bool> {
+        let handles = [raw_handle(&completed.event), raw_handle(&self.event)];
+        let result = unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, INFINITE) };
+        match result {
+            WAIT_OBJECT_0 => Ok(false),
+            value if value == WAIT_OBJECT_0 + 1 => Ok(true),
+            _ => Err(io::Error::last_os_error()),
+        }
+    }
+
+    pub fn wait_with_timeout(&self, timeout: Duration) -> io::Result<bool> {
+        let millis = timeout.as_millis().min(u128::from(INFINITE - 1)) as u32;
+        let result = unsafe { WaitForSingleObject(raw_handle(&self.event), millis) };
+        match result {
+            WAIT_OBJECT_0 => Ok(true),
+            WAIT_TIMEOUT => Ok(false),
+            _ => Err(io::Error::last_os_error()),
+        }
+    }
+}
 
 /// Deterministic bounded slot family. Slot zero preserves the legacy endpoint.
 pub fn pool_slot_address(base: &PipeAddress, slot: usize) -> io::Result<PipeAddress> {
@@ -99,6 +158,12 @@ impl PipePool {
     pub fn into_listeners(self) -> Vec<PipeListener> {
         self.listeners
     }
+
+    pub fn set_cancellation(&mut self, cancellation: &PipeCancellation) {
+        for listener in &mut self.listeners {
+            listener.set_cancellation(cancellation);
+        }
+    }
 }
 
 /// A validated local named-pipe address.
@@ -137,6 +202,7 @@ pub struct PipeListener {
     server: Option<File>,
     logon_sid: SidBytes,
     reusable_active: Arc<AtomicBool>,
+    cancellation: Option<PipeCancellation>,
 }
 
 impl fmt::Debug for PipeListener {
@@ -158,11 +224,17 @@ impl PipeListener {
             server: Some(server),
             logon_sid,
             reusable_active: Arc::new(AtomicBool::new(false)),
+            cancellation: None,
         })
     }
 
     pub fn address(&self) -> &PipeAddress {
         &self.address
+    }
+
+    /// Configure before accepting. An existing stream retains its old signal.
+    pub fn set_cancellation(&mut self, cancellation: &PipeCancellation) {
+        self.cancellation = Some(cancellation.clone());
     }
 
     /// One worker owns this retained first-instance handle for its whole
@@ -187,9 +259,10 @@ impl PipeListener {
         let stream = AuthenticatedPipe {
             file: server.try_clone()?,
             _reuse_lease: Some(lease),
+            cancellation: self.cancellation.clone(),
         };
-        connect_server(&stream.file)?;
-        let frame = read_server_frame(&stream.file, timeout)?;
+        connect_server(&stream.file, stream.cancellation.as_ref())?;
+        let frame = read_server_frame(&stream.file, timeout, stream.cancellation.as_ref())?;
         authenticate_client_logon_sid(&stream.file, &self.logon_sid)?;
         Ok((stream, frame))
     }
@@ -221,13 +294,14 @@ impl PipeListener {
             .server
             .take()
             .expect("listener owns its server instance");
-        connect_server(&server)?;
-        let frame = read_server_frame(&server, first_frame_timeout)?;
+        connect_server(&server, self.cancellation.as_ref())?;
+        let frame = read_server_frame(&server, first_frame_timeout, self.cancellation.as_ref())?;
         authenticate_client_logon_sid(&server, &self.logon_sid)?;
         Ok((
             AuthenticatedPipe {
                 file: server,
                 _reuse_lease: None,
+                cancellation: self.cancellation.clone(),
             },
             frame,
         ))
@@ -288,6 +362,7 @@ impl PipeListener {
 pub struct AuthenticatedPipe {
     file: File,
     _reuse_lease: Option<ReuseLease>,
+    cancellation: Option<PipeCancellation>,
 }
 
 #[derive(Debug)]
@@ -301,7 +376,9 @@ impl Drop for ReuseLease {
 
 impl Read for AuthenticatedPipe {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT).read(buffer)
+        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT)
+            .with_cancellation(self.cancellation.as_ref())
+            .read(buffer)
     }
 }
 
@@ -316,24 +393,32 @@ impl AuthenticatedPipe {
         DeadlineIo {
             file: &self.file,
             deadline: None,
+            cancellation: self.cancellation.as_ref(),
         }
         .read_exact(&mut first_byte)?;
-        let mut reader =
-            Cursor::new(first_byte).chain(DeadlineIo::new(&self.file, assembly_timeout));
+        let mut reader = Cursor::new(first_byte).chain(
+            DeadlineIo::new(&self.file, assembly_timeout)
+                .with_cancellation(self.cancellation.as_ref()),
+        );
         read_frame(&mut reader).map_err(frame_io_error)
     }
 
     /// The entire encoded reply (header and payload, including short writes)
     /// shares one deadline. Completion is not an acknowledgement by the peer.
     pub fn write_frame_with_timeout(&mut self, frame: &Frame, timeout: Duration) -> io::Result<()> {
-        mo_ipc::write_frame(&mut DeadlineIo::new(&self.file, timeout), frame)
-            .map_err(frame_io_error)
+        mo_ipc::write_frame(
+            &mut DeadlineIo::new(&self.file, timeout).with_cancellation(self.cancellation.as_ref()),
+            frame,
+        )
+        .map_err(frame_io_error)
     }
 }
 
 impl Write for AuthenticatedPipe {
     fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT).write(buffer)
+        DeadlineIo::new(&self.file, STREAM_IO_TIMEOUT)
+            .with_cancellation(self.cancellation.as_ref())
+            .write(buffer)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -526,7 +611,8 @@ fn create_server(address: &PipeAddress, security: &SecurityDescriptor) -> io::Re
     file_from_handle(handle)
 }
 
-fn connect_server(server: &File) -> io::Result<()> {
+fn connect_server(server: &File, cancellation: Option<&PipeCancellation>) -> io::Result<()> {
+    check_cancellation(cancellation)?;
     let event = io_event()?;
     let mut overlapped = OVERLAPPED {
         hEvent: event.0,
@@ -544,7 +630,7 @@ fn connect_server(server: &File) -> io::Result<()> {
     if error == ERROR_PIPE_CONNECTED {
         Ok(())
     } else if error == ERROR_IO_PENDING {
-        complete_pending(server, &mut overlapped, INFINITE).map(|_| ())
+        complete_pending(server, &mut overlapped, INFINITE, cancellation).map(|_| ())
     } else {
         Err(io::Error::from_raw_os_error(error as i32))
     }
@@ -556,6 +642,7 @@ fn connect_server(server: &File) -> io::Result<()> {
 struct DeadlineIo<'a> {
     file: &'a File,
     deadline: Option<Instant>,
+    cancellation: Option<&'a PipeCancellation>,
 }
 
 impl<'a> DeadlineIo<'a> {
@@ -567,13 +654,20 @@ impl<'a> DeadlineIo<'a> {
                     .checked_add(timeout)
                     .unwrap_or_else(Instant::now),
             ),
+            cancellation: None,
         }
+    }
+
+    fn with_cancellation(mut self, cancellation: Option<&'a PipeCancellation>) -> Self {
+        self.cancellation = cancellation;
+        self
     }
 
     fn transfer(&mut self, buffer: *mut u8, len: usize, writing: bool) -> io::Result<usize> {
         if len == 0 {
             return Ok(0);
         }
+        check_cancellation(self.cancellation)?;
         self.remaining_ms()?;
         let event = io_event()?;
         let mut overlapped = OVERLAPPED {
@@ -614,7 +708,8 @@ impl<'a> DeadlineIo<'a> {
         // Recompute after event allocation/submission; do not renew the budget
         // for a pending operation or a short write.
         let millis = self.remaining_ms().unwrap_or(0);
-        complete_pending(self.file, &mut overlapped, millis).map(|value| value as usize)
+        complete_pending(self.file, &mut overlapped, millis, self.cancellation)
+            .map(|value| value as usize)
     }
 
     fn remaining_ms(&self) -> io::Result<u32> {
@@ -648,8 +743,13 @@ impl Write for DeadlineIo<'_> {
     }
 }
 
-fn read_server_frame(file: &File, timeout: Duration) -> io::Result<Frame> {
-    read_frame(&mut DeadlineIo::new(file, timeout)).map_err(frame_io_error)
+fn read_server_frame(
+    file: &File,
+    timeout: Duration,
+    cancellation: Option<&PipeCancellation>,
+) -> io::Result<Frame> {
+    read_frame(&mut DeadlineIo::new(file, timeout).with_cancellation(cancellation))
+        .map_err(frame_io_error)
 }
 
 fn frame_io_error(error: FrameError) -> io::Error {
@@ -671,13 +771,41 @@ fn io_event() -> io::Result<OwnedHandle> {
     }
 }
 
-fn complete_pending(file: &File, overlapped: &mut OVERLAPPED, timeout_ms: u32) -> io::Result<u32> {
+fn check_cancellation(cancellation: Option<&PipeCancellation>) -> io::Result<()> {
+    if cancellation.is_some_and(PipeCancellation::is_cancelled) {
+        Err(io::Error::new(
+            io::ErrorKind::ConnectionAborted,
+            "pipe pool shutdown requested",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn complete_pending(
+    file: &File,
+    overlapped: &mut OVERLAPPED,
+    timeout_ms: u32,
+    cancellation: Option<&PipeCancellation>,
+) -> io::Result<u32> {
     let wait = unsafe {
-        // SAFETY: the event belongs to this live pending operation.
-        WaitForSingleObject(overlapped.hEvent, timeout_ms)
+        // SAFETY: both events remain owned throughout the wait. Put shutdown
+        // first so it wins if completion and cancellation are both signaled.
+        if let Some(cancellation) = cancellation {
+            let events = [raw_handle(&cancellation.event), overlapped.hEvent];
+            WaitForMultipleObjects(2, events.as_ptr(), 0, timeout_ms)
+        } else {
+            WaitForSingleObject(overlapped.hEvent, timeout_ms)
+        }
     };
-    if wait != WAIT_OBJECT_0 {
-        let error = if wait == WAIT_TIMEOUT {
+    let completion = WAIT_OBJECT_0 + u32::from(cancellation.is_some());
+    if wait != completion {
+        let error = if cancellation.is_some() && wait == WAIT_OBJECT_0 {
+            io::Error::new(
+                io::ErrorKind::ConnectionAborted,
+                "pipe pool shutdown requested",
+            )
+        } else if wait == WAIT_TIMEOUT {
             io::Error::new(io::ErrorKind::TimedOut, "pipe I/O operation timed out")
         } else {
             io::Error::last_os_error()
@@ -1006,6 +1134,19 @@ mod tests {
     }
 
     #[test]
+    fn completion_signal_wins_a_simultaneous_watchdog_shutdown_and_timeout_is_bounded() {
+        let stop = PipeCancellation::new().unwrap();
+        let completed = PipeCancellation::new().unwrap();
+        assert!(!stop.wait_with_timeout(Duration::ZERO).unwrap());
+        stop.cancel().unwrap();
+        assert!(stop.wait_with_timeout(Duration::ZERO).unwrap());
+        completed.cancel().unwrap();
+        assert!(!stop.wait_until_or_completed(&completed).unwrap());
+        let pending_stop = PipeCancellation::new().unwrap();
+        assert!(!pending_stop.wait_until_or_completed(&completed).unwrap());
+    }
+
+    #[test]
     fn pool_slots_keep_the_protected_dacl_and_remote_rejection() {
         let base = test_address("pool-acl");
         assert_eq!(pool_slot_address(&base, 0).unwrap(), base);
@@ -1205,6 +1346,137 @@ mod tests {
         )
         .unwrap();
         server.join().unwrap();
+    }
+
+    #[test]
+    fn shutdown_cancels_a_listener_without_waiting_for_a_client() {
+        let address = test_address("stop-listener");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let cancellation = PipeCancellation::new().unwrap();
+        listener.set_cancellation(&cancellation);
+        let (started, ready) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            started.send(()).unwrap();
+            assert_eq!(
+                listener
+                    .accept_reusable_first_frame(Duration::from_secs(10))
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::ConnectionAborted
+            );
+            assert!(listener.has_expected_dacl().unwrap());
+            assert!(PipeListener::bind(address).is_err());
+        });
+        ready.recv_timeout(Duration::from_secs(1)).unwrap();
+        let start = Instant::now();
+        cancellation.cancel().unwrap();
+        cancellation.cancel().unwrap();
+        server.join().unwrap();
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn shutdown_cancels_a_partial_first_frame_and_retains_the_name() {
+        let address = test_address("stop-first-frame");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let cancellation = PipeCancellation::new().unwrap();
+        listener.set_cancellation(&cancellation);
+        let server = thread::spawn(move || {
+            assert_eq!(
+                listener
+                    .accept_reusable_first_frame(Duration::from_secs(10))
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::ConnectionAborted
+            );
+            assert!(listener.has_expected_dacl().unwrap());
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        client.write_all(b"M").unwrap();
+        let start = Instant::now();
+        cancellation.cancel().unwrap();
+        server.join().unwrap();
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn shutdown_wakes_authenticated_idle_read_without_read_exact_retrying_forever() {
+        let address = test_address("stop-idle");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let cancellation = PipeCancellation::new().unwrap();
+        listener.set_cancellation(&cancellation);
+        let (started, ready) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            started.send(()).unwrap();
+            assert_eq!(
+                stream
+                    .read_frame_after_activity(Duration::from_secs(10))
+                    .unwrap_err()
+                    .kind(),
+                io::ErrorKind::ConnectionAborted
+            );
+        });
+        let mut client = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(
+            &mut client,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap(),
+        )
+        .unwrap();
+        ready.recv_timeout(Duration::from_secs(1)).unwrap();
+        let start = Instant::now();
+        cancellation.cancel().unwrap();
+        server.join().unwrap();
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn shutdown_cancels_backpressured_replies_before_their_long_test_budget() {
+        let address = test_address("stop-write");
+        let mut listener = PipeListener::bind(address.clone()).unwrap();
+        let cancellation = PipeCancellation::new().unwrap();
+        listener.set_cancellation(&cancellation);
+        let (started, ready) = std::sync::mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept_reusable_first_frame(Duration::from_secs(2))
+                .unwrap();
+            started.send(()).unwrap();
+            let reply = Frame::new(
+                CURRENT_VERSION,
+                MessageKind::Ping,
+                0,
+                0,
+                0,
+                1,
+                vec![b'x'; mo_ipc::MAX_PAYLOAD_LEN],
+            )
+            .unwrap();
+            let mut cancelled = false;
+            for _ in 0..16 {
+                if let Err(error) = stream.write_frame_with_timeout(&reply, Duration::from_secs(10))
+                {
+                    assert_eq!(error.kind(), io::ErrorKind::ConnectionAborted);
+                    cancelled = true;
+                    break;
+                }
+            }
+            assert!(cancelled);
+        });
+        let mut unread = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(
+            &mut unread,
+            &Frame::new(CURRENT_VERSION, MessageKind::Ping, 0, 0, 0, 1, vec![]).unwrap(),
+        )
+        .unwrap();
+        ready.recv_timeout(Duration::from_secs(1)).unwrap();
+        thread::sleep(Duration::from_millis(50));
+        let start = Instant::now();
+        cancellation.cancel().unwrap();
+        server.join().unwrap();
+        assert!(start.elapsed() < Duration::from_secs(1));
     }
 
     #[test]

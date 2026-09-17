@@ -746,13 +746,15 @@ bool SendTestedKey(
     const UINT scan_code = MapVirtualKeyW(static_cast<UINT>(virtual_key), MAPVK_VK_TO_VSC);
     const LPARAM key_data = 1 | (static_cast<LPARAM>(scan_code) << 16);
     BOOL tested_eaten = FALSE;
+    const ULONGLONG tested_started = GetTickCount64();
     HRESULT result = key_sink->OnTestKeyDown(context, virtual_key, key_data, &tested_eaten);
     if (FAILED(result) || tested_eaten == FALSE) {
         if (FAILED(result)) {
             fail(L"ITfKeyEventSink::OnTestKeyDown", result);
         } else {
             std::wcerr << L"OnTestKeyDown did not consume virtual key 0x"
-                       << std::hex << virtual_key << L'\n';
+                       << std::hex << virtual_key << L" (elapsed " << std::dec
+                       << GetTickCount64() - tested_started << L" ms)\n";
         }
         return false;
     }
@@ -996,10 +998,48 @@ bool ClickCandidateWindow(int item) noexcept {
     return true;
 }
 
+// Test-only coordination with the harness. These events do not grant a peer a
+// shutdown command: only the harness terminates its own Broker child process.
+bool CoordinateBrokerFault(const wchar_t* prefix, const wchar_t* stage, int cycle) {
+    const std::wstring name = std::wstring(prefix) + L"." + stage + L"." + std::to_wstring(cycle);
+    const std::wstring acknowledge = name + L".done";
+    const HANDLE request = OpenEventW(EVENT_MODIFY_STATE, FALSE, name.c_str());
+    const HANDLE done = OpenEventW(SYNCHRONIZE, FALSE, acknowledge.c_str());
+    if (request == nullptr || done == nullptr) {
+        if (request != nullptr) { CloseHandle(request); }
+        if (done != nullptr) { CloseHandle(done); }
+        std::wcerr << L"Fault harness events missing\n"; return false;
+    }
+    bool succeeded = SetEvent(request) != FALSE;
+    const ULONGLONG deadline = GetTickCount64() + 35000;
+    while (succeeded) {
+        const DWORD waited = MsgWaitForMultipleObjectsEx(1, &done, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+        if (waited == WAIT_OBJECT_0) { break; }
+        if (waited == WAIT_FAILED || GetTickCount64() >= deadline) { succeeded = false; break; }
+        PumpProbeMessages();
+    }
+    CloseHandle(done); CloseHandle(request);
+    if (!succeeded) { std::wcerr << L"Fault harness coordination timed out\n"; }
+    return succeeded;
+}
+
+bool SendFailOpenKey(ITfKeyEventSink* sink, ITfContext* context, WPARAM key) {
+    const LPARAM data = 1 | (static_cast<LPARAM>(MapVirtualKeyW(static_cast<UINT>(key), MAPVK_VK_TO_VSC)) << 16);
+    BOOL tested = TRUE, handled = TRUE;
+    const ULONGLONG started = GetTickCount64();
+    const HRESULT test = sink->OnTestKeyDown(context, key, data, &tested);
+    const HRESULT apply = sink->OnKeyDown(context, key, data, &handled);
+    if (FAILED(test) || FAILED(apply) || tested || handled || GetTickCount64() - started > 500) {
+        std::wcerr << L"Dead Broker key was consumed or exceeded fail-open budget\n"; return false;
+    }
+    return true;
+}
+
 int probe_broker_input(
     ITfTextInputProcessorEx* service,
     bool rime_ice,
-    bool registered) {
+    bool registered,
+    const wchar_t* fault_prefix = nullptr) {
     if (!registered && service == nullptr) {
         return fail(L"probe_broker_input service", E_POINTER);
     }
@@ -1266,11 +1306,68 @@ int probe_broker_input(
             }
         }
 
-        wchar_t text_buffer[16]{};
+        std::wstring expected = rime_ice
+            ? (registered ? L"你好你好" : L"你好你好你好") : (registered ? L"mm" : L"mmm");
+        if (fault_prefix != nullptr) {
+            for (int cycle = 0; cycle < 2 && keys_succeeded; ++cycle) {
+                // First crash: preedit + mouse action awaiting a real TSF lock.
+                // Second crash: no preedit, previously committed text exists.
+                if (cycle == 0) {
+                    for (const char key : input) {
+                        if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                            keys_succeeded = false; break;
+                        }
+                    }
+                    edit_store->DeferLocks(true);
+                    keys_succeeded = keys_succeeded && ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+                }
+                const auto before_fault = edit_store->text();
+                if (!keys_succeeded || !CoordinateBrokerFault(fault_prefix, L"stop", cycle)) {
+                    keys_succeeded = false; break;
+                }
+                if (edit_store->text() != before_fault) {
+                    std::wcerr << L"Pending candidate ran before deliberate Broker exit\n";
+                    keys_succeeded = false; break;
+                }
+                // Keep ALL locks deferred while coordination pumps messages:
+                // another layout lock could otherwise execute the pending write
+                // before the harness has actually terminated the Broker.
+                if (cycle == 0) {
+                    edit_store->DeferLocks(false);
+                    edit_store->GrantDeferredLock(); PumpProbeMessages();
+                }
+                if (!SendFailOpenKey(direct_key_sink.Get(), context.Get(), VK_SPACE)
+                    || edit_store->text() != expected || !WaitForCandidateWindow(false)) {
+                    std::wcerr << L"Broker crash changed document or replayed pending candidate\n";
+                    keys_succeeded = false; break;
+                }
+                if (!CoordinateBrokerFault(fault_prefix, L"restart", cycle)
+                    || FAILED(direct_key_sink->OnSetFocus(TRUE))) {
+                    keys_succeeded = false; break;
+                }
+                for (const char key : input) {
+                    if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                        keys_succeeded = false; break;
+                    }
+                }
+                if (!keys_succeeded || !WaitForCandidateWindow(true)
+                    || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE)
+                    || !WaitForCandidateWindow(false)) { keys_succeeded = false; break; }
+                expected += rime_ice ? L"你好" : L"m";
+                if (edit_store->text() != expected) {
+                    std::wcerr << L"Recovered session replayed/concatenated pre-crash input: actual=["
+                        << edit_store->text() << L"] expected=[" << expected << L"]\n";
+                    keys_succeeded = false; break;
+                }
+                // An additional Space is unhandled and must not replay commit.
+                if (!SendFailOpenKey(direct_key_sink.Get(), context.Get(), VK_SPACE)
+                    || edit_store->text() != expected) { keys_succeeded = false; break; }
+            }
+            if (!keys_succeeded) { outcome = 1; break; }
+        }
+        wchar_t text_buffer[32]{};
         const int text_length = GetWindowTextW(edit_window, text_buffer, ARRAYSIZE(text_buffer));
         const std::wstring text(text_buffer, static_cast<std::size_t>(text_length));
-        const std::wstring expected = rime_ice
-            ? (registered ? L"你好你好" : L"你好你好你好") : (registered ? L"mm" : L"mmm");
         if (text != expected) {
             std::wcerr << L"TIP edit session committed unexpected EDIT text: " << text << L'\n';
             outcome = 1;
@@ -1341,11 +1438,15 @@ int wmain(int argument_count, wchar_t** arguments) {
         && std::wstring(arguments[2]) == L"--broker-input";
     const bool broker_rime_ice = argument_count == 3
         && std::wstring(arguments[2]) == L"--broker-rime-ice";
+    const bool broker_fault = argument_count == 4
+        && std::wstring(arguments[2]) == L"--broker-fault";
+    const bool broker_fault_rime_ice = argument_count == 4
+        && std::wstring(arguments[2]) == L"--broker-fault-rime-ice";
     if ((!registered_broker_input && !registered_broker_rime_ice)
-        && argument_count != 2 && !broker_input && !broker_rime_ice) {
+        && argument_count != 2 && !broker_input && !broker_rime_ice && !broker_fault && !broker_fault_rime_ice) {
         std::wcerr
             << L"Usage: mo_tip_abi_probe <absolute-path-to-mo_tip.dll> "
-               L"[--broker-input|--broker-rime-ice]\n"
+               L"[--broker-input|--broker-rime-ice|--broker-fault[...-rime-ice] <event-prefix>]\n"
             << L"       mo_tip_abi_probe "
                L"--registered-broker-input|--registered-broker-rime-ice\n";
         return 2;
@@ -1496,8 +1597,9 @@ int wmain(int argument_count, wchar_t** arguments) {
         return fail(L"ITfTextInputProcessor::Deactivate", result);
     }
 
-    if ((broker_input || broker_rime_ice
-             ? probe_broker_input(service, broker_rime_ice, false)
+    if ((broker_input || broker_rime_ice || broker_fault || broker_fault_rime_ice
+             ? probe_broker_input(service, broker_rime_ice || broker_fault_rime_ice, false,
+                 broker_fault || broker_fault_rime_ice ? arguments[3] : nullptr)
              : probe_key_sink_activation(service))
         != 0) {
         service->Release();
@@ -1513,7 +1615,9 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
 
     FreeLibrary(module);
-    std::wcout << (broker_rime_ice
+    std::wcout << (broker_fault || broker_fault_rime_ice
+        ? L"Mo TIP Broker crash/restart probe passed (two exits, fail-open, no commit replay, EDIT/context).\n"
+        : broker_rime_ice
         ? L"Mo TIP real rime-ice candidate window/mouse/layout/deferred cancellation/reconnect probe passed.\n"
         : broker_input
             ? L"Mo TIP fake candidate window/mouse/layout/deferred cancellation/reconnect probe passed.\n"

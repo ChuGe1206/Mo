@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 84 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 103 个运行时测试和 1 个 compile-fail 契约测试。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
@@ -50,6 +50,9 @@
 - x64/Win32 fake 与真实 rime-ice 客户端均同时保持 16 路连接，第 17 路在设置的总时限内失败，释放中间槽后新会话成功接入；原连接分别以自己的候选页 revision 提交自己的词，不被其他连接推进全局 revision 干扰。Rust 测试另行验证静默首帧客户端不会阻塞另一槽、重复 live accept 被拒绝、断开期间名称/DACL 不变、次槽冲突导致整池绑定回滚，以及并发生成的 1024 个 generation 非零且无重复。就绪信号在引擎初始化及工作线程创建后发出；真实 smoke 的错误分支已改为终止 owned 子进程并有界读取日志。
 - 服务端 connect/read/write 已改为 overlapped I/O，固定槽/权限/唯一 Actor 不变。首帧整个解码共用 2 秒；已认证空闲连接用 pending 单字节 read 等待活动，随后完整 header/payload/短读共用 2 秒 assembly 时限，移除 1 ms Peek 轮询。完整编码回复的 header/payload/短写共用 2 秒；flush 不调用会等待对端读空的 FlushFileBuffers。超时按操作 CancelIoEx 并等待完成，歧义结果退出连接，不重发字节或引擎命令，见 ADR 0020。
 - 新增真实内核故障测试验证未读回复填满管道后写超时、pending read 取消排空后复用、零预算不提交字节、flush 在客户端尚未读取时返回、分片 payload 不续期及正常空闲不耗 assembly 预算。Broker/共享 Actor 测试对截断与 CRC 损坏的 Space 请求核对错误、每个旧 backend session 销毁、恢复后空预编辑起步与一次提交；两个坏 Space 均未进入引擎。x64/Win32 fake 与真实词库 probe 另行通过三轮整池满载/释放/重新连接，核对新会话与不重放旧词。
+- Broker 故障与恢复子阶段已落地：未命名进程内停机事件唤醒 connect/partial/idle/backpressured I/O；连接先回收 session、全部槽 join 后 Actor Shutdown/finalize。某槽诊断失败先取消其余槽，worker panic 直接 fail-stop。初始化 30 秒、排队及每个 native 请求 5 秒、finalize 5 秒、整池停机总预算 15 秒；独立 watchdog 不空闲轮询，也不让逐 session 预算累乘。八类子进程卡死/panic/总停机注入核对到达故障 marker、3 秒内 fast-fail，而不是把任意非零退出当成功。现有闲置 EngineClient 不阻止 Shutdown，见 ADR 0021。
+- TIP 实际 Broker 退出/重启探针发现并修复延迟鼠标动作失败时旧拼音偶发残留：持有原 RW cookie 清除自身未提交 range 后断开，不嵌套申请写锁，也不重放歧义动作。故障探针保持文本锁延迟直到 owned Broker 确实退出。两次退出分别覆盖待执行选词与已提交文本；缺席期间不吞键，恢复后分别准确提交一轮，最终 EDIT/context 核对五轮词。harness 不写输入注册状态，不杀外部进程；现有 CI smoke 默认包含此回归。
+- 提交前 fake 双架构各 100 轮故障回归通过（每轮两次实际退出）；真实词库的基本双架构链路及 Win32 单独 20 轮通过，但完整高频命令也出现过下述首键超时，不能算压力验收通过。真实 smoke 全程异步排空日志，失败附带 owned Broker 日志；fake/真实清理均确认子进程真正退出后才进行下一 probe/删除临时数据，修复 Kill 后直接清理导致的偶发文件占用错误。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
@@ -60,8 +63,9 @@
 未通过：
 
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
-- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、包含引擎执行/回收的完整逐请求 deadline、工作线程异常与协调停机；当前 overlapped 内核 I/O 仍在固定 16 个连接线程内等待，不是 IOCP 全异步调度。取消后正常完成有测试，但极端内核/驱动不完成时的进程 fail-stop 尚未注入。不能把受控并发通过视为不限连接的日常服务。发布版构建来源/签名/安装 ACL/reparse 防护及用户配置覆盖闭环，以及 AppContainer/WinUI 连接测试仍未完成。
-- Broker 超时、崩溃恢复、幂等提交与“不重复上屏”故障注入。
+- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布版来源/签名/安装 ACL/reparse、配置覆盖与 AppContainer/WinUI 仍未完成。
+- 实际崩溃回归目前只覆盖上述受控文本存储。engine commit 后/TSF 写入前、部分文档写入后的歧义故障及普通宿主矩阵仍未注入；不声称跨崩溃 exactly-once 或未提交输入不丢失。
+- 高频真实词库重复中出现过首个 N 未消费，完整命令按设计立即失败；一次耗时 63 ms，发生于实际退出注入前的既有焦点恢复链路。表现与 50 ms 请求预算相符，但引擎/磁盘/调度占比未定位。未放宽 deadline 或自动重发；正常通过不抹去此风险，冷启动/高频恢复稳定性仍待专项验收。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 
 ## G3：安装——未通过
@@ -84,4 +88,4 @@
 
 ## 下一检查点
 
-Phase 0 的下一检查点是将已通过受控探针的垂直链路注册到真实 Windows 宿主，完成 Notepad 中的正式 composition、候选窗和幂等上屏，再覆盖 WinUI/AppContainer 与 Broker 超时/崩溃故障注入。随后固化发布版自构建 librime/资源布局并实现可回滚安装事务。
+下一优先项是定位真实链路首键的 50 ms 预算失败，建立冷启动/焦点恢复耗时证据。管理员准备后完成双架构系统路由，再在 Notepad 验收正式 composition、候选窗与 Broker 故障恢复，随后覆盖 WinUI/AppContainer。后续固化正式自构建 librime/资源布局与可回滚安装事务；当前受控故障子阶段不升级为普通宿主或日常使用通过。

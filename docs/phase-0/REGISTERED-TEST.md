@@ -50,6 +50,6 @@ Set-Location 'E:\ChuGe\CodeProject\101_ProjectCollection\Mo'
 
 ## 限制与后续
 
-系统 key-route probe 仍是受控文本存储，不是 Notepad/浏览器/WinUI 的正式 composition 和候选窗验收。注册路由通过后才能进入这些真实软件矩阵；Windows 11、多屏 DPI、AppContainer、进程崩溃与安装回滚仍单独验收。
+系统 key-route probe 仍是受控文本存储，不是 Notepad/浏览器/WinUI 的正式 composition 和候选窗验收。普通 smoke 已包含不注册 TIP 的实际 Broker 退出/重启回归；不能把它视为 registered 退出/重启或普通软件故障验收。Windows 11、多屏 DPI、AppContainer、提交歧义与安装回滚仍单独验收。
 
 `tools\test-registered-tip-state.ps1` 的 16 个场景只用内存 registrar，覆盖解析、脏状态拒绝、部分写入、probe 失败、清理失败/静默残留和外来 COM 路径保护。它不写 Windows 注册表、不启用输入法，也不证明 Windows API 的实际注册行为。

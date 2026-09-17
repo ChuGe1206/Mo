@@ -13,7 +13,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use mo_engine::{EngineBackend, FakeBackend};
 use mo_ipc::Frame;
-use mo_windows_pipe::{AuthenticatedPipe, MAX_PIPE_SLOTS, PipeAddress, PipeListener, PipePool};
+use mo_windows_pipe::{
+    AuthenticatedPipe, MAX_PIPE_SLOTS, PipeAddress, PipeCancellation, PipeListener, PipePool,
+};
 
 use crate::BrokerConnection;
 use crate::engine_service::{EngineClient, EngineService};
@@ -22,6 +24,7 @@ pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
 pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
 pub const FRAME_ASSEMBLY_TIMEOUT: Duration = Duration::from_secs(2);
 pub const RESPONSE_WRITE_TIMEOUT: Duration = Duration::from_secs(2);
+pub const POOL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(15);
 
 static GENERATION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static GENERATION_SEED: OnceLock<u64> = OnceLock::new();
@@ -47,12 +50,34 @@ where
     B: EngineBackend + 'static,
     E: fmt::Display,
 {
+    serve_pool_with_shutdown(pool, factory, PipeCancellation::new()?, per_slot_limit)
+}
+
+/// Coordinator-owned, process-local stop signal; never driven by an IPC peer.
+pub fn serve_pool_with_shutdown<F, B, E>(
+    mut pool: PipePool,
+    factory: F,
+    shutdown: PipeCancellation,
+    per_slot_limit: Option<usize>,
+) -> io::Result<()>
+where
+    F: FnOnce() -> Result<B, E> + Send + 'static,
+    B: EngineBackend + 'static,
+    E: fmt::Display,
+{
     if per_slot_limit == Some(0) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "per-slot limit must be non-zero",
         ));
     }
+    if shutdown.is_cancelled() {
+        return Ok(());
+    }
+    // A per-destroy limit alone permits 64 slow destroys per connection to
+    // multiply shutdown latency. This guard covers ALL workers and finalize.
+    let _stop_watchdog = PoolStopWatchdog::start(&shutdown, POOL_SHUTDOWN_TIMEOUT)?;
+    pool.set_cancellation(&shutdown);
     let engine = EngineService::start(factory)?;
     let slot_count = pool.listeners().len();
     let outcome = thread::scope(|scope| {
@@ -60,41 +85,53 @@ where
         let mut workers: Vec<thread::ScopedJoinHandle<'_, io::Result<()>>> = Vec::new();
         for (slot, mut listener) in pool.into_listeners().into_iter().enumerate() {
             let client = engine.client();
+            let stop = shutdown.clone();
             let (gate, start) = mpsc::sync_channel::<()>(1);
             match thread::Builder::new()
                 .name(format!("mo-pipe-{slot:02}"))
                 .spawn_scoped(scope, move || {
-                    if start.recv().is_err() {
-                        return Ok(());
-                    }
-                    let mut served = 0usize;
-                    loop {
-                        match listener.accept_reusable_first_frame(FIRST_FRAME_TIMEOUT) {
-                            Ok((mut stream, hello)) => {
-                                let result = serve_authenticated_with_engine(
-                                    &mut stream,
-                                    hello,
-                                    client.clone(),
-                                );
-                                drop(stream);
-                                served += 1;
-                                if per_slot_limit.is_some() {
-                                    result?;
-                                } else if let Err(error) = result {
-                                    eprintln!("pipe slot {slot} connection ended: {error}");
-                                }
-                                if per_slot_limit == Some(served) {
-                                    return Ok(());
-                                }
+                    supervise_pipe_worker(&stop, || {
+                        if start.recv().is_err() {
+                            return Ok(());
+                        }
+                        let mut served = 0usize;
+                        loop {
+                            if stop.is_cancelled() {
+                                return Ok(());
                             }
-                            Err(error) => {
-                                // A rejected/slow client consumes only its own slot.
-                                // The retained listener prevents a namespace gap.
-                                eprintln!("pipe slot {slot} rejected connection: {error}");
-                                thread::sleep(Duration::from_millis(5));
+                            match listener.accept_reusable_first_frame(FIRST_FRAME_TIMEOUT) {
+                                Ok((mut stream, hello)) => {
+                                    let result = serve_authenticated_with_engine(
+                                        &mut stream,
+                                        hello,
+                                        client.clone(),
+                                    );
+                                    drop(stream);
+                                    if stop.is_cancelled() {
+                                        return Ok(());
+                                    }
+                                    served += 1;
+                                    if per_slot_limit.is_some() {
+                                        result?;
+                                    }
+                                    // Expected peer failures are local to this
+                                    // slot. Never block a worker on stderr (or
+                                    // amplify untrusted traffic into logs).
+                                    if per_slot_limit == Some(served) {
+                                        return Ok(());
+                                    }
+                                }
+                                Err(_error) => {
+                                    if stop.is_cancelled() {
+                                        return Ok(());
+                                    }
+                                    // A rejected/slow client consumes only its own slot.
+                                    // The retained listener prevents a namespace gap.
+                                    thread::sleep(Duration::from_millis(5));
+                                }
                             }
                         }
-                    }
+                    })
                 }) {
                 Ok(worker) => {
                     gates.push(gate);
@@ -112,13 +149,74 @@ where
         }
         eprintln!("Mo broker listening on {slot_count} protected pipe slots");
         for worker in workers {
-            worker
+            let result = worker
                 .join()
-                .map_err(|_| io::Error::other("pipe worker panicked"))??;
+                .unwrap_or_else(|_| crate::lifecycle::fail_stop());
+            if let Err(error) = result {
+                shutdown.cancel()?;
+                return Err(error);
+            }
         }
         Ok(())
     });
     outcome.and(engine.shutdown())
+}
+
+pub(crate) struct PoolStopWatchdog {
+    completed: PipeCancellation,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl PoolStopWatchdog {
+    pub(crate) fn start(shutdown: &PipeCancellation, budget: Duration) -> io::Result<Self> {
+        let completed = PipeCancellation::new()?;
+        let observed_completion = completed.clone();
+        let observed_shutdown = shutdown.clone();
+        let thread = thread::Builder::new()
+            .name("mo-stop-watchdog".to_owned())
+            .spawn(move || {
+                if observed_shutdown
+                    .wait_until_or_completed(&observed_completion)
+                    .unwrap_or_else(|_| crate::lifecycle::fail_stop())
+                    && !observed_completion
+                        .wait_with_timeout(budget)
+                        .unwrap_or_else(|_| crate::lifecycle::fail_stop())
+                {
+                    crate::lifecycle::fail_stop();
+                }
+            })?;
+        Ok(Self {
+            completed,
+            thread: Some(thread),
+        })
+    }
+}
+
+impl Drop for PoolStopWatchdog {
+    fn drop(&mut self) {
+        self.completed
+            .cancel()
+            .unwrap_or_else(|_| crate::lifecycle::fail_stop());
+        if let Some(thread) = self.thread.take() {
+            thread
+                .join()
+                .unwrap_or_else(|_| crate::lifecycle::fail_stop());
+        }
+    }
+}
+
+pub(crate) fn supervise_pipe_worker<F>(shutdown: &PipeCancellation, worker: F) -> io::Result<()>
+where
+    F: FnOnce() -> io::Result<()>,
+{
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(worker))
+        .unwrap_or_else(|_| crate::lifecycle::fail_stop());
+    if result.is_err() {
+        shutdown
+            .cancel()
+            .unwrap_or_else(|_| crate::lifecycle::fail_stop());
+    }
+    result
 }
 
 pub fn serve_listener(listener: PipeListener) -> io::Result<()> {
@@ -288,6 +386,184 @@ fn next_generation() -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use mo_ipc::{
+        CURRENT_VERSION, FEATURE_KEY_EVENTS, Hello, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec,
+        VersionRange, read_frame, write_frame,
+    };
+    use mo_windows_pipe::{PipeClient, pool_slot_address};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+    use std::time::Instant;
+
+    fn test_hello() -> Frame {
+        Frame::new(
+            CURRENT_VERSION,
+            MessageKind::Hello,
+            0,
+            0,
+            0,
+            1,
+            Hello {
+                supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+                features: FEATURE_KEY_EVENTS,
+                max_payload_len: MAX_PAYLOAD_LEN as u32,
+            }
+            .encode_payload()
+            .unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn cancelled_pool_does_not_initialize_the_backend() {
+        let address = PipeAddress::new(&format!("broker-prestop-{}", std::process::id())).unwrap();
+        let pool = PipePool::bind(address.clone(), 3).unwrap();
+        let stop = PipeCancellation::new().unwrap();
+        stop.cancel().unwrap();
+        let initialized = Arc::new(AtomicBool::new(false));
+        let observed = initialized.clone();
+        serve_pool_with_shutdown(
+            pool,
+            move || {
+                observed.store(true, AtomicOrdering::SeqCst);
+                Ok::<_, io::Error>(FakeBackend::new())
+            },
+            stop,
+            None,
+        )
+        .unwrap();
+        assert!(!initialized.load(AtomicOrdering::SeqCst));
+        assert!(PipePool::bind(address, 3).is_ok());
+    }
+
+    #[test]
+    fn coordinated_stop_joins_all_sixteen_waiting_slots_and_releases_the_namespace() {
+        let address = PipeAddress::new(&format!("broker-stop-all-{}", std::process::id())).unwrap();
+        let pool = PipePool::bind(address.clone(), MAX_PIPE_SLOTS).unwrap();
+        let stop = PipeCancellation::new().unwrap();
+        let worker_stop = stop.clone();
+        let (done, received) = mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            done.send(serve_pool_with_shutdown(
+                pool,
+                || Ok::<_, io::Error>(FakeBackend::new()),
+                worker_stop,
+                None,
+            ))
+            .unwrap();
+        });
+        thread::sleep(Duration::from_millis(30));
+        let started = Instant::now();
+        stop.cancel().unwrap();
+        received
+            .recv_timeout(Duration::from_secs(2))
+            .unwrap()
+            .unwrap();
+        server.join().unwrap();
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(PipePool::bind(address, MAX_PIPE_SLOTS).is_ok());
+    }
+
+    #[test]
+    fn coordinated_stop_wakes_idle_authenticated_partial_and_unconnected_slots() {
+        use std::io::Write;
+        let address =
+            PipeAddress::new(&format!("broker-stop-mixed-{}", std::process::id())).unwrap();
+        let pool = PipePool::bind(address.clone(), 3).unwrap();
+        let stop = PipeCancellation::new().unwrap();
+        let worker_stop = stop.clone();
+        let (done, received) = mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            done.send(serve_pool_with_shutdown(
+                pool,
+                || Ok::<_, io::Error>(FakeBackend::new()),
+                worker_stop,
+                None,
+            ))
+            .unwrap();
+        });
+        let mut idle = PipeClient::connect(&address, Duration::from_secs(2)).unwrap();
+        write_frame(&mut idle, &test_hello()).unwrap();
+        let generation = read_frame(&mut idle).unwrap().header.connection_generation;
+        write_frame(
+            &mut idle,
+            &Frame::new(
+                CURRENT_VERSION,
+                MessageKind::OpenSession,
+                0,
+                generation,
+                0,
+                2,
+                vec![],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_ne!(read_frame(&mut idle).unwrap().header.session_token, 0);
+        let mut partial = PipeClient::connect(
+            &pool_slot_address(&address, 1).unwrap(),
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        partial.write_all(b"M").unwrap();
+        let started = Instant::now();
+        stop.cancel().unwrap();
+        received
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap()
+            .unwrap();
+        server.join().unwrap();
+        assert!(started.elapsed() < FIRST_FRAME_TIMEOUT);
+        // Peers are deliberately still alive. Shutdown must not await EOF.
+        drop(idle);
+        drop(partial);
+        assert!(PipePool::bind(address, 3).is_ok());
+    }
+
+    #[test]
+    fn later_slot_failure_cancels_earlier_slots_before_coordinator_join() {
+        use std::io::Write;
+        let address =
+            PipeAddress::new(&format!("broker-worker-error-{}", std::process::id())).unwrap();
+        let pool = PipePool::bind(address.clone(), 3).unwrap();
+        let stop = PipeCancellation::new().unwrap();
+        let worker_stop = stop.clone();
+        let (done, received) = mpsc::sync_channel(1);
+        let server = thread::spawn(move || {
+            done.send(serve_pool_with_shutdown(
+                pool,
+                || Ok::<_, io::Error>(FakeBackend::new()),
+                worker_stop,
+                Some(1),
+            ))
+            .unwrap();
+        });
+        let mut broken = PipeClient::connect(
+            &pool_slot_address(&address, 2).unwrap(),
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        write_frame(&mut broken, &test_hello()).unwrap();
+        read_frame(&mut broken).unwrap();
+        // The later diagnostic worker exits on a corrupt frame while earlier
+        // workers are still waiting. Protocol error replies alone are not fatal.
+        let mut corrupt = Vec::new();
+        write_frame(&mut corrupt, &test_hello()).unwrap();
+        *corrupt.last_mut().unwrap() ^= 0x80;
+        broken.write_all(&corrupt).unwrap();
+        assert!(
+            received
+                .recv_timeout(Duration::from_secs(2))
+                .unwrap()
+                .is_err()
+        );
+        assert!(stop.is_cancelled());
+        server.join().unwrap();
+        drop(broken);
+        assert!(PipePool::bind(address, 3).is_ok());
+    }
+
     #[test]
     fn truncated_and_corrupt_requests_retire_sessions_without_replaying_commits() {
         use super::{EngineService, FIRST_FRAME_TIMEOUT, serve_authenticated_with_engine};

@@ -29,8 +29,8 @@ x64/Win32 C++ fake 与真实锁定 librime/rime-ice 测试在既有候选授权�
 
 ## 尚未证明
 
-这些是传输/协议故障证据，不是包含原生引擎执行与 session 回收的端到端 deadline。EngineClient 仍可能等待原生长操作；无法安全中断任意 librime C 调用，需要后续 Broker watchdog/进程重启和提交歧义策略。
+这些是本 ADR 当时的传输/协议故障证据。后续 ADR 0021 已补齐 EngineClient/watchdog、总停机预算与受控 Broker 退出/重启回归；无法安全中断任意 librime C 调用，超时仍采用进程 fail-stop 而不是 native 取消。
 
-目前是 overlapped 内核操作加固定线程等待，不是 IOCP 全异步调度。已认证空闲租约、全池恶意占用、协调停机、工作线程 panic、Broker 在 engine commit 后/TSF 写入前崩溃的“不重复上屏”注入、真实注册宿主和安装发行仍待验收。尚不声称 exactly-once 跨崩溃提交。
+目前是 overlapped 内核操作加固定线程等待，不是 IOCP 全异步调度。已认证空闲租约、全池恶意占用、Broker 在 engine commit 后/TSF 写入前的歧义注入、真实注册宿主和安装发行仍待验收。协调停机 API/工作线程 panic 后续见 ADR 0021，但生产退出控制尚未接入。尚不声称 exactly-once 跨崩溃提交。
 
 依据 Microsoft 官方 [Overlapped Pipe Server](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-server-using-overlapped-i-o) 与 [CancelIoEx](https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-cancelioex)。
