@@ -18,18 +18,22 @@ param(
     [switch]$Deploy,
     [switch]$Registered,
     [ValidateRange(1, 100)]
-    [int]$FaultRepetitions = 1
+    [int]$FaultRepetitions = 1,
+    [switch]$LatencyTrace,
+    [string]$OpenccDataDir
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'registered-tip-state.ps1')
 . (Join-Path $PSScriptRoot 'broker-fault-harness.ps1')
+. (Join-Path $PSScriptRoot 'opencc-data.ps1')
 if ($Registered -and $Architecture -ne 'All') { throw 'Registered smoke requires -Architecture All.' }
 if ($Registered) {
     # Gate before deploying/copying assets or starting any Broker.
     Assert-MoRegisteredUserPreflight (Join-Path $repoRoot 'native\windows-tip\out\msbuild\x64\Release\mo_tip_registrar.exe')
 }
+if ($OpenccDataDir) { $OpenccDataDir = Assert-MoCompiledOpenccData $OpenccDataDir }
 
 function Resolve-Directory([string]$Path, [string]$Label) {
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -77,12 +81,13 @@ foreach ($required in @(
     [void](Require-File $required 'required rime-ice deployment input')
 }
 
-& (Join-Path $repoRoot 'native\windows-tip\build-probe.ps1') -Architecture $Architecture -Backend MSBuild
+& (Join-Path $repoRoot 'native\windows-tip\build-probe.ps1') -Architecture $Architecture -Backend MSBuild -LatencyTrace:$LatencyTrace
 if ($LASTEXITCODE -ne 0) { throw "TIP build/probe failed: $LASTEXITCODE" }
 
 Push-Location $repoRoot
 try {
-    & cargo "+$RustToolchain" build -p mo-broker --bin mo-broker
+    $traceOptions = if ($LatencyTrace) { @('--features', 'latency-trace') } else { @() }
+    & cargo "+$RustToolchain" build -p mo-broker --bin mo-broker @traceOptions
     if ($LASTEXITCODE -ne 0) { throw "Rust broker build failed: $LASTEXITCODE" }
 } finally {
     Pop-Location
@@ -107,6 +112,7 @@ $candidateUser = Join-Path $user ('mo-candidates-' + [Guid]::NewGuid().ToString(
 New-Item -ItemType Directory -Path $candidateUser | Out-Null
 try {
     Copy-Item -LiteralPath (Join-Path $user 'build') -Destination (Join-Path $candidateUser 'build') -Recurse
+    if ($OpenccDataDir) { Copy-MoCompiledOpenccData $OpenccDataDir $candidateUser }
     Push-Location $repoRoot
     try {
         Invoke-Checked 'cargo' @("+$RustToolchain", 'run', '--quiet', '-p', 'mo-rime', '--example', 'candidate_smoke', '--', $dynamicLibrary, $shared, $candidateUser)
@@ -130,10 +136,11 @@ function Invoke-RimeBrokerProbe(
     $probeUser = Join-Path $user ("mo-smoke-" + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $probeUser | Out-Null
     Copy-Item -LiteralPath (Join-Path $user 'build') -Destination (Join-Path $probeUser 'build') -Recurse
+    if ($OpenccDataDir) { Copy-MoCompiledOpenccData $OpenccDataDir $probeUser }
     if ($Fault) {
         try {
             Invoke-MoBrokerFaultProbe $brokerPath @('--rime', $dynamicLibrary, $shared, $probeUser) `
-                $Probe $ProbeArguments[0] -RimeIce
+                $Probe $ProbeArguments[0] -RimeIce -LatencyTrace:$LatencyTrace
         } finally { Remove-ProbeUser $probeUser }
         return
     }

@@ -33,6 +33,25 @@ bool ProbeRejectsUnexpectedServerImage() {
     return true;
 }
 
+bool ProbeExpiredKeyBudget(const wchar_t* expected_broker) {
+    mo::windows_tip::BrokerClient broker(expected_broker);
+    if (broker.ConnectAndOpen(0) || broker.connected() || !broker.ConnectAndOpen(2000)) { return false; }
+    mo::windows_tip::BrokerSnapshot untouched;
+    untouched.revision = 987;
+    untouched.composition = "sentinel";
+    untouched.commit = "sentinel";
+    if (broker.SendKey(VK_SPACE, 0, 0, true, false, &untouched, 0) || broker.connected()
+        || untouched.revision != 987 || untouched.composition != "sentinel" || untouched.commit != "sentinel") {
+        std::wcerr << L"Expired key budget accepted a reply or published a snapshot\n"; return false;
+    }
+    // The following frontend session is independent, with no old composition.
+    if (!broker.ConnectAndOpen(2000)
+        || !broker.SendKey('Z', 0, 0, true, false, &untouched, 2000)
+        || untouched.composition != "z" || untouched.commit.has_value()) { return false; }
+    broker.Close(500);
+    return true;
+}
+
 bool ProbePool(const wchar_t* expected_broker, bool real_rime) {
     constexpr std::size_t count = 16;
     std::vector<std::unique_ptr<mo::windows_tip::BrokerClient>> peers;
@@ -280,6 +299,8 @@ int wmain(int argc, wchar_t** argv) {
         std::wcout << L"Mo TIP client rejected an unexpected Broker server image.\n";
         return 0;
     }
+
+    if (!ProbeExpiredKeyBudget(argv[1])) { return 1; }
 
     mo::windows_tip::BrokerClient broker(argv[1]);
     if (!broker.ConnectAndOpen(2000)) {

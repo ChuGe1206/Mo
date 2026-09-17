@@ -39,7 +39,7 @@ impl fmt::Display for EngineServiceError {
 
 #[derive(Clone)]
 pub(crate) struct EngineClient {
-    sender: Sender<EngineRequest>,
+    sender: Sender<Envelope>,
     request_budget: Duration,
 }
 
@@ -78,7 +78,21 @@ impl EngineClient {
         request: EngineRequest,
         receiver: Receiver<Result<T, EngineServiceError>>,
     ) -> Result<T, EngineServiceError> {
-        if self.sender.send(request).is_err() {
+        let operation = match &request {
+            EngineRequest::Create { .. } => crate::latency::Operation::Create,
+            EngineRequest::Dispatch { .. } => crate::latency::Operation::Dispatch,
+            EngineRequest::Destroy { .. } | EngineRequest::Shutdown => {
+                crate::latency::Operation::Destroy
+            }
+        };
+        if self
+            .sender
+            .send(Envelope {
+                request,
+                queued: crate::latency::Queued::new(operation),
+            })
+            .is_err()
+        {
             crate::lifecycle::fail_stop();
         }
         // Queue time and backend execution share one budget. A late result is
@@ -107,6 +121,11 @@ enum EngineRequest {
         token: SessionToken,
         reply: mpsc::SyncSender<Result<(), EngineServiceError>>,
     },
+}
+
+struct Envelope {
+    request: EngineRequest,
+    queued: crate::latency::Queued,
 }
 
 pub(crate) struct EngineService {
@@ -177,7 +196,10 @@ impl EngineService {
         if let Some(client) = self.client.take() {
             // Stop even if another idle client clone still exists. Production
             // joins connection workers first, so no new operation is admitted.
-            let _ = client.sender.send(EngineRequest::Shutdown);
+            let _ = client.sender.send(Envelope {
+                request: EngineRequest::Shutdown,
+                queued: crate::latency::Queued::new(crate::latency::Operation::Destroy),
+            });
         }
         let Some(thread) = self.thread.take() else {
             return Ok(());
@@ -201,17 +223,19 @@ fn join_with_budget(thread: JoinHandle<()>, budget: Duration) -> io::Result<()> 
         .map_err(|_| io::Error::other("engine service thread panicked"))
 }
 
-fn run_actor<B>(mut actor: EngineActor<B>, receiver: Receiver<EngineRequest>)
+fn run_actor<B>(mut actor: EngineActor<B>, receiver: Receiver<Envelope>)
 where
     B: EngineBackend,
 {
-    while let Ok(request) = receiver.recv() {
+    while let Ok(Envelope { request, queued }) = receiver.recv() {
+        let running = queued.begin();
         match request {
             EngineRequest::Shutdown => break,
             EngineRequest::Create { options, reply } => {
                 let result = actor
                     .create_session(options)
                     .map_err(|_| EngineServiceError::OperationFailed);
+                running.finish();
                 let _ = reply.send(result);
             }
             EngineRequest::Dispatch {
@@ -222,12 +246,14 @@ where
                 let result = actor
                     .dispatch(token, command)
                     .map_err(|_| EngineServiceError::OperationFailed);
+                running.finish();
                 let _ = reply.send(result);
             }
             EngineRequest::Destroy { token, reply } => {
                 let result = actor
                     .destroy_session(token)
                     .map_err(|_| EngineServiceError::OperationFailed);
+                running.finish();
                 let _ = reply.send(result);
             }
         }

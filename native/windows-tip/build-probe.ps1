@@ -3,7 +3,8 @@ param(
     [ValidateSet('All', 'x64', 'Win32')]
     [string]$Architecture = 'All',
     [ValidateSet('Auto', 'CMake', 'MSBuild')]
-    [string]$Backend = 'Auto'
+    [string]$Backend = 'Auto',
+    [switch]$LatencyTrace
 )
 
 $ErrorActionPreference = 'Stop'
@@ -56,12 +57,14 @@ if ($Backend -eq 'MSBuild' -and -not $msbuild) { throw 'MSBuild was requested bu
 foreach ($platform in $architectures) {
     if ($Backend -eq 'CMake') {
         $buildDirectory = Join-Path $sourceRoot "out\cmake\$platform"
-        Invoke-Checked $cmake @('-S', $sourceRoot, '-B', $buildDirectory, '-G', 'Visual Studio 17 2022', '-A', $platform)
+        $traceOption = if ($LatencyTrace) { 'ON' } else { 'OFF' }
+        Invoke-Checked $cmake @('-S', $sourceRoot, '-B', $buildDirectory, '-G', 'Visual Studio 17 2022', '-A', $platform, "-DMO_LATENCY_TRACE=$traceOption")
         Invoke-Checked $cmake @('--build', $buildDirectory, '--config', 'Release')
         $binaryDirectory = Join-Path $buildDirectory 'Release'
     } else {
         foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj', 'MoTipIpcProbe.vcxproj')) {
-            Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform")
+            $traceOption = if ($LatencyTrace) { 'true' } else { 'false' }
+            Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform", "/p:MoLatencyTrace=$traceOption")
         }
         $binaryDirectory = Join-Path $sourceRoot "out\msbuild\$platform\Release"
     }

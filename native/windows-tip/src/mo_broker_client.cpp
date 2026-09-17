@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include "mo_broker_client.h"
+#include "mo_deadline.h"
 
 #include <algorithm>
 #include <array>
@@ -14,10 +15,91 @@
 #include <new>
 #include <utility>
 #include <vector>
+#ifdef MO_LATENCY_TRACE
+#include <chrono>
+#endif
 
 namespace {
 
 using Byte = std::uint8_t;
+using mo::windows_tip::Deadline;
+using mo::windows_tip::DeadlineFromNow;
+using mo::windows_tip::DeadlineExpired;
+using mo::windows_tip::RemainingMilliseconds;
+
+enum class TracePhase : DWORD { Connect = 1, Write = 2, Header = 3, Payload = 4 };
+#ifdef MO_LATENCY_TRACE
+using TraceClock = std::chrono::steady_clock;
+using TraceTime = TraceClock::time_point;
+thread_local mo::windows_tip::BrokerTiming* g_request_trace = nullptr;
+std::uint64_t TraceMicros(TraceTime started) noexcept {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(TraceClock::now() - started).count());
+}
+class RequestTrace final {
+public:
+    RequestTrace(mo::windows_tip::BrokerTiming* timing, DWORD kind) noexcept
+        : timing_(timing), previous_(g_request_trace), started_(TraceClock::now()) {
+        *timing_ = {}; timing_->kind = kind; timing_->phase = static_cast<DWORD>(TracePhase::Connect);
+        g_request_trace = timing_;
+    }
+    ~RequestTrace() noexcept { timing_->total_us = TraceMicros(started_); g_request_trace = previous_; }
+private:
+    mo::windows_tip::BrokerTiming* timing_;
+    mo::windows_tip::BrokerTiming* previous_;
+    TraceTime started_;
+};
+#endif
+void TraceFailure(DWORD error) noexcept {
+#ifdef MO_LATENCY_TRACE
+    if (g_request_trace != nullptr && g_request_trace->error == 0) { g_request_trace->error = error; }
+#else
+    (void)error;
+#endif
+}
+void TraceRequest(std::uint64_t id) noexcept {
+#ifdef MO_LATENCY_TRACE
+    if (g_request_trace != nullptr) { g_request_trace->request_id = id; }
+#else
+    (void)id;
+#endif
+}
+class TransferTrace final {
+public:
+    explicit TransferTrace(TracePhase phase) noexcept {
+#ifdef MO_LATENCY_TRACE
+        trace_ = g_request_trace; phase_ = phase; started_ = TraceClock::now();
+        if (trace_ != nullptr && phase != TracePhase::Connect) { trace_->phase = static_cast<DWORD>(phase); }
+#else
+        (void)phase;
+#endif
+    }
+    ~TransferTrace() noexcept {
+#ifdef MO_LATENCY_TRACE
+        if (trace_ != nullptr) {
+            const auto elapsed = TraceMicros(started_);
+            if (phase_ == TracePhase::Write) { trace_->write_us += elapsed; }
+            else if (phase_ == TracePhase::Header) { trace_->header_us += elapsed; }
+            else if (phase_ == TracePhase::Payload) { trace_->payload_us += elapsed; }
+        }
+#endif
+    }
+    void BeginCancel() noexcept {
+#ifdef MO_LATENCY_TRACE
+        cancelling_ = TraceClock::now();
+#endif
+    }
+    void EndCancel() noexcept {
+#ifdef MO_LATENCY_TRACE
+        if (trace_ != nullptr) { trace_->cancel_us += TraceMicros(cancelling_); }
+#endif
+    }
+private:
+#ifdef MO_LATENCY_TRACE
+    mo::windows_tip::BrokerTiming* trace_ = nullptr;
+    TracePhase phase_ = TracePhase::Connect;
+    TraceTime started_{}, cancelling_{};
+#endif
+};
 
 // Must match mo-windows-pipe's bounded independent slot family. Slot zero
 // preserves the legacy endpoint and every handle undergoes the same identity
@@ -95,21 +177,6 @@ struct Frame final {
     std::vector<Byte> payload;
 };
 
-ULONGLONG DeadlineFromNow(DWORD timeout_ms) noexcept {
-    const ULONGLONG now = GetTickCount64();
-    const ULONGLONG deadline = now + timeout_ms;
-    return deadline < now ? std::numeric_limits<ULONGLONG>::max() : deadline;
-}
-
-DWORD RemainingMilliseconds(ULONGLONG deadline) noexcept {
-    const ULONGLONG now = GetTickCount64();
-    if (now >= deadline) {
-        return 0;
-    }
-    const ULONGLONG remaining = deadline - now;
-    return remaining > MAXDWORD ? MAXDWORD : static_cast<DWORD>(remaining);
-}
-
 void PutU16(Byte* output, std::uint16_t value) noexcept {
     output[0] = static_cast<Byte>(value);
     output[1] = static_cast<Byte>(value >> 8U);
@@ -165,15 +232,19 @@ bool TransferExact(
     Byte* buffer,
     std::size_t length,
     bool write,
-    ULONGLONG deadline) noexcept {
+    Deadline deadline,
+    TracePhase phase) noexcept {
+    const TransferTrace trace(phase);
     HANDLE event_handle = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (event_handle == nullptr) {
+        TraceFailure(GetLastError());
         return false;
     }
 
     std::size_t offset = 0;
     bool success = true;
     while (offset < length) {
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); success = false; break; }
         const std::size_t remaining = length - offset;
         const DWORD chunk = remaining > MAXDWORD ? MAXDWORD : static_cast<DWORD>(remaining);
         OVERLAPPED operation{};
@@ -187,25 +258,36 @@ bool TransferExact(
         if (started == FALSE) {
             const DWORD error = GetLastError();
             if (error != ERROR_IO_PENDING) {
+                TraceFailure(error);
                 success = false;
                 break;
             }
             const DWORD wait = WaitForSingleObject(event_handle, RemainingMilliseconds(deadline));
             if (wait != WAIT_OBJECT_0) {
+                TraceFailure(wait == WAIT_TIMEOUT ? ERROR_TIMEOUT : GetLastError());
+                // Storage must remain alive until cancellation completes.
+                // Timing distinguishes this drain from waiting for the reply.
+                TransferTrace cancelling(TracePhase::Connect);
+                cancelling.BeginCancel();
                 CancelIoEx(pipe, &operation);
                 WaitForSingleObject(event_handle, INFINITE);
+                cancelling.EndCancel();
                 success = false;
                 break;
             }
             if (GetOverlappedResult(pipe, &operation, &transferred, FALSE) == FALSE) {
+                TraceFailure(GetLastError());
                 success = false;
                 break;
             }
         }
         if (transferred == 0) {
+            TraceFailure(ERROR_BROKEN_PIPE);
             success = false;
             break;
         }
+        // A signalled or synchronous completion does not extend the total budget.
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); success = false; break; }
         offset += transferred;
     }
 
@@ -213,7 +295,7 @@ bool TransferExact(
     return success;
 }
 
-bool WriteFrame(HANDLE pipe, const Frame& frame, ULONGLONG deadline) {
+bool WriteFrame(HANDLE pipe, const Frame& frame, Deadline deadline) {
     if (frame.payload.size() > kMaximumPayloadLength) {
         return false;
     }
@@ -235,15 +317,15 @@ bool WriteFrame(HANDLE pipe, const Frame& frame, ULONGLONG deadline) {
             frame.payload.data(),
             frame.payload.size());
     }
-    return TransferExact(pipe, encoded.data(), encoded.size(), true, deadline);
+    return TransferExact(pipe, encoded.data(), encoded.size(), true, deadline, TracePhase::Write);
 }
 
-bool ReadFrame(HANDLE pipe, Frame* frame, ULONGLONG deadline) {
+bool ReadFrame(HANDLE pipe, Frame* frame, Deadline deadline) {
     if (frame == nullptr) {
         return false;
     }
     std::array<Byte, kHeaderLength> header{};
-    if (!TransferExact(pipe, header.data(), header.size(), false, deadline)) {
+    if (!TransferExact(pipe, header.data(), header.size(), false, deadline, TracePhase::Header)) {
         return false;
     }
     if (!std::equal(kMagic.begin(), kMagic.end(), header.begin())
@@ -262,7 +344,7 @@ bool ReadFrame(HANDLE pipe, Frame* frame, ULONGLONG deadline) {
     }
     std::vector<Byte> payload(payload_length);
     if (!payload.empty()
-        && !TransferExact(pipe, payload.data(), payload.size(), false, deadline)) {
+        && !TransferExact(pipe, payload.data(), payload.size(), false, deadline, TracePhase::Payload)) {
         return false;
     }
     if (Crc32(payload) != GetU32(header.data() + 20)) {
@@ -282,8 +364,9 @@ bool Exchange(
     const Frame& request,
     MessageKind response_kind,
     Frame* response,
-    ULONGLONG deadline) {
+    Deadline deadline) {
     Frame received;
+    TraceRequest(request.request_id);
     if (!WriteFrame(pipe, request, deadline) || !ReadFrame(pipe, &received, deadline)) {
         return false;
     }
@@ -292,6 +375,7 @@ bool Exchange(
         || received.request_id != request.request_id) {
         return false;
     }
+    if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); return false; }
     *response = std::move(received);
     return true;
 }
@@ -443,7 +527,7 @@ bool IsExpectedBrokerServer(HANDLE pipe, const std::wstring& expected_path) {
 
 HANDLE ConnectPipe(
     const std::wstring& expected_broker_path,
-    ULONGLONG deadline,
+    Deadline deadline,
     bool retry_missing_endpoint) noexcept {
     const auto first_slot = g_next_pipe_slot.fetch_add(1, std::memory_order_relaxed) % kPipeNames.size();
     for (;;) {
@@ -635,9 +719,12 @@ BrokerClient::~BrokerClient() noexcept {
 }
 
 bool BrokerClient::ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint) noexcept {
+#ifdef MO_LATENCY_TRACE
+    const RequestTrace timing(&last_timing_, 1);
+#endif
     try {
         Reset();
-        const ULONGLONG deadline = DeadlineFromNow(timeout_ms);
+        const Deadline deadline = DeadlineFromNow(timeout_ms);
         pipe_ = ConnectPipe(expected_broker_path_, deadline, retry_missing_endpoint);
         if (pipe_ == INVALID_HANDLE_VALUE) {
             return false;
@@ -683,6 +770,7 @@ bool BrokerClient::ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint)
             return false;
         }
         session_token_ = opened.session_token;
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
         return true;
     } catch (const std::bad_alloc&) {
         Reset();
@@ -701,11 +789,14 @@ bool BrokerClient::SendKey(
     bool repeat,
     BrokerSnapshot* snapshot,
     DWORD timeout_ms) noexcept {
+#ifdef MO_LATENCY_TRACE
+    const RequestTrace timing(&last_timing_, 5);
+#endif
     if (!connected() || snapshot == nullptr) {
         return false;
     }
     try {
-        const ULONGLONG deadline = DeadlineFromNow(timeout_ms);
+        const Deadline deadline = DeadlineFromNow(timeout_ms);
         Frame request;
         request.kind = MessageKind::KeyEvent;
         request.generation = generation_;
@@ -718,13 +809,17 @@ bool BrokerClient::SendKey(
         request.payload.push_back(repeat ? 1 : 0);
 
         Frame response;
+        BrokerSnapshot decoded;
         if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
-            || !DecodeSnapshot(response, snapshot)) {
+            || !DecodeSnapshot(response, &decoded)) {
+            TraceFailure(ERROR_INVALID_DATA);
             Reset();
             return false;
         }
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
+        *snapshot = std::move(decoded);
         return true;
     } catch (...) {
         Reset();
@@ -738,6 +833,9 @@ bool BrokerClient::SendCandidateAction(
     std::uint32_t index,
     BrokerSnapshot* snapshot,
     DWORD timeout_ms) noexcept {
+#ifdef MO_LATENCY_TRACE
+    const RequestTrace timing(&last_timing_, 12);
+#endif
     if (!connected() || !candidate_actions_supported_ || snapshot == nullptr
         || expected_revision == 0
         || (action == CandidateAction::Select ? index >= 32 : index != 0)
@@ -745,6 +843,7 @@ bool BrokerClient::SendCandidateAction(
         return false;
     }
     try {
+        const Deadline deadline = DeadlineFromNow(timeout_ms);
         Frame request;
         request.kind = MessageKind::CandidateAction;
         request.generation = generation_;
@@ -754,14 +853,18 @@ bool BrokerClient::SendCandidateAction(
         request.payload.push_back(static_cast<Byte>(action));
         AppendU32(&request.payload, index);
         Frame response;
-        if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, DeadlineFromNow(timeout_ms))
+        BrokerSnapshot decoded;
+        if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
-            || !DecodeSnapshot(response, snapshot)
-            || snapshot->revision <= expected_revision) {
+            || !DecodeSnapshot(response, &decoded)
+            || decoded.revision <= expected_revision) {
+            TraceFailure(ERROR_INVALID_DATA);
             Reset();
             return false;
         }
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
+        *snapshot = std::move(decoded);
         return true;
     } catch (...) {
         Reset();
@@ -776,7 +879,7 @@ void BrokerClient::Close(DWORD timeout_ms) noexcept {
     }
     try {
         if (generation_ != 0 && session_token_ != 0) {
-            const ULONGLONG deadline = DeadlineFromNow(timeout_ms);
+            const Deadline deadline = DeadlineFromNow(timeout_ms);
             Frame request;
             request.kind = MessageKind::CloseSession;
             request.generation = generation_;

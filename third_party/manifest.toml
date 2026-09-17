@@ -60,6 +60,19 @@ ship_in_mo = false
 source_required = false
 
 [[component]]
+id = "opencc-dict-build-tool"
+name = "OpenCC dictionary compiler sources"
+repository = "https://github.com/BYVoid/OpenCC"
+license = "Apache-2.0"
+version = "1.1.9"
+source_archive_url = "https://codeload.github.com/BYVoid/OpenCC/zip/refs/tags/ver.1.1.9"
+source_archive_sha256 = "f8aac3eda054edaf0313aa2103baa965f63f80f4a496b35ac7b632dfd1a33953"
+distribution = "local-build-tool-only"
+ship_in_mo = false
+source_required = false
+bundled_dependency = "marisa-0.2.6 (BSD-2-Clause OR LGPL-2.1-or-later; build uses BSD boundary)"
+
+[[component]]
 id = "windows-sys"
 name = "windows-sys"
 repository = "https://github.com/microsoft/windows-rs"

@@ -9,9 +9,10 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 103 个运行时测试和 1 个 compile-fail 契约测试。
+- `cargo +stable test --workspace`：通过，共 105 个运行时测试和 1 个 compile-fail 契约测试；显式 `mo-broker/latency-trace` debug 分支 107 项及 1 项 compile-fail 通过。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
+- 诊断 feature 的 debug/release workspace/all-targets Clippy 均通过；默认及 release feature 的计时 envelope 以编译期断言保证零大小，默认不启动 logger。CMake 路径本机未运行，原生证据来自 MSBuild。
 - Rust toolchain、librime、rime-ice 与官方验证资产均已锁定；GitHub Actions 已覆盖 Rust、TSF x64/x86、librime ABI 和真实 rime-ice smoke。
 - 尚未在 GitHub runner 上产生首个 CI 结果；本地 `main` 已建立 Phase 0 基线提交 `25ef5d7`，未配置 remote。
 
@@ -23,6 +24,7 @@
 - 安全封装确保 Engine/Session 单线程、Session 借用 Engine、所有 commit/context/status native 输出严格配对 `free_*`，并将返回值复制为 owned Rust snapshot。
 - `RimeBackend` 已实现 Engine Actor 后端契约：私有 native session id 不越过适配层，key/commit/clear、修饰位映射、composition UTF-8 byte offset 校验、候选注释/标签与状态投影均有确定性伪 API 测试。当前页零基索引选择与前后翻页已通过安全可选 API 接入 Actor，旧表/截断字段/空函数指针明确报告缺失，不破坏基本按键输入；schema/options 仍显式返回 unsupported。
 - `candidate_smoke` 已对真实 librime/rime-ice 验证 `ni` 前后翻页恢复原页、选择当前页第二候选及准确 commit；该直接 API 检查已纳入完整真实引擎 smoke，并只使用可回收的独立用户目录。
+- Broker 后端新增一个私有、无输入的 native 资源保活会话，永不承载用户 key/commit/clear、没有 wire token，用户会话仍各自创建/销毁。两个伪 API 测试验证隔离/销毁顺序与创建失败回收；保活+预编译的直接 API 对照中，首次转换约 27 ms，后续新会话首键约 0.7–1.7 ms，不是压力或机器冷启动通过。
 - `Engine::load` 已用绝对 canonical DLL 路径和受限 `LoadLibraryExW` 搜索目录实现运行时加载；不读取 PATH/当前目录，仅解析 `rime_get_api`，并保证 finalize 后才卸载 DLL。相对路径、错误文件名和缺失文件均 fail-closed。
 - 官方 librime + 锁定 rime-ice 完成真实部署和 `nihao -> 你好` 候选及提交验证。
 - 正式发行不得复用该官方预构建 DLL；原因见 G4。
@@ -53,6 +55,8 @@
 - Broker 故障与恢复子阶段已落地：未命名进程内停机事件唤醒 connect/partial/idle/backpressured I/O；连接先回收 session、全部槽 join 后 Actor Shutdown/finalize。某槽诊断失败先取消其余槽，worker panic 直接 fail-stop。初始化 30 秒、排队及每个 native 请求 5 秒、finalize 5 秒、整池停机总预算 15 秒；独立 watchdog 不空闲轮询，也不让逐 session 预算累乘。八类子进程卡死/panic/总停机注入核对到达故障 marker、3 秒内 fast-fail，而不是把任意非零退出当成功。现有闲置 EngineClient 不阻止 Shutdown，见 ADR 0021。
 - TIP 实际 Broker 退出/重启探针发现并修复延迟鼠标动作失败时旧拼音偶发残留：持有原 RW cookie 清除自身未提交 range 后断开，不嵌套申请写锁，也不重放歧义动作。故障探针保持文本锁延迟直到 owned Broker 确实退出。两次退出分别覆盖待执行选词与已提交文本；缺席期间不吞键，恢复后分别准确提交一轮，最终 EDIT/context 核对五轮词。harness 不写输入注册状态，不杀外部进程；现有 CI smoke 默认包含此回归。
 - 提交前 fake 双架构各 100 轮故障回归通过（每轮两次实际退出）；真实词库的基本双架构链路及 Win32 单独 20 轮通过，但完整高频命令也出现过下述首键超时，不能算压力验收通过。真实 smoke 全程异步排空日志，失败附带 owned Broker 日志；fake/真实清理均确认子进程真正退出后才进行下一 probe/删除临时数据，修复 Kill 后直接清理导致的偶发文件占用错误。
+- 首键子阶段补齐 Actor 排队/执行与客户端 write/header/payload/cancel 分段诊断、候选显示阶段只读 metadata；只在开发态显式开启，不记录输入内容、不阻塞 Actor 写日志。客户端改为 QPC-backed 单一 deadline，50 ms 不变；完成和解码后再次拒绝到期结果，迟到 snapshot 不发布、不重发，零预算/精确到期/有限 MAXDWORD 算术及真实 IPC sentinel 回归通过，见 ADR 0022。
+- 本阶段最终真实预编译资源回归在默认关闭诊断和显式开启诊断两种构建下，均完成 x64/Win32 各 20 轮故障检查与完整 IPC/pool/UI/edit 检查；每轮两次实际退出。该有限回归不取消 100 轮命令的失败。只读状态复核仍是 COM 双视图缺失、profile 未注册/启用/激活，没有设置默认输入法。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
@@ -65,7 +69,7 @@
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
 - 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布版来源/签名/安装 ACL/reparse、配置覆盖与 AppContainer/WinUI 仍未完成。
 - 实际崩溃回归目前只覆盖上述受控文本存储。engine commit 后/TSF 写入前、部分文档写入后的歧义故障及普通宿主矩阵仍未注入；不声称跨崩溃 exactly-once 或未提交输入不丢失。
-- 高频真实词库重复中出现过首个 N 未消费，完整命令按设计立即失败；一次耗时 63 ms，发生于实际退出注入前的既有焦点恢复链路。表现与 50 ms 请求预算相符，但引擎/磁盘/调度占比未定位。未放宽 deadline 或自动重发；正常通过不抹去此风险，冷启动/高频恢复稳定性仍待专项验收。
+- 高频真实词库的首个 N 超时已分段定位到引擎转换，而非排队；Emoji filter 的延迟加载/weak owner 重复卸载有源码和独立消融证据。资源保活+预编译改善重复创建，但最新完整 x64 命令第 87/100 轮仍出现 Actor 59,181 µs、排队 18 µs 的首键超时，未进入 Win32 压力段；另两次 x64 第 24/100、3/100 轮候选窗未显示（按键未超时），清理来源尚未确定。未放宽 deadline、禁用 Emoji 或自动重发，冷启动/高频恢复和候选生命周期压力验收仍未通过，完整证据见 ADR 0022。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 
 ## G3：安装——未通过
@@ -82,10 +86,11 @@
 
 - rime-ice 2026.06.30 锁定到 `6810e8916d160498620a16fef2135956fecbd485`，source archive hash 已记录。
 - 已从源部署完整 rime-ice 数据并运行真实 golden smoke。
+- 已新增 hash 锁定 OpenCC 1.1.9 + bundled Marisa 的本地构建态编译工具，把锁定 Emoji/补充字典生成 `.ocd2`，读回核对全部 4857/1498 条 key 及有序 values。20 项完整性/负向检查通过；源文件与 manifest 保留，测试只复制到新 fixture。该 pack 未接入正式安装、签名更新或发行 SBOM，不把自声明哈希作为可信更新证明。
 - 发现官方 librime Windows 资产静态包含 GPL-3.0-only `librime-octagram`。该资产现被明确限制为开发验证，不进入 Mo 发行物。
 - 正式包必须从锁定 librime 源自行构建，插件采用允许列表；当前最小集合为 BSD-3-Clause core + rime-ice 必需的 BSD-3-Clause `librime-lua`。
 - rime-ice 资源仍按 GPL-3.0-only 独立边界处理；默认捆绑前仍需逐文件 SBOM、第三方通知、对应源/修改记录和正式许可证审查。
 
 ## 下一检查点
 
-下一优先项是定位真实链路首键的 50 ms 预算失败，建立冷启动/焦点恢复耗时证据。管理员准备后完成双架构系统路由，再在 Notepad 验收正式 composition、候选窗与 Broker 故障恢复，随后覆盖 WinUI/AppContainer。后续固化正式自构建 librime/资源布局与可回滚安装事务；当前受控故障子阶段不升级为普通宿主或日常使用通过。
+下一优先项是继续降低首次真实转换尾延迟，并查明候选 snapshot 清理来源，使双架构真实压力链路通过；不靠延长预算或重发换取通过。管理员准备后完成双架构系统路由，再在 Notepad 验收正式 composition、候选窗与 Broker 故障恢复，随后覆盖 WinUI/AppContainer。后续固化正式自构建 librime/资源布局与可回滚安装事务；本阶段完成诊断、资源预编译与重复会话开销改善，不升级为普通宿主或日常使用通过。

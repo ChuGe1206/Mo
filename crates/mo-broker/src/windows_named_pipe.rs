@@ -148,6 +148,7 @@ where
                 .map_err(|_| io::Error::other("pipe worker exited before startup"))?;
         }
         eprintln!("Mo broker listening on {slot_count} protected pipe slots");
+        crate::latency::initialize();
         for worker in workers {
             let result = worker
                 .join()

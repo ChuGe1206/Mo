@@ -106,3 +106,12 @@ hosts, secure desktop behavior, signing, upgrade, repair, and uninstall. The
 controlled text store proves the callback/cache/edit-session mechanics but is
 not a substitute for registered end-to-end host testing. See ADR 0018 for the
 first native view's staged Rust-first boundary and remaining release gates.
+
+ADR 0022 adds QPC-backed, completion-checked request deadlines; the 50 ms key
+budget is unchanged. `build-probe.ps1 -LatencyTrace` explicitly enables a
+read-only, content-free diagnostics interface (default builds expose none).
+Real smoke accepts the same switch and `-OpenccDataDir <verified-pack>`;
+build-time resource instructions are in `tools/opencc-build/README.md`.
+The Broker keeps one private input-free resource session to avoid unloading
+shared dictionaries when frontend sessions close; it never warms or replays
+user input. Pressure and ordinary-host acceptance remain separate gates.

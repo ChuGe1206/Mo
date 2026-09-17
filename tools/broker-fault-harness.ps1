@@ -4,7 +4,8 @@ function Invoke-MoBrokerFaultProbe(
     [string[]]$BrokerArguments,
     [string]$ProbePath,
     [string]$TipPath,
-    [switch]$RimeIce
+    [switch]$RimeIce,
+    [switch]$LatencyTrace
 ) {
     foreach ($artifact in @($BrokerPath, $ProbePath, $TipPath)) {
         if (-not [IO.Path]::IsPathFullyQualified($artifact) -or
@@ -101,7 +102,16 @@ function Invoke-MoBrokerFaultProbe(
         if (-not $stdout.Wait(1000) -or -not $stderr.Wait(1000)) { throw 'TIP fault probe output did not close.' }
         if ($probe.ExitCode -ne 0) { throw "TIP fault probe failed: $($stderr.Result) $($stdout.Result)" }
         if ($owned.Process.HasExited) { throw 'Recovered Broker exited unexpectedly.' }
-        Write-Host $stdout.Result.Trim()
+        if ($LatencyTrace) {
+            # The probe's entire output is drained asynchronously above. Keep
+            # successful repeated runs readable; failures retain full metadata.
+            $firstKeys = [regex]::Matches($stdout.Result, 'MO_CLIENT request=3 kind=5 phase=\d+ error=0 total_us=(\d+)')
+            $keyTimes = @($firstKeys | ForEach-Object { [long]$_.Groups[1].Value })
+            if ($keyTimes.Count -eq 0) { throw 'Trace-enabled probe returned no first-key timings.' }
+            $stats = $keyTimes | Measure-Object -Minimum -Maximum
+            Write-Host "MO_FIRST_KEYS count=$($keyTimes.Count) min_us=$($stats.Minimum) max_us=$($stats.Maximum)"
+            Write-Host (($stdout.Result -split '\r?\n' | Where-Object { $_ -and -not $_.StartsWith('MO_CLIENT ') }) -join "`n")
+        } else { Write-Host $stdout.Result.Trim() }
     } catch {
         $failureMessage = $_.Exception.Message
         if ($null -ne $owned) {

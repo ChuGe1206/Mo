@@ -4,6 +4,7 @@
 //! connects the state machine to Mo's authenticated local transport.
 
 mod engine_service;
+mod latency;
 mod lifecycle;
 mod state;
 pub mod tcp_loopback_spike;

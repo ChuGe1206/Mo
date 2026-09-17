@@ -149,7 +149,11 @@ class TextService final
     : public ITfTextInputProcessorEx,
       public ITfKeyEventSink,
       public ITfCompositionSink,
-      public ITfTextLayoutSink {
+      public ITfTextLayoutSink
+#ifdef MO_LATENCY_TRACE
+      , public mo::windows_tip::IBrokerDiagnostics
+#endif
+      {
 public:
     explicit TextService(std::wstring expected_broker_path) noexcept
         : broker_(std::move(expected_broker_path)) {
@@ -184,8 +188,25 @@ public:
         if (IsEqualIID(interface_id, IID_ITfTextLayoutSink)) {
             *object = static_cast<ITfTextLayoutSink*>(this); AddRef(); return S_OK;
         }
+#ifdef MO_LATENCY_TRACE
+        if (IsEqualIID(interface_id, __uuidof(mo::windows_tip::IBrokerDiagnostics))) {
+            *object = static_cast<mo::windows_tip::IBrokerDiagnostics*>(this); AddRef(); return S_OK;
+        }
+#endif
         return E_NOINTERFACE;
     }
+#ifdef MO_LATENCY_TRACE
+    STDMETHODIMP ReadLastTiming(mo::windows_tip::BrokerTiming* timing) noexcept override {
+        if (timing == nullptr) { return E_POINTER; }
+        *timing = broker_.last_timing();
+        timing->candidate_stage = candidate_trace_stage_;
+        timing->candidate_result = candidate_trace_result_;
+        timing->candidate_count = display_snapshot_.has_value()
+            ? static_cast<DWORD>(display_snapshot_->candidates.size()) : 0;
+        timing->candidate_focus = has_focus_ ? 1 : 0;
+        return S_OK;
+    }
+#endif
 
     STDMETHODIMP_(ULONG) AddRef() noexcept override {
         return static_cast<ULONG>(InterlockedIncrement(&reference_count_));
@@ -331,6 +352,7 @@ public:
             candidate_window_.Hide();
             ResetCompositionState();
             DisconnectBroker(kBrokerKeyTimeoutMs);
+            TraceCandidate(12, S_OK);
         }
         return S_OK;
     }
@@ -344,6 +366,7 @@ public:
         if (code == TF_LC_DESTROY) {
             ResetCompositionState();
             DisconnectBroker(kBrokerKeyTimeoutMs);
+            TraceCandidate(13, S_OK);
         } else if (code == TF_LC_CHANGE) {
             QueueCandidateLayout(context);
         }
@@ -729,11 +752,21 @@ private:
         if (!has_focus_ || !has_candidate_anchor_
             || (activation_flags_ & TF_TMAE_UIELEMENTENABLEDONLY) != 0
             || !broker_.candidate_actions_supported()) {
+            TraceCandidate(9, S_FALSE);
             candidate_window_.Hide();
             return;
         }
-        candidate_window_.Update(g_module, candidate_owner_, candidate_anchor_, snapshot,
+        const bool shown = candidate_window_.Update(g_module, candidate_owner_, candidate_anchor_, snapshot,
             CandidateActionCallback, this);
+        TraceCandidate(shown ? 11 : 10, shown ? S_OK : E_FAIL);
+    }
+
+    void TraceCandidate(DWORD stage, HRESULT result) noexcept {
+#ifdef MO_LATENCY_TRACE
+        candidate_trace_stage_ = stage; candidate_trace_result_ = result;
+#else
+        (void)stage; (void)result;
+#endif
     }
 
     void StoreCandidateSnapshot(const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
@@ -787,6 +820,7 @@ private:
         const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
         has_candidate_anchor_ = false;
         if (active_range_ == nullptr || composition_context_.Get() != context) {
+            TraceCandidate(1, TF_E_DISCONNECTED);
             candidate_window_.Hide(); return;
         }
         ComPtr<ITfContextView> view;
@@ -794,14 +828,20 @@ private:
         BOOL clipped = TRUE;
         HWND owner = nullptr;
         RECT anchor{};
-        if (FAILED(context->GetActiveView(view.GetAddressOf())) || view == nullptr
-            || FAILED(active_range_->Clone(caret.GetAddressOf()))
-            || FAILED(caret->Collapse(cookie, TF_ANCHOR_START))
-            || FAILED(view->GetTextExt(cookie, caret.Get(), &anchor, &clipped))
-            || clipped || anchor.bottom <= anchor.top || anchor.right < anchor.left
-            || FAILED(view->GetWnd(&owner)) || !IsWindow(owner)) {
-            candidate_window_.Hide(); return;
+        const auto checked = [this](DWORD stage, HRESULT result) noexcept {
+            if (SUCCEEDED(result)) { return true; }
+            TraceCandidate(stage, result); candidate_window_.Hide(); return false;
+        };
+        if (!checked(2, context->GetActiveView(view.GetAddressOf()))) { return; }
+        if (view == nullptr) { TraceCandidate(2, E_UNEXPECTED); candidate_window_.Hide(); return; }
+        if (!checked(3, active_range_->Clone(caret.GetAddressOf()))
+            || !checked(4, caret->Collapse(cookie, TF_ANCHOR_START))
+            || !checked(5, view->GetTextExt(cookie, caret.Get(), &anchor, &clipped))) { return; }
+        if (clipped || anchor.bottom <= anchor.top || anchor.right < anchor.left) {
+            TraceCandidate(clipped ? 6 : 7, S_FALSE); candidate_window_.Hide(); return;
         }
+        if (!checked(8, view->GetWnd(&owner))) { return; }
+        if (!IsWindow(owner)) { TraceCandidate(8, E_HANDLE); candidate_window_.Hide(); return; }
         candidate_anchor_ = anchor;
         candidate_owner_ = owner;
         has_candidate_anchor_ = true;
@@ -1010,6 +1050,10 @@ private:
     ULONGLONG next_reconnect_tick_ = 0;
     mo::windows_tip::BrokerClient broker_;
     mo::windows_tip::CandidateWindow candidate_window_;
+#ifdef MO_LATENCY_TRACE
+    DWORD candidate_trace_stage_ = 0;
+    HRESULT candidate_trace_result_ = S_OK;
+#endif
     std::uint64_t latest_revision_ = 0;
     RECT candidate_anchor_{};
     HWND candidate_owner_ = nullptr;

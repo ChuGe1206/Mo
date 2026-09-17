@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "mo_latency_diagnostics.h"
 
 namespace mo::windows_tip {
 
@@ -55,6 +56,9 @@ public:
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }
     std::uint64_t generation() const noexcept { return generation_; }
     std::uint64_t session_token() const noexcept { return session_token_; }
+#ifdef MO_LATENCY_TRACE
+    BrokerTiming last_timing() const noexcept { return last_timing_; }
+#endif
 
 private:
     void Reset() noexcept;
@@ -65,6 +69,9 @@ private:
     std::uint64_t session_token_ = 0;
     std::uint64_t next_request_id_ = 1;
     bool candidate_actions_supported_ = false;
+#ifdef MO_LATENCY_TRACE
+    BrokerTiming last_timing_;
+#endif
 };
 
 }  // namespace mo::windows_tip

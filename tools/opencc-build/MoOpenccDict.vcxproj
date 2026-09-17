@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion><Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{4A9DB4E2-862B-47E4-A32E-7B4515FC7E86}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)..\..\build\opencc-dict-tool\bin\</OutDir>
+    <IntDir>$(ProjectDir)..\..\build\opencc-dict-tool\obj\</IntDir><TargetName>mo_opencc_dict</TargetName>
+    <MarisaRoot>$(OpenccRoot)\deps\marisa-0.2.6</MarisaRoot>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- Upstream has its own warnings; do not weaken the production TIP policy. -->
+      <WarningLevel>Level4</WarningLevel><SDLCheck>true</SDLCheck><Optimization>MaxSpeed</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard><ControlFlowGuard>Guard</ControlFlowGuard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>Opencc_BUILT_AS_STATIC;_CRT_SECURE_NO_WARNINGS;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(OpenccRoot)\src;$(MarisaRoot)\include;$(MarisaRoot)\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link><SubSystem>Console</SubSystem><ControlFlowGuard>Guard</ControlFlowGuard></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="dict_compiler.cpp"><TreatWarningAsError>true</TreatWarningAsError></ClCompile>
+    <ClCompile Include="$(OpenccRoot)\src\Dict.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\DictEntry.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\Lexicon.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\MarisaDict.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\SerializedValues.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\TextDict.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\UTF8Util.cpp" />
+    <ClCompile Include="$(OpenccRoot)\src\UTF8StringSlice.cpp" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\trie.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\agent.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\keyset.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\io\reader.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\io\writer.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\io\mapper.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\trie\louds-trie.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\trie\tail.cc" />
+    <ClCompile Include="$(MarisaRoot)\lib\marisa\grimoire\vector\bit-vector.cc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

@@ -14,6 +14,8 @@
 #include <wrl/client.h>
 
 #include "mo_tip_ids.h"
+#include "mo_latency_diagnostics.h"
+#include "mo_deadline.h"
 
 namespace {
 
@@ -33,6 +35,18 @@ int expect_result(const wchar_t* operation, HRESULT actual, HRESULT expected) {
     std::wcerr << operation << L" returned 0x" << std::hex << actual
                << L", expected 0x" << expected << L'\n';
     return 1;
+}
+
+bool ProbeDeadlineArithmetic() {
+    using namespace mo::windows_tip;
+    const Deadline now{};
+    const auto deadline = now + std::chrono::milliseconds(50);
+    return RemainingMillisecondsAt(deadline, now) == 50
+        && RemainingMillisecondsAt(deadline, now + std::chrono::nanoseconds(1)) == 50
+        && RemainingMillisecondsAt(deadline, deadline - std::chrono::nanoseconds(1)) == 1
+        && RemainingMillisecondsAt(deadline, deadline) == 0
+        && RemainingMillisecondsAt(deadline, deadline + std::chrono::nanoseconds(1)) == 0
+        && RemainingMillisecondsAt(now + std::chrono::milliseconds(MAXDWORD), now) == MAXDWORD - 1;
 }
 
 class ComApartment final {
@@ -748,6 +762,19 @@ bool SendTestedKey(
     BOOL tested_eaten = FALSE;
     const ULONGLONG tested_started = GetTickCount64();
     HRESULT result = key_sink->OnTestKeyDown(context, virtual_key, key_data, &tested_eaten);
+#ifdef MO_LATENCY_TRACE
+    ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
+    if (SUCCEEDED(key_sink->QueryInterface(IID_PPV_ARGS(diagnostics.GetAddressOf())))) {
+        mo::windows_tip::BrokerTiming timing;
+        if (SUCCEEDED(diagnostics->ReadLastTiming(&timing))) {
+            auto& output = tested_eaten ? std::wcout : std::wcerr;
+            output << L"MO_CLIENT request=" << timing.request_id << L" kind=" << timing.kind
+                << L" phase=" << timing.phase << L" error=" << timing.error << L" total_us=" << timing.total_us
+                << L" write_us=" << timing.write_us << L" header_us=" << timing.header_us
+                << L" payload_us=" << timing.payload_us << L" cancel_us=" << timing.cancel_us << L'\n';
+        }
+    }
+#endif
     if (FAILED(result) || tested_eaten == FALSE) {
         if (FAILED(result)) {
             fail(L"ITfKeyEventSink::OnTestKeyDown", result);
@@ -963,7 +990,7 @@ void PumpProbeMessages() noexcept {
     }
 }
 
-bool WaitForCandidateWindow(bool visible) noexcept {
+bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service) noexcept {
     const ULONGLONG deadline = GetTickCount64() + 2000;
     do {
         PumpProbeMessages();
@@ -971,6 +998,18 @@ bool WaitForCandidateWindow(bool visible) noexcept {
         MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     } while (GetTickCount64() < deadline);
     std::wcerr << L"Candidate window visibility did not match expected state\n";
+#ifdef MO_LATENCY_TRACE
+    ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
+    mo::windows_tip::BrokerTiming timing{};
+    if (SUCCEEDED(service->QueryInterface(IID_PPV_ARGS(&diagnostics)))
+        && SUCCEEDED(diagnostics->ReadLastTiming(&timing))) {
+        std::wcerr << L"MO_VISUAL expected=" << visible << L" stage=" << timing.candidate_stage
+            << L" result=" << timing.candidate_result << L" count=" << timing.candidate_count
+            << L" focus=" << timing.candidate_focus << L'\n';
+    }
+#else
+    (void)service;
+#endif
     return false;
 }
 
@@ -1208,13 +1247,13 @@ int probe_broker_input(
             if (!keys_succeeded) {
                 break;
             }
-            if (!WaitForCandidateWindow(true)) { keys_succeeded = false; break; }
+            if (!WaitForCandidateWindow(true, service)) { keys_succeeded = false; break; }
             if (composition_index == 1 && !registered) {
                 RECT before_layout{};
                 GetWindowRect(CandidateWindowForCurrentThread(), &before_layout);
                 SetWindowPos(edit_window, nullptr, 200, 180, 240, 32, SWP_NOACTIVATE | SWP_NOZORDER);
                 edit_store->NotifyLayoutChanged();
-                if (!WaitForCandidateWindow(true)) { keys_succeeded = false; break; }
+                if (!WaitForCandidateWindow(true, service)) { keys_succeeded = false; break; }
                 RECT after_layout{};
                 GetWindowRect(CandidateWindowForCurrentThread(), &after_layout);
                 if (EqualRect(&before_layout, &after_layout)) {
@@ -1233,12 +1272,12 @@ int probe_broker_input(
                 SendMessageW(candidate, WM_LBUTTONUP, 0, position);
                 PumpProbeMessages();
                 if (FAILED(result) || release_eaten || edit_store->text() != before_release
-                    || !WaitForCandidateWindow(true)) {
+                    || !WaitForCandidateWindow(true, service)) {
                     std::wcerr << L"Candidate key-up refresh/stale press protection failed\n";
                     keys_succeeded = false; break;
                 }
-                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true)
-                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true)
+                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true, service)
+                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true, service)
                     || !ClickCandidateWindow(0)) {
                     std::wcerr << L"Candidate mouse paging/selection failed\n";
                     keys_succeeded = false; break;
@@ -1248,7 +1287,7 @@ int probe_broker_input(
                     ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
                     : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
             }
-            if (keys_succeeded && !WaitForCandidateWindow(false)) { keys_succeeded = false; }
+            if (keys_succeeded && !WaitForCandidateWindow(false, service)) { keys_succeeded = false; }
         }
         if (!keys_succeeded) {
             outcome = 1;
@@ -1269,7 +1308,7 @@ int probe_broker_input(
             const bool advanced = queued && SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, 'A');
             edit_store->GrantDeferredLock();
             PumpProbeMessages();
-            if (!keys_succeeded || !advanced || !WaitForCandidateWindow(true)
+            if (!keys_succeeded || !advanced || !WaitForCandidateWindow(true, service)
                 || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)) {
                 std::wcerr << L"Deferred candidate action did not cancel after a newer key\n";
                 outcome = 1; break;
@@ -1289,7 +1328,7 @@ int probe_broker_input(
             result = direct_key_sink->OnSetFocus(FALSE);
             edit_store->GrantDeferredLock();
             PumpProbeMessages();
-            if (!keys_succeeded || !focus_queued || FAILED(result) || !WaitForCandidateWindow(false)) {
+            if (!keys_succeeded || !focus_queued || FAILED(result) || !WaitForCandidateWindow(false, service)) {
                 std::wcerr << L"Deferred candidate action survived focus loss\n";
                 outcome = 1; break;
             }
@@ -1300,7 +1339,7 @@ int probe_broker_input(
                     keys_succeeded = false; break;
                 }
             }
-            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false)) {
+            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false, service)) {
                 std::wcerr << L"Candidate selection did not recover after focus regain\n";
                 outcome = 1; break;
             }
@@ -1337,7 +1376,7 @@ int probe_broker_input(
                     edit_store->GrantDeferredLock(); PumpProbeMessages();
                 }
                 if (!SendFailOpenKey(direct_key_sink.Get(), context.Get(), VK_SPACE)
-                    || edit_store->text() != expected || !WaitForCandidateWindow(false)) {
+                    || edit_store->text() != expected || !WaitForCandidateWindow(false, service)) {
                     std::wcerr << L"Broker crash changed document or replayed pending candidate\n";
                     keys_succeeded = false; break;
                 }
@@ -1350,9 +1389,9 @@ int probe_broker_input(
                         keys_succeeded = false; break;
                     }
                 }
-                if (!keys_succeeded || !WaitForCandidateWindow(true)
+                if (!keys_succeeded || !WaitForCandidateWindow(true, service)
                     || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE)
-                    || !WaitForCandidateWindow(false)) { keys_succeeded = false; break; }
+                    || !WaitForCandidateWindow(false, service)) { keys_succeeded = false; break; }
                 expected += rime_ice ? L"你好" : L"m";
                 if (edit_store->text() != expected) {
                     std::wcerr << L"Recovered session replayed/concatenated pre-crash input: actual=["
@@ -1555,6 +1594,39 @@ int wmain(int argument_count, wchar_t** arguments) {
         FreeLibrary(module);
         return fail(L"IClassFactory::CreateInstance", result);
     }
+    if (!ProbeDeadlineArithmetic()) {
+        service->Release(); FreeLibrary(module); return fail(L"Deadline arithmetic", E_FAIL);
+    }
+#ifdef MO_LATENCY_TRACE
+    {
+        ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
+        result = service->QueryInterface(IID_PPV_ARGS(&diagnostics));
+        if (FAILED(result)) {
+            service->Release(); FreeLibrary(module); return fail(L"QueryInterface(IBrokerDiagnostics)", result);
+        }
+        mo::windows_tip::BrokerTiming timing{};
+        ComPtr<IUnknown> service_identity, diagnostics_identity;
+        service->QueryInterface(IID_PPV_ARGS(&service_identity));
+        diagnostics->QueryInterface(IID_PPV_ARGS(&diagnostics_identity));
+        if (diagnostics->ReadLastTiming(nullptr) != E_POINTER || diagnostics->ReadLastTiming(&timing) != S_OK
+            || timing.total_us != 0 || timing.request_id != 0 || timing.error != 0
+            || service_identity.Get() == nullptr || service_identity.Get() != diagnostics_identity.Get()) {
+            // ComPtrs must die before unloading the module on this failure path.
+            diagnostics.Reset(); service_identity.Reset(); diagnostics_identity.Reset();
+            service->Release(); FreeLibrary(module); return fail(L"Read-only diagnostics contract", E_FAIL);
+        }
+    }
+#else
+    {
+        const IID diagnostics_iid = {0x1DE6A239, 0x4965, 0x487B, {0xA8, 0x86, 0x21, 0x2C, 0x37, 0x5F, 0x37, 0x08}};
+        IUnknown* diagnostics = nullptr;
+        result = service->QueryInterface(diagnostics_iid, reinterpret_cast<void**>(&diagnostics));
+        if (diagnostics != nullptr) { diagnostics->Release(); }
+        if (result != E_NOINTERFACE || diagnostics != nullptr) {
+            service->Release(); FreeLibrary(module); return fail(L"Default build exposes diagnostics", E_FAIL);
+        }
+    }
+#endif
 
     ITfCompositionSink* composition_sink = nullptr;
     result = service->QueryInterface(

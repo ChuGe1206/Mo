@@ -21,6 +21,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
+      <PreprocessorDefinitions Condition="'$(MoLatencyTrace)' == 'true'">MO_LATENCY_TRACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError><SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode><LanguageStandard>stdcpp17</LanguageStandard><ControlFlowGuard>Guard</ControlFlowGuard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>

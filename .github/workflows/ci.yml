@@ -21,8 +21,16 @@ jobs:
         run: cargo +1.97.1 clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo +1.97.1 test --workspace
+      - name: Lint and test opt-in metadata diagnostics
+        shell: pwsh
+        run: |
+          cargo +1.97.1 clippy --workspace --all-targets --features mo-broker/latency-trace -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Trace lint failed' }
+          cargo +1.97.1 test --workspace --features mo-broker/latency-trace
       - name: Lint installed-mode build
         run: cargo +1.97.1 clippy --release --workspace --all-targets -- -D warnings
+      - name: Verify trace feature is compiled out in installed mode
+        run: cargo +1.97.1 clippy --release --workspace --all-targets --features mo-broker/latency-trace -- -D warnings
       - name: Verify release Broker rejects diagnostic startup
         shell: pwsh
         run: ./tools/broker-startup-smoke.ps1 -RustToolchain 1.97.1
@@ -83,4 +91,12 @@ jobs:
 
           $user = Join-Path $env:RUNNER_TEMP 'rime-user'
           New-Item -ItemType Directory -Path $user | Out-Null
-          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -Deploy
+          $openccArchive = Join-Path $env:RUNNER_TEMP 'opencc-1.1.9.zip'
+          Invoke-WebRequest -Uri 'https://codeload.github.com/BYVoid/OpenCC/zip/refs/tags/ver.1.1.9' -OutFile $openccArchive
+          ./tools/opencc-build/build.ps1 -SourceArchivePath $openccArchive
+          $compiler = Join-Path $PWD 'build/opencc-dict-tool/bin/mo_opencc_dict.exe'
+          $openccPack = Join-Path $PWD 'build/compiled-opencc'
+          ./tools/compile-opencc-data.ps1 -SharedDataDir $ice -CompilerPath $compiler -OutputDirectory $openccPack
+          ./tools/test-opencc-data.ps1 -OpenccDataDir $openccPack -CompilerPath $compiler
+          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -Deploy -OpenccDataDir $openccPack
+          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $unpacked 'dist') -SharedDataDir $ice -UserDataDir $user -Architecture All -RustToolchain 1.97.1 -LatencyTrace -OpenccDataDir $openccPack

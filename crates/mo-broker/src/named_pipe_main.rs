@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
                 pool,
                 move || {
                     mo_rime::Engine::load(startup.engine_config, startup.dll_path)
-                        .map(mo_rime::RimeBackend::new)
+                        .and_then(mo_rime::RimeBackend::with_resource_anchor)
                 },
                 None,
             )

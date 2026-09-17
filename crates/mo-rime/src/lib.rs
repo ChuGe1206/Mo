@@ -1238,6 +1238,101 @@ mod tests {
     }
 
     #[test]
+    fn resource_anchor_receives_no_input_and_outlives_distinct_frontend_sessions() {
+        use mo_domain::{EngineCommand, KeyEvent, SessionOptions};
+        use mo_engine::EngineBackend;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT: AtomicUsize = AtomicUsize::new(1);
+        static EVENTS: Mutex<Vec<(&str, usize)>> = Mutex::new(Vec::new());
+        unsafe extern "C" fn create() -> sys::RimeSessionId {
+            let id = NEXT.fetch_add(1, Ordering::Relaxed);
+            EVENTS.lock().unwrap().push(("create", id));
+            id
+        }
+        unsafe extern "C" fn destroy(id: sys::RimeSessionId) -> sys::RimeBool {
+            EVENTS.lock().unwrap().push(("destroy", id));
+            sys::RIME_TRUE
+        }
+        unsafe extern "C" fn process(
+            id: sys::RimeSessionId,
+            key: c_int,
+            mask: c_int,
+        ) -> sys::RimeBool {
+            EVENTS.lock().unwrap().push(("key", id));
+            // SAFETY: delegate to the same test-only callback/table contract.
+            unsafe { fake_process_key(id, key, mask) }
+        }
+        let _serial = TEST_SERIAL.lock().unwrap();
+        NEXT.store(1, Ordering::Relaxed);
+        EVENTS.lock().unwrap().clear();
+        FAKE.lock().unwrap().reset();
+        FAKE.lock().unwrap().valid_utf8_context = true;
+        let mut api = fake_api();
+        api.create_session = Some(create);
+        api.destroy_session = Some(destroy);
+        api.process_key = Some(process);
+        // SAFETY: initialized table/callbacks remain live until backend drop.
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
+        let mut backend = RimeBackend::with_resource_anchor(engine).unwrap();
+        for _ in 0..2 {
+            let mut session = backend.create_session(SessionOptions::new()).unwrap();
+            backend
+                .apply(&mut session, &EngineCommand::Key(KeyEvent::text('A')))
+                .unwrap();
+            backend.destroy_session(session).unwrap();
+        }
+        assert_eq!(
+            *EVENTS.lock().unwrap(),
+            [
+                ("create", 1),
+                ("create", 2),
+                ("key", 2),
+                ("destroy", 2),
+                ("create", 3),
+                ("key", 3),
+                ("destroy", 3)
+            ]
+        );
+        drop(backend);
+        assert_eq!(EVENTS.lock().unwrap().last(), Some(&("destroy", 1)));
+        let calls = FAKE.lock().unwrap().calls.clone();
+        assert_eq!(
+            &calls[calls.len() - 2..],
+            ["cleanup_all_sessions", "finalize"]
+        );
+    }
+
+    #[test]
+    fn resource_anchor_creation_failure_finalizes_without_dispatching() {
+        unsafe extern "C" fn reject() -> sys::RimeSessionId {
+            record("create_session");
+            0
+        }
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        let mut api = fake_api();
+        api.create_session = Some(reject);
+        // SAFETY: initialized table/callbacks remain live through error cleanup.
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
+        assert!(matches!(
+            RimeBackend::with_resource_anchor(engine),
+            Err(Error::SessionCreationFailed)
+        ));
+        assert_eq!(
+            FAKE.lock().unwrap().calls,
+            [
+                "setup",
+                "initialize",
+                "create_session",
+                "cleanup_all_sessions",
+                "finalize"
+            ]
+        );
+    }
+
+    #[test]
     fn candidate_commands_route_through_actor_and_preserve_native_false() {
         use mo_domain::{EngineCommand, SessionOptions};
         use mo_engine::EngineActor;

@@ -19,13 +19,43 @@ const RIME_RELEASE_MASK: u32 = 1 << 30;
 /// Adapter that makes the safe librime owner usable by `EngineActor`.
 pub struct RimeBackend {
     engine: Engine,
+    resource_anchor: Option<mo_rime_sys::RimeSessionId>,
 }
 
 impl RimeBackend {
     /// Wraps an initialized, thread-affine librime engine.
     #[must_use]
     pub const fn new(engine: Engine) -> Self {
-        Self { engine }
+        Self {
+            engine,
+            resource_anchor: None,
+        }
+    }
+
+    /// Holds one private, input-free session until backend teardown.
+    ///
+    /// The pinned engine shares dictionary/OpenCC owners weakly across sessions.
+    /// Keeping an owner avoids unloading/reloading them when all frontend sessions
+    /// disappear. This session is never dispatched, committed, cleared, exposed,
+    /// or recycled as a frontend session. It does not warm the first translation.
+    /// Currently only the fixed default schema is supported; schema selection
+    /// requires revisiting this resource policy.
+    pub fn with_resource_anchor(engine: Engine) -> Result<Self, Error> {
+        let id = engine.create_session_id()?;
+        Ok(Self {
+            engine,
+            resource_anchor: Some(id),
+        })
+    }
+}
+
+impl Drop for RimeBackend {
+    fn drop(&mut self) {
+        if let Some(id) = self.resource_anchor.take() {
+            // No fallible work/logging in Drop. Engine's subsequent cleanup-all
+            // covers an unsuccessful explicit destroy before native finalize.
+            let _ = self.engine.destroy_session_id(id);
+        }
     }
 }
 
