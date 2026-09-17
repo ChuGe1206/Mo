@@ -115,3 +115,13 @@ build-time resource instructions are in `tools/opencc-build/README.md`.
 The Broker keeps one private input-free resource session to avoid unloading
 shared dictionaries when frontend sessions close; it never warms or replays
 user input. Pressure and ordinary-host acceptance remain separate gates.
+
+ADR 0023 adds owned context/range references and a saturating candidate epoch,
+revalidating after host geometry calls and before/after Win32 popup updates.
+A deterministic GetTextExt reentrancy probe invalidates the measured layout,
+checks that the old popup stays hidden, then verifies a fresh read recovers it.
+TIP reconnect and key exchange now share one absolute 50 ms transport deadline,
+with no additional CloseSession wait on key error/context-switch paths. This
+does not bound synchronous host COM/edit/render work or kernel cancellation.
+Opt-in metadata separately records reset cause/count and key-edit HRESULTs;
+it does not turn the existing rare-disappearance or cold-tail risks into passes.

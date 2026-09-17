@@ -719,12 +719,15 @@ BrokerClient::~BrokerClient() noexcept {
 }
 
 bool BrokerClient::ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint) noexcept {
+    return ConnectAndOpenUntil(DeadlineFromNow(timeout_ms), retry_missing_endpoint);
+}
+
+bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_endpoint) noexcept {
 #ifdef MO_LATENCY_TRACE
     const RequestTrace timing(&last_timing_, 1);
 #endif
     try {
         Reset();
-        const Deadline deadline = DeadlineFromNow(timeout_ms);
         pipe_ = ConnectPipe(expected_broker_path_, deadline, retry_missing_endpoint);
         if (pipe_ == INVALID_HANDLE_VALUE) {
             return false;
@@ -789,6 +792,12 @@ bool BrokerClient::SendKey(
     bool repeat,
     BrokerSnapshot* snapshot,
     DWORD timeout_ms) noexcept {
+    return SendKeyUntil(virtual_key, scan_code, modifiers, key_down, repeat, snapshot, DeadlineFromNow(timeout_ms));
+}
+
+bool BrokerClient::SendKeyUntil(
+    UINT virtual_key, UINT scan_code, std::uint16_t modifiers,
+    bool key_down, bool repeat, BrokerSnapshot* snapshot, Deadline deadline) noexcept {
 #ifdef MO_LATENCY_TRACE
     const RequestTrace timing(&last_timing_, 5);
 #endif
@@ -796,7 +805,6 @@ bool BrokerClient::SendKey(
         return false;
     }
     try {
-        const Deadline deadline = DeadlineFromNow(timeout_ms);
         Frame request;
         request.kind = MessageKind::KeyEvent;
         request.generation = generation_;

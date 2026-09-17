@@ -45,8 +45,15 @@ bool ProbeExpiredKeyBudget(const wchar_t* expected_broker) {
         std::wcerr << L"Expired key budget accepted a reply or published a snapshot\n"; return false;
     }
     // The following frontend session is independent, with no old composition.
-    if (!broker.ConnectAndOpen(2000)
-        || !broker.SendKey('Z', 0, 0, true, false, &untouched, 2000)
+    const auto spent_deadline = mo::windows_tip::DeadlineClock::now();
+    if (!broker.ConnectAndOpenUntil(mo::windows_tip::DeadlineFromNow(2000))
+        || broker.SendKeyUntil(VK_SPACE, 0, 0, true, false, &untouched, spent_deadline)
+        || broker.connected() || untouched.composition != "sentinel" || untouched.commit != "sentinel") {
+        std::wcerr << L"Absolute key deadline was restarted after connecting\n"; return false;
+    }
+    const auto shared_deadline = mo::windows_tip::DeadlineFromNow(2000);
+    if (!broker.ConnectAndOpenUntil(shared_deadline)
+        || !broker.SendKeyUntil('Z', 0, 0, true, false, &untouched, shared_deadline)
         || untouched.composition != "z" || untouched.commit.has_value()) { return false; }
     broker.Close(500);
     return true;

@@ -12,6 +12,9 @@ struct BrokerTiming final {
     DWORD kind = 0, phase = 0, error = 0;
     DWORD candidate_stage = 0, candidate_count = 0, candidate_focus = 0;
     HRESULT candidate_result = S_OK;
+    DWORD candidate_snapshot = 0, candidate_reset = 0;
+    std::uint64_t candidate_reset_count = 0;
+    HRESULT edit_request = S_OK, edit_session = S_OK;
 };
 MIDL_INTERFACE("1DE6A239-4965-487B-A886-212C375F3708")
 IBrokerDiagnostics : public IUnknown {

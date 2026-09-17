@@ -56,7 +56,11 @@
 - TIP 实际 Broker 退出/重启探针发现并修复延迟鼠标动作失败时旧拼音偶发残留：持有原 RW cookie 清除自身未提交 range 后断开，不嵌套申请写锁，也不重放歧义动作。故障探针保持文本锁延迟直到 owned Broker 确实退出。两次退出分别覆盖待执行选词与已提交文本；缺席期间不吞键，恢复后分别准确提交一轮，最终 EDIT/context 核对五轮词。harness 不写输入注册状态，不杀外部进程；现有 CI smoke 默认包含此回归。
 - 提交前 fake 双架构各 100 轮故障回归通过（每轮两次实际退出）；真实词库的基本双架构链路及 Win32 单独 20 轮通过，但完整高频命令也出现过下述首键超时，不能算压力验收通过。真实 smoke 全程异步排空日志，失败附带 owned Broker 日志；fake/真实清理均确认子进程真正退出后才进行下一 probe/删除临时数据，修复 Kill 后直接清理导致的偶发文件占用错误。
 - 首键子阶段补齐 Actor 排队/执行与客户端 write/header/payload/cancel 分段诊断、候选显示阶段只读 metadata；只在开发态显式开启，不记录输入内容、不阻塞 Actor 写日志。客户端改为 QPC-backed 单一 deadline，50 ms 不变；完成和解码后再次拒绝到期结果，迟到 snapshot 不发布、不重发，零预算/精确到期/有限 MAXDWORD 算术及真实 IPC sentinel 回归通过，见 ADR 0022。
-- 本阶段最终真实预编译资源回归在默认关闭诊断和显式开启诊断两种构建下，均完成 x64/Win32 各 20 轮故障检查与完整 IPC/pool/UI/edit 检查；每轮两次实际退出。该有限回归不取消 100 轮命令的失败。只读状态复核仍是 COM 双视图缺失、profile 未注册/启用/激活，没有设置默认输入法。
+- ADR 0022 资源子阶段的最终真实预编译资源回归在默认关闭诊断和显式开启诊断两种构建下，均完成 x64/Win32 各 20 轮故障检查与完整 IPC/pool/UI/edit 检查；每轮两次实际退出。该有限回归不取消 100 轮命令的失败。只读状态复核仍是 COM 双视图缺失、profile 未注册/启用/激活，没有设置默认输入法。
+- 候选重入子阶段已复现并修复定位期间 TF_LC_CHANGE 后重显旧位置：持有 context/range 引用、捕获饱和 epoch 与会话/page 身份，宿主查询完成和 popup Update 前后复核。A/B 明确得到 key/hook/通知正常但 stale_visible=1；保护开启的默认 fake 双架构各 100 轮通过。该确定性缺陷不是此前偶发消失的已确认全部根因，见 ADR 0023。
+- TIP 的重连/Hello/OpenSession/按键现共用 DispatchKey 入口的一份绝对 50 ms 传输 deadline，context 切换和按键错误不额外等 CloseSession ack；IPC 校验过期绝对 deadline 不因新连接而续期、sentinel 不发布以及新会话从空预编辑起步。此预算不保证同步宿主 COM/文档/渲染或内核取消排空的实际返回上界。
+- 候选保护/共用 deadline 落地后，Win32 独立真实命令 100/100 轮通过，含同一个 x64 Broker 的完整 IPC/pool/UI/重入/文档与实际故障恢复检查；x64 完整命令仍在第 82/100 轮因首键超时失败。Win32 通过不构成双架构整体压力或普通宿主通过。
+- ADR 0023 收尾恢复默认关闭诊断构建，真实预编译词库 x64/Win32 各 20 轮及完整 IPC/pool/TIP 检查通过，重入 fixture 使用有效 context view。Rust 105 项运行时测试、1 项 compile-fail doc test、fmt、默认 all-targets Clippy 通过；16 项内存注册事务与 20 项 OpenCC 检查通过。只读状态仍为双视图 COM 缺失、profile 未注册/启用/激活，未改变 Windows 输入状态。
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
@@ -69,7 +73,7 @@
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
 - 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布版来源/签名/安装 ACL/reparse、配置覆盖与 AppContainer/WinUI 仍未完成。
 - 实际崩溃回归目前只覆盖上述受控文本存储。engine commit 后/TSF 写入前、部分文档写入后的歧义故障及普通宿主矩阵仍未注入；不声称跨崩溃 exactly-once 或未提交输入不丢失。
-- 高频真实词库的首个 N 超时已分段定位到引擎转换，而非排队；Emoji filter 的延迟加载/weak owner 重复卸载有源码和独立消融证据。资源保活+预编译改善重复创建，但最新完整 x64 命令第 87/100 轮仍出现 Actor 59,181 µs、排队 18 µs 的首键超时，未进入 Win32 压力段；另两次 x64 第 24/100、3/100 轮候选窗未显示（按键未超时），清理来源尚未确定。未放宽 deadline、禁用 Emoji 或自动重发，冷启动/高频恢复和候选生命周期压力验收仍未通过，完整证据见 ADR 0022。
+- 高频真实词库的首个 N 超时主要位于引擎转换；Emoji filter 延迟加载/weak owner 重复卸载有源码和独立消融证据。资源保活+预编译改善重复创建，但候选保护/共用预算落地后的完整 x64 命令第 82/100 轮仍出现 Actor 55,959 µs、排队 3,469 µs 的首键超时，未进入该命令 Win32 压力段；更早失败也保留。此前 x64 第 24/100、3/100 轮候选未显示（按键未超时），状态变化来源尚未确认；新增清理原因/次数、snapshot 存在与 key Edit Session HRESULT 独立诊断，不把重显旧位置修复当成全部原因。未放宽 deadline、禁用 Emoji 或自动重发，冷启动/高频恢复和候选生命周期压力验收仍未通过，见 ADR 0022/0023。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 
 ## G3：安装——未通过
@@ -93,4 +97,4 @@
 
 ## 下一检查点
 
-下一优先项是继续降低首次真实转换尾延迟，并查明候选 snapshot 清理来源，使双架构真实压力链路通过；不靠延长预算或重发换取通过。管理员准备后完成双架构系统路由，再在 Notepad 验收正式 composition、候选窗与 Broker 故障恢复，随后覆盖 WinUI/AppContainer。后续固化正式自构建 librime/资源布局与可回滚安装事务；本阶段完成诊断、资源预编译与重复会话开销改善，不升级为普通宿主或日常使用通过。
+下一优先项是在正式 allowlisted 自构建 runtime 中验证无输入资源准备，把首次加载前移到 Broker ready 前，降低 cold-tail；并继续查明偶发候选状态变化，使双架构真实压力链路通过，不靠延长预算或重发。管理员准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer。后续固化正式资源布局与可回滚安装事务；候选重入保护和传输预算子阶段不升级为普通宿主或日常使用通过。

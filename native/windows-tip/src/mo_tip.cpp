@@ -33,6 +33,13 @@ constexpr std::uint16_t kAltModifier = 1U << 2U;
 constexpr std::uint16_t kSuperModifier = 1U << 3U;
 constexpr std::uint16_t kCapsLockModifier = 1U << 4U;
 
+enum class CandidateReset : DWORD {
+    HostTermination = 1, LayoutDestroy = 2, Transport = 3, KeyEditFailure = 4,
+    MouseRequestFailure = 5, MouseEditFailure = 6, UpdateFailure = 7,
+    CommitFailure = 8, ClearFailure = 9, Finished = 10, Cancelled = 11,
+    SnapshotAllocation = 12,
+};
+
 bool PathComponentEquals(
     const std::filesystem::path& component,
     const wchar_t* expected) noexcept {
@@ -204,6 +211,11 @@ public:
         timing->candidate_count = display_snapshot_.has_value()
             ? static_cast<DWORD>(display_snapshot_->candidates.size()) : 0;
         timing->candidate_focus = has_focus_ ? 1 : 0;
+        timing->candidate_snapshot = display_snapshot_.has_value() ? 1 : 0;
+        timing->candidate_reset = candidate_reset_;
+        timing->candidate_reset_count = candidate_reset_count_;
+        timing->edit_request = last_edit_request_;
+        timing->edit_session = last_edit_session_;
         return S_OK;
     }
 #endif
@@ -350,8 +362,8 @@ public:
         }
         if (composition_.Get() == composition) {
             candidate_window_.Hide();
-            ResetCompositionState();
-            DisconnectBroker(kBrokerKeyTimeoutMs);
+            ResetCompositionState(CandidateReset::HostTermination);
+            DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::HostTermination);
             TraceCandidate(12, S_OK);
         }
         return S_OK;
@@ -361,11 +373,12 @@ public:
         ITfContextView*) noexcept override {
         if (context == nullptr) { return E_INVALIDARG; }
         if (context != composition_context_.Get()) { return S_OK; }
+        InvalidateCandidateIdentity();
         candidate_window_.Hide();
         has_candidate_anchor_ = false;
         if (code == TF_LC_DESTROY) {
-            ResetCompositionState();
-            DisconnectBroker(kBrokerKeyTimeoutMs);
+            ResetCompositionState(CandidateReset::LayoutDestroy);
+            DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::LayoutDestroy);
             TraceCandidate(13, S_OK);
         } else if (code == TF_LC_CHANGE) {
             QueueCandidateLayout(context);
@@ -374,6 +387,42 @@ public:
     }
 
 private:
+    struct CandidateIdentity final {
+        ComPtr<ITfContext> context;
+        ComPtr<ITfRange> range;
+        std::uint64_t epoch, revision, generation, token;
+    };
+
+    CandidateIdentity CaptureCandidateIdentity(std::uint64_t revision) const noexcept {
+        return {composition_context_, active_range_, candidate_epoch_, revision,
+            broker_.generation(), broker_.session_token()};
+    }
+
+    bool CandidateIdentityMatches(const CandidateIdentity& identity) const noexcept {
+        return has_focus_ && broker_.connected()
+            && identity.epoch != std::numeric_limits<std::uint64_t>::max()
+            && identity.epoch == candidate_epoch_
+            && identity.context != nullptr && identity.range != nullptr
+            && identity.context.Get() == composition_context_.Get()
+            && identity.range.Get() == active_range_.Get()
+            && identity.revision == latest_revision_
+            && identity.generation == broker_.generation() && identity.token == broker_.session_token()
+            && display_snapshot_.has_value() && display_snapshot_->revision == identity.revision;
+    }
+
+    void InvalidateCandidateIdentity() noexcept {
+        // Saturate instead of wrapping and accepting an ancient identity.
+        if (candidate_epoch_ != std::numeric_limits<std::uint64_t>::max()) { ++candidate_epoch_; }
+    }
+
+    bool CheckCandidateIdentity(const CandidateIdentity& identity) noexcept {
+        if (CandidateIdentityMatches(identity)) { return true; }
+        has_candidate_anchor_ = false;
+        candidate_window_.Hide();
+        TraceCandidate(14, TF_E_DISCONNECTED);
+        return false;
+    }
+
     class CandidateLayoutEditSession final : public ITfEditSession {
     public:
         CandidateLayoutEditSession(TextService* owner, ITfContext* context, std::uint64_t request) noexcept
@@ -568,6 +617,10 @@ private:
     }
 
     bool EnsureBrokerConnected(DWORD timeout_ms) noexcept {
+        return EnsureBrokerConnectedUntil(mo::windows_tip::DeadlineFromNow(timeout_ms));
+    }
+
+    bool EnsureBrokerConnectedUntil(mo::windows_tip::Deadline deadline) noexcept {
         if (broker_.connected()) {
             return true;
         }
@@ -575,7 +628,7 @@ private:
         if (now < next_reconnect_tick_) {
             return false;
         }
-        if (broker_.ConnectAndOpen(timeout_ms, broker_was_connected_)) {
+        if (broker_.ConnectAndOpenUntil(deadline, broker_was_connected_)) {
             broker_was_connected_ = true;
             next_reconnect_tick_ = 0;
             return true;
@@ -584,7 +637,9 @@ private:
         return false;
     }
 
-    void DisconnectBroker(DWORD timeout_ms) noexcept {
+    void DisconnectBroker(DWORD timeout_ms, CandidateReset cause = CandidateReset::Transport) noexcept {
+        InvalidateCandidateIdentity();
+        TraceReset(cause);
         candidate_window_.Hide();
         latest_revision_ = 0;
         display_snapshot_.reset();
@@ -610,25 +665,28 @@ private:
         WPARAM virtual_key,
         LPARAM key_data,
         bool key_down) noexcept {
+        const auto deadline = mo::windows_tip::DeadlineFromNow(kBrokerKeyTimeoutMs);
         cached_key_.valid = false;
         if (composition_context_ != nullptr && composition_context_.Get() != context) {
             candidate_window_.Hide();
             CancelActiveComposition();
-            broker_.Close(kBrokerKeyTimeoutMs);
+            // Dropping the old connection reclaims the server session. Do not
+            // add another round-trip budget before reconnecting for this key.
+            broker_.Close(0);
             latest_revision_ = 0;
         }
-        if (!has_focus_ || !EnsureBrokerConnected(kBrokerKeyTimeoutMs)) {
+        if (!has_focus_ || !EnsureBrokerConnectedUntil(deadline)) {
             return false;
         }
-        if (!broker_.SendKey(
+        if (!broker_.SendKeyUntil(
                 static_cast<UINT>(virtual_key),
                 ScanCode(key_data),
                 CurrentModifiers(),
                 key_down,
                 IsRepeat(key_data),
                 &cached_key_.snapshot,
-                kBrokerKeyTimeoutMs)) {
-            DisconnectBroker(kBrokerKeyTimeoutMs);
+                deadline)) {
+            DisconnectBroker(0);
             return false;
         }
         latest_revision_ = cached_key_.snapshot.revision;
@@ -689,7 +747,7 @@ private:
             SnapshotEditSession(this, context, &cached_key_.snapshot);
         if (edit_session == nullptr) {
             cached_key_.valid = false;
-            DisconnectBroker(kBrokerKeyTimeoutMs);
+            DisconnectBroker(0);
             return S_OK;
         }
         HRESULT session_result = E_FAIL;
@@ -699,13 +757,17 @@ private:
             TF_ES_SYNC | TF_ES_READWRITE,
             &session_result);
         const bool applied = edit_session->applied();
+#ifdef MO_LATENCY_TRACE
+        last_edit_request_ = request_result;
+        last_edit_session_ = session_result;
+#endif
         edit_session->Release();
         cached_key_.valid = false;
         if (applied) {
             *eaten = TRUE;
         }
         if (FAILED(request_result) || FAILED(session_result)) {
-            DisconnectBroker(kBrokerKeyTimeoutMs);
+            DisconnectBroker(0, CandidateReset::KeyEditFailure);
         }
         return S_OK;
     }
@@ -756,8 +818,12 @@ private:
             candidate_window_.Hide();
             return;
         }
+        const auto identity = CaptureCandidateIdentity(snapshot.revision);
+        if (!CheckCandidateIdentity(identity)) { return; }
         const bool shown = candidate_window_.Update(g_module, candidate_owner_, candidate_anchor_, snapshot,
             CandidateActionCallback, this);
+        // Win32 show/owner/capture calls may synchronously reenter the host.
+        if (!CheckCandidateIdentity(identity)) { return; }
         TraceCandidate(shown ? 11 : 10, shown ? S_OK : E_FAIL);
     }
 
@@ -769,9 +835,18 @@ private:
 #endif
     }
 
+    void TraceReset(CandidateReset cause) noexcept {
+#ifdef MO_LATENCY_TRACE
+        candidate_reset_ = static_cast<DWORD>(cause);
+        if (candidate_reset_count_ != std::numeric_limits<std::uint64_t>::max()) { ++candidate_reset_count_; }
+#else
+        (void)cause;
+#endif
+    }
+
     void StoreCandidateSnapshot(const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
         try { display_snapshot_ = snapshot; }
-        catch (...) { display_snapshot_.reset(); candidate_window_.Hide(); }
+        catch (...) { TraceReset(CandidateReset::SnapshotAllocation); display_snapshot_.reset(); candidate_window_.Hide(); }
     }
 
     void QueueCandidateLayout(ITfContext* context) noexcept {
@@ -802,7 +877,9 @@ private:
         }
     }
 
-    void ResetCompositionState() noexcept {
+    void ResetCompositionState(CandidateReset cause) noexcept {
+        InvalidateCandidateIdentity();
+        TraceReset(cause);
         composition_.Reset();
         active_range_.Reset();
         composition_context_.Reset();
@@ -823,6 +900,8 @@ private:
             TraceCandidate(1, TF_E_DISCONNECTED);
             candidate_window_.Hide(); return;
         }
+        const auto identity = CaptureCandidateIdentity(snapshot.revision);
+        if (!CheckCandidateIdentity(identity)) { return; }
         ComPtr<ITfContextView> view;
         ComPtr<ITfRange> caret;
         BOOL clipped = TRUE;
@@ -834,13 +913,17 @@ private:
         };
         if (!checked(2, context->GetActiveView(view.GetAddressOf()))) { return; }
         if (view == nullptr) { TraceCandidate(2, E_UNEXPECTED); candidate_window_.Hide(); return; }
-        if (!checked(3, active_range_->Clone(caret.GetAddressOf()))
+        // Keep range/context alive across host COM calls, which may clear the
+        // service's members. Never dereference a member after reentrant reset.
+        if (!checked(3, identity.range->Clone(caret.GetAddressOf()))
             || !checked(4, caret->Collapse(cookie, TF_ANCHOR_START))
             || !checked(5, view->GetTextExt(cookie, caret.Get(), &anchor, &clipped))) { return; }
+        if (!CheckCandidateIdentity(identity)) { return; }
         if (clipped || anchor.bottom <= anchor.top || anchor.right < anchor.left) {
             TraceCandidate(clipped ? 6 : 7, S_FALSE); candidate_window_.Hide(); return;
         }
         if (!checked(8, view->GetWnd(&owner))) { return; }
+        if (!CheckCandidateIdentity(identity)) { return; }
         if (!IsWindow(owner)) { TraceCandidate(8, E_HANDLE); candidate_window_.Hide(); return; }
         candidate_anchor_ = anchor;
         candidate_owner_ = owner;
@@ -867,7 +950,7 @@ private:
         const HRESULT result = composition_context_->RequestEditSession(client_id_, session,
             TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &session_result);
         session->Release();
-        if (FAILED(result) || FAILED(session_result)) { DisconnectBroker(kBrokerKeyTimeoutMs); }
+        if (FAILED(result) || FAILED(session_result)) { DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::MouseRequestFailure); }
     }
 
     HRESULT ApplyCandidateAction(ITfContext* context, TfEditCookie cookie,
@@ -891,7 +974,7 @@ private:
         latest_revision_ = snapshot.revision;
         bool applied = false;
         const HRESULT result = ApplySnapshot(context, cookie, snapshot, &applied);
-        if (FAILED(result)) { DisconnectBroker(kBrokerKeyTimeoutMs); }
+        if (FAILED(result)) { DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::MouseEditFailure); }
         return result;
     }
 
@@ -910,7 +993,7 @@ private:
                 text.data(),
                 static_cast<LONG>(text.size()));
             if (FAILED(result)) {
-                ResetCompositionState();
+                ResetCompositionState(CandidateReset::UpdateFailure);
             }
             *applied = SUCCEEDED(result);
             return result;
@@ -986,7 +1069,7 @@ private:
             text.data(),
             static_cast<LONG>(text.size()));
         if (FAILED(result)) {
-            ResetCompositionState();
+            ResetCompositionState(CandidateReset::CommitFailure);
             return result;
         }
         *applied = true;
@@ -1006,7 +1089,7 @@ private:
         }
         HRESULT result = active_range_->SetText(edit_cookie, 0, nullptr, 0);
         if (FAILED(result)) {
-            ResetCompositionState();
+            ResetCompositionState(CandidateReset::ClearFailure);
             return result;
         }
         *applied = true;
@@ -1015,7 +1098,7 @@ private:
 
     HRESULT EndOwnedComposition(TfEditCookie edit_cookie) noexcept {
         ComPtr<ITfComposition> ending = composition_;
-        ResetCompositionState();
+        ResetCompositionState(CandidateReset::Finished);
         return ending != nullptr ? ending->EndComposition(edit_cookie) : S_OK;
     }
 
@@ -1023,7 +1106,7 @@ private:
         candidate_window_.Hide();
         has_candidate_anchor_ = false;
         if (active_range_ == nullptr || composition_context_ == nullptr) {
-            ResetCompositionState();
+            ResetCompositionState(CandidateReset::Cancelled);
             return;
         }
         auto* edit_session = new (std::nothrow)
@@ -1037,7 +1120,7 @@ private:
                 &session_result);
             edit_session->Release();
         }
-        ResetCompositionState();
+        ResetCompositionState(CandidateReset::Cancelled);
     }
 
     volatile LONG reference_count_ = 1;
@@ -1053,8 +1136,12 @@ private:
 #ifdef MO_LATENCY_TRACE
     DWORD candidate_trace_stage_ = 0;
     HRESULT candidate_trace_result_ = S_OK;
+    DWORD candidate_reset_ = 0;
+    std::uint64_t candidate_reset_count_ = 0;
+    HRESULT last_edit_request_ = S_OK, last_edit_session_ = S_OK;
 #endif
     std::uint64_t latest_revision_ = 0;
+    std::uint64_t candidate_epoch_ = 0;
     RECT candidate_anchor_{};
     HWND candidate_owner_ = nullptr;
     bool has_candidate_anchor_ = false;

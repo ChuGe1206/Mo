@@ -212,6 +212,10 @@ public:
         if (sink_ != nullptr) { sink_->OnLayoutChange(TS_LC_CHANGE, 1); }
     }
     void DeferLocks(bool defer) noexcept { defer_locks_ = defer; }
+    using TextExtHook = void (*)(void*) noexcept;
+    void OnNextTextExt(TextExtHook hook, void* context) noexcept {
+        text_ext_hook_ = hook; text_ext_hook_context_ = context;
+    }
     bool has_deferred_lock() const noexcept { return deferred_lock_flags_ != 0; }
     void GrantDeferredLock() noexcept {
         const DWORD flags = deferred_lock_flags_;
@@ -575,6 +579,10 @@ public:
         *rectangle = {origin.x, origin.y, extent.x, extent.y};
         if (start == end) { rectangle->right = rectangle->left; }
         *clipped = FALSE;
+        const auto hook = text_ext_hook_;
+        void* const hook_context = text_ext_hook_context_;
+        text_ext_hook_ = nullptr; text_ext_hook_context_ = nullptr;
+        if (hook != nullptr) { hook(hook_context); }
         return S_OK;
     }
     STDMETHODIMP GetScreenExt(TsViewCookie, RECT* rectangle) noexcept override {
@@ -607,6 +615,8 @@ private:
     ~EditTextStore() noexcept = default;
     bool defer_locks_ = false;
     DWORD deferred_lock_flags_ = 0;
+    TextExtHook text_ext_hook_ = nullptr;
+    void* text_ext_hook_context_ = nullptr;
 
     bool HasReadLock() const noexcept { return (lock_flags_ & TS_LF_READ) != 0; }
     bool HasWriteLock() const noexcept {
@@ -1005,7 +1015,9 @@ bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service) noex
         && SUCCEEDED(diagnostics->ReadLastTiming(&timing))) {
         std::wcerr << L"MO_VISUAL expected=" << visible << L" stage=" << timing.candidate_stage
             << L" result=" << timing.candidate_result << L" count=" << timing.candidate_count
-            << L" focus=" << timing.candidate_focus << L'\n';
+            << L" focus=" << timing.candidate_focus << L" snapshot=" << timing.candidate_snapshot
+            << L" reset=" << timing.candidate_reset << L" resets=" << timing.candidate_reset_count
+            << L" edit_request=" << timing.edit_request << L" edit_session=" << timing.edit_session << L'\n';
     }
 #else
     (void)service;
@@ -1295,6 +1307,53 @@ int probe_broker_input(
         }
 
         if (!registered) {
+            // Invalidate layout INSIDE GetTextExt, after it measured the old
+            // geometry. The suspended read must not resurrect that stale view.
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            ComPtr<ITfTextLayoutSink> layout_sink;
+            ComPtr<ITfContextView> reentry_view;
+            if (!keys_succeeded || FAILED(service->QueryInterface(IID_PPV_ARGS(&layout_sink)))
+                || FAILED(context->GetActiveView(&reentry_view)) || reentry_view == nullptr) {
+                outcome = 1; break;
+            }
+            struct LayoutReentry {
+                ITfTextLayoutSink* sink;
+                ITfContext* context;
+                EditTextStore* store;
+                ITfContextView* view;
+                bool fired = false;
+                HRESULT result = E_FAIL;
+            } reentry{layout_sink.Get(), context.Get(), edit_store, reentry_view.Get()};
+            edit_store->OnNextTextExt([](void* data) noexcept {
+                auto& state = *static_cast<LayoutReentry*>(data);
+                state.fired = true;
+                state.store->DeferLocks(true);
+                state.result = state.sink->OnLayoutChange(state.context, TF_LC_CHANGE, state.view);
+            }, &reentry);
+            const bool reentry_key = SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, 'A');
+            edit_store->OnNextTextExt(nullptr, nullptr);
+            const bool stale_visible = CandidateWindowForCurrentThread() != nullptr;
+            edit_store->DeferLocks(false);
+            edit_store->GrantDeferredLock();
+            if (!reentry_key || !reentry.fired || FAILED(reentry.result) || stale_visible) {
+                std::wcerr << L"Candidate layout invalidated during GetTextExt was resurrected\n";
+                std::wcerr << L"MO_REENTRY key_ok=" << reentry_key << L" callback=" << reentry.fired
+                    << L" result=" << reentry.result << L" stale_visible=" << stale_visible << L'\n';
+                outcome = 1; break;
+            }
+            edit_store->NotifyLayoutChanged();
+            if (!WaitForCandidateWindow(true, service)
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)
+                || !WaitForCandidateWindow(false, service)) {
+                std::wcerr << L"Candidate layout did not recover after reentrant invalidation\n";
+                outcome = 1; break;
+            }
+            std::wcout << L"Mo TIP candidate layout reentrancy probe passed.\n";
+
             // Force an actual deferred write lock. A newer synchronous key
             // supersedes the queued mouse action before it reaches the engine.
             for (const char key : input) {
@@ -1610,6 +1669,8 @@ int wmain(int argument_count, wchar_t** arguments) {
         diagnostics->QueryInterface(IID_PPV_ARGS(&diagnostics_identity));
         if (diagnostics->ReadLastTiming(nullptr) != E_POINTER || diagnostics->ReadLastTiming(&timing) != S_OK
             || timing.total_us != 0 || timing.request_id != 0 || timing.error != 0
+            || timing.candidate_snapshot != 0 || timing.candidate_reset != 0 || timing.candidate_reset_count != 0
+            || timing.edit_request != S_OK || timing.edit_session != S_OK
             || service_identity.Get() == nullptr || service_identity.Get() != diagnostics_identity.Get()) {
             // ComPtrs must die before unloading the module on this failure path.
             diagnostics.Reset(); service_identity.Reset(); diagnostics_identity.Reset();

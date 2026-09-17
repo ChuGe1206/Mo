@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "mo_latency_diagnostics.h"
+#include "mo_deadline.h"
 
 namespace mo::windows_tip {
 
@@ -36,6 +37,9 @@ public:
     BrokerClient& operator=(const BrokerClient&) = delete;
 
     bool ConnectAndOpen(DWORD timeout_ms, bool retry_missing_endpoint = false) noexcept;
+    // Compose reconnect + key under the SAME absolute budget; never round and
+    // start a fresh per-stage timeout on the input hot path.
+    bool ConnectAndOpenUntil(Deadline deadline, bool retry_missing_endpoint = false) noexcept;
     bool SendKey(
         UINT virtual_key,
         UINT scan_code,
@@ -44,6 +48,9 @@ public:
         bool repeat,
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
+    bool SendKeyUntil(
+        UINT virtual_key, UINT scan_code, std::uint16_t modifiers,
+        bool key_down, bool repeat, BrokerSnapshot* snapshot, Deadline deadline) noexcept;
     void Close(DWORD timeout_ms) noexcept;
     bool SendCandidateAction(
         std::uint64_t expected_revision,
