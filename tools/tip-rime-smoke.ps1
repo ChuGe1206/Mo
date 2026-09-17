@@ -15,11 +15,18 @@ param(
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
     [string]$RustToolchain = 'stable',
 
-    [switch]$Deploy
+    [switch]$Deploy,
+    [switch]$Registered
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'registered-tip-state.ps1')
+if ($Registered -and $Architecture -ne 'All') { throw 'Registered smoke requires -Architecture All.' }
+if ($Registered) {
+    # Gate before deploying/copying assets or starting any Broker.
+    Assert-MoRegisteredUserPreflight (Join-Path $repoRoot 'native\windows-tip\out\msbuild\x64\Release\mo_tip_registrar.exe')
+}
 
 function Resolve-Directory([string]$Path, [string]$Label) {
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -173,3 +180,17 @@ foreach ($platform in $platforms) {
 }
 
 Write-Host "Real Actor APIs and C++ $($platforms -join '/') IPC actions/16-client pool capacity/isolation/reuse passed; TIP candidate window/mouse/layout/deferred cancellation/reconnect committed nihao -> 你好."
+
+if ($Registered) {
+    $x64Directory = Join-Path $repoRoot 'native\windows-tip\out\msbuild\x64\Release'
+    $x86Directory = Join-Path $repoRoot 'native\windows-tip\out\msbuild\Win32\Release'
+    Invoke-MoRegisteredUserTest (Join-Path $x64Directory 'mo_tip_registrar.exe') `
+        (Join-Path $x64Directory 'mo_tip.dll') (Join-Path $x86Directory 'mo_tip.dll') {
+        foreach ($platform in @('x64', 'Win32')) {
+            $probe = Join-Path $repoRoot "native\windows-tip\out\msbuild\$platform\Release\mo_tip_abi_probe.exe"
+            Invoke-RimeBrokerProbe $platform $probe @('--registered-broker-rime-ice') 'registered rime-ice TSF system-key route probe'
+        }
+    }
+    Write-Host 'Registered x64/Win32 real rime-ice system-key routes passed and temporary user state was verified clean.'
+    Write-Host 'Always remove the machine profile from administrator PowerShell with tools\machine-profile.ps1 -Action Unregister.'
+}

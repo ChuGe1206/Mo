@@ -37,6 +37,9 @@ jobs:
       - name: Compile x64/x86 TIPs and cross-check the Rust broker
         shell: pwsh
         run: ./tools/tip-broker-smoke.ps1 -Architecture All -RustToolchain 1.97.1
+      - name: Test registered-smoke rollback policy without changing Windows input state
+        shell: pwsh
+        run: ./tools/test-registered-tip-state.ps1
 
   librime-abi:
     runs-on: windows-2022

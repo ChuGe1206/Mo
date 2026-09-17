@@ -36,6 +36,7 @@ cargo +stable test --workspace
 ./native/windows-tip/build-probe.ps1 -Architecture All -Backend MSBuild
 ./tools/tip-broker-smoke.ps1 -Architecture All
 ./tools/broker-startup-smoke.ps1
+./tools/test-registered-tip-state.ps1
 ```
 
 真实 librime/rime-ice 冒烟需要显式提供已核验的上游目录：
@@ -50,5 +51,7 @@ cargo +stable test --workspace
 ```
 
 该脚本验证 C++ x64/x86 的 IPC 快照、16 路连接池与 TIP Edit Session 上屏真实引擎链路；较小的 Rust FFI 单层验证仍可用 `tools/rime-smoke/run.ps1`。
+
+注册系统路由测试需要分权限准备，见 [注册测试步骤](docs/phase-0/REGISTERED-TEST.md)。fake 与真实词库 smoke 均可加 `-Registered`，但只允许普通权限运行，并要求机器 profile 已在管理员 PowerShell 中准备好。用户态 COM/启用状态会回滚并严格核对；机器 profile 最后由管理员清理。此流程不设默认输入法，不是安装包或普通软件验收。
 
 设计基线见 [产品与软件架构设计 v0.2](docs/MO-INPUT-METHOD-DESIGN-v0.2.md)，当前实证见 [Phase 0 状态](docs/phase-0/STATUS.md)，硬验收门见 [Phase 0 验收门](docs/phase-0/ACCEPTANCE.md)。

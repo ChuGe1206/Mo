@@ -76,6 +76,18 @@ real system `ITfKeystrokeMgr`, then removes that temporary user state in a
 `tools\machine-profile.ps1 -Action Unregister`. The scripts never make Mo the
 default input method.
 
+The real `tools\tip-rime-smoke.ps1` also accepts `-Registered` with its ordinary
+explicit runtime/data arguments. Both registered entry points reject an
+elevated test/Broker and fail preflight before building/deploying when the
+machine profile or clean user state is missing. A shared transaction marks
+mutation attempts before calling native helpers, so partial failures still
+trigger cleanup. Cleanup steps are independent; final state/readback failures
+are fatal, not warnings followed by success. A foreign COM path detected before
+cleanup is preserved and reported for manual review (not an atomic concurrent
+registry transaction). Sixteen in-memory policy scenarios run without changing
+Windows input state. See `docs/phase-0/REGISTERED-TEST.md`; this system key-route
+probe still uses a controlled text store, not real Notepad or a browser.
+
 The registrar is a deliberately separate mutation helper. In development it
 can write the x64 and x86 `InprocServer32` values to their explicit HKCU COM
 views. Its explicitly named machine-profile commands require elevation to
