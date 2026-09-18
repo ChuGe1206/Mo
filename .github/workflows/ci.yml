@@ -48,6 +48,9 @@ jobs:
       - name: Test registered-smoke rollback policy without changing Windows input state
         shell: pwsh
         run: ./tools/test-registered-tip-state.ps1
+      - name: Test development staging policy without installing or registering an IME
+        shell: pwsh
+        run: ./installer/windows/test-staging.ps1
 
   librime-abi:
     runs-on: windows-2022
@@ -128,3 +131,11 @@ jobs:
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-preparation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -OfficialDistDir (Join-Path $env:RUNNER_TEMP 'librime-dist/dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -RustToolchain 1.97.1 -BrokerPath (Join-Path $PWD 'target/debug/mo-broker.exe')
           ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+      - name: Build and test non-installable development deployment assets
+        shell: pwsh
+        run: |
+          $stageBuild = Join-Path $PWD 'build/mo-windows-stage'
+          ./installer/windows/prepare-stage.ps1 -RuntimeBuildDirectory (Join-Path $PWD 'build/mo-prepared-runtime') -RimeIceSourceDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -OutputDirectory $stageBuild -RustToolchain 1.97.1
+          ./installer/windows/verify-stage.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
+          ./installer/windows/test-staging.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
+          ./installer/windows/test-stage-runtime.ps1 -BuildDirectory $stageBuild -FaultRepetitions 10 -RustToolchain 1.97.1

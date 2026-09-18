@@ -66,6 +66,7 @@
 - ADR 0024 收尾默认关闭诊断的完整命令双架构各 20/20 轮及 IPC/pool/UI/edit 检查通过；Rust 默认 109/trace 111 项与 compile-fail、四种 Clippy、五项 release 启动负向 smoke 通过。只读状态仍是双视图 COM 缺失、profile 未注册/启用/激活。来源路径守卫的四项匹配/外部路径/缺项/重复项检查通过，最终实际 CMake cache 也已核对全部 pinned header/library 来源。
 - ADR 0025 转换资源搬迁子阶段：v2 只读 DLL 相邻 `opencc`、恰好 Emoji/繁体两个不同 owner，旧 v1 不回退。最终干净产物的 28 项文件边界、27 项真实引擎搬迁/解析、4 项准备及 3 个 Broker ready 前拒绝通过；33 份资源/11 份构建快照和 51 项 ABI 通过。五项 builder/四项 cache/七项生成工程守卫通过；已更正 deferred source property 未实际作用于 wrapper 的 W4/WX 问题，旧 runtime 的该选项意图不作为实证，TIP 独立严格编译证据不受影响。最终 prepared/trace 完整命令 x64/Win32 各 100/100 轮（400 次实际退出）通过，不升级为真实桌面宿主或机器冷启动通过。
 - ADR 0025 默认关闭诊断收尾的完整命令 x64/Win32 各 20/20 轮及全部 IPC/pool/UI/edit 检查通过（另 80 次实际退出）；default 日志已核对两套 20 个 trial 和完整成功 marker。Rust 默认 109/trace 111 项及 compile-fail、四种 Clippy、doc、五项 release 拒绝、16 项注册策略/20 项既有 OpenCC 检查及八份 AST 通过。当前 registrar 只读状态仍为双视图 COM 缺失、profile 全 false，未更改默认输入法；G2/G4 保持部分通过、G3 未通过。
+- ADR 0026 素材真实回归首条命令 x64 10/10、Win32 6/10 成功，Win32 第 7 轮在 stop cycle 0 前出现 candidate visibility mismatch；default 未记录具体 reset/阶段，根因仍未定位。保留负向日志，不把并发或 DLL 搬迁当作未经证明的原因。独立完整复跑同产物双架构各 10/10 通过；增加构建路径安全门后的最终 `mo-windows-stage-safe` 同产物双架构各 10/10（40 次明确退出）及 7 组 prebuilt-only golden 通过，但不据此宣称偶发问题已修复、正常宿主或日常使用稳定。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
 - Named Pipe 负向测试已证明当前登录会话不能在任一槽创建第二服务端实例；已认证连接从首个可用字节起采用 2 秒完整帧 assembly deadline，半帧超时断开客户端后复用 retained listener，完全空闲连接不会被误杀。静默首帧连接采用 2 秒时限，但已认证空闲连接仍占用一个槽。
@@ -87,6 +88,7 @@
 - 已实现注册宿主 smoke 的权限拆分：提升脚本只管理机器级 TSF profile/category，普通权限脚本临时管理 HKCU 双视图 COM 与当前用户启用，并通过系统 `ITfKeystrokeMgr` 驱动 x64/Win32 探针后在 `finally` 中回滚用户状态。当前非提升开发会话只验证了双架构编译、权限门和干净状态，尚未执行需要人工提升准备的真实注册路由，因此 G2 不据此升级为通过。
 - fake 与真实词库 smoke 均已支持 `-Registered`，共享严格用户态事务：提升的测试/Broker 被拒绝，准备不足在构建/部署前拒绝；部分 native 写入失败仍触发独立清理，清理错误或状态残留不再只告警后报成功，检测到外来 COM 路径则保留并要求人工审查。16 个内存策略场景通过，不修改 Windows 输入状态。当前管理员准备仍缺失（profile=false），两种 registered 入口已实证在此前置条件下拒绝且没有残留；真实注册路由仍未运行。具体步骤见 `REGISTERED-TEST.md`。
 - 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。
+- WiX 占位入口已改为只接受验证过的 `StageDirectory`，移除任意 Broker/TIP/registrar 参数；独立素材管线可准备 runtime/预编译数据/双架构前端，但当前 WXS 仍只收原来的四个 Mo 二进制，未加入完整 data/runtime 或事务，因此 G3 不升级。
 - 尚无真实 TSF 注册/启用事务、升级/修复/卸载回滚、签名、首次启动性能或“不抢默认输入法”测试。
 - 占位安装器不得分发。
 
@@ -94,6 +96,7 @@
 
 - rime-ice 2026.06.30 锁定到 `6810e8916d160498620a16fef2135956fecbd485`，source archive hash 已记录。
 - 已从源部署完整 rime-ice 数据并运行真实 golden smoke。
+- 新增固定安装布局的开发素材准备管线：核对 core+Lua/v2 来源与 33 份转换资源，从锁定 rime-ice archive 的 64 份输入全新编译 29 份 schema/词库，并从 68 份 Mo 源码快照全新构建 release Broker 和双架构前端。131 个 payload/6 个 evidence 文件有严格清单与依赖 receipt，原样保留上游归档/LICENSE/Credits；79 项构建清单/拒绝测试通过，包含 shell 路径展开拒绝。空 managed user/staging + explicit prebuilt 路径完成中文/Emoji/英文/日期/Unicode/数字/计算器 7 组 exactly-once golden，未在线生成词库。所有产物仍 development-only、不可安装/分发；不是签名、完整 SBOM 或正式许可结论。见 ADR 0026。
 - 已新增 hash 锁定 OpenCC 1.1.9 + bundled Marisa 的本地构建态编译工具，把锁定 Emoji/补充字典生成 `.ocd2`，读回核对全部 4857/1498 条 key 及有序 values。20 项完整性/负向检查通过；源文件与 manifest 保留，测试只复制到新 fixture。该 pack 未接入正式安装、签名更新或发行 SBOM，不把自声明哈希作为可信更新证明。
 - 发现官方 librime Windows 资产静态包含 GPL-3.0-only `librime-octagram`。该资产现被明确限制为开发验证，不进入 Mo 发行物。
 - 正式包必须从锁定 librime 源自行构建，插件采用允许列表；当前最小集合为 BSD-3-Clause core + rime-ice 必需的 BSD-3-Clause `librime-lua`。
@@ -102,4 +105,4 @@
 
 ## 下一检查点
 
-Mo 转换资源的 prefix/CWD 搜索与搬迁验证已闭环。下一优先项是管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略及资源内容认证。继续扩大真实冷启动与候选生命周期矩阵，不能以有限受控压力确认此前偶发问题全部根因。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；本子阶段不升级为普通宿主或日常使用通过。
+Mo 转换资源搬迁及开发素材/预编译 pack 管线已闭环。下一优先项先补全候选窗失败的阶段证据并定位偶发 visibility mismatch；不得用重跑通过替代根因关闭。管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略、资源内容认证及首次用户数据 bootstrap/Broker 生命周期。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；素材管线不升级为普通宿主或日常使用通过。

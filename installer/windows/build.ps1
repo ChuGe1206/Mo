@@ -1,13 +1,8 @@
+#Requires -Version 7.4
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string]$BrokerExe,
-    [Parameter(Mandatory = $true)]
-    [string]$TipX64Dll,
-    [Parameter(Mandatory = $true)]
-    [string]$TipX86Dll,
-    [Parameter(Mandatory = $true)]
-    [string]$RegistrarExe,
+    [string]$StageDirectory,
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
     [string]$ProductVersion = '0.0.1.0',
     [switch]$AllowPlaceholderBuild
@@ -24,12 +19,10 @@ if (-not $AllowPlaceholderBuild) {
     throw 'Refusing to build a non-deployable installer. Pass -AllowPlaceholderBuild only for Phase 0 authoring validation.'
 }
 
-function Resolve-InputArtifact([string]$Path, [string]$Label) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "$Label does not exist: $Path"
-    }
-    return (Resolve-Path -LiteralPath $Path).Path
-}
+. (Join-Path $PSScriptRoot 'staging-policy.ps1')
+$stage = Assert-MoPlainPath $StageDirectory
+$null = Assert-MoPreparedStage $stage
+$payload = Join-Path $stage 'payload/Mo'
 
 function Invoke-Wix([string[]]$Arguments) {
     & $wix.Source @Arguments
@@ -38,10 +31,10 @@ function Invoke-Wix([string[]]$Arguments) {
     }
 }
 
-$broker = Resolve-InputArtifact $BrokerExe 'Broker executable'
-$tipX64 = Resolve-InputArtifact $TipX64Dll 'x64 TIP DLL'
-$tipX86 = Resolve-InputArtifact $TipX86Dll 'x86 TIP DLL'
-$registrar = Resolve-InputArtifact $RegistrarExe 'Registrar executable'
+$broker = Join-Path $payload 'bin/mo-broker.exe'
+$tipX64 = Join-Path $payload 'tip/x64/mo-tip.dll'
+$tipX86 = Join-Path $payload 'tip/x86/mo-tip.dll'
+$registrar = Join-Path $payload 'bin/mo-tip-registrar.exe'
 $outputDirectory = Join-Path $PSScriptRoot 'out'
 $null = New-Item -ItemType Directory -Path $outputDirectory -Force
 $msi = Join-Path $outputDirectory 'mo-phase0-placeholder.msi'
@@ -60,4 +53,3 @@ Invoke-Wix @(
 )
 
 Write-Warning 'Built unsigned Phase 0 placeholders. They do not register or enable the TSF profile and must not be distributed.'
-
