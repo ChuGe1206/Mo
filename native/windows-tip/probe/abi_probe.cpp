@@ -216,6 +216,9 @@ public:
     void OnNextTextExt(TextExtHook hook, void* context) noexcept {
         text_ext_hook_ = hook; text_ext_hook_context_ = context;
     }
+    void OnNextWrite(TextExtHook hook, void* context) noexcept {
+        write_hook_ = hook; write_hook_context_ = context;
+    }
     bool has_deferred_lock() const noexcept { return deferred_lock_flags_ != 0; }
     void GrantDeferredLock() noexcept {
         const DWORD flags = deferred_lock_flags_;
@@ -617,6 +620,8 @@ private:
     DWORD deferred_lock_flags_ = 0;
     TextExtHook text_ext_hook_ = nullptr;
     void* text_ext_hook_context_ = nullptr;
+    TextExtHook write_hook_ = nullptr;
+    void* write_hook_context_ = nullptr;
 
     bool HasReadLock() const noexcept { return (lock_flags_ & TS_LF_READ) != 0; }
     bool HasWriteLock() const noexcept {
@@ -651,6 +656,10 @@ private:
             change->acpOldEnd = end;
             change->acpNewEnd = new_end;
         }
+        const auto hook = write_hook_;
+        void* const hook_context = write_hook_context_;
+        write_hook_ = nullptr; write_hook_context_ = nullptr;
+        if (hook != nullptr) { hook(hook_context); }
         SetWindowTextW(window_, text_.c_str());
         SendMessageW(window_, EM_SETSEL, new_end, new_end);
         return S_OK;
@@ -782,6 +791,10 @@ bool SendTestedKey(
                 << L" phase=" << timing.phase << L" error=" << timing.error << L" total_us=" << timing.total_us
                 << L" write_us=" << timing.write_us << L" header_us=" << timing.header_us
                 << L" payload_us=" << timing.payload_us << L" cancel_us=" << timing.cancel_us << L'\n';
+            output << L"MO_DISPATCH total_us=" << timing.dispatch_total_us
+                << L" pre_send_us=" << timing.dispatch_pre_send_us
+                << L" connect_us=" << timing.dispatch_connect_us
+                << L" modifiers_us=" << timing.dispatch_modifiers_us << L'\n';
         }
     }
 #endif
@@ -1000,28 +1013,57 @@ void PumpProbeMessages() noexcept {
     }
 }
 
-bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service) noexcept {
+void ReportCandidateState(ITfTextInputProcessorEx* service, const wchar_t* checkpoint) noexcept {
+    // Always available in the test executable, even when production TIP
+    // diagnostics are compiled out. Never log document or candidate content.
+    std::wcerr << L"MO_CHECKPOINT checkpoint=" << checkpoint << L'\n';
+    EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
+        wchar_t name[64]{};
+        GetClassNameW(window, name, ARRAYSIZE(name));
+        if (wcscmp(name, L"Mo.CandidateWindow.v1") == 0) {
+            const HWND owner = GetWindow(window, GW_OWNER);
+            std::wcerr << L"MO_WINDOW visible=" << IsWindowVisible(window)
+                << L" owner_valid=" << IsWindow(owner)
+                << L" owner_visible=" << IsWindowVisible(owner)
+                << L" owner_iconic=" << IsIconic(owner) << L'\n';
+        }
+        return TRUE;
+    }, 0);
+#ifdef MO_LATENCY_TRACE
+    ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
+    mo::windows_tip::BrokerTiming timing{};
+    if (SUCCEEDED(service->QueryInterface(IID_PPV_ARGS(&diagnostics)))
+        && SUCCEEDED(diagnostics->ReadLastTiming(&timing))) {
+        std::wcerr << L"MO_VISUAL stage=" << timing.candidate_stage
+            << L" result=" << timing.candidate_result << L" count=" << timing.candidate_count
+            << L" focus=" << timing.candidate_focus << L" snapshot=" << timing.candidate_snapshot
+            << L" reset=" << timing.candidate_reset << L" resets=" << timing.candidate_reset_count
+            << L" edit_request=" << timing.edit_request << L" edit_session=" << timing.edit_session
+            << L" request=" << timing.request_id << L" kind=" << timing.kind
+            << L" phase=" << timing.phase << L" error=" << timing.error
+            << L" total_us=" << timing.total_us
+            << L" termination_owner_active=" << timing.termination_owner_active
+            << L" termination_sent=" << timing.termination_sent
+            << L" termination_owner_foreground=" << timing.termination_owner_foreground
+            << L" dispatch_us=" << timing.dispatch_total_us << L" pre_send_us=" << timing.dispatch_pre_send_us
+            << L" connect_us=" << timing.dispatch_connect_us << L" modifiers_us=" << timing.dispatch_modifiers_us << L'\n';
+    }
+#else
+    (void)service;
+#endif
+}
+
+bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service,
+    const wchar_t* checkpoint) noexcept {
     const ULONGLONG deadline = GetTickCount64() + 2000;
     do {
         PumpProbeMessages();
         if ((CandidateWindowForCurrentThread() != nullptr) == visible) { return true; }
         MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     } while (GetTickCount64() < deadline);
-    std::wcerr << L"Candidate window visibility did not match expected state\n";
-#ifdef MO_LATENCY_TRACE
-    ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
-    mo::windows_tip::BrokerTiming timing{};
-    if (SUCCEEDED(service->QueryInterface(IID_PPV_ARGS(&diagnostics)))
-        && SUCCEEDED(diagnostics->ReadLastTiming(&timing))) {
-        std::wcerr << L"MO_VISUAL expected=" << visible << L" stage=" << timing.candidate_stage
-            << L" result=" << timing.candidate_result << L" count=" << timing.candidate_count
-            << L" focus=" << timing.candidate_focus << L" snapshot=" << timing.candidate_snapshot
-            << L" reset=" << timing.candidate_reset << L" resets=" << timing.candidate_reset_count
-            << L" edit_request=" << timing.edit_request << L" edit_session=" << timing.edit_session << L'\n';
-    }
-#else
-    (void)service;
-#endif
+    std::wcerr << L"Candidate window visibility did not match expected state"
+        << L" checkpoint=" << checkpoint << L" expected=" << visible << L'\n';
+    ReportCandidateState(service, checkpoint);
     return false;
 }
 
@@ -1090,7 +1132,8 @@ int probe_broker_input(
     ITfTextInputProcessorEx* service,
     bool rime_ice,
     bool registered,
-    const wchar_t* fault_prefix = nullptr) {
+    const wchar_t* fault_prefix = nullptr,
+    bool activating_test_host = false) {
     if (!registered && service == nullptr) {
         return fail(L"probe_broker_input service", E_POINTER);
     }
@@ -1138,10 +1181,10 @@ int probe_broker_input(
     ComPtr<ITfKeyEventSink> direct_key_sink;
     do {
         edit_window = CreateWindowExW(
-            WS_EX_TOOLWINDOW,
+            WS_EX_TOOLWINDOW | ((!registered && !activating_test_host) ? WS_EX_NOACTIVATE : 0),
             L"EDIT",
             L"",
-            WS_POPUP | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+            WS_POPUP | WS_BORDER | ES_AUTOHSCROLL,
             -32000,
             -32000,
             240,
@@ -1153,6 +1196,18 @@ int probe_broker_input(
         if (edit_window == nullptr) {
             outcome = fail(L"CreateWindowExW(EDIT)", HRESULT_FROM_WIN32(GetLastError()));
             break;
+        }
+        ShowWindow(edit_window, (!registered && !activating_test_host) ? SW_SHOWNOACTIVATE : SW_SHOW);
+        // Controlled direct-sink tests model focus explicitly. They must not
+        // obtain desktop focus merely by showing an off-screen EDIT popup.
+        // Registered tests remain a separate real system-routing experiment.
+        const bool owner_foreground = GetForegroundWindow() == edit_window;
+        const bool owner_active = GetActiveWindow() == edit_window;
+        std::wcout << L"MO_HOST noactivate=" << (!registered && !activating_test_host)
+            << L" created_foreground=" << owner_foreground << L" created_active=" << owner_active << L'\n';
+        if (!registered && !activating_test_host && (owner_foreground || owner_active)) {
+            std::wcerr << L"Nonactivating probe host acquired window activation\n";
+            outcome = 1; break;
         }
         edit_store = new (std::nothrow) EditTextStore(edit_window);
         if (edit_store == nullptr) {
@@ -1259,17 +1314,18 @@ int probe_broker_input(
             if (!keys_succeeded) {
                 break;
             }
-            if (!WaitForCandidateWindow(true, service)) { keys_succeeded = false; break; }
+            if (!WaitForCandidateWindow(true, service, L"initial-composition")) { keys_succeeded = false; break; }
             if (composition_index == 1 && !registered) {
                 RECT before_layout{};
                 GetWindowRect(CandidateWindowForCurrentThread(), &before_layout);
                 SetWindowPos(edit_window, nullptr, 200, 180, 240, 32, SWP_NOACTIVATE | SWP_NOZORDER);
                 edit_store->NotifyLayoutChanged();
-                if (!WaitForCandidateWindow(true, service)) { keys_succeeded = false; break; }
+                if (!WaitForCandidateWindow(true, service, L"owner-layout-change")) { keys_succeeded = false; break; }
                 RECT after_layout{};
                 GetWindowRect(CandidateWindowForCurrentThread(), &after_layout);
                 if (EqualRect(&before_layout, &after_layout)) {
                     std::wcerr << L"Candidate window did not follow the changed text layout\n";
+                    ReportCandidateState(service, L"layout-geometry-invariants");
                     keys_succeeded = false; break;
                 }
                 // A key-up returns an unhandled snapshot with a fresh revision.
@@ -1282,16 +1338,22 @@ int probe_broker_input(
                 BOOL release_eaten = TRUE;
                 result = direct_key_sink->OnTestKeyUp(context.Get(), 'N', 0, &release_eaten);
                 SendMessageW(candidate, WM_LBUTTONUP, 0, position);
+                const bool unchanged_before_pump = edit_store->text() == before_release;
                 PumpProbeMessages();
                 if (FAILED(result) || release_eaten || edit_store->text() != before_release
-                    || !WaitForCandidateWindow(true, service)) {
+                    || !WaitForCandidateWindow(true, service, L"stale-press-keyup-refresh")) {
                     std::wcerr << L"Candidate key-up refresh/stale press protection failed\n";
+                    std::wcerr << L"MO_STALE_PRESS result=" << result << L" eaten=" << release_eaten
+                        << L" unchanged_before_pump=" << unchanged_before_pump
+                        << L" unchanged_after_pump=" << (edit_store->text() == before_release) << L'\n';
+                    ReportCandidateState(service, L"stale-press-invariants");
                     keys_succeeded = false; break;
                 }
-                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true, service)
-                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true, service)
+                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true, service, L"next-page")
+                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true, service, L"previous-page")
                     || !ClickCandidateWindow(0)) {
                     std::wcerr << L"Candidate mouse paging/selection failed\n";
+                    ReportCandidateState(service, L"mouse-page-selection-invariants");
                     keys_succeeded = false; break;
                 }
             } else {
@@ -1299,7 +1361,7 @@ int probe_broker_input(
                     ? SendSystemTestedKey(system_key_manager.Get(), edit_store, VK_SPACE)
                     : SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE);
             }
-            if (keys_succeeded && !WaitForCandidateWindow(false, service)) { keys_succeeded = false; }
+            if (keys_succeeded && !WaitForCandidateWindow(false, service, L"composition-commit")) { keys_succeeded = false; }
         }
         if (!keys_succeeded) {
             outcome = 1;
@@ -1343,13 +1405,15 @@ int probe_broker_input(
                 std::wcerr << L"Candidate layout invalidated during GetTextExt was resurrected\n";
                 std::wcerr << L"MO_REENTRY key_ok=" << reentry_key << L" callback=" << reentry.fired
                     << L" result=" << reentry.result << L" stale_visible=" << stale_visible << L'\n';
+                ReportCandidateState(service, L"layout-reentry-invariants");
                 outcome = 1; break;
             }
             edit_store->NotifyLayoutChanged();
-            if (!WaitForCandidateWindow(true, service)
+            if (!WaitForCandidateWindow(true, service, L"reentrant-layout-recovery")
                 || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)
-                || !WaitForCandidateWindow(false, service)) {
+                || !WaitForCandidateWindow(false, service, L"reentrant-layout-escape")) {
                 std::wcerr << L"Candidate layout did not recover after reentrant invalidation\n";
+                ReportCandidateState(service, L"layout-recovery-invariants");
                 outcome = 1; break;
             }
             std::wcout << L"Mo TIP candidate layout reentrancy probe passed.\n";
@@ -1367,9 +1431,10 @@ int probe_broker_input(
             const bool advanced = queued && SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, 'A');
             edit_store->GrantDeferredLock();
             PumpProbeMessages();
-            if (!keys_succeeded || !advanced || !WaitForCandidateWindow(true, service)
+            if (!keys_succeeded || !advanced || !WaitForCandidateWindow(true, service, L"deferred-action-newer-key")
                 || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)) {
                 std::wcerr << L"Deferred candidate action did not cancel after a newer key\n";
+                ReportCandidateState(service, L"deferred-action-invariants");
                 outcome = 1; break;
             }
 
@@ -1387,8 +1452,9 @@ int probe_broker_input(
             result = direct_key_sink->OnSetFocus(FALSE);
             edit_store->GrantDeferredLock();
             PumpProbeMessages();
-            if (!keys_succeeded || !focus_queued || FAILED(result) || !WaitForCandidateWindow(false, service)) {
+            if (!keys_succeeded || !focus_queued || FAILED(result) || !WaitForCandidateWindow(false, service, L"deferred-focus-loss")) {
                 std::wcerr << L"Deferred candidate action survived focus loss\n";
+                ReportCandidateState(service, L"deferred-focus-invariants");
                 outcome = 1; break;
             }
             result = direct_key_sink->OnSetFocus(TRUE);
@@ -1398,14 +1464,89 @@ int probe_broker_input(
                     keys_succeeded = false; break;
                 }
             }
-            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false, service)) {
+            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false, service, L"focus-regain-selection")) {
                 std::wcerr << L"Candidate selection did not recover after focus regain\n";
+                ReportCandidateState(service, L"focus-recovery-invariants");
                 outcome = 1; break;
             }
         }
 
         std::wstring expected = rime_ice
             ? (registered ? L"你好你好" : L"你好你好你好") : (registered ? L"mm" : L"mmm");
+        for (int termination_case = 0; !registered && termination_case < 2; ++termination_case) {
+            // Exercise the real TSF owner termination path, not a direct call
+            // to the service sink with an invented edit cookie. Only our live
+            // preedit may be discarded; the committed prefix must survive.
+            ComPtr<ITfContextOwnerCompositionServices> owner_services;
+            result = context->QueryInterface(IID_PPV_ARGS(&owner_services));
+            if (FAILED(result)) { outcome = fail(L"Owner composition services", result); break; }
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            if (!keys_succeeded || !WaitForCandidateWindow(true, service, L"owner-termination-before")) {
+                outcome = 1; break;
+            }
+            if (termination_case == 1) {
+                edit_store->DeferLocks(true);
+                const bool queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+                edit_store->DeferLocks(false);
+                if (!queued) {
+                    std::wcerr << L"Owner termination probe did not defer candidate action\n";
+                    ReportCandidateState(service, L"owner-termination-queue-invariants");
+                    outcome = 1; break;
+                }
+            }
+            struct TerminationReentry {
+                ITfKeyEventSink* sink;
+                ITfContext* context;
+                bool fired = false, fail_open = false;
+            } termination_reentry{direct_key_sink.Get(), context.Get()};
+            edit_store->OnNextWrite([](void* data) noexcept {
+                auto& state = *static_cast<TerminationReentry*>(data);
+                state.fired = true;
+                state.fail_open = SendFailOpenKey(state.sink, state.context, 'A');
+            }, &termination_reentry);
+            result = owner_services->TerminateComposition(nullptr);
+            edit_store->OnNextWrite(nullptr, nullptr);
+            std::wcout << L"MO_TERMINATION_REENTRY fired=" << termination_reentry.fired
+                << L" fail_open=" << termination_reentry.fail_open << L'\n';
+            edit_store->GrantDeferredLock();
+            PumpProbeMessages();
+            if (FAILED(result) || !WaitForCandidateWindow(false, service, L"owner-termination-after")
+                || edit_store->text() != expected) {
+                std::wcerr << L"Owner termination left preedit or changed committed prefix"
+                    << L" result=" << result << L" prefix_intact=" << (edit_store->text() == expected) << L'\n';
+                ReportCandidateState(service, L"owner-termination-prefix-invariants");
+                outcome = 1; break;
+            }
+            if (!termination_reentry.fired || !termination_reentry.fail_open) {
+                std::wcerr << L"Owner termination accepted reentrant input or did not clear its range\n";
+                ReportCandidateState(service, L"owner-termination-reentry-invariants");
+                outcome = 1; break;
+            }
+            result = direct_key_sink->OnSetFocus(TRUE);
+            if (FAILED(result)) { outcome = fail(L"Owner termination recovery focus", result); break; }
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) {
+                    keys_succeeded = false; break;
+                }
+            }
+            if (!keys_succeeded || !WaitForCandidateWindow(true, service, L"owner-termination-recovery")
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE)
+                || !WaitForCandidateWindow(false, service, L"owner-termination-recovery-commit")) {
+                outcome = 1; break;
+            }
+            expected += rime_ice ? L"你好" : L"m";
+            if (edit_store->text() != expected) {
+                std::wcerr << L"Owner termination recovery duplicated or lost committed text\n";
+                ReportCandidateState(service, L"owner-termination-recovery-invariants");
+                outcome = 1; break;
+            }
+            std::wcout << L"Mo TIP TSF owner termination/recovery probe passed.\n";
+        }
+        if (outcome != 0) { break; }
         if (fault_prefix != nullptr) {
             for (int cycle = 0; cycle < 2 && keys_succeeded; ++cycle) {
                 // First crash: preedit + mouse action awaiting a real TSF lock.
@@ -1435,8 +1576,9 @@ int probe_broker_input(
                     edit_store->GrantDeferredLock(); PumpProbeMessages();
                 }
                 if (!SendFailOpenKey(direct_key_sink.Get(), context.Get(), VK_SPACE)
-                    || edit_store->text() != expected || !WaitForCandidateWindow(false, service)) {
+                    || edit_store->text() != expected || !WaitForCandidateWindow(false, service, L"broker-crash-fail-open")) {
                     std::wcerr << L"Broker crash changed document or replayed pending candidate\n";
+                    ReportCandidateState(service, L"broker-crash-invariants");
                     keys_succeeded = false; break;
                 }
                 if (!CoordinateBrokerFault(fault_prefix, L"restart", cycle)
@@ -1448,9 +1590,9 @@ int probe_broker_input(
                         keys_succeeded = false; break;
                     }
                 }
-                if (!keys_succeeded || !WaitForCandidateWindow(true, service)
+                if (!keys_succeeded || !WaitForCandidateWindow(true, service, L"broker-restart-composition")
                     || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_SPACE)
-                    || !WaitForCandidateWindow(false, service)) { keys_succeeded = false; break; }
+                    || !WaitForCandidateWindow(false, service, L"broker-restart-commit")) { keys_succeeded = false; break; }
                 expected += rime_ice ? L"你好" : L"m";
                 if (edit_store->text() != expected) {
                     std::wcerr << L"Recovered session replayed/concatenated pre-crash input: actual=["
@@ -1528,6 +1670,9 @@ int probe_broker_input(
 }  // namespace
 
 int wmain(int argument_count, wchar_t** arguments) {
+    const bool activating_test_host = argument_count == 5
+        && std::wstring(arguments[4]) == L"--activating-test-host";
+    const int mode_argument_count = activating_test_host ? 4 : argument_count;
     const bool registered_broker_input = argument_count == 2
         && std::wstring(arguments[1]) == L"--registered-broker-input";
     const bool registered_broker_rime_ice = argument_count == 2
@@ -1536,9 +1681,9 @@ int wmain(int argument_count, wchar_t** arguments) {
         && std::wstring(arguments[2]) == L"--broker-input";
     const bool broker_rime_ice = argument_count == 3
         && std::wstring(arguments[2]) == L"--broker-rime-ice";
-    const bool broker_fault = argument_count == 4
+    const bool broker_fault = mode_argument_count == 4
         && std::wstring(arguments[2]) == L"--broker-fault";
-    const bool broker_fault_rime_ice = argument_count == 4
+    const bool broker_fault_rime_ice = mode_argument_count == 4
         && std::wstring(arguments[2]) == L"--broker-fault-rime-ice";
     if ((!registered_broker_input && !registered_broker_rime_ice)
         && argument_count != 2 && !broker_input && !broker_rime_ice && !broker_fault && !broker_fault_rime_ice) {
@@ -1656,6 +1801,15 @@ int wmain(int argument_count, wchar_t** arguments) {
     if (!ProbeDeadlineArithmetic()) {
         service->Release(); FreeLibrary(module); return fail(L"Deadline arithmetic", E_FAIL);
     }
+    {
+        const IID retired_diagnostics_iid = {0x1DE6A239, 0x4965, 0x487B, {0xA8, 0x86, 0x21, 0x2C, 0x37, 0x5F, 0x37, 0x08}};
+        IUnknown* retired = nullptr;
+        result = service->QueryInterface(retired_diagnostics_iid, reinterpret_cast<void**>(&retired));
+        if (retired != nullptr) { retired->Release(); }
+        if (result != E_NOINTERFACE || retired != nullptr) {
+            service->Release(); FreeLibrary(module); return fail(L"Retired diagnostics ABI is still exposed", E_FAIL);
+        }
+    }
 #ifdef MO_LATENCY_TRACE
     {
         ComPtr<mo::windows_tip::IBrokerDiagnostics> diagnostics;
@@ -1671,6 +1825,9 @@ int wmain(int argument_count, wchar_t** arguments) {
             || timing.total_us != 0 || timing.request_id != 0 || timing.error != 0
             || timing.candidate_snapshot != 0 || timing.candidate_reset != 0 || timing.candidate_reset_count != 0
             || timing.edit_request != S_OK || timing.edit_session != S_OK
+            || timing.termination_owner_active != 0 || timing.termination_sent != 0 || timing.termination_owner_foreground != 0
+            || timing.dispatch_total_us != 0 || timing.dispatch_pre_send_us != 0
+            || timing.dispatch_connect_us != 0 || timing.dispatch_modifiers_us != 0
             || service_identity.Get() == nullptr || service_identity.Get() != diagnostics_identity.Get()) {
             // ComPtrs must die before unloading the module on this failure path.
             diagnostics.Reset(); service_identity.Reset(); diagnostics_identity.Reset();
@@ -1679,7 +1836,7 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
 #else
     {
-        const IID diagnostics_iid = {0x1DE6A239, 0x4965, 0x487B, {0xA8, 0x86, 0x21, 0x2C, 0x37, 0x5F, 0x37, 0x08}};
+        const IID diagnostics_iid = {0xB37A59F4, 0x8F18, 0x4D58, {0x90, 0xD2, 0x37, 0xA5, 0x16, 0xD0, 0x41, 0x97}};
         IUnknown* diagnostics = nullptr;
         result = service->QueryInterface(diagnostics_iid, reinterpret_cast<void**>(&diagnostics));
         if (diagnostics != nullptr) { diagnostics->Release(); }
@@ -1732,7 +1889,7 @@ int wmain(int argument_count, wchar_t** arguments) {
 
     if ((broker_input || broker_rime_ice || broker_fault || broker_fault_rime_ice
              ? probe_broker_input(service, broker_rime_ice || broker_fault_rime_ice, false,
-                 broker_fault || broker_fault_rime_ice ? arguments[3] : nullptr)
+                 broker_fault || broker_fault_rime_ice ? arguments[3] : nullptr, activating_test_host)
              : probe_key_sink_activation(service))
         != 0) {
         service->Release();

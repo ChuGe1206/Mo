@@ -62,4 +62,14 @@ cargo +stable test --workspace
 
 注册系统路由测试需要分权限准备，见 [注册测试步骤](docs/phase-0/REGISTERED-TEST.md)。fake 与真实词库 smoke 均可加 `-Registered`，但只允许普通权限运行，并要求机器 profile 已在管理员 PowerShell 中准备好。用户态 COM/启用状态会回滚并严格核对；机器 profile 最后由管理员清理。此流程不设默认输入法，不是安装包或普通软件验收。
 
+候选生命周期定位可使用当前源码和已验证开发素材包，产物必须写入新的绝对 `build` 子路径：
+
+```powershell
+./tools/candidate-lifecycle-probe.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-candidate-final/stage" `
+  -OutputDirectory "$PWD/build/mo-candidate-new" -Repetitions 20 -LatencyTrace
+```
+
+去掉 `-LatencyTrace` 验证默认关闭诊断，`-Fake` 验证无真实引擎的宿主状态机。入口不注册/安装、不替换素材包；默认测试宿主不获取前台或窗口队列激活。宿主终止清理的确定性修复、旧激活模型负向样本和未关闭风险见 [ADR 0027](docs/adr/0027-host-termination-and-candidate-lifecycle-evidence.md)。不能将复跑通过当作普通宿主或日常使用验收。
+
 设计基线见 [产品与软件架构设计 v0.2](docs/MO-INPUT-METHOD-DESIGN-v0.2.md)，当前实证见 [Phase 0 状态](docs/phase-0/STATUS.md)，硬验收门见 [Phase 0 验收门](docs/phase-0/ACCEPTANCE.md)。

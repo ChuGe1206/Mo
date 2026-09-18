@@ -4,6 +4,7 @@
 
 #include <msctf.h>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
@@ -39,6 +40,20 @@ enum class CandidateReset : DWORD {
     CommitFailure = 8, ClearFailure = 9, Finished = 10, Cancelled = 11,
     SnapshotAllocation = 12,
 };
+
+#ifdef MO_LATENCY_TRACE
+class MetadataDuration final {
+public:
+    explicit MetadataDuration(std::uint64_t* output) noexcept : output_(output) {}
+    ~MetadataDuration() noexcept {
+        *output_ = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - started_).count());
+    }
+private:
+    std::chrono::steady_clock::time_point started_ = std::chrono::steady_clock::now();
+    std::uint64_t* output_;
+};
+#endif
 
 bool PathComponentEquals(
     const std::filesystem::path& component,
@@ -216,6 +231,13 @@ public:
         timing->candidate_reset_count = candidate_reset_count_;
         timing->edit_request = last_edit_request_;
         timing->edit_session = last_edit_session_;
+        timing->termination_owner_active = termination_owner_active_;
+        timing->termination_sent = termination_sent_;
+        timing->termination_owner_foreground = termination_owner_foreground_;
+        timing->dispatch_total_us = dispatch_total_us_;
+        timing->dispatch_pre_send_us = dispatch_pre_send_us_;
+        timing->dispatch_connect_us = dispatch_connect_us_;
+        timing->dispatch_modifiers_us = dispatch_modifiers_us_;
         return S_OK;
     }
 #endif
@@ -355,16 +377,47 @@ public:
     }
 
     STDMETHODIMP OnCompositionTerminated(
-        TfEditCookie,
+        TfEditCookie edit_cookie,
         ITfComposition* composition) noexcept override {
         if (composition == nullptr) {
             return E_INVALIDARG;
         }
         if (composition_.Get() == composition) {
+            if (handling_termination_) { return S_OK; }
+            handling_termination_ = true;
+            struct TerminationScope final {
+                bool* flag;
+                ~TerminationScope() noexcept { *flag = false; }
+            } termination_scope{&handling_termination_};
+            // Pin ownership before Win32 or text-store calls can reenter.
+            ComPtr<ITfRange> terminated_range = active_range_;
+            const auto still_owned = [this, composition, &terminated_range]() noexcept {
+                return composition_.Get() == composition && active_range_.Get() == terminated_range.Get();
+            };
+#ifdef MO_LATENCY_TRACE
+            termination_owner_active_ = candidate_owner_ != nullptr
+                && GetActiveWindow() == candidate_owner_ ? 1 : 0;
+            termination_sent_ = InSendMessageEx(nullptr);
+            termination_owner_foreground_ = candidate_owner_ != nullptr
+                && GetForegroundWindow() == candidate_owner_ ? 1 : 0;
+#endif
+            // TSF grants the terminating owner a write cookie. Discard only
+            // our live, uncommitted range under that existing lock; dropping
+            // range ownership first leaves literal preedit in the document.
+            // Do not request a nested lock, call EndComposition again, commit
+            // an uncertain engine candidate, or replay input on reconnect.
+            InvalidateCandidateIdentity();
+            cached_key_.valid = false;
             candidate_window_.Hide();
-            ResetCompositionState(CandidateReset::HostTermination);
-            DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::HostTermination);
-            TraceCandidate(12, S_OK);
+            if (!still_owned()) { return S_OK; }
+            const HRESULT discarded = terminated_range != nullptr
+                ? terminated_range->SetText(edit_cookie, 0, L"", 0) : S_OK;
+            if (still_owned()) {
+                ResetCompositionState(CandidateReset::HostTermination);
+                DisconnectBroker(0, CandidateReset::HostTermination);
+                TraceCandidate(12, discarded);
+            }
+            return discarded;
         }
         return S_OK;
     }
@@ -399,7 +452,7 @@ private:
     }
 
     bool CandidateIdentityMatches(const CandidateIdentity& identity) const noexcept {
-        return has_focus_ && broker_.connected()
+        return !handling_termination_ && has_focus_ && broker_.connected()
             && identity.epoch != std::numeric_limits<std::uint64_t>::max()
             && identity.epoch == candidate_epoch_
             && identity.context != nullptr && identity.range != nullptr
@@ -665,6 +718,11 @@ private:
         WPARAM virtual_key,
         LPARAM key_data,
         bool key_down) noexcept {
+#ifdef MO_LATENCY_TRACE
+        dispatch_pre_send_us_ = dispatch_connect_us_ = dispatch_modifiers_us_ = 0;
+        const auto dispatch_started = std::chrono::steady_clock::now();
+        const MetadataDuration dispatch_duration(&dispatch_total_us_);
+#endif
         const auto deadline = mo::windows_tip::DeadlineFromNow(kBrokerKeyTimeoutMs);
         cached_key_.valid = false;
         if (composition_context_ != nullptr && composition_context_.Get() != context) {
@@ -675,13 +733,29 @@ private:
             broker_.Close(0);
             latest_revision_ = 0;
         }
-        if (!has_focus_ || !EnsureBrokerConnectedUntil(deadline)) {
-            return false;
+        bool ready = false;
+        {
+#ifdef MO_LATENCY_TRACE
+            const MetadataDuration connect_duration(&dispatch_connect_us_);
+#endif
+            ready = has_focus_ && EnsureBrokerConnectedUntil(deadline);
         }
+        if (!ready) { return false; }
+        std::uint16_t modifiers = 0;
+        {
+#ifdef MO_LATENCY_TRACE
+            const MetadataDuration modifiers_duration(&dispatch_modifiers_us_);
+#endif
+            modifiers = CurrentModifiers();
+        }
+#ifdef MO_LATENCY_TRACE
+        dispatch_pre_send_us_ = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - dispatch_started).count());
+#endif
         if (!broker_.SendKeyUntil(
                 static_cast<UINT>(virtual_key),
                 ScanCode(key_data),
-                CurrentModifiers(),
+                modifiers,
                 key_down,
                 IsRepeat(key_data),
                 &cached_key_.snapshot,
@@ -716,6 +790,7 @@ private:
         if (FAILED(result)) {
             return result;
         }
+        if (handling_termination_) { return S_OK; }
         if (!CachedKeyMatches(context, virtual_key, key_data, key_down)
             && !DispatchKey(context, virtual_key, key_data, key_down)) {
             return S_OK;
@@ -734,6 +809,7 @@ private:
         if (FAILED(result)) {
             return result;
         }
+        if (handling_termination_) { return S_OK; }
         if (!CachedKeyMatches(context, virtual_key, key_data, key_down)
             && !DispatchKey(context, virtual_key, key_data, key_down)) {
             return S_OK;
@@ -941,7 +1017,7 @@ private:
 
     void QueueCandidateAction(std::uint64_t revision, mo::windows_tip::CandidateAction action,
         std::uint32_t index) noexcept {
-        if (!has_focus_ || !broker_.connected() || revision != latest_revision_
+        if (handling_termination_ || !has_focus_ || !broker_.connected() || revision != latest_revision_
             || composition_context_ == nullptr || active_range_ == nullptr) { return; }
         auto* session = new (std::nothrow) CandidateEditSession(this, composition_context_.Get(), revision, action, index);
         if (session == nullptr) { return; }
@@ -956,7 +1032,7 @@ private:
     HRESULT ApplyCandidateAction(ITfContext* context, TfEditCookie cookie,
         std::uint64_t generation, std::uint64_t token, std::uint64_t revision,
         mo::windows_tip::CandidateAction action, std::uint32_t index) noexcept {
-        if (!has_focus_ || !broker_.connected() || generation != broker_.generation()
+        if (handling_termination_ || !has_focus_ || !broker_.connected() || generation != broker_.generation()
             || token != broker_.session_token() || revision != latest_revision_
             || composition_context_.Get() != context || active_range_ == nullptr) { return S_OK; }
         cached_key_.valid = false;
@@ -1129,6 +1205,7 @@ private:
     TfClientId client_id_ = TF_CLIENTID_NULL;
     DWORD activation_flags_ = 0;
     bool has_focus_ = false;
+    bool handling_termination_ = false;
     bool broker_was_connected_ = false;
     ULONGLONG next_reconnect_tick_ = 0;
     mo::windows_tip::BrokerClient broker_;
@@ -1139,6 +1216,8 @@ private:
     DWORD candidate_reset_ = 0;
     std::uint64_t candidate_reset_count_ = 0;
     HRESULT last_edit_request_ = S_OK, last_edit_session_ = S_OK;
+    DWORD termination_owner_active_ = 0, termination_sent_ = 0, termination_owner_foreground_ = 0;
+    std::uint64_t dispatch_total_us_ = 0, dispatch_pre_send_us_ = 0, dispatch_connect_us_ = 0, dispatch_modifiers_us_ = 0;
 #endif
     std::uint64_t latest_revision_ = 0;
     std::uint64_t candidate_epoch_ = 0;

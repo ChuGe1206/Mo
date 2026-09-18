@@ -125,3 +125,15 @@ with no additional CloseSession wait on key error/context-switch paths. This
 does not bound synchronous host COM/edit/render work or kernel cancellation.
 Opt-in metadata separately records reset cause/count and key-edit HRESULTs;
 it does not turn the existing rare-disappearance or cold-tail risks into passes.
+
+ADR 0027 fixes live-preedit cleanup on matching TSF owner termination using
+the supplied write cookie, without nesting edit locks or replaying commits.
+The controlled probe exercises ordinary termination and cancellation of a
+deferred candidate action, then verifies clean exactly-once recovery. Direct
+sink tests create/show their EDIT owner without foreground/queue activation;
+registered host tests retain their separate real routing path. Development
+diagnostics now use a new IID when the caller-owned metadata buffer grows,
+and include dispatch preparation/connection/modifier timing. Failures preserve
+named lifecycle checkpoints even in default builds. The independent entry is
+`tools/candidate-lifecycle-probe.ps1`; historical termination and tail-latency
+failures remain open evidence, not daily-use acceptance.

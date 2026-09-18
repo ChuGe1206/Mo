@@ -5,7 +5,8 @@ function Invoke-MoBrokerFaultProbe(
     [string]$ProbePath,
     [string]$TipPath,
     [switch]$RimeIce,
-    [switch]$LatencyTrace
+    [switch]$LatencyTrace,
+    [switch]$ActivatingTestHost
 ) {
     foreach ($artifact in @($BrokerPath, $ProbePath, $TipPath)) {
         if (-not [IO.Path]::IsPathFullyQualified($artifact) -or
@@ -49,6 +50,7 @@ function Invoke-MoBrokerFaultProbe(
     $signals = @{}
     $owned = $null
     $probe = $null
+    $stdout = $null
     try {
         foreach ($cycle in 0..1) {
             foreach ($stage in @('stop', 'restart')) {
@@ -72,6 +74,7 @@ function Invoke-MoBrokerFaultProbe(
         [void]$info.ArgumentList.Add($TipPath)
         [void]$info.ArgumentList.Add($(if ($RimeIce) { '--broker-fault-rime-ice' } else { '--broker-fault' }))
         [void]$info.ArgumentList.Add($prefix)
+        if ($ActivatingTestHost) { [void]$info.ArgumentList.Add('--activating-test-host') }
         $probe = [Diagnostics.Process]::Start($info)
         if ($null -eq $probe) { throw 'Could not start fault TIP probe.' }
         $stdout = $probe.StandardOutput.ReadToEndAsync()
@@ -110,10 +113,18 @@ function Invoke-MoBrokerFaultProbe(
             if ($keyTimes.Count -eq 0) { throw 'Trace-enabled probe returned no first-key timings.' }
             $stats = $keyTimes | Measure-Object -Minimum -Maximum
             Write-Host "MO_FIRST_KEYS count=$($keyTimes.Count) min_us=$($stats.Minimum) max_us=$($stats.Maximum)"
-            Write-Host (($stdout.Result -split '\r?\n' | Where-Object { $_ -and -not $_.StartsWith('MO_CLIENT ') }) -join "`n")
+            Write-Host (($stdout.Result -split '\r?\n' | Where-Object { $_ -and -not $_.StartsWith('MO_CLIENT ') -and -not $_.StartsWith('MO_DISPATCH ') }) -join "`n")
         } else { Write-Host $stdout.Result.Trim() }
     } catch {
         $failureMessage = $_.Exception.Message
+        # Preserve the bounded native probe transcript on failure. Previously
+        # its drained stdout (including successful keys before a UI reset) was
+        # discarded, leaving only the final generic visibility error.
+        if ($null -ne $probe -and $probe.HasExited -and $null -ne $stdout -and $stdout.Wait(1000)) {
+            $transcript = $stdout.Result
+            if ($transcript.Length -gt 65536) { $transcript = $transcript.Substring($transcript.Length - 65536) }
+            $failureMessage += "`nProbe stdout (last 65536 characters): $transcript"
+        }
         if ($null -ne $owned) {
             try {
                 Stop-OwnedFaultChild $owned.Process
@@ -121,6 +132,9 @@ function Invoke-MoBrokerFaultProbe(
                 $owned = $null
             } catch { $failureMessage += "`nBroker failure cleanup: $($_.Exception.Message)" }
         }
+        # Persist failure evidence in redirected harness logs too: a terminating
+        # error may otherwise be rendered only by the outer PowerShell host.
+        Write-Host "MO_FAULT_FAILURE $failureMessage"
         throw $failureMessage
     } finally {
         # Cleanup tasks are independent: one failure must not leave another child.

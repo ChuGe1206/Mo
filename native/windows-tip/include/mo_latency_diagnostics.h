@@ -15,8 +15,12 @@ struct BrokerTiming final {
     DWORD candidate_snapshot = 0, candidate_reset = 0;
     std::uint64_t candidate_reset_count = 0;
     HRESULT edit_request = S_OK, edit_session = S_OK;
+    DWORD termination_owner_active = 0, termination_sent = 0, termination_owner_foreground = 0;
+    std::uint64_t dispatch_total_us = 0, dispatch_pre_send_us = 0, dispatch_connect_us = 0, dispatch_modifiers_us = 0;
 };
-MIDL_INTERFACE("1DE6A239-4965-487B-A886-212C375F3708")
+// The caller-owned structure grew: reject the old development IID rather
+// than overwrite an old probe's smaller buffer. Not a shipping interface.
+MIDL_INTERFACE("B37A59F4-8F18-4D58-90D2-37A516D04197")
 IBrokerDiagnostics : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE ReadLastTiming(BrokerTiming* timing) = 0;
 };
