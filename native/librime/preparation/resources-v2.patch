@@ -1,0 +1,190 @@
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+index 4a54f64..9dcaa09 100644
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -11,6 +11,7 @@
+ #include <rime/engine.h>
+ #include <rime/filter.h>
+ #include <rime/formatter.h>
++#include <rime/gear/simplifier.h>
+ #include <rime/key_event.h>
+ #include <rime/menu.h>
+ #include <rime/processor.h>
+@@ -33,6 +34,7 @@ class ConcreteEngine : public Engine {
+   virtual void ApplySchema(Schema* schema);
+   virtual void CommitText(string text);
+   virtual void Compose(Context* ctx);
++  bool PrepareResources() override;
+ 
+  protected:
+   void InitializeComponents();
+@@ -57,6 +59,25 @@ class ConcreteEngine : public Engine {
+ 
+ // implementations
+ 
++bool ConcreteEngine::PrepareResources() {
++  if (!schema_ || schema_->schema_id() != "rime_ice" || !context_
++      || !context_->input().empty() || context_->IsComposing()) {
++    return false;
++  }
++  size_t prepared = 0;
++  unsigned kinds = 0;
++  for (const auto& filter : filters_) {
++    if (auto* simplifier = dynamic_cast<Simplifier*>(filter.get())) {
++      const unsigned kind = simplifier->PrepareResources();
++      if (!kind || (kinds & kind)) { return false; }
++      kinds |= kind;
++      ++prepared;
++    }
++  }
++  // The locked default schema has Emoji and traditionalization filters.
++  return prepared == 2 && kinds == 3u;
++}
++
+ Engine* Engine::Create() {
+   return new ConcreteEngine;
+ }
+diff --git a/src/rime/engine.h b/src/rime/engine.h
+index 6b51a68..2ac2972 100644
+--- a/src/rime/engine.h
++++ b/src/rime/engine.h
+@@ -26,6 +26,8 @@ class Engine : public Messenger {
+   virtual void ApplySchema(Schema* schema) {}
+   virtual void CommitText(string text) { sink_(text); }
+   virtual void Compose(Context* ctx) {}
++  // Mo-only input-free resource preparation, not part of librime's public API.
++  virtual bool PrepareResources() { return false; }
+ 
+   Schema* schema() const { return schema_.get(); }
+   Context* context() const { return context_.get(); }
+diff --git a/src/rime/gear/simplifier.cc b/src/rime/gear/simplifier.cc
+index b337cf1..d203b25 100644
+--- a/src/rime/gear/simplifier.cc
++++ b/src/rime/gear/simplifier.cc
+@@ -29,6 +29,8 @@ static const char* quote_right = "\xe3\x80\x95";  //"\xef\xbc\x89";
+ 
+ namespace rime {
+ 
++string MoOpenccResourceDirectory();
++
+ class Opencc {
+  public:
+   Opencc(const path& config_path)
+@@ -41,7 +43,8 @@ class Opencc {
+     opencc::Config config;
+     try {
+       // opencc accepts file path encoded in UTF-8.
+-      converter_ = config.NewFromFile(config_path_.u8string());
++      converter_ = config.NewFromFileInDirectory(config_path_.u8string(),
++                                                MoOpenccResourceDirectory());
+ 
+       const list<opencc::ConversionPtr> conversions =
+           converter_->GetConversionChain()->GetConversions();
+@@ -156,6 +159,11 @@ class Opencc {
+     *simplified = converter_->Convert(text);
+     return *simplified != text;
+   }
++  bool ready() const { return converter_ != nullptr && dict_ != nullptr; }
++  unsigned resource_kind() const {
++    return config_path_.u8string() == "emoji.json" ? 1u :
++           config_path_.u8string() == "s2t.json" ? 2u : 0u;
++  }
+ 
+  private:
+   bool initialized_;
+@@ -165,6 +173,12 @@ class Opencc {
+ };
+ 
+ // Simplifier
++unsigned Simplifier::PrepareResources() {
++  if (!opencc_) { return 0; }
++  opencc_->Initialize();
++  return opencc_->ready() ? opencc_->resource_kind() : 0u;
++}
++
+ 
+ Simplifier::Simplifier(const Ticket& ticket, an<Opencc> opencc)
+     : Filter(ticket), TagMatching(ticket), opencc_(opencc) {
+@@ -307,31 +321,15 @@ Simplifier* SimplifierComponent::Create(const Ticket& ticket) {
+   if (Config* config = ticket.engine->schema()->config()) {
+     config->GetString(name_space + "/opencc_config", &opencc_config);
+   }
+-  if (opencc_config.empty()) {
+-    opencc_config = "t2s.json";  // default opencc config file
+-  }
++  // Mo's locked default has exactly these two resource owners. No user,
++  // shared, working-directory, absolute-path or build-prefix overrides.
++  if (opencc_config != "emoji.json" && opencc_config != "s2t.json") return nullptr;
+   opencc = opencc_map_[opencc_config].lock();
+   if (opencc) {
+     return new Simplifier(ticket, opencc);
+   }
+-  path opencc_config_path = path(opencc_config);
+-  if (opencc_config_path.extension().u8string() == ".ini") {
+-    LOG(ERROR) << "please upgrade opencc_config to an opencc 1.0 config file.";
+-    return nullptr;
+-  }
+-  if (opencc_config_path.is_relative()) {
+-    path user_config_path = Service::instance().deployer().user_data_dir;
+-    path shared_config_path = Service::instance().deployer().shared_data_dir;
+-    (user_config_path /= "opencc") /= opencc_config_path;
+-    (shared_config_path /= "opencc") /= opencc_config_path;
+-    if (exists(user_config_path)) {
+-      opencc_config_path = user_config_path;
+-    } else if (exists(shared_config_path)) {
+-      opencc_config_path = shared_config_path;
+-    }
+-  }
+   try {
+-    opencc = New<Opencc>(opencc_config_path);
++    opencc = New<Opencc>(path(opencc_config));
+     // 以原始配置中的文件路径作为 key，避免重复查找文件
+     opencc_map_[opencc_config] = opencc;
+   } catch (opencc::Exception& e) {
+diff --git a/src/rime/gear/simplifier.h b/src/rime/gear/simplifier.h
+index ffe8e32..647d5e0 100644
+--- a/src/rime/gear/simplifier.h
++++ b/src/rime/gear/simplifier.h
+@@ -25,6 +25,7 @@ class Simplifier : public Filter, TagMatching {
+   virtual bool AppliesToSegment(Segment* segment) { return TagsMatch(segment); }
+ 
+   bool Convert(const an<Candidate>& original, CandidateQueue* result);
++  unsigned PrepareResources();
+ 
+  protected:
+   enum TipsLevel { kTipsNone, kTipsChar, kTipsAll };
+diff --git a/src/rime/service.cc b/src/rime/service.cc
+index d30f991..9ce6417 100644
+--- a/src/rime/service.cc
++++ b/src/rime/service.cc
+@@ -27,6 +27,18 @@ bool Session::ProcessKey(const KeyEvent& key_event) {
+   return engine_->ProcessKey(key_event);
+ }
+ 
++bool Session::PrepareResources() {
++  return engine_ && engine_->active_engine() == engine_.get()
++      && commit_text_.empty() && engine_->PrepareResources();
++}
++
++bool PrepareResourcesForSession(SessionId id) {
++  auto& service = Service::instance();
++  if (service.disabled()) { return false; }
++  const auto session = service.GetSession(id);
++  return session && session->PrepareResources();
++}
++
+ void Session::Activate() {
+   last_active_time_ = time(NULL);
+ }
+diff --git a/src/rime/service.h b/src/rime/service.h
+index a69ae74..2bdef0d 100644
+--- a/src/rime/service.h
++++ b/src/rime/service.h
+@@ -34,6 +34,7 @@ class Session {
+ 
+   Session();
+   bool ProcessKey(const KeyEvent& key_event);
++  bool PrepareResources();
+   void Activate();
+   void ResetCommitText();
+   bool CommitComposition();

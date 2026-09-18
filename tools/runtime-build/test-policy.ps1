@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$CmakeArchivePath,
     [Parameter(Mandatory)][string]$BoostArchivePath,
     [Parameter(Mandatory)][string]$LuaArchivePath,
-    [Parameter(Mandatory)][string]$PythonPath
+    [Parameter(Mandatory)][string]$PythonPath,
+    [Parameter(Mandatory)][string]$OpenccDataDir
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -15,6 +16,7 @@ $arguments = @{
     SourceDir = $SourceDir; CmakeArchivePath = $CmakeArchivePath
     BoostArchivePath = $BoostArchivePath; LuaArchivePath = $LuaArchivePath
     PythonPath = $PythonPath; OutputDirectory = (Join-Path $fixture 'new')
+    OpenccDataDir = $OpenccDataDir
 }
 function Reject([hashtable]$Changes, [string]$Expected) {
     $call = $arguments.Clone()
@@ -39,7 +41,11 @@ try {
     New-Item -ItemType File -Path $badArchive | Out-Null
     Reject @{ CmakeArchivePath = $badArchive } 'archive hash mismatch'
     Reject @{ SourceDir = $repoRoot } 'source commit mismatch'
-    Write-Host 'Four runtime builder fail-closed cases passed.'
+    $badPack = Join-Path $fixture 'bad-pack'
+    New-Item -ItemType Directory -Path $badPack | Out-Null
+    '{"format":0}' | Set-Content -LiteralPath (Join-Path $badPack 'manifest.json') -Encoding utf8NoBOM
+    Reject @{ OpenccDataDir = $badPack } 'Unsupported compiled OpenCC manifest'
+    Write-Host 'Five runtime builder fail-closed cases passed.'
     $cache = Join-Path $fixture 'CMakeCache.txt'
     $expected = @{ MoLibrary = (Join-Path $fixture 'pinned.lib') }
     "MoLibrary:FILEPATH=$($expected.MoLibrary)" | Set-Content -LiteralPath $cache
@@ -51,6 +57,22 @@ try {
         if (-not $rejected) { throw 'Invalid source cache accepted.' }
     }
     Write-Host 'Four CMake source-path policy cases passed.'
+    $project = Join-Path $fixture 'native.vcxproj'
+    $source = Join-Path $fixture 'wrapper.cpp'
+    $entry = '<ClCompile Include="' + $source + '"><WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError></ClCompile>'
+    ('<Project>' + $entry + '</Project>') | Set-Content -LiteralPath $project
+    Assert-MoRuntimeStrictSources $project @($source)
+    foreach ($invalid in @('<Project />', ('<Project>' + $entry.Replace('Level4', 'Level3') + '</Project>'),
+        ('<Project>' + $entry.Replace('>true<', '>false<') + '</Project>'),
+        ('<Project>' + $entry + $entry + '</Project>'),
+        ('<Project>' + $entry.Replace('<WarningLevel>', '<WarningLevel Condition="wrong">') + '</Project>'),
+        ('<Project>' + $entry.Replace('<TreatWarningAsError>true</TreatWarningAsError>', '') + '</Project>'))) {
+        $invalid | Set-Content -LiteralPath $project
+        $rejected = $false
+        try { Assert-MoRuntimeStrictSources $project @($source) } catch { $rejected = $true }
+        if (-not $rejected) { throw 'Invalid generated strict source properties accepted.' }
+    }
+    Write-Host 'Seven generated native strict-source property cases passed.'
 } finally {
     $resolved = (Resolve-Path -LiteralPath $fixture).Path
     if (-not $resolved.StartsWith((Join-Path $repoRoot 'build').TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {

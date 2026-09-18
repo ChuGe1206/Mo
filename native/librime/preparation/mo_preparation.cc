@@ -4,7 +4,7 @@
 // Keep the strict C export wrapper free of private C++ DLL-interface headers.
 namespace rime { bool PrepareResourcesForSession(RimeSessionId id); }
 
-extern "C" RIME_API int mo_rime_prepare_resources_v1(RimeSessionId id) noexcept {
+extern "C" RIME_API int mo_rime_prepare_resources_v2(RimeSessionId id) noexcept {
     try {
         return id && rime::PrepareResourcesForSession(id) ? 1 : 0;
     } catch (...) { return 0; }

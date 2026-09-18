@@ -151,10 +151,10 @@ impl LoadedLibrary {
         let symbol = unsafe {
             GetProcAddress(
                 self.module.as_ptr(),
-                c"mo_rime_prepare_resources_v1".as_ptr().cast(),
+                c"mo_rime_prepare_resources_v2".as_ptr().cast(),
             )
         }?;
-        // SAFETY: the exact v1 name fixes the C signature and return contract;
+        // SAFETY: the exact v2 name fixes the C signature and return contract;
         // its containing module remains owned until after native finalization.
         Some(unsafe {
             std::mem::transmute::<unsafe extern "system" fn() -> isize, crate::PrepareResources>(

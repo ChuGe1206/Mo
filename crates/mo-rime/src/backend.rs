@@ -55,7 +55,7 @@ impl RimeBackend {
     /// token is created. The normal engine-startup watchdog covers this work.
     pub fn with_prepared_resources(engine: Engine) -> Result<Self, Error> {
         if engine.prepare_resources.is_none() {
-            return Err(Error::MissingFunction("mo_rime_prepare_resources_v1"));
+            return Err(Error::MissingFunction("mo_rime_prepare_resources_v2"));
         }
         let backend = Self::with_resource_anchor(engine)?;
         backend.engine.prepare_resources_id(

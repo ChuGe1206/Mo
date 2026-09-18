@@ -25,7 +25,7 @@
 - `RimeBackend` 已实现 Engine Actor 后端契约：私有 native session id 不越过适配层，key/commit/clear、修饰位映射、composition UTF-8 byte offset 校验、候选注释/标签与状态投影均有确定性伪 API 测试。当前页零基索引选择与前后翻页已通过安全可选 API 接入 Actor，旧表/截断字段/空函数指针明确报告缺失，不破坏基本按键输入；schema/options 仍显式返回 unsupported。
 - `candidate_smoke` 已对真实 librime/rime-ice 验证 `ni` 前后翻页恢复原页、选择当前页第二候选及准确 commit；该直接 API 检查已纳入完整真实引擎 smoke，并只使用可回收的独立用户目录。
 - Broker 后端新增一个私有、无输入的 native 资源保活会话，永不承载用户 key/commit/clear、没有 wire token，用户会话仍各自创建/销毁。两个伪 API 测试验证隔离/销毁顺序与创建失败回收；保活+预编译的直接 API 对照中，首次转换约 27 ms，后续新会话首键约 0.7–1.7 ms，不是压力或机器冷启动通过。
-- `Engine::load` 已用绝对 canonical DLL 路径和受限 `LoadLibraryExW` 搜索目录实现运行时加载；不读取 PATH/当前目录，解析 `rime_get_api` 及同一 DLL 的可选版本化 Mo 准备导出，并保证 finalize 后才卸载 DLL。相对路径、错误文件名和缺失文件均 fail-closed；要求准备的模式不允许缺导出回退。
+- `Engine::load` 已用绝对 canonical DLL 路径和受限 `LoadLibraryExW` 搜索目录实现运行时加载；不读取 PATH/当前目录，解析 `rime_get_api` 及同一 DLL 的可选版本化 Mo 准备导出，并保证 finalize 后才卸载 DLL。当前只解析 v2、不回退 v1；相对路径、错误文件名和缺失文件均 fail-closed，要求准备的模式不允许缺导出回退。
 - 官方 librime + 锁定 rime-ice 完成真实部署和 `nihao -> 你好` 候选及提交验证。
 - 正式发行不得复用该官方预构建 DLL；原因见 G4。
 
@@ -46,7 +46,7 @@
 - 鼠标动作在持有 owner/context 的 TSF 可同步或异步写锁内重新验证焦点/context/generation/session/revision，排队期间不预先生成 commit。x64/Win32 fake 与真实词库受控探针均核对显隐、不抢焦点、旧按下保护、鼠标翻页/上屏与文档布局跟随；强制延迟写锁后，新按键或焦点丢失使旧动作取消。焦点恢复后完成第三轮选词，最终从 EDIT 和 TSF context 核对 `mmm`/`你好你好你好`。候选窗仅原生表现层，业务与授权仍在 Rust，阶段性边界见 ADR 0018。
 - TIP 在固定的 16 个管道槽中轮转扫描，有忙槽时在原端到端硬时限内短重试；每个新 handle 都重新复核服务端身份，身份异常直接拒绝而不跳过。首次全部端点缺席立即 fail-open；曾认证后允许在同一时限内等待 Broker 重启。前景焦点恢复重置退避，该时序已由上述焦点恢复探针覆盖。
 - Broker 启动模式已 fail-closed：启用 debug assertions 的开发构建才接受 `--fake` 或带显式 DLL/shared/user 路径及部署标记的 `--rime`。默认 release 只接受无参数启动，从 Known Folder API 构造固定 Program Files/LocalAppData 布局并核对当前映像位置；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
-- 安装模式将 DLL/shared/prebuilt 固定在机器安装根，把 user/staging 固定在当前用户根；缺少目录或 default/schema 标记时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证配置字段及缺资源拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。真实安装资产加载、签名/ACL、reparse 防护与用户配置覆盖策略仍未完成。
+- 安装模式将 DLL/shared/prebuilt/相邻 OpenCC 固定在机器安装根，把 user/staging 固定在当前用户根；缺少目录、default/schema 标记或六份必要转换文件时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证字段隔离及每份转换文件缺失拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。真实安装资产加载、签名/ACL、全安装树 reparse 防护与用户配置覆盖策略仍未完成。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
 - Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
 - x64/Win32 fake 与真实 rime-ice 客户端均同时保持 16 路连接，第 17 路在设置的总时限内失败，释放中间槽后新会话成功接入；原连接分别以自己的候选页 revision 提交自己的词，不被其他连接推进全局 revision 干扰。Rust 测试另行验证静默首帧客户端不会阻塞另一槽、重复 live accept 被拒绝、断开期间名称/DACL 不变、次槽冲突导致整池绑定回滚，以及并发生成的 1024 个 generation 非零且无重复。就绪信号在引擎初始化及工作线程创建后发出；真实 smoke 的错误分支已改为终止 owned 子进程并有界读取日志。
@@ -64,6 +64,8 @@
 - IPC 有 64 KiB 硬上限、最小可接收响应协商、CRC32 破损检测、UTF-8 校验、版本协商、严格递增 request id、connection generation、会话隔离和会话数量上限。
 - ADR 0024 无输入资源准备子阶段：实际两个 Simplifier owner 在 Broker ready 前初始化，私有保活会话无 key/commit/clear/wire token。缺导出/缺字典均准确拒绝且不宣布就绪，忙会话拒绝不清空，Emoji/Unicode 路径验证通过。同一最终 DLL 的直接首键 process_key 对照约 23.7 ms → 1.19 ms，约 94.8 ms 准备成本前移；不构成机器冷启动指标。最终自构建 prepared/trace 完整命令 x64/Win32 各 100/100 轮通过（共 400 次实际退出），800 个被记录首键传输计时为 2.017–5.221 ms。当前受控压力样本通过，不升级为真实桌面宿主或全面冷启动通过，也不抹去此前超时/候选消失的负向证据。
 - ADR 0024 收尾默认关闭诊断的完整命令双架构各 20/20 轮及 IPC/pool/UI/edit 检查通过；Rust 默认 109/trace 111 项与 compile-fail、四种 Clippy、五项 release 启动负向 smoke 通过。只读状态仍是双视图 COM 缺失、profile 未注册/启用/激活。来源路径守卫的四项匹配/外部路径/缺项/重复项检查通过，最终实际 CMake cache 也已核对全部 pinned header/library 来源。
+- ADR 0025 转换资源搬迁子阶段：v2 只读 DLL 相邻 `opencc`、恰好 Emoji/繁体两个不同 owner，旧 v1 不回退。最终干净产物的 28 项文件边界、27 项真实引擎搬迁/解析、4 项准备及 3 个 Broker ready 前拒绝通过；33 份资源/11 份构建快照和 51 项 ABI 通过。五项 builder/四项 cache/七项生成工程守卫通过；已更正 deferred source property 未实际作用于 wrapper 的 W4/WX 问题，旧 runtime 的该选项意图不作为实证，TIP 独立严格编译证据不受影响。最终 prepared/trace 完整命令 x64/Win32 各 100/100 轮（400 次实际退出）通过，不升级为真实桌面宿主或机器冷启动通过。
+- ADR 0025 默认关闭诊断收尾的完整命令 x64/Win32 各 20/20 轮及全部 IPC/pool/UI/edit 检查通过（另 80 次实际退出）；default 日志已核对两套 20 个 trial 和完整成功 marker。Rust 默认 109/trace 111 项及 compile-fail、四种 Clippy、doc、五项 release 拒绝、16 项注册策略/20 项既有 OpenCC 检查及八份 AST 通过。当前 registrar 只读状态仍为双视图 COM 缺失、profile 全 false，未更改默认输入法；G2/G4 保持部分通过、G3 未通过。
 - Windows Named Pipe 使用 `LOCAL` 命名、当前 logon SID 受保护 DACL、`PIPE_REJECT_REMOTE_CLIENTS` 和 identification-only SQOS；服务端读取首个有界帧后模拟客户端并复核 logon SID，失败路径不进入 Broker 状态机。
 - Named Pipe 已从真实内核对象读回并核对 protected DACL/唯一 ACE/SID/权限掩码，同时通过远程拒绝标志、端点逃逸拒绝、静默客户端首帧超时和 `Hello -> HelloAck` Broker 往返测试。
 - Named Pipe 负向测试已证明当前登录会话不能在任一槽创建第二服务端实例；已认证连接从首个可用字节起采用 2 秒完整帧 assembly deadline，半帧超时断开客户端后复用 retained listener，完全空闲连接不会被误杀。静默首帧连接采用 2 秒时限，但已认证空闲连接仍占用一个槽。
@@ -95,9 +97,9 @@
 - 已新增 hash 锁定 OpenCC 1.1.9 + bundled Marisa 的本地构建态编译工具，把锁定 Emoji/补充字典生成 `.ocd2`，读回核对全部 4857/1498 条 key 及有序 values。20 项完整性/负向检查通过；源文件与 manifest 保留，测试只复制到新 fixture。该 pack 未接入正式安装、签名更新或发行 SBOM，不把自声明哈希作为可信更新证明。
 - 发现官方 librime Windows 资产静态包含 GPL-3.0-only `librime-octagram`。该资产现被明确限制为开发验证，不进入 Mo 发行物。
 - 正式包必须从锁定 librime 源自行构建，插件采用允许列表；当前最小集合为 BSD-3-Clause core + rime-ice 必需的 BSD-3-Clause `librime-lua`。
-- 新增 core + Lua 的允许列表开发运行时构建器，消费六份锁定 Git archive 与显式固定哈希工具包；拒绝旧输出、错误来源，禁用外部插件和 native 内容日志。OpenCC/core 共用 pinned Marisa 0.3.1，避免 bundled 0.2.6 覆盖库的头文件/ABI 混用。运行时字典兼容与完整链路证据见 ADR 0024；这不是许可证批准或可发行包，OpenCC prefix/CWD 搜索与重定位仍待改造。
+- 新增 core + Lua 的允许列表开发运行时构建器，消费六份锁定 Git archive 与显式固定哈希工具包；拒绝旧输出、错误来源，禁用外部插件和 native 内容日志。OpenCC/core 共用 pinned Marisa 0.3.1，避免 bundled 0.2.6 覆盖库的头文件/ABI 混用。v2 只读取 DLL 相邻 `opencc` 资源，不使用 prefix/CWD/user/shared 搜索；构建前快照 11 份 Mo 输入及已验证 Emoji pack，format 2 provenance 记录 33 份资源与 DLL 哈希。证据见 ADR 0024/0025；不是内容认证、许可证批准或可发行包，签名/安装权限/逐文件 SBOM 仍未通过。
 - rime-ice 资源仍按 GPL-3.0-only 独立边界处理；默认捆绑前仍需逐文件 SBOM、第三方通知、对应源/修改记录和正式许可证审查。
 
 ## 下一检查点
 
-下一优先项是去除开发运行时 OpenCC 的 prefix/CWD 资源搜索，固化可重定位、fail-closed 的正式资源布局；管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI。继续扩大真实冷启动与候选生命周期矩阵，不能以本次 100 轮样本确认此前偶发问题全部根因。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；本子阶段不升级为普通宿主或日常使用通过。
+Mo 转换资源的 prefix/CWD 搜索与搬迁验证已闭环。下一优先项是管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略及资源内容认证。继续扩大真实冷启动与候选生命周期矩阵，不能以有限受控压力确认此前偶发问题全部根因。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；本子阶段不升级为普通宿主或日常使用通过。

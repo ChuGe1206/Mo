@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$BoostArchivePath,
     [Parameter(Mandatory)][string]$LuaArchivePath,
     [Parameter(Mandatory)][string]$PythonPath,
+    [Parameter(Mandatory)][string]$OpenccDataDir,
     [Parameter(Mandatory)][string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ Remove-Item Env:Path -ErrorAction SilentlyContinue
 $env:Path = $processPath
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 . (Join-Path $PSScriptRoot 'source-policy.ps1')
+. (Join-Path $repoRoot 'tools/opencc-data.ps1')
 $source = (Resolve-Path -LiteralPath $SourceDir).Path
 $python = (Resolve-Path -LiteralPath $PythonPath).Path
 $output = [IO.Path]::GetFullPath($OutputDirectory)
@@ -56,6 +58,7 @@ foreach ($pin in $pins) {
     $head = & git -C (Join-Path $source $pin[0]) rev-parse HEAD
     if ($LASTEXITCODE -ne 0 -or $head -ne $pin[1]) { throw 'Runtime source commit mismatch.' }
 }
+$openccPack = Assert-MoCompiledOpenccData $OpenccDataDir
 New-Item -ItemType Directory -Path $output | Out-Null
 $script:runtimeLogCount = 0
 $script:runtimeLogRoot = Join-Path $output 'commands'
@@ -63,6 +66,24 @@ New-Item -ItemType Directory -Path $script:runtimeLogRoot | Out-Null
 $inputs = Join-Path $output 'inputs'
 $prepared = Join-Path $inputs 'librime'
 New-Item -ItemType Directory -Path $prepared | Out-Null
+$moInputs = Join-Path $inputs 'mo-runtime'
+$moHashes = [ordered]@{}
+# Snapshot our build instructions and sources before compilation. The DLL must
+# not be compiled from a changing workspace while provenance hashes later edits.
+foreach ($name in @('tools/runtime-build/build.ps1', 'tools/runtime-build/source-policy.ps1',
+    'tools/opencc-data.ps1', 'native/librime/preparation/resources-v2.patch',
+    'native/librime/preparation/opencc-directory.patch', 'native/librime/preparation/lua-signed-stack.patch',
+    'native/librime/preparation/mo_preparation.cc', 'native/librime/preparation/mo_project.cmake',
+    'native/librime/preparation/mo_resource_directory.cpp', 'native/librime/preparation/mo_resource_file.h',
+    'native/librime/preparation/mo_resource_file.cpp')) {
+    $snapshot = Join-Path $moInputs $name
+    New-Item -ItemType Directory -Path (Split-Path -Parent $snapshot) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $snapshot
+    $moHashes[$name] = (Get-FileHash -LiteralPath $snapshot -Algorithm SHA256).Hash
+}
+$packSnapshot = Join-Path $inputs 'opencc-pack'
+Copy-Item -LiteralPath $openccPack -Destination $packSnapshot -Recurse
+$openccPack = Assert-MoCompiledOpenccData $packSnapshot
 $inputHashes = [ordered]@{}
 foreach ($pin in $pins) {
     $archivePath = Join-Path $inputs (($pin[0] -replace '/', '-') + 'source.tar')
@@ -82,10 +103,18 @@ Checked 'tar' @('-xf', $luaArchive, '-C', $inputs)
 $luaSource = Join-Path $prepared 'plugins/lua/thirdparty/lua5.4'
 New-Item -ItemType Directory -Path (Split-Path -Parent $luaSource) | Out-Null
 Copy-Item -LiteralPath (Join-Path $inputs 'lua-5.4.9/src') -Destination $luaSource -Recurse
-$patch = Join-Path $repoRoot 'native/librime/preparation/resources-v1.patch'
+$patch = Join-Path $moInputs 'native/librime/preparation/resources-v2.patch'
 Checked 'git' @('-C', $prepared, "--git-dir=$source/.git", "--work-tree=$prepared", 'apply', '--check', $patch)
 Checked 'git' @('-C', $prepared, "--git-dir=$source/.git", "--work-tree=$prepared", 'apply', $patch)
-$luaPatch = Join-Path $repoRoot 'native/librime/preparation/lua-signed-stack.patch'
+$openccPatch = Join-Path $moInputs 'native/librime/preparation/opencc-directory.patch'
+Checked 'git' @('-C', (Join-Path $prepared 'deps/opencc'), "--git-dir=$source/deps/opencc/.git",
+    "--work-tree=$prepared/deps/opencc", 'apply', '--check', $openccPatch)
+Checked 'git' @('-C', (Join-Path $prepared 'deps/opencc'), "--git-dir=$source/deps/opencc/.git",
+    "--work-tree=$prepared/deps/opencc", 'apply', $openccPatch)
+foreach ($name in @('mo_resource_file.h', 'mo_resource_file.cpp')) {
+    Copy-Item -LiteralPath (Join-Path $moInputs "native/librime/preparation/$name") -Destination (Join-Path $prepared "deps/opencc/src/$name")
+}
+$luaPatch = Join-Path $moInputs 'native/librime/preparation/lua-signed-stack.patch'
 Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/plugins/lua/.git",
     "--work-tree=$prepared/plugins/lua", 'apply', '--check', $luaPatch)
 Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/plugins/lua/.git",
@@ -113,6 +142,7 @@ foreach ($dep in @('leveldb', 'yaml-cpp', 'marisa-trie', 'opencc')) {
     Checked $cmake (@('-S', (Join-Path $prepared "deps/$dep"), '-B', $depBuild) + $common + $options)
     if ($dep -eq 'opencc') {
         Assert-MoRuntimeSourcePaths (Join-Path $depBuild 'CMakeCache.txt') @{ LIBMARISA = (Join-Path $prefix 'lib/marisa.lib') }
+        Assert-MoRuntimeStrictSources (Join-Path $depBuild 'src/libopencc.vcxproj') @((Join-Path $prepared 'deps/opencc/src/mo_resource_file.cpp'))
     }
     Checked $cmake @('--build', $depBuild, '--config', 'Release', '--target', 'install', '--parallel', '4')
 }
@@ -132,7 +162,7 @@ try {
         '-DBUILD_SEPARATE_LIBS=OFF', '-DENABLE_EXTERNAL_PLUGINS=OFF', '-DENABLE_LOGGING=OFF',
         '-DBUILD_TEST=OFF', '-DBUILD_DATA=OFF', '-DENABLE_TIMESTAMP=OFF',
         "-DCMAKE_INCLUDE_PATH=$prefix/include", "-DCMAKE_LIBRARY_PATH=$prefix/lib", "-DBOOST_ROOT=$boost",
-        "-DCMAKE_INSTALL_PREFIX=$dist", "-DCMAKE_PROJECT_rime_INCLUDE=$repoRoot/native/librime/preparation/mo_project.cmake")
+        "-DCMAKE_INSTALL_PREFIX=$dist", "-DCMAKE_PROJECT_rime_INCLUDE=$moInputs/native/librime/preparation/mo_project.cmake")
     Assert-MoRuntimeSourcePaths (Join-Path $rimeBuild 'CMakeCache.txt') @{
         LevelDb_LIBRARY = (Join-Path $prefix 'lib/leveldb.lib'); LevelDb_INCLUDE_PATH = "$prefix/include"
         Marisa_LIBRARY = (Join-Path $prefix 'lib/marisa.lib'); Marisa_INCLUDE_PATH = "$prefix/include"
@@ -140,20 +170,34 @@ try {
         YamlCpp_LIBRARY = (Join-Path $prefix 'lib/yaml-cpp.lib'); YamlCpp_INCLUDE_PATH = "$prefix/include"
         YamlCpp_NEW_API = "$prefix/include"; Boost_INCLUDE_DIR = $boost
     }
+    Assert-MoRuntimeStrictSources (Join-Path $rimeBuild 'src/rime.vcxproj') @(
+        (Join-Path $moInputs 'native/librime/preparation/mo_preparation.cc'),
+        (Join-Path $moInputs 'native/librime/preparation/mo_resource_directory.cpp'))
     Checked $cmake @('--build', $rimeBuild, '--config', 'Release', '--target', 'install', '--parallel', '4')
 } finally { [Environment]::SetEnvironmentVariable('RIME_PLUGINS', $previousPlugins, 'Process') }
-Copy-Item -LiteralPath (Join-Path $prefix 'share/opencc') -Destination (Join-Path $dist 'share/opencc') -Recurse
+$resources = Join-Path $dist 'lib/opencc'
+Copy-Item -LiteralPath (Join-Path $prefix 'share/opencc') -Destination $resources -Recurse
+foreach ($name in @('emoji.json', 'emoji.ocd2', 'others.ocd2')) {
+    if (Test-Path -LiteralPath (Join-Path $resources $name)) { throw 'Unexpected standard resource would be overwritten by Emoji pack.' }
+    Copy-Item -LiteralPath (Join-Path $openccPack $name) -Destination (Join-Path $resources $name)
+}
+$resourceHashes = [ordered]@{}
+foreach ($file in (Get-ChildItem -LiteralPath $resources | Sort-Object Name)) {
+    if ($file.PSIsContainer -or $file.Extension -notin @('.json', '.ocd2')) { throw 'Unexpected runtime OpenCC resource.' }
+    $resourceHashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+}
 
 # Build provenance, NOT a signed release manifest or permission to distribute.
-$provenance = [ordered]@{ format = 1; development_only = $true; redistributable = $false;
-    plugins = @('lua'); preparation_abi = 1; inputs = $inputHashes;
+$provenance = [ordered]@{ format = 2; development_only = $true; redistributable = $false;
+    plugins = @('lua'); preparation_abi = 2; inputs = $inputHashes;
+    mo_inputs = $moHashes; resource_directory = 'lib/opencc'; resources = $resourceHashes;
+    opencc_pack_manifest_sha256 = (Get-FileHash -LiteralPath (Join-Path $openccPack 'manifest.json')).Hash;
     cmake_archive_sha256 = (Get-FileHash -LiteralPath $cmakeArchive).Hash;
     boost_archive_sha256 = (Get-FileHash -LiteralPath $boostArchive).Hash;
     lua_archive_sha256 = (Get-FileHash -LiteralPath $luaArchive).Hash;
     patch_sha256 = (Get-FileHash -LiteralPath $patch).Hash;
     lua_patch_sha256 = (Get-FileHash -LiteralPath $luaPatch).Hash;
-    preparation_source_sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot 'native/librime/preparation/mo_preparation.cc')).Hash;
-    project_hook_sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot 'native/librime/preparation/mo_project.cmake')).Hash;
+    opencc_patch_sha256 = (Get-FileHash -LiteralPath $openccPatch).Hash;
     dll_sha256 = (Get-FileHash -LiteralPath (Join-Path $dist 'lib/rime.dll')).Hash }
 $provenance | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dist 'mo-build-provenance.json') -Encoding utf8NoBOM
 Write-Host "Mo core+Lua development runtime built: $dist"

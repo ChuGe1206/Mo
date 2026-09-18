@@ -10,6 +10,16 @@ use mo_rime::EngineConfig;
 pub const USAGE: &str = "usage: mo-broker --fake | (--rime | --rime-prepared) <absolute-rime.dll> <shared-data-dir> <user-data-dir>";
 pub const INSTALLED_USAGE: &str = "installed mo-broker accepts no command-line arguments";
 
+#[cfg(any(not(debug_assertions), test))]
+const OPENCC_REQUIRED_FILES: [&str; 6] = [
+    "emoji.json",
+    "emoji.ocd2",
+    "others.ocd2",
+    "s2t.json",
+    "STCharacters.ocd2",
+    "STPhrases.ocd2",
+];
+
 #[cfg(not(debug_assertions))]
 pub const USAGE: &str = INSTALLED_USAGE;
 
@@ -62,6 +72,7 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
 pub struct InstalledLayout {
     pub broker_path: PathBuf,
     pub dll_path: PathBuf,
+    pub opencc_data_dir: PathBuf,
     pub shared_data_dir: PathBuf,
     pub prebuilt_data_dir: PathBuf,
     pub user_data_dir: PathBuf,
@@ -82,6 +93,7 @@ impl InstalledLayout {
         Ok(Self {
             broker_path: install.join("bin/mo-broker.exe"),
             dll_path: install.join("runtime/librime/rime.dll"),
+            opencc_data_dir: install.join("runtime/librime/opencc"),
             prebuilt_data_dir: shared.join("build"),
             staging_dir: user.join("build"),
             shared_data_dir: shared,
@@ -121,6 +133,10 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
     let prebuilt = runtime_directory(&layout.prebuilt_data_dir, "installed prebuilt data")?;
     let user = runtime_directory(&layout.user_data_dir, "managed user data")?;
     let staging = runtime_directory(&layout.staging_dir, "managed staging data")?;
+    let opencc = runtime_directory(&layout.opencc_data_dir, "installed OpenCC data")?;
+    for file in OPENCC_REQUIRED_FILES {
+        require_file(&opencc, file, "installed OpenCC data")?;
+    }
     for file in ["default.yaml", "rime_ice.schema.yaml"] {
         require_file(&shared, file, "installed shared data")?;
         require_file(&prebuilt, file, "installed prebuilt data")?;
@@ -297,6 +313,10 @@ mod tests {
             roots.program_files_x64.join("Mo/runtime/librime/rime.dll")
         );
         assert_eq!(
+            layout.opencc_data_dir,
+            roots.program_files_x64.join("Mo/runtime/librime/opencc")
+        );
+        assert_eq!(
             layout.prebuilt_data_dir,
             layout.shared_data_dir.join("build")
         );
@@ -334,11 +354,19 @@ mod tests {
             layout.dll_path.parent().unwrap(),
             &layout.prebuilt_data_dir,
             &layout.staging_dir,
+            &layout.opencc_data_dir,
         ] {
             std::fs::create_dir_all(directory).unwrap();
         }
         for file in [&layout.broker_path, &layout.dll_path] {
             std::fs::write(file, b"fixture only; never loaded").unwrap();
+        }
+        for file in OPENCC_REQUIRED_FILES {
+            std::fs::write(
+                layout.opencc_data_dir.join(file),
+                b"fixture only; never loaded",
+            )
+            .unwrap();
         }
         for root in [&layout.shared_data_dir, &layout.prebuilt_data_dir] {
             for file in ["default.yaml", "rime_ice.schema.yaml"] {
@@ -380,6 +408,18 @@ mod tests {
                 .exists()
         );
 
+        for file in OPENCC_REQUIRED_FILES {
+            let path = layout.opencc_data_dir.join(file);
+            std::fs::remove_file(&path).unwrap();
+            assert_eq!(
+                prepare_installed_startup(&layout.broker_path, &layout)
+                    .err()
+                    .expect("missing OpenCC resource must be rejected")
+                    .kind(),
+                io::ErrorKind::NotFound
+            );
+            std::fs::write(path, b"fixture only; never loaded").unwrap();
+        }
         std::fs::remove_file(layout.prebuilt_data_dir.join("rime_ice.schema.yaml")).unwrap();
         assert_eq!(
             prepare_installed_startup(&layout.broker_path, &layout)

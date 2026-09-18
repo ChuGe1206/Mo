@@ -37,11 +37,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("success") => result?,
         Some("failure") => assert_eq!(
             result,
-            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v1"))
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
         ),
         Some("missing") => assert_eq!(
             result,
-            Err(Error::MissingFunction("mo_rime_prepare_resources_v1"))
+            Err(Error::MissingFunction("mo_rime_prepare_resources_v2"))
         ),
         _ => {
             return Err(
@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let before = session.context()?;
         assert_eq!(
             session.prepare_resources(),
-            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v1"))
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
         );
         assert_eq!(session.context()?, before);
         assert!(session.take_commit()?.is_none());
@@ -79,6 +79,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         assert!(found, "preparation must preserve Emoji candidates");
         session.clear_composition();
+        assert!(session.take_commit()?.is_none());
+        for key in b"nihao" {
+            assert!(session.process_key(i32::from(*key), 0));
+        }
+        assert!(session.select_candidate_on_current_page(0)?);
+        assert_eq!(
+            session.take_commit()?.expect("selected commit").text,
+            "你好"
+        );
         assert!(session.take_commit()?.is_none());
         session.close()?;
     }

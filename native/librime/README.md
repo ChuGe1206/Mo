@@ -1,7 +1,7 @@
 # librime native boundary
 
 Mo consumes librime's public C API plus a versioned Mo-only, input-free resource
-preparation export in its experimental self-built runtime (ADR 0024).
+preparation export in its experimental self-built runtime (ADR 0024/0025).
 `UPSTREAM.toml` identifies the exact
 source revision used to generate and probe the Rust declarations.  Native
 headers, libraries and transitive dependencies are intentionally not committed
@@ -33,6 +33,11 @@ Adding any other plugin requires a manifest and license-policy change.
 `tools/runtime-build` now builds the pinned core plus Lua into a fresh development
 runtime, with external plugins disabled. The tracked preparation patch does not
 change `rime_api.h` or add upstream API-table slots. Installed-mode Broker requires
-the extension to succeed before readiness; official verification DLLs remain
+the v2 extension to succeed before readiness; v1 has no prepared-mode fallback.
+Official verification DLLs remain
 usable only via the explicit legacy debug entry point. Build provenance is not
-release approval, and OpenCC relocation/CWD lookup remains a separate gate.
+release approval. The Mo Simplifier path uses only verified files in the loaded
+DLL's adjacent `opencc` directory, with no cwd/prefix/user/shared search. Legacy
+OpenCC tooling APIs remain upstream-compatible. Installation ACLs/ancestors,
+signatures, authenticated resource updates and full Rime/Lua configuration
+override policy remain separate release gates.

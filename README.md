@@ -13,7 +13,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - Broker 已补齐进程内协调停机、原生引擎请求/finalize watchdog 和整池停机总预算。x64/x86 fake 与真实词库受控探针实际结束/重启 Broker，核对仅清除未提交预编辑、保留已上屏文字、fail-open 和新会话不重放旧词；独立子进程验证八类卡死/panic/总停机故障，见 ADR 0021。正式自动拉起和普通软件故障矩阵仍未验收。
 - 首键专项已定位 Emoji 延迟加载，并补齐无输入的共享资源保活、构建态 Emoji `.ocd2` 预编译/全部词条读回校验、显式开启的无内容分段诊断与高精度完成检查 deadline；不放宽 50 ms、不注入预热按键。首次转换尾延迟、高频候选显示与普通宿主验收仍待闭环，见 ADR 0022。
 - 候选定位增加宿主重入后的 context/range/epoch 身份保护，确定性回归证明并修复“布局已失效却重显旧位置”；按键重连和发送共用一份绝对 50 ms 传输预算，不重复续期。它不替代普通宿主或首次转换尾延迟验收，见 ADR 0023。
-- 新增锁定来源的 core + Lua 自构建开发运行时与无输入资源准备扩展，将实际 OpenCC owner 初始化移至 Broker ready 前。安装模式必须准备成功；缺导出/缺资源不自动回退。正式可重定位资源加载、签名与发行 SBOM 仍待验收，见 ADR 0024。
+- 新增锁定来源的 core + Lua 自构建开发运行时与无输入资源准备扩展，将实际 OpenCC owner 初始化移至 Broker ready 前。v2 固定读取 DLL 旁的 `opencc` 目录，不搜索 cwd/构建 prefix，也不接受用户/共享目录转换资源覆盖；安装模式缺导出/缺资源或只有 v1 均拒绝。签名、安装权限和发行 SBOM 仍待验收，见 ADR 0024/0025。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 51 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。Actor 的当前页候选选择和前后翻页已用真实 rime-ice 验证。
 - 默认 release Broker 只接受无参数的固定安装布局，路径来自 Windows Known Folder API；`--fake`/调用者指定运行时仅在启用 debug assertions 的开发构建可用。发布版目录 ACL、签名资源和首次启动准备仍未验收。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
@@ -58,7 +58,7 @@ cargo +stable test --workspace
 
 真实 smoke 可加 `-OpenccDataDir <已校验预编译包>` 和 `-LatencyTrace`。预编译工具及字典完整性检查步骤见 [OpenCC 构建工具](tools/opencc-build/README.md)；该开发包不是可发行安装资源或签名更新包。
 
-允许列表开发运行时的显式来源准备、构建与边界检查见 [运行时构建工具](tools/runtime-build/README.md)。使用该运行时的 smoke 加 `-PreparedResources`；官方验证 DLL 没有 Mo 准备导出，不能用于这个模式。两者都不是可发行安装包。
+允许列表开发运行时的显式来源准备、构建与边界检查见 [运行时构建工具](tools/runtime-build/README.md)。构建必须传入已校验的 `-OpenccDataDir`；搬迁时保持 DLL 与旁边的 `opencc` 目录一起移动。使用该运行时的 smoke 加 `-PreparedResources`；官方或旧 v1 DLL 不能用于这个模式。两者都不是可发行安装包。
 
 注册系统路由测试需要分权限准备，见 [注册测试步骤](docs/phase-0/REGISTERED-TEST.md)。fake 与真实词库 smoke 均可加 `-Registered`，但只允许普通权限运行，并要求机器 profile 已在管理员 PowerShell 中准备好。用户态 COM/启用状态会回滚并严格核对；机器 profile 最后由管理员清理。此流程不设默认输入法，不是安装包或普通软件验收。
 

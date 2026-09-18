@@ -121,8 +121,10 @@ jobs:
           Invoke-WebRequest 'https://archives.boost.io/release/1.84.0/source/boost_1_84_0.zip' -OutFile $boostArchive
           Invoke-WebRequest 'https://www.lua.org/ftp/lua-5.4.9.tar.gz' -OutFile $luaArchive
           $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
-          ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OutputDirectory $runtime
-          ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source
+          ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -OutputDirectory $runtime
+          ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+          ./tools/runtime-build/test-resource-file.ps1
+          ./tools/runtime-build/test-relocation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -RustToolchain 1.97.1
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-preparation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -OfficialDistDir (Join-Path $env:RUNNER_TEMP 'librime-dist/dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -RustToolchain 1.97.1 -BrokerPath (Join-Path $PWD 'target/debug/mo-broker.exe')
           ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')

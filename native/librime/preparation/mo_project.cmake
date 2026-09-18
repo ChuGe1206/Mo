@@ -7,8 +7,17 @@ function(mo_finish_project)
     message(FATAL_ERROR "Mo permits only the Lua plugin")
   endif()
   target_sources(rime PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_preparation.cc")
+  target_sources(rime PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_resource_directory.cpp")
   set_source_files_properties("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_preparation.cc"
-    PROPERTIES COMPILE_OPTIONS "/W4;/WX")
+    "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/mo_resource_directory.cpp"
+    TARGET_DIRECTORY rime PROPERTIES COMPILE_OPTIONS "/W4;/WX")
+  foreach(source IN ITEMS mo_preparation.cc mo_resource_directory.cpp)
+    get_source_file_property(strict_options "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/${source}"
+      TARGET_DIRECTORY rime COMPILE_OPTIONS)
+    if(NOT "${strict_options}" STREQUAL "/W4;/WX")
+      message(FATAL_ERROR "Mo strict wrapper options are missing in the rime target directory")
+    endif()
+  endforeach()
   target_compile_options(rime PRIVATE /MP4 /utf-8 /sdl /GS /guard:cf)
   target_compile_options(rime-lua-objs PRIVATE /MP4 /utf-8 /sdl /GS /guard:cf)
   target_link_options(rime PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)

@@ -1,0 +1,208 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 7768c89..53a17f6 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -112,6 +112,8 @@ configure_file(
+   "${PROJECT_BINARY_DIR}/src/opencc_config.h")
+ 
+ add_library(libopencc ${LIBOPENCC_SOURCES} ${LIBOPENCC_HEADERS})
++target_sources(libopencc PRIVATE mo_resource_file.cpp)
++set_source_files_properties(mo_resource_file.cpp PROPERTIES COMPILE_OPTIONS "/W4;/WX;/sdl;/GS;/guard:cf")
+ add_library(OpenCC::OpenCC ALIAS libopencc)
+ set_target_properties(libopencc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+ source_group(libopencc FILES ${LIBOPENCC_SOURCES} ${LIBOPENCC_HEADERS})
+diff --git a/src/Config.cpp b/src/Config.cpp
+index a8392b1..b5f5143 100644
+--- a/src/Config.cpp
++++ b/src/Config.cpp
+@@ -19,6 +19,9 @@
+ #include <fstream>
+ #include <list>
+ #include <unordered_map>
++#include <cstring>
++#include <memory>
++#include <set>
+ 
+ #include <rapidjson/document.h>
+ 
+@@ -30,6 +33,7 @@
+ #include "MarisaDict.hpp"
+ #include "MaxMatchSegmentation.hpp"
+ #include "TextDict.hpp"
++#include "mo_resource_file.h"
+ 
+ #ifdef ENABLE_DARTS
+ #include "DartsDict.hpp"
+@@ -44,6 +48,24 @@ namespace {
+ class ConfigInternal {
+ public:
+   std::vector<std::string> paths;
++  std::string mo_directory;
++
++  void ValidateMoJson(const JSONValue& value, size_t depth = 0) {
++    if (depth >= 32) throw InvalidFormat("Mo JSON nesting limit");
++    if (value.IsString() && std::strlen(value.GetString()) != value.GetStringLength()) {
++      throw InvalidFormat("Mo JSON string contains NUL");
++    }
++    if (value.IsObject()) {
++      std::set<std::string> names;
++      for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it) {
++        ValidateMoJson(it->name, depth + 1);
++        if (!names.insert(it->name.GetString()).second) throw InvalidFormat("Mo duplicate JSON property");
++        ValidateMoJson(it->value, depth + 1);
++      }
++    } else if (value.IsArray()) {
++      for (rapidjson::SizeType i = 0; i < value.Size(); ++i) ValidateMoJson(value[i], depth + 1);
++    }
++  }
+ 
+   const JSONValue& GetProperty(const JSONValue& doc, const char* name) {
+     if (!doc.HasMember(name)) {
+@@ -74,11 +96,19 @@ public:
+       throw InvalidFormat("Property must be a std::string: " +
+                           std::string(name));
+     }
++    if (!mo_directory.empty() && std::strlen(obj.GetString()) != obj.GetStringLength()) {
++      throw InvalidFormat("Mo resource string contains NUL");
++    }
+     return obj.GetString();
+   }
+ 
+   template <typename DICT>
+   DictPtr LoadDictWithPaths(const std::string& fileName) {
++    if (!mo_directory.empty()) {
++      std::unique_ptr<FILE, decltype(&fclose)> file(
++          mo::OpenResourceFile(mo_directory, fileName, ".ocd2", 64ULL * 1024 * 1024), &fclose);
++      return DICT::NewFromFile(file.get());
++    }
+     // Working directory
+     std::shared_ptr<DICT> dict;
+     if (SerializableDict::TryLoadFromFile<DICT>(fileName, &dict)) {
+@@ -95,6 +125,9 @@ public:
+ 
+   DictPtr LoadDictFromFile(const std::string& type,
+                            const std::string& fileName) {
++    if (!mo_directory.empty() && type != "ocd2") {
++      throw InvalidFormat("Mo requires precompiled dictionaries");
++    }
+     if (type == "text") {
+       DictPtr dict = LoadDictWithPaths<TextDict>(fileName);
+       return MarisaDict::NewFromDict(*dict.get());
+@@ -111,16 +144,20 @@ public:
+     return nullptr;
+   }
+ 
+-  DictPtr ParseDict(const JSONValue& doc) {
++  DictPtr ParseDict(const JSONValue& doc, size_t depth = 0) {
++    if (!mo_directory.empty() && depth >= 16) throw InvalidFormat("Mo dictionary nesting limit");
+     // Required: type
+     std::string type = GetStringProperty(doc, "type");
+ 
+     if (type == "group") {
+       std::list<DictPtr> dicts;
+       const JSONValue& docs = GetArrayProperty(doc, "dicts");
++      if (!mo_directory.empty() && (docs.Empty() || docs.Size() > 64)) {
++        throw InvalidFormat("Mo dictionary group size rejected");
++      }
+       for (rapidjson::SizeType i = 0; i < docs.Size(); i++) {
+         if (docs[i].IsObject()) {
+-          DictPtr dict = ParseDict(docs[i]);
++          DictPtr dict = ParseDict(docs[i], depth + 1);
+           dicts.push_back(dict);
+         } else {
+           throw InvalidFormat("Element of the array must be an object");
+@@ -158,6 +195,9 @@ public:
+   }
+ 
+   ConversionChainPtr ParseConversionChain(const JSONValue& docs) {
++    if (!mo_directory.empty() && (docs.Empty() || docs.Size() > 16)) {
++      throw InvalidFormat("Mo conversion chain size rejected");
++    }
+     std::list<ConversionPtr> conversions;
+     for (rapidjson::SizeType i = 0; i < docs.Size(); i++) {
+       const JSONValue& doc = docs[i];
+@@ -165,6 +205,7 @@ public:
+         ConversionPtr conversion = ParseConversion(doc);
+         conversions.push_back(conversion);
+       } else {
++        if (!mo_directory.empty()) throw InvalidFormat("Mo conversion must be an object");
+       }
+     }
+     ConversionChainPtr chain(new ConversionChain(conversions));
+@@ -226,11 +267,32 @@ ConverterPtr Config::NewFromFile(const std::string& fileName) {
+   return NewFromFile(fileName, std::vector<std::string>{}, nullptr);
+ }
+ 
++ConverterPtr Config::NewFromFileInDirectory(const std::string& fileName,
++                                          const std::string& directory) {
++  ConfigInternal* impl = reinterpret_cast<ConfigInternal*>(internal);
++  if (directory.empty()) throw InvalidFormat("Mo resource directory is empty");
++  impl->mo_directory = directory;
++  std::unique_ptr<FILE, decltype(&fclose)> file(
++      mo::OpenResourceFile(directory, fileName, ".json", 64 * 1024), &fclose);
++  std::string content;
++  char buffer[4096];
++  size_t count;
++  while ((count = fread(buffer, 1, sizeof(buffer), file.get())) != 0) {
++    if (content.size() + count > 64 * 1024) throw InvalidFormat("Mo config size rejected");
++    content.append(buffer, count);
++  }
++  if (ferror(file.get())) throw InvalidFormat("Mo config read failed");
++  if (content.find('\0') != std::string::npos) throw InvalidFormat("Mo config contains NUL");
++  // The strict branch copies JSON strings into the parser's own storage.
++  return NewFromString(content, std::vector<std::string>{});
++}
++
+ ConverterPtr Config::NewFromFile(const std::string& fileName,
+                                  const std::vector<std::string>& paths,
+                                  const char* argv0) {
+   ConfigInternal* impl = reinterpret_cast<ConfigInternal*>(internal);
+   impl->paths = paths;
++  impl->mo_directory.clear();
+   if (argv0 != nullptr) {
+     std::string parent = GetParentDirectory(argv0);
+     if (!parent.empty()) {
+@@ -276,13 +338,19 @@ ConverterPtr Config::NewFromString(const std::string& json,
+                                    const std::vector<std::string>& paths) {
+   rapidjson::Document doc;
+ 
+-  doc.ParseInsitu<0>(const_cast<char*>(json.c_str()));
++  ConfigInternal* impl = reinterpret_cast<ConfigInternal*>(internal);
++  if (!impl->mo_directory.empty()) {
++    doc.Parse<rapidjson::kParseValidateEncodingFlag | rapidjson::kParseIterativeFlag>(json.c_str());
++  } else {
++    doc.ParseInsitu<0>(const_cast<char*>(json.c_str()));
++  }
+   if (doc.HasParseError()) {
+     throw InvalidFormat("Error parsing JSON"); // doc.GetErrorOffset()
+   }
+   if (!doc.IsObject()) {
+     throw InvalidFormat("Root of configuration must be an object");
+   }
++  if (!impl->mo_directory.empty()) impl->ValidateMoJson(doc);
+ 
+   // Optional: name
+   std::string name;
+@@ -290,7 +358,6 @@ ConverterPtr Config::NewFromString(const std::string& json,
+     name = doc["name"].GetString();
+   }
+ 
+-  ConfigInternal* impl = reinterpret_cast<ConfigInternal*>(internal);
+   impl->paths = paths;
+ 
+   // Required: segmentation
+diff --git a/src/Config.hpp b/src/Config.hpp
+index 6b744b9..2df744a 100644
+--- a/src/Config.hpp
++++ b/src/Config.hpp
+@@ -39,6 +39,10 @@ public:
+ 
+   ConverterPtr NewFromFile(const std::string& fileName);
+ 
++  // Mo-only strict loader: no CWD, package prefix, or alternative paths.
++  ConverterPtr NewFromFileInDirectory(const std::string& fileName,
++                                     const std::string& directory);
++
+   ConverterPtr NewFromFile(const std::string& fileName,
+                            const std::vector<std::string>& paths,
+                            const char* argv0);
