@@ -8,6 +8,7 @@
 #include <textstor.h>
 
 #include <iostream>
+#include <array>
 #include <limits>
 #include <new>
 #include <string>
@@ -66,6 +67,68 @@ public:
 private:
     HRESULT result_;
 };
+
+// Probe-only observer. Callbacks never change focus, acquire context locks,
+// dereference borrowed document/context pointers or emit unbounded logging.
+class ProbeFocusRecorder final : public ITfThreadMgrEventSink, public ITfThreadFocusSink {
+public:
+    explicit ProbeFocusRecorder(ITfThreadMgr* manager) noexcept : manager_(manager) {}
+    void ExpectedDocument(ITfDocumentMgr* document) noexcept { expected_ = document; }
+    void Checkpoint(const wchar_t* checkpoint) noexcept { checkpoint_ = checkpoint; }
+    void Report() const noexcept {
+        ComPtr<ITfDocumentMgr> focus;
+        const HRESULT result = manager_->GetFocus(&focus);
+        std::wcerr << L"MO_DOCUMENT focus_result=" << result << L" focus=" << DocumentKind(focus.Get())
+            << L" events=" << total_ << L" retained=" << (total_ < events_.size() ? total_ : events_.size()) << L'\n';
+        const std::uint64_t first = total_ > events_.size() ? total_ - events_.size() : 0;
+        for (std::uint64_t sequence = first; sequence < total_; ++sequence) {
+            const auto& event = events_[static_cast<size_t>(sequence % events_.size())];
+            std::wcerr << L"MO_FOCUS seq=" << sequence + 1 << L" kind=" << event.kind
+                << L" current=" << event.current << L" previous=" << event.previous
+                << L" checkpoint=" << event.checkpoint << L'\n';
+        }
+    }
+    STDMETHODIMP QueryInterface(REFIID iid, void** object) noexcept override {
+        if (object == nullptr) { return E_POINTER; }
+        *object = nullptr;
+        if (iid == IID_IUnknown || iid == IID_ITfThreadMgrEventSink) {
+            *object = static_cast<ITfThreadMgrEventSink*>(this);
+        } else if (iid == IID_ITfThreadFocusSink) { *object = static_cast<ITfThreadFocusSink*>(this); }
+        else { return E_NOINTERFACE; }
+        AddRef(); return S_OK;
+    }
+    STDMETHODIMP_(ULONG) AddRef() noexcept override { return static_cast<ULONG>(InterlockedIncrement(&references_)); }
+    STDMETHODIMP_(ULONG) Release() noexcept override {
+        const LONG count = InterlockedDecrement(&references_);
+        if (count == 0) { delete this; }
+        return static_cast<ULONG>(count);
+    }
+    STDMETHODIMP OnInitDocumentMgr(ITfDocumentMgr* document) noexcept override { Record(1, DocumentKind(document), 0); return S_OK; }
+    STDMETHODIMP OnUninitDocumentMgr(ITfDocumentMgr* document) noexcept override { Record(2, DocumentKind(document), 0); return S_OK; }
+    STDMETHODIMP OnSetFocus(ITfDocumentMgr* current, ITfDocumentMgr* previous) noexcept override {
+        Record(3, DocumentKind(current), DocumentKind(previous)); return S_OK;
+    }
+    STDMETHODIMP OnPushContext(ITfContext*) noexcept override { Record(4, 0, 0); return S_OK; }
+    STDMETHODIMP OnPopContext(ITfContext*) noexcept override { Record(5, 0, 0); return S_OK; }
+    STDMETHODIMP OnSetThreadFocus() noexcept override { Record(6, 0, 0); return S_OK; }
+    STDMETHODIMP OnKillThreadFocus() noexcept override { Record(7, 0, 0); return S_OK; }
+private:
+    DWORD DocumentKind(ITfDocumentMgr* document) const noexcept {
+        return document == nullptr ? 0 : document == expected_ ? 1 : 2;
+    }
+    void Record(DWORD kind, DWORD current, DWORD previous) noexcept {
+        events_[static_cast<size_t>(total_ % events_.size())] = {kind, current, previous, checkpoint_};
+        ++total_;
+    }
+    struct Event final { DWORD kind = 0, current = 0, previous = 0; const wchar_t* checkpoint = L"setup"; };
+    LONG references_ = 1;
+    ITfThreadMgr* manager_;
+    ITfDocumentMgr* expected_ = nullptr;
+    const wchar_t* checkpoint_ = L"setup";
+    std::uint64_t total_ = 0;
+    std::array<Event, 32> events_{};
+};
+ProbeFocusRecorder* g_probe_focus = nullptr;
 
 class FakeThreadManager final : public ITfThreadMgr, public ITfKeystrokeMgr {
 public:
@@ -1017,6 +1080,7 @@ void ReportCandidateState(ITfTextInputProcessorEx* service, const wchar_t* check
     // Always available in the test executable, even when production TIP
     // diagnostics are compiled out. Never log document or candidate content.
     std::wcerr << L"MO_CHECKPOINT checkpoint=" << checkpoint << L'\n';
+    if (g_probe_focus != nullptr) { g_probe_focus->Report(); }
     EnumThreadWindows(GetCurrentThreadId(), [](HWND window, LPARAM) -> BOOL {
         wchar_t name[64]{};
         GetClassNameW(window, name, ARRAYSIZE(name));
@@ -1045,8 +1109,14 @@ void ReportCandidateState(ITfTextInputProcessorEx* service, const wchar_t* check
             << L" termination_owner_active=" << timing.termination_owner_active
             << L" termination_sent=" << timing.termination_sent
             << L" termination_owner_foreground=" << timing.termination_owner_foreground
+            << L" termination_notifications=" << timing.termination_notification_count
             << L" dispatch_us=" << timing.dispatch_total_us << L" pre_send_us=" << timing.dispatch_pre_send_us
             << L" connect_us=" << timing.dispatch_connect_us << L" modifiers_us=" << timing.dispatch_modifiers_us << L'\n';
+        std::wcerr << L"MO_TERMINATION_STACK count=" << timing.termination_frame_count << L'\n';
+        for (DWORD i = 0; i < timing.termination_frame_count && i < mo::windows_tip::kTerminationFrameCapacity; ++i) {
+            std::wcerr << L"MO_FRAME index=" << i << L" module=" << timing.termination_frames[i].module
+                << L" rva=0x" << std::hex << timing.termination_frames[i].rva << std::dec << L'\n';
+        }
     }
 #else
     (void)service;
@@ -1055,6 +1125,7 @@ void ReportCandidateState(ITfTextInputProcessorEx* service, const wchar_t* check
 
 bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service,
     const wchar_t* checkpoint) noexcept {
+    if (g_probe_focus != nullptr) { g_probe_focus->Checkpoint(checkpoint); }
     const ULONGLONG deadline = GetTickCount64() + 2000;
     do {
         PumpProbeMessages();
@@ -1153,9 +1224,23 @@ int probe_broker_input(
     }
 
     TfClientId client_id = TF_CLIENTID_NULL;
-    result = thread_manager->Activate(&client_id);
+    DWORD thread_manager_flags = 0;
+    if (!registered && !activating_test_host) {
+        ComPtr<ITfThreadMgrEx> isolated_manager;
+        result = thread_manager.As(&isolated_manager);
+        if (SUCCEEDED(result)) {
+            result = isolated_manager->ActivateEx(&client_id,
+                TF_TMAE_NOACTIVATETIP | TF_TMAE_NOACTIVATEKEYBOARDLAYOUT);
+        }
+        if (SUCCEEDED(result)) { result = isolated_manager->GetActiveFlags(&thread_manager_flags); }
+        if (SUCCEEDED(result) && (thread_manager_flags & TF_TMF_NOACTIVATETIP) == 0) {
+            result = E_UNEXPECTED;
+        }
+    } else {
+        result = thread_manager->Activate(&client_id);
+    }
     if (FAILED(result)) {
-        return fail(L"ITfThreadMgr::Activate", result);
+        return fail(L"ITfThreadMgr activation policy", result);
     }
 
     int outcome = 0;
@@ -1179,7 +1264,26 @@ int probe_broker_input(
     ComPtr<ITfKeystrokeMgr> system_key_manager;
     ComPtr<ITfInputProcessorProfileMgr> profile_manager;
     ComPtr<ITfKeyEventSink> direct_key_sink;
+    ComPtr<ProbeFocusRecorder> focus_recorder;
+    ComPtr<ITfSource> focus_source;
+    DWORD document_focus_cookie = TF_INVALID_COOKIE, thread_focus_cookie = TF_INVALID_COOKIE;
+    struct FocusScope final {
+        ~FocusScope() noexcept { g_probe_focus = nullptr; }
+    } focus_scope;
     do {
+        focus_recorder.Attach(new (std::nothrow) ProbeFocusRecorder(thread_manager.Get()));
+        if (focus_recorder == nullptr) { outcome = fail(L"ProbeFocusRecorder allocation", E_OUTOFMEMORY); break; }
+        result = thread_manager.As(&focus_source);
+        if (SUCCEEDED(result)) {
+            result = focus_source->AdviseSink(IID_ITfThreadMgrEventSink,
+                static_cast<ITfThreadMgrEventSink*>(focus_recorder.Get()), &document_focus_cookie);
+        }
+        if (SUCCEEDED(result)) {
+            result = focus_source->AdviseSink(IID_ITfThreadFocusSink,
+                static_cast<ITfThreadFocusSink*>(focus_recorder.Get()), &thread_focus_cookie);
+        }
+        if (FAILED(result)) { outcome = fail(L"AdviseSink(probe focus observers)", result); break; }
+        g_probe_focus = focus_recorder.Get();
         edit_window = CreateWindowExW(
             WS_EX_TOOLWINDOW | ((!registered && !activating_test_host) ? WS_EX_NOACTIVATE : 0),
             L"EDIT",
@@ -1204,6 +1308,7 @@ int probe_broker_input(
         const bool owner_foreground = GetForegroundWindow() == edit_window;
         const bool owner_active = GetActiveWindow() == edit_window;
         std::wcout << L"MO_HOST noactivate=" << (!registered && !activating_test_host)
+            << L" no_other_tip=" << ((thread_manager_flags & TF_TMF_NOACTIVATETIP) != 0)
             << L" created_foreground=" << owner_foreground << L" created_active=" << owner_active << L'\n';
         if (!registered && !activating_test_host && (owner_foreground || owner_active)) {
             std::wcerr << L"Nonactivating probe host acquired window activation\n";
@@ -1222,6 +1327,7 @@ int probe_broker_input(
             break;
         }
         TfEditCookie edit_cookie = 0;
+        focus_recorder->ExpectedDocument(document_manager.Get());
         result = document_manager->CreateContext(
             client_id,
             0,
@@ -1512,9 +1618,23 @@ int probe_broker_input(
             edit_store->OnNextWrite(nullptr, nullptr);
             std::wcout << L"MO_TERMINATION_REENTRY fired=" << termination_reentry.fired
                 << L" fail_open=" << termination_reentry.fail_open << L'\n';
+            bool termination_count_ok = true;
+#ifdef MO_LATENCY_TRACE
+            ReportCandidateState(service, L"explicit-owner-termination");
+            ComPtr<mo::windows_tip::IBrokerDiagnostics> termination_diagnostics;
+            mo::windows_tip::BrokerTiming termination_timing{};
+            termination_count_ok = SUCCEEDED(service->QueryInterface(IID_PPV_ARGS(&termination_diagnostics)))
+                && SUCCEEDED(termination_diagnostics->ReadLastTiming(&termination_timing))
+                && termination_timing.termination_notification_count
+                    == static_cast<std::uint64_t>(termination_case + 1);
+            if (!termination_count_ok) {
+                std::wcerr << L"Unexpected host termination entered controlled probe\n";
+            }
+#endif
             edit_store->GrantDeferredLock();
             PumpProbeMessages();
-            if (FAILED(result) || !WaitForCandidateWindow(false, service, L"owner-termination-after")
+            if (!termination_count_ok || FAILED(result)
+                || !WaitForCandidateWindow(false, service, L"owner-termination-after")
                 || edit_store->text() != expected) {
                 std::wcerr << L"Owner termination left preedit or changed committed prefix"
                     << L" result=" << result << L" prefix_intact=" << (edit_store->text() == expected) << L'\n';
@@ -1645,6 +1765,9 @@ int probe_broker_input(
             outcome = fail(L"ITfTextInputProcessor::Deactivate", result);
         }
     }
+    g_probe_focus = nullptr;
+    if (document_focus_cookie != TF_INVALID_COOKIE) { focus_source->UnadviseSink(document_focus_cookie); }
+    if (thread_focus_cookie != TF_INVALID_COOKIE) { focus_source->UnadviseSink(thread_focus_cookie); }
     if (context_pushed) {
         result = document_manager->Pop(TF_POPF_ALL);
         if (FAILED(result) && outcome == 0) {
@@ -1802,12 +1925,18 @@ int wmain(int argument_count, wchar_t** arguments) {
         service->Release(); FreeLibrary(module); return fail(L"Deadline arithmetic", E_FAIL);
     }
     {
-        const IID retired_diagnostics_iid = {0x1DE6A239, 0x4965, 0x487B, {0xA8, 0x86, 0x21, 0x2C, 0x37, 0x5F, 0x37, 0x08}};
-        IUnknown* retired = nullptr;
-        result = service->QueryInterface(retired_diagnostics_iid, reinterpret_cast<void**>(&retired));
-        if (retired != nullptr) { retired->Release(); }
-        if (result != E_NOINTERFACE || retired != nullptr) {
-            service->Release(); FreeLibrary(module); return fail(L"Retired diagnostics ABI is still exposed", E_FAIL);
+        const IID retired_iids[] = {
+            {0x1DE6A239, 0x4965, 0x487B, {0xA8, 0x86, 0x21, 0x2C, 0x37, 0x5F, 0x37, 0x08}},
+            {0xB37A59F4, 0x8F18, 0x4D58, {0x90, 0xD2, 0x37, 0xA5, 0x16, 0xD0, 0x41, 0x97}},
+            {0xD46387F9, 0x3B9D, 0x48AD, {0xBB, 0x87, 0x18, 0x4D, 0x32, 0x2A, 0x6E, 0x65}}
+        };
+        for (const auto& iid : retired_iids) {
+            IUnknown* retired = nullptr;
+            result = service->QueryInterface(iid, reinterpret_cast<void**>(&retired));
+            if (retired != nullptr) { retired->Release(); }
+            if (result != E_NOINTERFACE || retired != nullptr) {
+                service->Release(); FreeLibrary(module); return fail(L"Retired diagnostics ABI is still exposed", E_FAIL);
+            }
         }
     }
 #ifdef MO_LATENCY_TRACE
@@ -1828,6 +1957,8 @@ int wmain(int argument_count, wchar_t** arguments) {
             || timing.termination_owner_active != 0 || timing.termination_sent != 0 || timing.termination_owner_foreground != 0
             || timing.dispatch_total_us != 0 || timing.dispatch_pre_send_us != 0
             || timing.dispatch_connect_us != 0 || timing.dispatch_modifiers_us != 0
+            || timing.termination_notification_count != 0
+            || timing.termination_frame_count != 0
             || service_identity.Get() == nullptr || service_identity.Get() != diagnostics_identity.Get()) {
             // ComPtrs must die before unloading the module on this failure path.
             diagnostics.Reset(); service_identity.Reset(); diagnostics_identity.Reset();
@@ -1836,7 +1967,7 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
 #else
     {
-        const IID diagnostics_iid = {0xB37A59F4, 0x8F18, 0x4D58, {0x90, 0xD2, 0x37, 0xA5, 0x16, 0xD0, 0x41, 0x97}};
+        const IID diagnostics_iid = {0x4EAD6830, 0x8CB1, 0x4C04, {0xA7, 0x03, 0x8F, 0x1E, 0x90, 0x99, 0x08, 0x22}};
         IUnknown* diagnostics = nullptr;
         result = service->QueryInterface(diagnostics_iid, reinterpret_cast<void**>(&diagnostics));
         if (diagnostics != nullptr) { diagnostics->Release(); }

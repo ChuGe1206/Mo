@@ -137,3 +137,15 @@ and include dispatch preparation/connection/modifier timing. Failures preserve
 named lifecycle checkpoints even in default builds. The independent entry is
 `tools/candidate-lifecycle-probe.ps1`; historical termination and tail-latency
 failures remain open evidence, not daily-use acceptance.
+
+ADR 0028 isolates the unregistered direct-sink model from the user's active
+system text services with `ITfThreadMgrEx::ActivateEx` and the paired
+NOACTIVATETIP/NOACTIVATEKEYBOARDLAYOUT flags. The probe verifies the reported
+active flag, keeps its owner inactive, observes bounded document/thread-focus
+events, and in trace builds requires exactly the two explicit owner termination
+notifications. Registered routing and the opt-in activating test host still use
+normal TSF activation as separate models. Trace-only termination frames contain
+only module categories and RVAs; `MoStackSymbolResolver.vcxproj` is an offline
+DIA helper for explicitly matched public PDBs and is never staged or invoked by
+normal builds. None of this weakens product host-termination cleanup or changes
+the 50 ms transport budget.

@@ -115,6 +115,9 @@ function Invoke-MoBrokerFaultProbe(
             Write-Host "MO_FIRST_KEYS count=$($keyTimes.Count) min_us=$($stats.Minimum) max_us=$($stats.Maximum)"
             Write-Host (($stdout.Result -split '\r?\n' | Where-Object { $_ -and -not $_.StartsWith('MO_CLIENT ') -and -not $_.StartsWith('MO_DISPATCH ') }) -join "`n")
         } else { Write-Host $stdout.Result.Trim() }
+        # Successful trace probes include bounded owner-termination baselines.
+        # Preserve them too, so a failure stack has a same-binary comparison.
+        if (-not [string]::IsNullOrWhiteSpace($stderr.Result)) { Write-Host $stderr.Result.Trim() }
     } catch {
         $failureMessage = $_.Exception.Message
         # Preserve the bounded native probe transcript on failure. Previously

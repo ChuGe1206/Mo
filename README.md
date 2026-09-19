@@ -70,6 +70,6 @@ cargo +stable test --workspace
   -OutputDirectory "$PWD/build/mo-candidate-new" -Repetitions 20 -LatencyTrace
 ```
 
-去掉 `-LatencyTrace` 验证默认关闭诊断，`-Fake` 验证无真实引擎的宿主状态机。入口不注册/安装、不替换素材包；默认测试宿主不获取前台或窗口队列激活。宿主终止清理的确定性修复、旧激活模型负向样本和未关闭风险见 [ADR 0027](docs/adr/0027-host-termination-and-candidate-lifecycle-evidence.md)。不能将复跑通过当作普通宿主或日常使用验收。
+去掉 `-LatencyTrace` 验证默认关闭诊断，`-Fake` 验证无真实引擎的宿主状态机。入口不注册/安装、不替换素材包；默认测试宿主不获取前台或窗口队列激活，并禁止把用户当前系统文本服务激活进受控文档。宿主终止清理的确定性修复见 [ADR 0027](docs/adr/0027-host-termination-and-candidate-lifecycle-evidence.md)，旧探针污染的定位与隔离见 [ADR 0028](docs/adr/0028-isolated-tsf-probe-and-termination-origin.md)。不能将隔离压力通过当作普通宿主或日常使用验收。
 
 设计基线见 [产品与软件架构设计 v0.2](docs/MO-INPUT-METHOD-DESIGN-v0.2.md)，当前实证见 [Phase 0 状态](docs/phase-0/STATUS.md)，硬验收门见 [Phase 0 验收门](docs/phase-0/ACCEPTANCE.md)。

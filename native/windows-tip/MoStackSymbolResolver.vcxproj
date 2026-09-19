@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion><Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{F3A82E07-E578-42B9-92C3-9418A66A71D6}</ProjectGuid>
+    <RootNamespace>MoStackSymbolResolver</RootNamespace><WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset><WholeProgramOptimization>true</WholeProgramOptimization><CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)out\msbuild\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)out\msbuild\obj\$(Platform)\$(Configuration)\resolver\</IntDir>
+    <TargetName>mo_stack_symbol_resolver</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError><SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode><LanguageStandard>stdcpp17</LanguageStandard><ControlFlowGuard>Guard</ControlFlowGuard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(VCInstallDir)..\DIA SDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link><SubSystem>Console</SubSystem><AdditionalDependencies>ole32.lib;oleaut32.lib;diaguids.lib;%(AdditionalDependencies)</AdditionalDependencies><AdditionalLibraryDirectories>$(VCInstallDir)..\DIA SDK\lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories><ControlFlowGuard>Guard</ControlFlowGuard></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup><ClCompile Include="probe\symbol_resolver.cpp" /></ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

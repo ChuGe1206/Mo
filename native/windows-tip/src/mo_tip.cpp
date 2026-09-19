@@ -42,6 +42,30 @@ enum class CandidateReset : DWORD {
 };
 
 #ifdef MO_LATENCY_TRACE
+mo::windows_tip::TerminationFrame DescribeTerminationFrame(void* address) noexcept {
+    mo::windows_tip::TerminationFrame frame{};
+    HMODULE module = nullptr;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+        | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCWSTR>(address), &module)) { return frame; }
+    const wchar_t* names[] = {L"msctf.dll", L"user32.dll", L"ntdll.dll", L"combase.dll",
+        L"imm32.dll", L"win32u.dll", L"kernelbase.dll", L"kernel32.dll", L"mo_tip_abi_probe.exe",
+        L"textinputframework.dll", L"msctfmonitor.dll", L"msutb.dll", L"ole32.dll",
+        L"rpcrt4.dll", L"ucrtbase.dll", L"vcruntime140.dll", L"vcruntime140_1.dll"};
+    if (module == g_module) { frame.module = 1; }
+    else {
+        for (DWORD i = 0; i < ARRAYSIZE(names); ++i) {
+            if (module == GetModuleHandleW(names[i])) { frame.module = i + 2; break; }
+        }
+    }
+    // Unknown modules have no exported address or path metadata.
+    if (frame.module != 0) {
+        frame.rva = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(address)
+            - reinterpret_cast<std::uintptr_t>(module));
+    }
+    return frame;
+}
+
 class MetadataDuration final {
 public:
     explicit MetadataDuration(std::uint64_t* output) noexcept : output_(output) {}
@@ -238,6 +262,11 @@ public:
         timing->dispatch_pre_send_us = dispatch_pre_send_us_;
         timing->dispatch_connect_us = dispatch_connect_us_;
         timing->dispatch_modifiers_us = dispatch_modifiers_us_;
+        timing->termination_notification_count = termination_notification_count_;
+        timing->termination_frame_count = termination_frame_count_;
+        for (DWORD i = 0; i < termination_frame_count_; ++i) {
+            timing->termination_frames[i] = DescribeTerminationFrame(termination_frames_[i]);
+        }
         return S_OK;
     }
 #endif
@@ -395,6 +424,9 @@ public:
                 return composition_.Get() == composition && active_range_.Get() == terminated_range.Get();
             };
 #ifdef MO_LATENCY_TRACE
+            ++termination_notification_count_;
+            termination_frame_count_ = CaptureStackBackTrace(0,
+                mo::windows_tip::kTerminationFrameCapacity, termination_frames_.data(), nullptr);
             termination_owner_active_ = candidate_owner_ != nullptr
                 && GetActiveWindow() == candidate_owner_ ? 1 : 0;
             termination_sent_ = InSendMessageEx(nullptr);
@@ -1218,6 +1250,9 @@ private:
     HRESULT last_edit_request_ = S_OK, last_edit_session_ = S_OK;
     DWORD termination_owner_active_ = 0, termination_sent_ = 0, termination_owner_foreground_ = 0;
     std::uint64_t dispatch_total_us_ = 0, dispatch_pre_send_us_ = 0, dispatch_connect_us_ = 0, dispatch_modifiers_us_ = 0;
+    std::uint64_t termination_notification_count_ = 0;
+    DWORD termination_frame_count_ = 0;
+    std::array<void*, mo::windows_tip::kTerminationFrameCapacity> termination_frames_{};
 #endif
     std::uint64_t latest_revision_ = 0;
     std::uint64_t candidate_epoch_ = 0;

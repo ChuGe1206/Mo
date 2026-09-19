@@ -84,7 +84,8 @@ foreach ($directory in @('src', 'include', 'probe')) {
         Copy-StageFile (Join-Path $repo "native/windows-tip/$directory/$name") (Join-Path $nativeSource "$directory/$name")
     }
 }
-foreach ($name in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj')) {
+foreach ($name in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj',
+        'MoStackSymbolResolver.vcxproj')) {
     Copy-StageFile (Join-Path $repo "native/windows-tip/$name") (Join-Path $nativeSource $name)
 }
 foreach ($name in @('prepare-stage.ps1', 'staging-policy.ps1', 'deploy-data.cpp')) {

@@ -54,6 +54,11 @@ try {
     $null = Assert-MoPreparedStage $stage
     ++$passed
     Write-Host "Candidate lifecycle policy tests passed: $passed. No compilation, registration, installation or network access."
+    # The missing-toolchain negative cases intentionally leave rustup's native
+    # exit code nonzero. Clear only that process-status channel after every policy
+    # assertion has passed so callers do not mistake a successful script for a
+    # native-tool failure.
+    $global:LASTEXITCODE = 0
 } finally {
     $resolved = Assert-MoPlainPath $fixture
     if (-not $resolved.StartsWith((Join-Path $repo 'build') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe policy fixture cleanup target.' }
