@@ -6,7 +6,6 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <filesystem>
 #include <limits>
 #include <new>
 #include <string>
@@ -14,6 +13,7 @@
 #include <wrl/client.h>
 
 #include "mo_broker_client.h"
+#include "mo_broker_launcher.h"
 #include "mo_candidate_window.h"
 #include "mo_tip_ids.h"
 
@@ -28,6 +28,7 @@ HINSTANCE g_module = nullptr;
 constexpr DWORD kBrokerActivationTimeoutMs = 400;
 constexpr DWORD kBrokerKeyTimeoutMs = 50;
 constexpr ULONGLONG kBrokerReconnectBackoffMs = 250;
+constexpr ULONGLONG kBrokerStartBackoffMs = 2000;
 constexpr std::uint16_t kShiftModifier = 1U << 0U;
 constexpr std::uint16_t kControlModifier = 1U << 1U;
 constexpr std::uint16_t kAltModifier = 1U << 2U;
@@ -78,57 +79,6 @@ private:
     std::uint64_t* output_;
 };
 #endif
-
-bool PathComponentEquals(
-    const std::filesystem::path& component,
-    const wchar_t* expected) noexcept {
-    return _wcsicmp(component.c_str(), expected) == 0;
-}
-
-std::wstring ExpectedBrokerPath() {
-    std::array<wchar_t, 32768> module_path{};
-    const DWORD length = GetModuleFileNameW(
-        g_module,
-        module_path.data(),
-        static_cast<DWORD>(module_path.size()));
-    if (length == 0 || length >= module_path.size()) {
-        return {};
-    }
-
-    const std::filesystem::path module(module_path.data());
-    const std::filesystem::path directory = module.parent_path();
-    const auto is_known_architecture = [](const std::filesystem::path& component) noexcept {
-        return PathComponentEquals(component, L"x64")
-            || PathComponentEquals(component, L"x86")
-            || PathComponentEquals(component, L"Win32");
-    };
-
-    // Installed layout: <root>\tip\<architecture>\mo-tip.dll and
-    // <root>\bin\mo-broker.exe.
-    const std::filesystem::path tip_directory = directory.parent_path();
-    if (is_known_architecture(directory.filename())
-        && PathComponentEquals(tip_directory.filename(), L"tip")) {
-        return (tip_directory.parent_path() / L"bin" / L"mo-broker.exe").wstring();
-    }
-
-    // Repository-only layout used by the native probes. This exact component
-    // check prevents a shipping DLL from honoring an environment or cwd-based
-    // development override.
-    const std::filesystem::path msbuild_directory = directory.parent_path().parent_path();
-    const std::filesystem::path out_directory = msbuild_directory.parent_path();
-    const std::filesystem::path windows_tip_directory = out_directory.parent_path();
-    const std::filesystem::path native_directory = windows_tip_directory.parent_path();
-    if (is_known_architecture(directory.parent_path().filename())
-        && PathComponentEquals(directory.filename(), L"Release")
-        && PathComponentEquals(msbuild_directory.filename(), L"msbuild")
-        && PathComponentEquals(out_directory.filename(), L"out")
-        && PathComponentEquals(windows_tip_directory.filename(), L"windows-tip")
-        && PathComponentEquals(native_directory.filename(), L"native")) {
-        return (native_directory.parent_path() / L"target" / L"debug" / L"mo-broker.exe")
-            .wstring();
-    }
-    return {};
-}
 
 bool IsKeyDown(int virtual_key) noexcept {
     return (GetKeyState(virtual_key) & 0x8000) != 0;
@@ -201,8 +151,10 @@ class TextService final
 #endif
       {
 public:
-    explicit TextService(std::wstring expected_broker_path) noexcept
-        : broker_(std::move(expected_broker_path)) {
+    explicit TextService(mo::windows_tip::BrokerLocation broker_location) noexcept
+        : broker_path_(broker_location.path),
+          broker_auto_start_(broker_location.auto_start),
+          broker_(std::move(broker_location.path)) {
         InterlockedIncrement(&g_live_objects);
     }
 
@@ -319,9 +271,7 @@ public:
         activation_flags_ = flags;
         // Broker absence must never prevent TSF activation. The first bounded
         // connection attempt is best-effort; key callbacks remain fail-open.
-        if (!broker_.ConnectAndOpen(kBrokerActivationTimeoutMs)) {
-            next_reconnect_tick_ = GetTickCount64() + kBrokerReconnectBackoffMs;
-        } else { broker_was_connected_ = true; }
+        EnsureBrokerConnected(kBrokerActivationTimeoutMs);
         return S_OK;
     }
 
@@ -346,6 +296,7 @@ public:
         activation_flags_ = 0;
         has_focus_ = false;
         next_reconnect_tick_ = 0;
+        next_broker_start_tick_ = 0;
         broker_was_connected_ = false;
         cached_key_.valid = false;
         return result;
@@ -713,13 +664,39 @@ private:
         if (now < next_reconnect_tick_) {
             return false;
         }
-        if (broker_.ConnectAndOpenUntil(deadline, broker_was_connected_)) {
+        // Installed mode first probes once so a missing endpoint can authorize
+        // a fixed-path process start. Relocated development probes retain the
+        // old bounded wait-for-an-externally-restarted-Broker behavior.
+        if (broker_.ConnectAndOpenUntil(deadline, broker_was_connected_ && !broker_auto_start_)) {
+            broker_was_connected_ = true;
+            next_reconnect_tick_ = 0;
+            return true;
+        }
+        if (broker_auto_start_
+            && broker_.last_connect_error() == ERROR_FILE_NOT_FOUND
+            && TryStartBroker()
+            && broker_.ConnectAndOpenUntil(deadline, true)) {
             broker_was_connected_ = true;
             next_reconnect_tick_ = 0;
             return true;
         }
         next_reconnect_tick_ = now + kBrokerReconnectBackoffMs;
         return false;
+    }
+
+    bool TryStartBroker() noexcept {
+        if (!broker_auto_start_) {
+            return false;
+        }
+        const ULONGLONG now = GetTickCount64();
+        if (now < next_broker_start_tick_) {
+            return false;
+        }
+        // A cold Broker should bind its listener pool well before this gate.
+        // Keep independent host processes from repeatedly creating contenders
+        // while the pipe pool's first-instance rule elects the sole survivor.
+        next_broker_start_tick_ = now + kBrokerStartBackoffMs;
+        return mo::windows_tip::StartBrokerProcess(broker_path_);
     }
 
     void DisconnectBroker(DWORD timeout_ms, CandidateReset cause = CandidateReset::Transport) noexcept {
@@ -1240,6 +1217,9 @@ private:
     bool handling_termination_ = false;
     bool broker_was_connected_ = false;
     ULONGLONG next_reconnect_tick_ = 0;
+    ULONGLONG next_broker_start_tick_ = 0;
+    std::wstring broker_path_;
+    bool broker_auto_start_ = false;
     mo::windows_tip::BrokerClient broker_;
     mo::windows_tip::CandidateWindow candidate_window_;
 #ifdef MO_LATENCY_TRACE
@@ -1316,15 +1296,15 @@ public:
             return CLASS_E_NOAGGREGATION;
         }
 
-        std::wstring expected_broker_path;
+        mo::windows_tip::BrokerLocation broker_location;
         try {
-            expected_broker_path = ExpectedBrokerPath();
+            broker_location = mo::windows_tip::ResolveBrokerLocation(g_module);
         } catch (...) {
             // An unrecognized or unrepresentable module location keeps the TIP
             // loadable but makes Broker activation fail closed and key input
             // fail open.
         }
-        auto* service = new (std::nothrow) TextService(std::move(expected_broker_path));
+        auto* service = new (std::nothrow) TextService(std::move(broker_location));
         if (service == nullptr) {
             return E_OUTOFMEMORY;
         }

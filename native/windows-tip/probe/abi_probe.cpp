@@ -6,15 +6,18 @@
 #include <msctf.h>
 #include <olectl.h>
 #include <textstor.h>
+#include <shlobj.h>
 
 #include <iostream>
 #include <array>
+#include <filesystem>
 #include <limits>
 #include <new>
 #include <string>
 #include <wrl/client.h>
 
 #include "mo_tip_ids.h"
+#include "mo_broker_launcher.h"
 #include "mo_latency_diagnostics.h"
 #include "mo_deadline.h"
 
@@ -48,6 +51,106 @@ bool ProbeDeadlineArithmetic() {
         && RemainingMillisecondsAt(deadline, deadline) == 0
         && RemainingMillisecondsAt(deadline, deadline + std::chrono::nanoseconds(1)) == 0
         && RemainingMillisecondsAt(now + std::chrono::milliseconds(MAXDWORD), now) == MAXDWORD - 1;
+}
+
+bool ProbeBrokerLauncher() {
+    using mo::windows_tip::ResolveBrokerLocationFromPath;
+
+    PWSTR program_files_value = nullptr;
+    const HRESULT program_files_result = SHGetKnownFolderPath(
+            FOLDERID_ProgramFilesX64,
+            KF_FLAG_DEFAULT,
+            nullptr,
+            &program_files_value);
+    std::filesystem::path program_files;
+    if (SUCCEEDED(program_files_result) && program_files_value != nullptr) {
+        program_files = program_files_value;
+        CoTaskMemFree(program_files_value);
+    } else {
+        if (program_files_value != nullptr) { CoTaskMemFree(program_files_value); }
+        HKEY key = nullptr;
+        std::array<wchar_t, 32768> buffer{};
+        DWORD bytes = static_cast<DWORD>(buffer.size() * sizeof(wchar_t));
+        const LSTATUS opened = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+            L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion", 0,
+            KEY_QUERY_VALUE | KEY_WOW64_64KEY, &key);
+        const LSTATUS queried = opened == ERROR_SUCCESS
+            ? RegGetValueW(key, nullptr, L"ProgramFilesDir",
+                RRF_RT_REG_SZ | RRF_ZEROONFAILURE, nullptr, buffer.data(), &bytes)
+            : opened;
+        if (key != nullptr) { RegCloseKey(key); }
+        if (queried != ERROR_SUCCESS || bytes < sizeof(wchar_t)) {
+            std::wcerr << L"Program Files x64 lookup failed: shell=0x" << std::hex
+                << program_files_result << L" registry=" << queried << L'\n';
+            return false;
+        }
+        program_files = buffer.data();
+    }
+    const wchar_t* architecture = sizeof(void*) == 8 ? L"x64" : L"x86";
+    const auto installed = ResolveBrokerLocationFromPath(
+        (program_files / L"Mo" / L"tip" / architecture / L"mo-tip.dll").wstring());
+    const auto relocated = ResolveBrokerLocationFromPath(
+        (std::filesystem::path(LR"(C:\fixture\Mo)") / L"tip" / architecture / L"mo-tip.dll")
+            .wstring());
+    const auto repository = ResolveBrokerLocationFromPath(
+        (std::filesystem::path(LR"(C:\repo\native\windows-tip\out\msbuild)")
+            / architecture / L"Release" / L"mo_tip.dll").wstring());
+    if (!installed.auto_start
+        || installed.path != (program_files / L"Mo" / L"bin" / L"mo-broker.exe").wstring()
+        || relocated.auto_start || relocated.path != LR"(C:\fixture\Mo\bin\mo-broker.exe)"
+        || repository.auto_start
+        || repository.path != LR"(C:\repo\target\debug\mo-broker.exe)"
+        || !ResolveBrokerLocationFromPath(LR"(C:\unknown\mo-tip.dll)").path.empty()) {
+        std::wcerr << L"Broker location policy mismatch: installed=" << installed.path
+            << L" auto=" << installed.auto_start << L" relocated=" << relocated.path
+            << L" repository=" << repository.path << L'\n';
+        return false;
+    }
+
+    std::array<wchar_t, 32768> current_image{};
+    std::array<wchar_t, 32768> temporary_root{};
+    const DWORD image_length = GetModuleFileNameW(
+        nullptr, current_image.data(), static_cast<DWORD>(current_image.size()));
+    const DWORD temporary_length = GetTempPathW(
+        static_cast<DWORD>(temporary_root.size()), temporary_root.data());
+    if (image_length == 0 || image_length >= current_image.size()
+        || temporary_length == 0 || temporary_length >= temporary_root.size()) {
+        return false;
+    }
+
+    const std::filesystem::path fixture = std::filesystem::path(temporary_root.data())
+        / (L"mo-broker-launch-" + std::to_wstring(GetCurrentProcessId()) + L"-"
+            + std::to_wstring(GetTickCount64()));
+    const std::filesystem::path broker = fixture / L"mo-broker.exe";
+    try {
+        std::filesystem::create_directory(fixture);
+        if (!CopyFileW(current_image.data(), broker.c_str(), TRUE)) {
+            std::filesystem::remove_all(fixture);
+            return false;
+        }
+    } catch (...) {
+        return false;
+    }
+
+    DWORD process_id = 0;
+    const bool started = mo::windows_tip::StartBrokerProcess(broker.wstring(), &process_id);
+    HANDLE process = started ? OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE, process_id) : nullptr;
+    DWORD exit_code = STILL_ACTIVE;
+    const bool exited = process != nullptr && WaitForSingleObject(process, 5000) == WAIT_OBJECT_0
+        && GetExitCodeProcess(process, &exit_code) && exit_code == 2;
+    if (process != nullptr) { CloseHandle(process); }
+    try { std::filesystem::remove_all(fixture); } catch (...) { return false; }
+    SetLastError(ERROR_SUCCESS);
+    DWORD rejected_process_id = 99;
+    const bool rejected = !mo::windows_tip::StartBrokerProcess(L"relative\\mo-broker.exe", &rejected_process_id)
+        && rejected_process_id == 0 && GetLastError() == ERROR_INVALID_NAME;
+    if (!started || process_id == 0 || !exited || !rejected) {
+        std::wcerr << L"Broker process policy mismatch: started=" << started << L" pid=" << process_id
+            << L" opened=" << (process != nullptr) << L" exit=" << exit_code
+            << L" rejected=" << rejected << L'\n';
+    }
+    return started && process_id != 0 && exited && rejected;
 }
 
 class ComApartment final {
@@ -1793,6 +1896,11 @@ int probe_broker_input(
 }  // namespace
 
 int wmain(int argument_count, wchar_t** arguments) {
+    if (argument_count == 1) {
+        // Keep the launcher fixture alive long enough for both 32- and 64-bit
+        // parents to reopen its PID before it returns the normal usage error.
+        Sleep(250);
+    }
     const bool activating_test_host = argument_count == 5
         && std::wstring(arguments[4]) == L"--activating-test-host";
     const int mode_argument_count = activating_test_host ? 4 : argument_count;
@@ -1923,6 +2031,9 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
     if (!ProbeDeadlineArithmetic()) {
         service->Release(); FreeLibrary(module); return fail(L"Deadline arithmetic", E_FAIL);
+    }
+    if (!ProbeBrokerLauncher()) {
+        service->Release(); FreeLibrary(module); return fail(L"Broker launcher policy", E_FAIL);
     }
     {
         const IID retired_iids[] = {

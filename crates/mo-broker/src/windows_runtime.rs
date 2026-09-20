@@ -70,6 +70,7 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstalledLayout {
+    pub local_app_data_root: PathBuf,
     pub broker_path: PathBuf,
     pub dll_path: PathBuf,
     pub opencc_data_dir: PathBuf,
@@ -91,6 +92,7 @@ impl InstalledLayout {
         let shared = install.join("data/rime-ice");
         let user = roots.local_app_data.join("Mo/Rime");
         Ok(Self {
+            local_app_data_root: roots.local_app_data,
             broker_path: install.join("bin/mo-broker.exe"),
             dll_path: install.join("runtime/librime/rime.dll"),
             opencc_data_dir: install.join("runtime/librime/opencc"),
@@ -131,8 +133,6 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
     }
     let shared = runtime_directory(&layout.shared_data_dir, "installed shared data")?;
     let prebuilt = runtime_directory(&layout.prebuilt_data_dir, "installed prebuilt data")?;
-    let user = runtime_directory(&layout.user_data_dir, "managed user data")?;
-    let staging = runtime_directory(&layout.staging_dir, "managed staging data")?;
     let opencc = runtime_directory(&layout.opencc_data_dir, "installed OpenCC data")?;
     for file in OPENCC_REQUIRED_FILES {
         require_file(&opencc, file, "installed OpenCC data")?;
@@ -148,6 +148,12 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
             "installed librime image is not a file",
         ));
     }
+    // Machine assets are validated before the first-run path mutates the
+    // current user's profile. Create only Mo-owned direct descendants, one
+    // component at a time, and reject pre-existing reparse points/files.
+    ensure_managed_user_directories(layout)?;
+    let user = runtime_directory(&layout.user_data_dir, "managed user data")?;
+    let staging = runtime_directory(&layout.staging_dir, "managed staging data")?;
     let mut config = EngineConfig::new(
         librime_path(&shared, "installed shared data")?,
         librime_path(&user, "managed user data")?,
@@ -159,6 +165,65 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
         engine_config: config,
         require_prepared_resources: true,
     })))
+}
+
+#[cfg(any(not(debug_assertions), test))]
+fn ensure_managed_user_directories(layout: &InstalledLayout) -> io::Result<()> {
+    let expected_mo = layout.local_app_data_root.join("Mo");
+    let expected_user = expected_mo.join("Rime");
+    let expected_staging = expected_user.join("build");
+    if layout.user_data_dir != expected_user || layout.staging_dir != expected_staging {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "managed user paths must remain under the fixed LocalAppData/Mo/Rime layout",
+        ));
+    }
+
+    checked_directory(&layout.local_app_data_root, "LocalAppData root")?;
+    for (path, label) in [
+        (&expected_mo, "managed Mo directory"),
+        (&expected_user, "managed Rime directory"),
+        (&expected_staging, "managed staging directory"),
+    ] {
+        match std::fs::create_dir(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => {
+                return Err(io::Error::new(
+                    error.kind(),
+                    format!("failed to create {label} {}: {error}", path.display()),
+                ));
+            }
+        }
+        checked_directory(path, label)?;
+    }
+    Ok(())
+}
+
+#[cfg(any(not(debug_assertions), test))]
+fn checked_directory(path: &Path, label: &str) -> io::Result<()> {
+    use std::os::windows::fs::MetadataExt;
+
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+    let metadata = std::fs::symlink_metadata(path).map_err(|error| {
+        io::Error::new(
+            error.kind(),
+            format!("failed to inspect {label} {}: {error}", path.display()),
+        )
+    })?;
+    if !metadata.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{label} is not a directory: {}", path.display()),
+        ));
+    }
+    if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!("{label} must not be a reparse point: {}", path.display()),
+        ));
+    }
+    Ok(())
 }
 
 fn runtime_directory(path: &Path, label: &str) -> io::Result<PathBuf> {
@@ -322,6 +387,7 @@ mod tests {
         );
         assert_eq!(layout.staging_dir, layout.user_data_dir.join("build"));
         assert_eq!(layout.user_data_dir, roots.local_app_data.join("Mo/Rime"));
+        assert_eq!(layout.local_app_data_root, roots.local_app_data);
         assert!(
             InstalledLayout::from_roots(mo_windows_platform::RuntimeRoots {
                 program_files_x64: PathBuf::from("relative"),
@@ -346,14 +412,14 @@ mod tests {
         let fixture = Fixture::new();
         let layout = InstalledLayout::from_roots(mo_windows_platform::RuntimeRoots {
             program_files_x64: fixture.0.join("machine"),
-            local_app_data: fixture.0.join("user"),
+            local_app_data: fixture.0.join("local-app-data"),
         })
         .unwrap();
+        std::fs::create_dir(&layout.local_app_data_root).unwrap();
         for directory in [
             layout.broker_path.parent().unwrap(),
             layout.dll_path.parent().unwrap(),
             &layout.prebuilt_data_dir,
-            &layout.staging_dir,
             &layout.opencc_data_dir,
         ] {
             std::fs::create_dir_all(directory).unwrap();
@@ -374,6 +440,8 @@ mod tests {
             }
         }
         let mode = prepare_installed_startup(&layout.broker_path, &layout).unwrap();
+        assert!(layout.user_data_dir.is_dir());
+        assert!(layout.staging_dir.is_dir());
         #[cfg(not(debug_assertions))]
         let StartupMode::Rime(startup) = mode;
         #[cfg(debug_assertions)]
@@ -435,6 +503,32 @@ mod tests {
                 .kind(),
             io::ErrorKind::PermissionDenied
         );
+    }
+
+    #[test]
+    fn managed_user_bootstrap_rejects_path_escape_and_existing_files() {
+        let fixture = Fixture::new();
+        let local = fixture.0.join("local");
+        std::fs::create_dir(&local).unwrap();
+        let mut layout = InstalledLayout::from_roots(mo_windows_platform::RuntimeRoots {
+            program_files_x64: fixture.0.join("machine"),
+            local_app_data: local.clone(),
+        })
+        .unwrap();
+
+        layout.staging_dir = fixture.0.join("outside");
+        assert_eq!(
+            ensure_managed_user_directories(&layout).unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+
+        layout.staging_dir = layout.user_data_dir.join("build");
+        std::fs::write(local.join("Mo"), b"not a directory").unwrap();
+        assert_eq!(
+            ensure_managed_user_directories(&layout).unwrap_err().kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert!(!layout.user_data_dir.exists());
     }
 
     #[test]

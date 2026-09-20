@@ -61,6 +61,7 @@ public:
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
 
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }
+    DWORD last_connect_error() const noexcept { return last_connect_error_; }
     std::uint64_t generation() const noexcept { return generation_; }
     std::uint64_t session_token() const noexcept { return session_token_; }
 #ifdef MO_LATENCY_TRACE
@@ -76,6 +77,7 @@ private:
     std::uint64_t session_token_ = 0;
     std::uint64_t next_request_id_ = 1;
     bool candidate_actions_supported_ = false;
+    DWORD last_connect_error_ = ERROR_SUCCESS;
 #ifdef MO_LATENCY_TRACE
     BrokerTiming last_timing_;
 #endif

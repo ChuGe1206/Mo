@@ -727,9 +727,11 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
     const RequestTrace timing(&last_timing_, 1);
 #endif
     try {
+        last_connect_error_ = ERROR_SUCCESS;
         Reset();
         pipe_ = ConnectPipe(expected_broker_path_, deadline, retry_missing_endpoint);
         if (pipe_ == INVALID_HANDLE_VALUE) {
+            last_connect_error_ = GetLastError();
             return false;
         }
 
@@ -753,6 +755,7 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             || (GetU64(hello_ack.payload.data() + 4) & kKeyEventsFeature) == 0
             || GetU32(hello_ack.payload.data() + 12) < kMinimumNegotiatedPayloadLength
             || GetU32(hello_ack.payload.data() + 12) > kMaximumPayloadLength) {
+            last_connect_error_ = ERROR_INVALID_DATA;
             Reset();
             return false;
         }
@@ -769,16 +772,21 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             || opened.generation != generation_
             || opened.session_token == 0
             || !opened.payload.empty()) {
+            last_connect_error_ = ERROR_INVALID_DATA;
             Reset();
             return false;
         }
         session_token_ = opened.session_token;
-        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
+        if (DeadlineExpired(deadline)) {
+            last_connect_error_ = ERROR_TIMEOUT; TraceFailure(ERROR_TIMEOUT); Reset(); return false;
+        }
         return true;
     } catch (const std::bad_alloc&) {
+        last_connect_error_ = ERROR_NOT_ENOUGH_MEMORY;
         Reset();
         return false;
     } catch (...) {
+        last_connect_error_ = ERROR_UNHANDLED_EXCEPTION;
         Reset();
         return false;
     }

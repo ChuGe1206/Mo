@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-18
+- 快照日期：2026-09-20
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通，项目仍不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 109 个运行时测试和 1 个 compile-fail 契约测试；显式 `mo-broker/latency-trace` debug 分支 111 项及 1 项 compile-fail 通过。构建高负载时曾有启动 watchdog fixture marker 未到达的负向结果，保留于 ADR 0024，编译结束后的两套全 workspace 通过。
+- `cargo +stable test --workspace`：通过，共 110 个运行时测试和 1 个 compile-fail 契约测试；显式 `mo-broker/latency-trace` debug 分支 112 项及 1 项 compile-fail 通过。构建高负载时曾有启动 watchdog fixture marker 未到达的负向结果，保留于 ADR 0024，编译结束后的两套全 workspace 通过。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - 默认/诊断 feature 的 debug/release 四种 workspace/all-targets Clippy 均通过；默认及 release feature 的计时 envelope 以编译期断言保证零大小，默认不启动 logger。TIP 的 CMake 路径本机未运行，其证据来自 MSBuild；core + Lua runtime 已用锁定 CMake 3.31.10/VS2022 完成全新目录构建。
@@ -46,6 +46,8 @@
 - 鼠标动作在持有 owner/context 的 TSF 可同步或异步写锁内重新验证焦点/context/generation/session/revision，排队期间不预先生成 commit。x64/Win32 fake 与真实词库受控探针均核对显隐、不抢焦点、旧按下保护、鼠标翻页/上屏与文档布局跟随；强制延迟写锁后，新按键或焦点丢失使旧动作取消。焦点恢复后完成第三轮选词，最终从 EDIT 和 TSF context 核对 `mmm`/`你好你好你好`。候选窗仅原生表现层，业务与授权仍在 Rust，阶段性边界见 ADR 0018。
 - TIP 在固定的 16 个管道槽中轮转扫描，有忙槽时在原端到端硬时限内短重试；每个新 handle 都重新复核服务端身份，身份异常直接拒绝而不跳过。首次全部端点缺席立即 fail-open；曾认证后允许在同一时限内等待 Broker 重启。前景焦点恢复重置退避，该时序已由上述焦点恢复探针覆盖。
 - Broker 启动模式已 fail-closed：启用 debug assertions 的开发构建才接受 `--fake` 或带显式 DLL/shared/user 路径及部署标记的 `--rime`。默认 release 只接受无参数启动，从 Known Folder API 构造固定 Program Files/LocalAppData 布局并核对当前映像位置；真实初始化失败不会静默降级。Windows verbatim canonical 路径在传给 librime 前正规化，已实证避免 librime-lua/用户库路径失效。
+- ADR 0029 补齐安装态 Broker bootstrap：只有精确 `Program Files\Mo\tip\<arch>\mo-tip.dll` 获得固定相邻 Broker 的进程创建权限，搬迁/仓库布局保持 connect-only。无 shell/参数/继承 handle/控制台启动，Broker image reparse 拒绝；x86 对不可用的 ProgramFilesX64 Known Folder 只读 HKLM 64 位视图回退。端点缺失才启动，2 秒进程节流与 16 槽 first-instance 绑定保证唯一存活 Broker；并发宿主仍可能短暂创建多个 contender。连接后的 SID/PID/文件身份校验不变。
+- release Broker 在完整验证机器资产后逐级创建精确的 `LocalAppData\Mo\Rime\build`，拒绝路径逃逸、文件占位和每一级 reparse point，空 user/staging 直接使用机器 prebuilt。debug/release 安装布局测试、双架构 launcher 探针、fake 3 轮/架构故障矩阵均通过。全新 72-source/137-file 开发素材清单 SHA-256 `C90F600DEE154E293884B3835525101DCFAB2CAB6617BB3580746BEC99681FB1`，79 项素材策略、7 组 golden 及真实素材双架构各 10 轮（40 次明确 Broker 退出）通过。完整 Program Files 安装组合、热路径进程创建延迟与 AppContainer 尚未验收。
 - 安装模式将 DLL/shared/prebuilt/相邻 OpenCC 固定在机器安装根，把 user/staging 固定在当前用户根；缺少目录、default/schema 标记或六份必要转换文件时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证字段隔离及每份转换文件缺失拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。真实安装资产加载、签名/ACL、全安装树 reparse 防护与用户配置覆盖策略仍未完成。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
 - Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
@@ -94,6 +96,7 @@
 - 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。
 - WiX 占位入口已改为只接受验证过的 `StageDirectory`，移除任意 Broker/TIP/registrar 参数；独立素材管线可准备 runtime/预编译数据/双架构前端，但当前 WXS 仍只收原来的四个 Mo 二进制，未加入完整 data/runtime 或事务，因此 G3 不升级。
 - 尚无真实 TSF 注册/启用事务、升级/修复/卸载回滚、签名、首次启动性能或“不抢默认输入法”测试。
+- 自动拉起与首次用户目录代码已完成，但尚未把 release payload 安装到 Program Files 做“注册 TIP -> 拉起 -> 首次目录 -> 普通应用输入”的组合验收；G3 因此仍未通过。
 - 占位安装器不得分发。
 
 ## G4：数据与许可证——部分通过
@@ -109,4 +112,4 @@
 
 ## 下一检查点
 
-Mo 转换资源搬迁、开发素材/预编译 pack 管线及确定性的宿主终止清理/写重入缺陷修复已闭环。受控未注册探针的偶发终止已定位为普通 `ITfThreadMgr::Activate` 同时引入当前系统文本服务；document focus 未丢失，异步栈来自 TextInputFramework/MSCTF。探针现用 `TF_TMAE_NOACTIVATETIP | TF_TMAE_NOACTIVATEKEYBOARDLAYOUT` 并验证 active flags、非激活窗口和每轮恰好两次显式终止，见 ADR 0028。该修复关闭测试模型污染，不冒充真实产品宿主根因全部关闭。下一步在管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗与 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐 dispatch 发送前长停顿、全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略、资源内容认证及首次用户数据 bootstrap/Broker 生命周期。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；素材管线不升级为普通宿主或日常使用通过。
+Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离，以及固定安装态 Broker 拉起和首次用户目录 bootstrap 已分别闭环，见 ADR 0025–0029。下一步是在管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐 dispatch 发送前长停顿、热路径进程创建监督器、全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略和资源内容认证。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；素材管线不升级为普通宿主或日常使用通过。
