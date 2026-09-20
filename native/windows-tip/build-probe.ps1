@@ -75,6 +75,13 @@ foreach ($platform in $architectures) {
         throw "Expected probe artifacts were not produced in $binaryDirectory"
     }
     Invoke-Checked $probe @($tip)
+    $registrar = Join-Path $binaryDirectory 'mo_tip_registrar.exe'
+    $transactionMarker = Join-Path $binaryDirectory 'machine-profile-transaction.marker'
+    if (-not (Test-Path -LiteralPath $registrar -PathType Leaf) -or (Test-Path -LiteralPath $transactionMarker)) {
+        throw "Registrar transaction self-test preflight failed in $binaryDirectory"
+    }
+    Invoke-Checked $registrar @('self-test-machine-transaction', $transactionMarker)
+    if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
 }
 
-Write-Host 'Compile/load probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'
+Write-Host 'Compile/load and non-mutating registrar transaction probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'

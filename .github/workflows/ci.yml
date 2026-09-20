@@ -50,7 +50,9 @@ jobs:
         run: ./tools/test-registered-tip-state.ps1
       - name: Test development staging policy without installing or registering an IME
         shell: pwsh
-        run: ./installer/windows/test-staging.ps1
+        run: |
+          ./installer/windows/test-staging.ps1
+          ./installer/windows/test-package-authoring.ps1
 
   librime-abi:
     runs-on: windows-2022
@@ -138,6 +140,7 @@ jobs:
           ./installer/windows/prepare-stage.ps1 -RuntimeBuildDirectory (Join-Path $PWD 'build/mo-prepared-runtime') -RimeIceSourceDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -OutputDirectory $stageBuild -RustToolchain 1.97.1
           ./installer/windows/verify-stage.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
           ./installer/windows/test-staging.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
+          ./installer/windows/test-package-authoring.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
           ./tools/test-candidate-lifecycle-policy.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
           ./installer/windows/test-stage-runtime.ps1 -BuildDirectory $stageBuild -FaultRepetitions 10 -RustToolchain 1.97.1
           ./tools/candidate-lifecycle-probe.ps1 -StageDirectory (Join-Path $stageBuild 'stage') -OutputDirectory (Join-Path $PWD 'build/mo-candidate-trace') -Repetitions 10 -LatencyTrace -RustToolchain 1.97.1

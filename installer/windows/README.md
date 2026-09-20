@@ -73,39 +73,60 @@ VC prerequisites, signatures, full per-file notices/SBOM, corresponding-source
 review or legal approval. All manifests explicitly remain development-only,
 non-redistributable and non-installable. This is not G3 or daily-use acceptance.
 
-## WiX placeholder (still non-deployable)
+## Full-payload WiX authoring (still non-deployable)
 
-`Package.wxs` and `Bundle.wxs` record the intended WiX v4 split: an elevated,
-per-machine MSI owns x64/x86 TIP files, the x64 user broker, the registrar, and
-both COM registry views; Burn will eventually coordinate prerequisites and a
-non-elevated current-user finalizer.
+`wix-payload.ps1` deterministically turns a verified stage into one file-owning
+WiX component per payload file, plus one registry-only component for the x86
+COM view. The generated fragment covers all 131 payload files: x64/x86
+TIPs, release Broker/registrar, self-built librime plus 33 OpenCC resources, and
+the selected/precompiled rime-ice tree. Stable path-derived identifiers and GUIDs
+make repeated authoring byte-identical. A verifier locks the Program Files root,
+reconstructs every installed path from XML, checks component/ref/key-path/
+bitness/COM ownership one-to-one, and rejects missing, duplicate or redirected
+files and roots. Evidence and source archives
+remain outside the install image.
 
-This is deliberately not a deployable installer. It does **not** call
-`ITfInputProcessorProfileMgr::RegisterProfile`, enable the profile with
-`InstallLayoutOrTip`, start a per-user broker, stop TSF hosts, implement rollback
-for TSF state, or sign either package. The intended broker artifact is now the
-default release named-pipe broker, which accepts no arguments and requires the
-fixed Known Folder layout recorded by ADR 0016. The placeholder builder now
-requires a verified `-StageDirectory`; the former four arbitrary artifact
-parameters have been removed. Its current authoring still includes only the
-four original Mo binaries, **not** the runtime/data trees. It must not be
-treated as a production packaging path.
+`Package.wxs` is a per-machine x64 MSI authoring input. MSI components own both
+COM registry views. An embedded x64 registrar performs machine profile/category
+changes as elevated deferred actions. Before each install/repair or uninstall
+mutation it writes a protected fixed-layout marker containing the exact prior
+profile/category presence bits. A paired rollback action restores those bits;
+the commit action deletes the marker. Major-upgrade removal leaves the stable
+profile for the incoming package, whose transaction refreshes it. MSI execution
+is rejected when rollback is disabled. No elevated action enables Mo for a user,
+changes the default input method, starts the Broker or writes user data.
 
-The build script has two safety gates:
+The registrar's marker serializer/parser runs without elevation in both x64 and
+x86 build probes and in the freshly staged x64 binary. This validates all eight
+operation/state marker combinations and no-residue cleanup, but does not simulate
+Windows Installer cancellation or prove real TSF API rollback.
+
+The authoring is still deliberately non-deployable. `Bundle.wxs` uses the
+temporary standard BA and has no non-elevated current-user finalizer. Packages
+are unsigned; VC prerequisites, loaded-TIP upgrade handling, complete notices/
+SBOM, ACL inspection and release authorization remain open. This workstation has
+no WiX v4 CLI, so the WXS structure and generated inventory passed policy tests,
+but no MSI or Bundle was linked or executed.
+
+The build script has three safety gates:
 
 1. If the WiX v4 `wix` command is absent it fails immediately and never downloads
    anything.
-2. Even with WiX installed, `-AllowPlaceholderBuild` is required and the outputs
-   are named as placeholders.
-3. The stage must pass development consistency validation before WiX is invoked.
+2. Even with WiX installed, `-AllowDevelopmentBuild` is required and outputs are
+   explicitly named `development-unsigned`.
+3. The stage must pass development consistency validation; generated authoring
+   is then independently verified before WiX is invoked.
 
-Before any release, replace the placeholder flow with transactional machine
-registration plus a user-context finalizer; define repair/uninstall recovery;
-use versioned binaries to tolerate loaded TIP DLLs; validate clean install,
-upgrade, rollback, repair, and uninstall in disposable VMs; sign the x64/x86
-DLLs, broker, MSI, and Burn EXE with timestamping; and enforce signature checks
-in CI. Package the allowlisted self-built librime at `runtime/librime/rime.dll`
-and precompiled rime-ice at `data/rime-ice/build`; prepare the current user's
-`LocalAppData/Mo/Rime` data and staging directories without running deployment
-on the input hot path. Reject diagnostic/debug-assertions artifacts in the
-release packaging pipeline. Never run an updater or broker as LocalSystem.
+For non-mutating authoring checks:
+
+```powershell
+./installer/windows/test-package-authoring.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-installer-transaction-v3/stage"
+```
+
+Before any release, implement the unelevated user finalizer and bootstrapper
+coordination; use versioned binaries to tolerate loaded TIP DLLs; validate clean
+install, repair, upgrade, forced rollback and uninstall in disposable VMs; sign
+the x64/x86 DLLs, Broker, MSI and Bundle with timestamping; and enforce signature
+checks in CI. Never run the Broker, updater or current-user finalizer as
+LocalSystem.

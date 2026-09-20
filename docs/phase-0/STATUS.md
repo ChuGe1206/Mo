@@ -89,21 +89,21 @@
 
 ## G3：安装——未通过
 
-- 已有 WiX v4 MSI/Bundle 占位 authoring 和独立 registrar 源码。
+- WiX v4 作者层已从“四个二进制占位”升级为完整 131-file payload：确定性生成器为 Broker/registrar、x64/x86 TIP、librime/OpenCC 与 rime-ice 源数据/预编译数据逐文件生成稳定 component/GUID，并从 XML 反向重建安装路径，锁定 Program Files 根并核对一一覆盖、bitness、key path、双 COM 视图且排除 evidence。13 项完整素材作者层/篡改拒绝检查通过；本机没有 WiX CLI，未链接或运行 MSI/Bundle。
+- 机器级 TSF profile/category 已有 MSI 事务协议：install/repair/remove 延迟动作在变更前把 profile/category 两个 presence bit 写入 Program Files 固定标记，rollback 恢复原状态，commit 删除标记；全新安装遇到任一既有 Mo profile/category 会在变更前拒绝，repair/major upgrade 才可刷新，且旧包升级移除不先拆共享 profile。MSI 禁止关闭 rollback。动作使用内嵌 x64 registrar、无用户输入路径、以 non-impersonated 系统上下文执行。x64/x86 新鲜构建与 staged x64 registrar 的 8 组标记状态/重复创建/无残留自测通过，但尚未在 VM 注入真实 MSI 失败，也未以提升权限调用 TSF 变更 API。
 - 开发态 registrar 已补齐当前用户 COM activation：以显式 WOW64 视图分别注册 x64/x86 `InprocServer32`，拒绝相对/缺失文件与冲突路径；`status` 可读回 COM/profile 启用状态。隔离测试 CLSID 已连续两次完成双视图写入、读回和无残留清理，未注册或启用 Mo profile。
 - 已实现注册宿主 smoke 的权限拆分：提升脚本只管理机器级 TSF profile/category，普通权限脚本临时管理 HKCU 双视图 COM 与当前用户启用，并通过系统 `ITfKeystrokeMgr` 驱动 x64/Win32 探针后在 `finally` 中回滚用户状态。当前非提升开发会话只验证了双架构编译、权限门和干净状态，尚未执行需要人工提升准备的真实注册路由，因此 G2 不据此升级为通过。
 - fake 与真实词库 smoke 均已支持 `-Registered`，共享严格用户态事务：提升的测试/Broker 被拒绝，准备不足在构建/部署前拒绝；部分 native 写入失败仍触发独立清理，清理错误或状态残留不再只告警后报成功，检测到外来 COM 路径则保留并要求人工审查。16 个内存策略场景通过，不修改 Windows 输入状态。当前管理员准备仍缺失（profile=false），两种 registered 入口已实证在此前置条件下拒绝且没有残留；真实注册路由仍未运行。具体步骤见 `REGISTERED-TEST.md`。
-- 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。
-- WiX 占位入口已改为只接受验证过的 `StageDirectory`，移除任意 Broker/TIP/registrar 参数；独立素材管线可准备 runtime/预编译数据/双架构前端，但当前 WXS 仍只收原来的四个 Mo 二进制，未加入完整 data/runtime 或事务，因此 G3 不升级。
-- 尚无真实 TSF 注册/启用事务、升级/修复/卸载回滚、签名、首次启动性能或“不抢默认输入法”测试。
+- 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。即使存在 WiX，也必须显式传 `-AllowDevelopmentBuild`，产物名带 `development-unsigned`。
+- 尚无非提升 current-user finalizer/Bundle 协调、真实 TSF API/MSI 失败注入、升级/修复/卸载 VM 矩阵、签名、首次启动性能或“不抢默认输入法”组合测试。
 - 自动拉起与首次用户目录代码已完成，但尚未把 release payload 安装到 Program Files 做“注册 TIP -> 拉起 -> 首次目录 -> 普通应用输入”的组合验收；G3 因此仍未通过。
-- 占位安装器不得分发。
+- 当前 development authoring 不得分发。
 
 ## G4：数据与许可证——部分通过
 
 - rime-ice 2026.06.30 锁定到 `6810e8916d160498620a16fef2135956fecbd485`，source archive hash 已记录。
 - 已从源部署完整 rime-ice 数据并运行真实 golden smoke。
-- 新增固定安装布局的开发素材准备管线：核对 core+Lua/v2 来源与 33 份转换资源，从锁定 rime-ice archive 的 64 份输入全新编译 29 份 schema/词库，并从 68 份 Mo 源码快照全新构建 release Broker 和双架构前端。131 个 payload/6 个 evidence 文件有严格清单与依赖 receipt，原样保留上游归档/LICENSE/Credits；79 项构建清单/拒绝测试通过，包含 shell 路径展开拒绝。空 managed user/staging + explicit prebuilt 路径完成中文/Emoji/英文/日期/Unicode/数字/计算器 7 组 exactly-once golden，未在线生成词库。所有产物仍 development-only、不可安装/分发；不是签名、完整 SBOM 或正式许可结论。见 ADR 0026。
+- 新增固定安装布局的开发素材准备管线：核对 core+Lua/v2 来源与 33 份转换资源，从锁定 rime-ice archive 的 64 份输入全新编译 29 份 schema/词库，并从 72 份 Mo 源码快照全新构建 release Broker 和双架构前端。131 个 payload/6 个 evidence 文件有严格清单与依赖 receipt，原样保留上游归档/LICENSE/Credits；79 项构建清单/拒绝测试通过，包含 shell 路径展开拒绝。空 managed user/staging + explicit prebuilt 路径完成中文/Emoji/英文/日期/Unicode/数字/计算器 7 组 exactly-once golden，未在线生成词库。所有产物仍 development-only、不可安装/分发；不是签名、完整 SBOM 或正式许可结论。见 ADR 0026/0030。
 - 已新增 hash 锁定 OpenCC 1.1.9 + bundled Marisa 的本地构建态编译工具，把锁定 Emoji/补充字典生成 `.ocd2`，读回核对全部 4857/1498 条 key 及有序 values。20 项完整性/负向检查通过；源文件与 manifest 保留，测试只复制到新 fixture。该 pack 未接入正式安装、签名更新或发行 SBOM，不把自声明哈希作为可信更新证明。
 - 发现官方 librime Windows 资产静态包含 GPL-3.0-only `librime-octagram`。该资产现被明确限制为开发验证，不进入 Mo 发行物。
 - 正式包必须从锁定 librime 源自行构建，插件采用允许列表；当前最小集合为 BSD-3-Clause core + rime-ice 必需的 BSD-3-Clause `librime-lua`。
@@ -112,4 +112,4 @@
 
 ## 下一检查点
 
-Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离，以及固定安装态 Broker 拉起和首次用户目录 bootstrap 已分别闭环，见 ADR 0025–0029。下一步是在管理员明确准备后完成双架构系统路由，在 Notepad 验收 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。同时补齐 dispatch 发送前长停顿、热路径进程创建监督器、全安装树权限/祖先目录、完整 Rime/Lua 覆盖策略和资源内容认证。随后完成签名、逐文件 SBOM、可回滚安装/升级/卸载与首次启动体验；素材管线不升级为普通宿主或日常使用通过。
+Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap，以及完整 payload/机器 profile 回滚作者层已分别闭环，见 ADR 0025–0030。下一步先实现非提升 current-user finalizer 与 Bundle 协调，随后在隔离 VM 实际链接并注入 clean install/repair/major-upgrade/rollback/uninstall；这之前不运行当前 development package。并行的系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。签名、逐文件 SBOM、安装树 ACL/重解析点与资源内容认证仍是发行门。

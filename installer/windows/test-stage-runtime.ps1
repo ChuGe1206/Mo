@@ -41,6 +41,11 @@ function New-OwnedUser([string]$Name) {
     return $user
 }
 try {
+    $registrarMarker = Join-Path $fixture 'staged-machine-profile-transaction.marker'
+    & (Join-Path $payload 'bin/mo-tip-registrar.exe') self-test-machine-transaction $registrarMarker
+    if ($LASTEXITCODE -ne 0 -or (Test-Path -LiteralPath $registrarMarker)) {
+        throw 'Staged registrar transaction marker self-test failed or left residue.'
+    }
     # A shipping-layout TIP authenticates its sibling bin/mo-broker.exe by file
     # identity. Never weaken that check or replace the staged release Broker.
     # Copy identical TIP bytes into a disposable installed-like layout, paired

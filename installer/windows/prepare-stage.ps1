@@ -170,6 +170,9 @@ foreach ($platform in @('x64', 'Win32')) {
     }
     # Default probe explicitly checks the diagnostics IID returns E_NOINTERFACE.
     Checked (Join-Path $nativeOut 'mo_tip_abi_probe.exe') @((Join-Path $nativeOut 'mo_tip.dll'))
+    $transactionMarker = Join-Path $working "native/$platform/machine-profile-transaction.marker"
+    Checked (Join-Path $nativeOut 'mo_tip_registrar.exe') @('self-test-machine-transaction', $transactionMarker)
+    if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
     $architecture = if ($platform -eq 'x64') { 'x64' } else { 'x86' }
     Copy-StageFile (Join-Path $nativeOut 'mo_tip.dll') (Join-Path $payload "tip/$architecture/mo-tip.dll")
     if ($platform -eq 'x64') { Copy-StageFile (Join-Path $nativeOut 'mo_tip_registrar.exe') (Join-Path $payload 'bin/mo-tip-registrar.exe') }

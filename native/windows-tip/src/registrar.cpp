@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include <msctf.h>
+#include <shlobj.h>
 
 #include <array>
 #include <iostream>
@@ -27,6 +28,9 @@ constexpr wchar_t kProbeComKey[] =
     L"Software\\Classes\\CLSID\\"
     L"{A51FCF97-6D9E-4C59-8905-C36A443AB7C2}\\InprocServer32";
 constexpr wchar_t kProbeComClsidKey[] = L"{A51FCF97-6D9E-4C59-8905-C36A443AB7C2}";
+constexpr wchar_t kFixedTipSuffix[] = L"\\Mo\\tip\\x64\\mo-tip.dll";
+constexpr wchar_t kInstallMarkerSuffix[] = L"\\Mo\\.machine-profile-install-rollback-v1";
+constexpr wchar_t kRemoveMarkerSuffix[] = L"\\Mo\\.machine-profile-remove-rollback-v1";
 
 template <typename Interface>
 class ComPtr final {
@@ -69,16 +73,19 @@ HRESULT hresult_from_registry(LSTATUS status) noexcept {
         : HRESULT_FROM_WIN32(static_cast<unsigned long>(status));
 }
 
-bool is_absolute_file(const std::wstring& path) noexcept {
+bool is_absolute_local_path(const std::wstring& path) noexcept {
     const bool drive_path = path.size() >= 3
         && ((path[0] >= L'A' && path[0] <= L'Z') || (path[0] >= L'a' && path[0] <= L'z'))
         && path[1] == L':'
         && (path[2] == L'\\' || path[2] == L'/');
-    const bool unc_path = path.size() >= 3
-        && path[0] == L'\\'
-        && path[1] == L'\\'
-        && path[2] != L'\\';
-    if (!drive_path && !unc_path) {
+    if (!drive_path || path.find(L':', 2) != std::wstring::npos) {
+        return false;
+    }
+    return true;
+}
+
+bool is_absolute_file(const std::wstring& path) noexcept {
+    if (!is_absolute_local_path(path)) {
         return false;
     }
     const DWORD attributes = GetFileAttributesW(path.c_str());
@@ -129,6 +136,360 @@ HRESULT create_category_manager(ComPtr<ITfCategoryMgr>& manager) noexcept {
         CLSCTX_INPROC_SERVER,
         IID_ITfCategoryMgr,
         reinterpret_cast<void**>(manager.put()));
+}
+
+struct MachineProfileState final {
+    bool profile = false;
+    bool category = false;
+};
+
+enum class TransactionKind {
+    install,
+    remove,
+};
+
+HRESULT query_profile_exists(
+    ITfInputProcessorProfileMgr* manager,
+    bool& exists) noexcept {
+    exists = false;
+    ComPtr<IEnumTfInputProcessorProfiles> enumerator;
+    HRESULT result = manager->EnumProfiles(kLanguage, enumerator.put());
+    if (FAILED(result)) {
+        return result;
+    }
+    for (;;) {
+        TF_INPUTPROCESSORPROFILE profile{};
+        ULONG fetched = 0;
+        result = enumerator->Next(1, &profile, &fetched);
+        if (result == S_FALSE || fetched == 0) {
+            return S_OK;
+        }
+        if (FAILED(result)) {
+            return result;
+        }
+        if (profile.dwProfileType == TF_PROFILETYPE_INPUTPROCESSOR
+            && IsEqualGUID(profile.clsid, mo::windows_tip::kTextServiceClsid)
+            && IsEqualGUID(profile.guidProfile, mo::windows_tip::kSimplifiedChineseProfileGuid)) {
+            exists = true;
+            return S_OK;
+        }
+    }
+}
+
+HRESULT query_category_exists(ITfCategoryMgr* manager, bool& exists) noexcept {
+    exists = false;
+    ComPtr<IEnumGUID> enumerator;
+    HRESULT result = manager->EnumItemsInCategory(GUID_TFCAT_TIP_KEYBOARD, enumerator.put());
+    if (FAILED(result)) {
+        return result;
+    }
+    for (;;) {
+        GUID item{};
+        ULONG fetched = 0;
+        result = enumerator->Next(1, &item, &fetched);
+        if (result == S_FALSE || fetched == 0) {
+            return S_OK;
+        }
+        if (FAILED(result)) {
+            return result;
+        }
+        if (IsEqualGUID(item, mo::windows_tip::kTextServiceClsid)) {
+            exists = true;
+            return S_OK;
+        }
+    }
+}
+
+HRESULT query_machine_profile_state(
+    ITfInputProcessorProfileMgr* profiles,
+    ITfCategoryMgr* categories,
+    MachineProfileState& state) noexcept {
+    HRESULT result = query_profile_exists(profiles, state.profile);
+    if (FAILED(result)) {
+        return result;
+    }
+    return query_category_exists(categories, state.category);
+}
+
+HRESULT register_profile(
+    ITfInputProcessorProfileMgr* profiles,
+    const std::wstring& icon_path) noexcept {
+    constexpr ULONG description_length =
+        static_cast<ULONG>((sizeof(mo::windows_tip::kProfileDescription) / sizeof(wchar_t)) - 1);
+    return profiles->RegisterProfile(
+        mo::windows_tip::kTextServiceClsid,
+        kLanguage,
+        mo::windows_tip::kSimplifiedChineseProfileGuid,
+        mo::windows_tip::kProfileDescription,
+        description_length,
+        icon_path.c_str(),
+        static_cast<ULONG>(icon_path.size()),
+        0,
+        nullptr,
+        0,
+        FALSE,
+        0);
+}
+
+HRESULT apply_machine_profile_state(
+    ITfInputProcessorProfileMgr* profiles,
+    ITfCategoryMgr* categories,
+    const std::wstring& icon_path,
+    const MachineProfileState& target) noexcept {
+    MachineProfileState current{};
+    HRESULT result = query_machine_profile_state(profiles, categories, current);
+    if (FAILED(result)) {
+        return result;
+    }
+    HRESULT first_failure = S_OK;
+    if (target.profile) {
+        const HRESULT operation = register_profile(profiles, icon_path);
+        if (FAILED(operation)) {
+            first_failure = operation;
+        }
+    }
+    if (target.category) {
+        const HRESULT operation = categories->RegisterCategory(
+            mo::windows_tip::kTextServiceClsid,
+            GUID_TFCAT_TIP_KEYBOARD,
+            mo::windows_tip::kTextServiceClsid);
+        if (FAILED(operation) && SUCCEEDED(first_failure)) {
+            first_failure = operation;
+        }
+    }
+    if (!target.category && current.category) {
+        const HRESULT operation = categories->UnregisterCategory(
+            mo::windows_tip::kTextServiceClsid,
+            GUID_TFCAT_TIP_KEYBOARD,
+            mo::windows_tip::kTextServiceClsid);
+        if (FAILED(operation) && SUCCEEDED(first_failure)) {
+            first_failure = operation;
+        }
+    }
+    if (!target.profile && current.profile) {
+        const HRESULT operation = profiles->UnregisterProfile(
+            mo::windows_tip::kTextServiceClsid,
+            kLanguage,
+            mo::windows_tip::kSimplifiedChineseProfileGuid,
+            0);
+        if (FAILED(operation) && SUCCEEDED(first_failure)) {
+            first_failure = operation;
+        }
+    }
+    if (FAILED(first_failure)) {
+        return first_failure;
+    }
+    MachineProfileState final_state{};
+    result = query_machine_profile_state(profiles, categories, final_state);
+    if (FAILED(result)) {
+        return result;
+    }
+    return final_state.profile == target.profile && final_state.category == target.category
+        ? S_OK
+        : E_UNEXPECTED;
+}
+
+HRESULT get_program_files_x64(std::wstring& path) noexcept {
+    path.clear();
+    PWSTR value = nullptr;
+    const HRESULT known_folder = SHGetKnownFolderPath(
+        FOLDERID_ProgramFilesX64,
+        KF_FLAG_DEFAULT,
+        nullptr,
+        &value);
+    if (SUCCEEDED(known_folder) && value != nullptr) {
+        try {
+            path.assign(value);
+        } catch (...) {
+            CoTaskMemFree(value);
+            return E_OUTOFMEMORY;
+        }
+        CoTaskMemFree(value);
+        return S_OK;
+    }
+    if (value != nullptr) {
+        CoTaskMemFree(value);
+    }
+
+    RegistryKey key;
+    LSTATUS status = RegOpenKeyExW(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
+        0,
+        KEY_QUERY_VALUE | KEY_WOW64_64KEY,
+        key.put());
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    std::array<wchar_t, 32768> buffer{};
+    DWORD bytes = static_cast<DWORD>(buffer.size() * sizeof(wchar_t));
+    status = RegGetValueW(
+        key.get(),
+        nullptr,
+        L"ProgramFilesDir",
+        RRF_RT_REG_SZ | RRF_ZEROONFAILURE,
+        nullptr,
+        buffer.data(),
+        &bytes);
+    if (status != ERROR_SUCCESS || bytes < sizeof(wchar_t)) {
+        return status == ERROR_SUCCESS
+            ? HRESULT_FROM_WIN32(ERROR_INVALID_DATA)
+            : hresult_from_registry(status);
+    }
+    try {
+        path.assign(buffer.data());
+    } catch (...) {
+        return E_OUTOFMEMORY;
+    }
+    return S_OK;
+}
+
+HRESULT get_fixed_machine_paths(
+    std::wstring& icon_path,
+    std::wstring& install_marker,
+    std::wstring& remove_marker) noexcept {
+    std::wstring program_files;
+    HRESULT result = get_program_files_x64(program_files);
+    if (FAILED(result)) {
+        return result;
+    }
+    try {
+        while (!program_files.empty()
+               && (program_files.back() == L'\\' || program_files.back() == L'/')) {
+            program_files.pop_back();
+        }
+        icon_path = program_files + kFixedTipSuffix;
+        install_marker = program_files + kInstallMarkerSuffix;
+        remove_marker = program_files + kRemoveMarkerSuffix;
+    } catch (...) {
+        return E_OUTOFMEMORY;
+    }
+    return S_OK;
+}
+
+std::string marker_contents(TransactionKind kind, const MachineProfileState& state) {
+    std::string value = "mo-machine-profile-transaction-v1 ";
+    value += kind == TransactionKind::install ? "install " : "remove ";
+    value += state.profile ? '1' : '0';
+    value += ' ';
+    value += state.category ? '1' : '0';
+    value += '\n';
+    return value;
+}
+
+HRESULT create_transaction_marker(
+    const std::wstring& path,
+    TransactionKind kind,
+    const MachineProfileState& state) noexcept {
+    HANDLE file = CreateFileW(
+        path.c_str(),
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_NEW,
+        FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED,
+        nullptr);
+    if (file == INVALID_HANDLE_VALUE) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    const std::string contents = marker_contents(kind, state);
+    DWORD written = 0;
+    const BOOL wrote = WriteFile(
+        file,
+        contents.data(),
+        static_cast<DWORD>(contents.size()),
+        &written,
+        nullptr);
+    DWORD error = ERROR_SUCCESS;
+    if (wrote == FALSE) {
+        error = GetLastError();
+    } else if (written != contents.size()) {
+        error = ERROR_WRITE_FAULT;
+    } else if (FlushFileBuffers(file) == FALSE) {
+        error = GetLastError();
+    }
+    CloseHandle(file);
+    if (error != ERROR_SUCCESS) {
+        DeleteFileW(path.c_str());
+        return HRESULT_FROM_WIN32(error);
+    }
+    return S_OK;
+}
+
+HRESULT read_transaction_marker(
+    const std::wstring& path,
+    TransactionKind expected_kind,
+    bool& exists,
+    MachineProfileState& state) noexcept {
+    exists = false;
+    state = {};
+    HANDLE file = CreateFileW(
+        path.c_str(),
+        GENERIC_READ,
+        0,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_OPEN_REPARSE_POINT,
+        nullptr);
+    if (file == INVALID_HANDLE_VALUE) {
+        const DWORD error = GetLastError();
+        return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND
+            ? S_OK
+            : HRESULT_FROM_WIN32(error);
+    }
+    FILE_ATTRIBUTE_TAG_INFO tag{};
+    if (GetFileInformationByHandleEx(file, FileAttributeTagInfo, &tag, sizeof(tag)) == FALSE) {
+        const DWORD error = GetLastError();
+        CloseHandle(file);
+        return HRESULT_FROM_WIN32(error);
+    }
+    if ((tag.FileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) != 0) {
+        CloseHandle(file);
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    }
+    std::array<char, 96> buffer{};
+    DWORD bytes = 0;
+    const BOOL read = ReadFile(
+        file,
+        buffer.data(),
+        static_cast<DWORD>(buffer.size()),
+        &bytes,
+        nullptr);
+    const DWORD read_error = read == FALSE ? GetLastError() : ERROR_SUCCESS;
+    CloseHandle(file);
+    if (read == FALSE) {
+        return HRESULT_FROM_WIN32(read_error);
+    }
+    const std::string actual(buffer.data(), bytes);
+    for (const bool profile : {false, true}) {
+        for (const bool category : {false, true}) {
+            const MachineProfileState candidate{profile, category};
+            if (actual == marker_contents(expected_kind, candidate)) {
+                state = candidate;
+                exists = true;
+                return S_OK;
+            }
+        }
+    }
+    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+}
+
+HRESULT delete_transaction_marker(
+    const std::wstring& path,
+    TransactionKind expected_kind,
+    bool missing_is_success) noexcept {
+    bool exists = false;
+    MachineProfileState ignored{};
+    HRESULT result = read_transaction_marker(path, expected_kind, exists, ignored);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (!exists) {
+        return missing_is_success ? S_OK : HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+    }
+    return DeleteFileW(path.c_str()) != FALSE
+        ? S_OK
+        : HRESULT_FROM_WIN32(GetLastError());
 }
 
 HRESULT query_registry_string(
@@ -310,55 +671,53 @@ HRESULT unregister_com_current_user() noexcept {
     return FAILED(x64_result) ? x64_result : x86_result;
 }
 
-HRESULT register_machine_profile(const std::wstring& icon_path) noexcept {
-    const HRESULT elevation_result = require_elevated_process();
-    if (FAILED(elevation_result)) {
-        return elevation_result;
-    }
-    if (!is_absolute_file(icon_path)) {
-        return E_INVALIDARG;
-    }
-
-    ComPtr<ITfInputProcessorProfileMgr> profiles;
+HRESULT create_machine_managers(
+    ComPtr<ITfInputProcessorProfileMgr>& profiles,
+    ComPtr<ITfCategoryMgr>& categories) noexcept {
     HRESULT result = create_profile_manager(profiles);
     if (FAILED(result)) {
         return result;
     }
-    constexpr ULONG description_length =
-        static_cast<ULONG>((sizeof(mo::windows_tip::kProfileDescription) / sizeof(wchar_t)) - 1);
-    result = profiles->RegisterProfile(
-        mo::windows_tip::kTextServiceClsid,
-        kLanguage,
-        mo::windows_tip::kSimplifiedChineseProfileGuid,
-        mo::windows_tip::kProfileDescription,
-        description_length,
-        icon_path.c_str(),
-        static_cast<ULONG>(icon_path.size()),
-        0,
-        nullptr,
-        0,
-        FALSE,
-        0);
+    return create_category_manager(categories);
+}
+
+HRESULT change_machine_profile_without_marker(
+    const std::wstring& icon_path,
+    const MachineProfileState& target) noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
+    if (target.profile && !is_absolute_file(icon_path)) {
+        return E_INVALIDARG;
+    }
+
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    ComPtr<ITfCategoryMgr> categories;
+    HRESULT result = create_machine_managers(profiles, categories);
     if (FAILED(result)) {
         return result;
     }
-
-    ComPtr<ITfCategoryMgr> categories;
-    result = create_category_manager(categories);
-    if (SUCCEEDED(result)) {
-        result = categories->RegisterCategory(
-            mo::windows_tip::kTextServiceClsid,
-            GUID_TFCAT_TIP_KEYBOARD,
-            mo::windows_tip::kTextServiceClsid);
-    }
+    MachineProfileState previous{};
+    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), previous);
     if (FAILED(result)) {
-        profiles->UnregisterProfile(
-            mo::windows_tip::kTextServiceClsid,
-            kLanguage,
-            mo::windows_tip::kSimplifiedChineseProfileGuid,
-            0);
+        return result;
+    }
+    result = apply_machine_profile_state(
+        profiles.operator->(), categories.operator->(), icon_path, target);
+    if (FAILED(result)) {
+        const HRESULT rollback_result = apply_machine_profile_state(
+            profiles.operator->(), categories.operator->(), icon_path, previous);
+        if (FAILED(rollback_result)) {
+            std::wcerr << L"Machine profile in-process rollback failed: 0x"
+                       << std::hex << rollback_result << L'\n';
+        }
     }
     return result;
+}
+
+HRESULT register_machine_profile(const std::wstring& icon_path) noexcept {
+    return change_machine_profile_without_marker(icon_path, {true, true});
 }
 
 HRESULT unregister_machine_profile() noexcept {
@@ -366,25 +725,171 @@ HRESULT unregister_machine_profile() noexcept {
     if (FAILED(elevation_result)) {
         return elevation_result;
     }
-    ComPtr<ITfCategoryMgr> categories;
-    HRESULT category_result = create_category_manager(categories);
-    if (SUCCEEDED(category_result)) {
-        category_result = categories->UnregisterCategory(
-            mo::windows_tip::kTextServiceClsid,
-            GUID_TFCAT_TIP_KEYBOARD,
-            mo::windows_tip::kTextServiceClsid);
-    }
-
     ComPtr<ITfInputProcessorProfileMgr> profiles;
-    HRESULT profile_result = create_profile_manager(profiles);
-    if (SUCCEEDED(profile_result)) {
-        profile_result = profiles->UnregisterProfile(
-            mo::windows_tip::kTextServiceClsid,
-            kLanguage,
-            mo::windows_tip::kSimplifiedChineseProfileGuid,
-            0);
+    ComPtr<ITfCategoryMgr> categories;
+    HRESULT result = create_machine_managers(profiles, categories);
+    if (FAILED(result)) {
+        return result;
     }
-    return FAILED(profile_result) ? profile_result : category_result;
+    return apply_machine_profile_state(
+        profiles.operator->(), categories.operator->(), std::wstring{}, {false, false});
+}
+
+HRESULT begin_machine_profile_transaction(
+    TransactionKind kind,
+    const std::wstring& icon_path,
+    const std::wstring& marker_path,
+    const MachineProfileState& target,
+    bool require_absent_previous = false) noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
+    if (!is_absolute_local_path(marker_path) || (target.profile && !is_absolute_file(icon_path))) {
+        return E_INVALIDARG;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    ComPtr<ITfCategoryMgr> categories;
+    HRESULT result = create_machine_managers(profiles, categories);
+    if (FAILED(result)) {
+        return result;
+    }
+    MachineProfileState previous{};
+    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), previous);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (require_absent_previous && (previous.profile || previous.category)) {
+        return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+    }
+    result = create_transaction_marker(marker_path, kind, previous);
+    if (FAILED(result)) {
+        return result;
+    }
+    // Leave the marker on any failure. The paired MSI rollback action owns
+    // restoration even if this process is cancelled between native calls.
+    return apply_machine_profile_state(
+        profiles.operator->(), categories.operator->(), icon_path, target);
+}
+
+HRESULT rollback_machine_profile_transaction(
+    TransactionKind kind,
+    const std::wstring& icon_path,
+    const std::wstring& marker_path) noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
+    bool exists = false;
+    MachineProfileState previous{};
+    HRESULT result = read_transaction_marker(marker_path, kind, exists, previous);
+    if (FAILED(result) || !exists) {
+        return result;
+    }
+    if (previous.profile && !is_absolute_file(icon_path)) {
+        return E_INVALIDARG;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    ComPtr<ITfCategoryMgr> categories;
+    result = create_machine_managers(profiles, categories);
+    if (FAILED(result)) {
+        return result;
+    }
+    result = apply_machine_profile_state(
+        profiles.operator->(), categories.operator->(), icon_path, previous);
+    if (FAILED(result)) {
+        return result;
+    }
+    return delete_transaction_marker(marker_path, kind, false);
+}
+
+HRESULT commit_machine_profile_transaction(
+    TransactionKind kind,
+    const std::wstring& marker_path) noexcept {
+    const HRESULT elevation_result = require_elevated_process();
+    if (FAILED(elevation_result)) {
+        return elevation_result;
+    }
+    return delete_transaction_marker(marker_path, kind, false);
+}
+
+HRESULT fixed_machine_profile_operation(std::wstring_view command) noexcept {
+    std::wstring icon_path;
+    std::wstring install_marker;
+    std::wstring remove_marker;
+    HRESULT result = get_fixed_machine_paths(icon_path, install_marker, remove_marker);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (command == L"install-machine-profile-fixed") {
+        return begin_machine_profile_transaction(
+            TransactionKind::install, icon_path, install_marker, {true, true});
+    }
+    if (command == L"install-new-machine-profile-fixed") {
+        return begin_machine_profile_transaction(
+            TransactionKind::install, icon_path, install_marker, {true, true}, true);
+    }
+    if (command == L"rollback-install-machine-profile-fixed") {
+        return rollback_machine_profile_transaction(
+            TransactionKind::install, icon_path, install_marker);
+    }
+    if (command == L"commit-install-machine-profile-fixed") {
+        return commit_machine_profile_transaction(TransactionKind::install, install_marker);
+    }
+    if (command == L"remove-machine-profile-fixed") {
+        return begin_machine_profile_transaction(
+            TransactionKind::remove, icon_path, remove_marker, {false, false});
+    }
+    if (command == L"rollback-remove-machine-profile-fixed") {
+        return rollback_machine_profile_transaction(
+            TransactionKind::remove, icon_path, remove_marker);
+    }
+    if (command == L"commit-remove-machine-profile-fixed") {
+        return commit_machine_profile_transaction(TransactionKind::remove, remove_marker);
+    }
+    return E_INVALIDARG;
+}
+
+HRESULT self_test_machine_transaction(const std::wstring& marker_path) noexcept {
+    if (!is_absolute_local_path(marker_path)
+        || GetFileAttributesW(marker_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        return E_INVALIDARG;
+    }
+    for (const TransactionKind kind : {TransactionKind::install, TransactionKind::remove}) {
+        for (const bool profile : {false, true}) {
+            for (const bool category : {false, true}) {
+                const MachineProfileState expected{profile, category};
+                HRESULT result = create_transaction_marker(marker_path, kind, expected);
+                if (FAILED(result)) {
+                    return result;
+                }
+                bool exists = false;
+                MachineProfileState actual{};
+                result = read_transaction_marker(marker_path, kind, exists, actual);
+                if (FAILED(result) || !exists || actual.profile != expected.profile
+                    || actual.category != expected.category) {
+                    DeleteFileW(marker_path.c_str());
+                    return FAILED(result) ? result : E_UNEXPECTED;
+                }
+                const HRESULT duplicate = create_transaction_marker(marker_path, kind, expected);
+                if (duplicate != HRESULT_FROM_WIN32(ERROR_FILE_EXISTS)
+                    && duplicate != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
+                    DeleteFileW(marker_path.c_str());
+                    return E_UNEXPECTED;
+                }
+                result = delete_transaction_marker(marker_path, kind, false);
+                if (FAILED(result)
+                    || GetFileAttributesW(marker_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    return FAILED(result) ? result : E_UNEXPECTED;
+                }
+            }
+        }
+    }
+    bool exists = true;
+    MachineProfileState state{};
+    const HRESULT missing = read_transaction_marker(
+        marker_path, TransactionKind::install, exists, state);
+    return SUCCEEDED(missing) && !exists ? S_OK : E_UNEXPECTED;
 }
 
 std::wstring guid_string(REFGUID guid) {
@@ -607,10 +1112,18 @@ void print_usage() {
         << L"  mo_tip_registrar unregister-com-user\n"
         << L"  mo_tip_registrar register-machine-profile <absolute-icon-module-path>\n"
         << L"  mo_tip_registrar unregister-machine-profile\n"
+        << L"  mo_tip_registrar install-machine-profile-fixed\n"
+        << L"  mo_tip_registrar install-new-machine-profile-fixed\n"
+        << L"  mo_tip_registrar rollback-install-machine-profile-fixed\n"
+        << L"  mo_tip_registrar commit-install-machine-profile-fixed\n"
+        << L"  mo_tip_registrar remove-machine-profile-fixed\n"
+        << L"  mo_tip_registrar rollback-remove-machine-profile-fixed\n"
+        << L"  mo_tip_registrar commit-remove-machine-profile-fixed\n"
         << L"  mo_tip_registrar enable-current-user\n"
         << L"  mo_tip_registrar disable-current-user\n"
         << L"  mo_tip_registrar status\n"
-        << L"  mo_tip_registrar self-test-registry <absolute-x64-dll> <absolute-x86-dll>\n\n"
+        << L"  mo_tip_registrar self-test-registry <absolute-x64-dll> <absolute-x86-dll>\n"
+        << L"  mo_tip_registrar self-test-machine-transaction <absolute-new-marker-path>\n\n"
         << L"COM development registration is scoped to HKCU and writes both WOW64 views.\n"
         << L"Machine profile/category commands require an elevated process.\n"
         << L"TSF mutation commands are separate so an installer can own transaction rollback.\n";
@@ -640,6 +1153,15 @@ int wmain(int argument_count, wchar_t** arguments) {
         result = register_machine_profile(arguments[2]);
     } else if (command == L"unregister-machine-profile" && argument_count == 2) {
         result = unregister_machine_profile();
+    } else if ((command == L"install-machine-profile-fixed"
+                   || command == L"install-new-machine-profile-fixed"
+                   || command == L"rollback-install-machine-profile-fixed"
+                   || command == L"commit-install-machine-profile-fixed"
+                   || command == L"remove-machine-profile-fixed"
+                   || command == L"rollback-remove-machine-profile-fixed"
+                   || command == L"commit-remove-machine-profile-fixed")
+               && argument_count == 2) {
+        result = fixed_machine_profile_operation(command);
     } else if (command == L"enable-current-user" && argument_count == 2) {
         result = set_enabled_for_current_user(true);
     } else if (command == L"disable-current-user" && argument_count == 2) {
@@ -648,6 +1170,8 @@ int wmain(int argument_count, wchar_t** arguments) {
         result = print_status();
     } else if (command == L"self-test-registry" && argument_count == 4) {
         result = self_test_registry(arguments[2], arguments[3]);
+    } else if (command == L"self-test-machine-transaction" && argument_count == 3) {
+        result = self_test_machine_transaction(arguments[2]);
     } else {
         print_usage();
     }

@@ -96,8 +96,12 @@ a separate operation that dynamically loads `InstallLayoutOrTip` from the
 system `input.dll`. Registration rejects relative or missing binaries and
 conflicting existing paths. `status` is read-only;
 `test-registrar.ps1` writes and removes only an isolated test CLSID and never
-registers or enables Mo. The production installer transaction and current-user
-finalization remain separate work.
+registers or enables Mo. Installer-facing fixed-layout commands now snapshot
+profile/category presence in an exact protected marker before every deferred
+mutation; paired rollback restores that state and commit removes the marker.
+The marker format has non-elevated x64/x86 no-residue self-tests. MSI authoring
+uses those commands, but a real MSI cancellation/repair/upgrade/uninstall matrix
+has not run. Current-user finalization remains separate work.
 
 Still unverified: sink activation by a registered TSF host, formal composition
 behavior and candidate UI across the real Notepad/WinUI host matrix, mixed DPI,
