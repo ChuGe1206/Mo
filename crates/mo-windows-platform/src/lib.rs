@@ -3,6 +3,9 @@
 use std::io;
 use std::path::PathBuf;
 
+#[cfg(windows)]
+mod install_trust;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeRoots {
     pub program_files_x64: PathBuf,
@@ -18,6 +21,24 @@ pub fn runtime_roots() -> io::Result<RuntimeRoots> {
     }
     #[cfg(not(windows))]
     {
+        Err(io::Error::new(io::ErrorKind::Unsupported, "Windows only"))
+    }
+}
+
+/// Audit the fixed machine installation before loading code or opening IPC.
+/// Every entry must be non-reparse, single-linked when it is a file, owned by
+/// the Windows servicing boundary and not writable by an untrusted SID.
+pub fn validate_installation_tree(
+    program_files_x64: &std::path::Path,
+    install_root: &std::path::Path,
+) -> io::Result<()> {
+    #[cfg(windows)]
+    {
+        install_trust::validate_installation_tree(program_files_x64, install_root)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (program_files_x64, install_root);
         Err(io::Error::new(io::ErrorKind::Unsupported, "Windows only"))
     }
 }

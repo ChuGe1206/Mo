@@ -2,7 +2,7 @@
 
 - 状态：接受
 - 日期：2026-09-16
-- 后续：ADR 0025 在固定机器布局加入 `Mo/runtime/librime/opencc` 与六份必要资源预检查；签名/ACL 与全部配置覆盖策略仍是独立门。
+- 后续：ADR 0025 在固定机器布局加入 `Mo/runtime/librime/opencc` 与六份必要资源预检查；ADR 0038 在启动时加入安装树 ACL/reparse/硬链接信任门。签名与全部配置覆盖策略仍是独立门。
 
 ## 背景
 
@@ -23,6 +23,6 @@ ADR 0015 已让 TIP 核对 pipe 服务端 PID、logon SID 与预期映像身份�
 
 默认 release 已没有调用者指定 native runtime 的命令入口，仓库或任意目录里的副本不能作为无参数安装进程启动。开发态真实 Rime/TSF 探针仍保留原工作流。
 
-这不是完整发布认证：占位安装器尚未证明构建来源或拒绝诊断二进制，安装目录 ACL/签名/reparse 防护尚未实现，librime 的用户配置与 Lua/staging 覆盖策略也没有闭环。fixture 只生成配置，不加载真实安装资源；自构建允许列表 librime、资源包及用户目录准备仍是后续验收项。Pipe 的 protected DACL 保持不变，不能仅凭本 ADR 启用多实例并发。
+这不是完整发布认证。后续 ADR 0024–0038 已补入自构建允许列表运行时、完整素材、安装作者层及启动时安装树信任门，但签名、真实 Program Files 安装启动、持续竞态防替换和用户配置/Lua/staging 覆盖策略仍未全部闭环。fixture 只生成配置，不加载真实安装资源。Pipe 的 protected DACL 保持不变，不能仅凭本 ADR 启用多实例并发。
 
 Known Folder API 与内存责任依据 [Windows 官方文档](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath)；prebuilt/staging traits 对应锁定版本的 [librime SetupDeployer](https://github.com/rime/librime/blob/33e78140250125871856cdc5b42ddc6a5fcd3cd4/src/rime/setup.cc)。

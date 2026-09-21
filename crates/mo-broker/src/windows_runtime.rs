@@ -40,7 +40,7 @@ pub struct RimeStartup {
 pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
     parse_installed_arguments(&arguments)?;
     let layout = InstalledLayout::from_roots(mo_windows_platform::runtime_roots()?)?;
-    prepare_installed_startup(&std::env::current_exe()?, &layout)
+    prepare_release_startup(&std::env::current_exe()?, &layout)
 }
 
 /// Diagnostic startup is deliberately unavailable when debug assertions are off.
@@ -70,6 +70,8 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstalledLayout {
+    pub program_files_x64: PathBuf,
+    pub install_root: PathBuf,
     pub local_app_data_root: PathBuf,
     pub broker_path: PathBuf,
     pub dll_path: PathBuf,
@@ -92,6 +94,8 @@ impl InstalledLayout {
         let shared = install.join("data/rime-ice");
         let user = roots.local_app_data.join("Mo/Rime");
         Ok(Self {
+            program_files_x64: roots.program_files_x64,
+            install_root: install.clone(),
             local_app_data_root: roots.local_app_data,
             broker_path: install.join("bin/mo-broker.exe"),
             dll_path: install.join("runtime/librime/rime.dll"),
@@ -114,10 +118,8 @@ fn parse_installed_arguments(arguments: &[OsString]) -> io::Result<()> {
 }
 
 #[cfg(any(not(debug_assertions), test))]
-fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Result<StartupMode> {
+fn require_fixed_broker_image(image: &Path, layout: &InstalledLayout) -> io::Result<()> {
     // Compare final filesystem paths, not a caller-selected root or cwd.
-    // Directory ACLs/reparse protection and code signatures remain separate
-    // release gates; this check alone does not justify weakening the pipe DACL.
     let image = std::fs::canonicalize(image)?;
     let expected = std::fs::canonicalize(&layout.broker_path).map_err(|_| {
         io::Error::new(
@@ -131,6 +133,26 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
             "Broker must run from its fixed installed path",
         ));
     }
+    Ok(())
+}
+
+#[cfg(any(not(debug_assertions), test))]
+fn prepare_release_startup(image: &Path, layout: &InstalledLayout) -> io::Result<StartupMode> {
+    // Reject relocated images before touching Program Files. Once identity is
+    // fixed, audit every machine asset before creating user data or binding IPC.
+    require_fixed_broker_image(image, layout)?;
+    mo_windows_platform::validate_installation_tree(
+        &layout.program_files_x64,
+        &layout.install_root,
+    )?;
+    prepare_installed_startup(image, layout)
+}
+
+#[cfg(any(not(debug_assertions), test))]
+fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Result<StartupMode> {
+    // Private preparation remains independently testable with disposable
+    // assets. The release entry point above always performs the trust audit.
+    require_fixed_broker_image(image, layout)?;
     let shared = runtime_directory(&layout.shared_data_dir, "installed shared data")?;
     let prebuilt = runtime_directory(&layout.prebuilt_data_dir, "installed prebuilt data")?;
     let opencc = runtime_directory(&layout.opencc_data_dir, "installed OpenCC data")?;
@@ -369,6 +391,8 @@ mod tests {
             local_app_data: PathBuf::from(r"C:\Users\test\AppData\Local"),
         };
         let layout = InstalledLayout::from_roots(roots.clone()).unwrap();
+        assert_eq!(layout.program_files_x64, roots.program_files_x64);
+        assert_eq!(layout.install_root, roots.program_files_x64.join("Mo"));
         assert_eq!(
             layout.broker_path,
             roots.program_files_x64.join("Mo/bin/mo-broker.exe")
@@ -401,10 +425,33 @@ mod tests {
     fn repository_image_cannot_enter_installed_mode() {
         let layout =
             InstalledLayout::from_roots(mo_windows_platform::runtime_roots().unwrap()).unwrap();
-        let error = prepare_installed_startup(&std::env::current_exe().unwrap(), &layout)
+        let error = prepare_release_startup(&std::env::current_exe().unwrap(), &layout)
             .err()
             .expect("non-installed image must be rejected");
         assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+        assert_eq!(
+            error.to_string(),
+            "Broker must run from its fixed installed path"
+        );
+    }
+
+    #[test]
+    fn release_gate_rejects_an_untrusted_tree_before_user_bootstrap() {
+        let fixture = Fixture::new();
+        let layout = InstalledLayout::from_roots(mo_windows_platform::RuntimeRoots {
+            program_files_x64: fixture.0.join("machine"),
+            local_app_data: fixture.0.join("local-app-data"),
+        })
+        .unwrap();
+        std::fs::create_dir_all(layout.broker_path.parent().unwrap()).unwrap();
+        std::fs::write(&layout.broker_path, b"fixture only; never executed").unwrap();
+
+        let error = prepare_release_startup(&layout.broker_path, &layout)
+            .err()
+            .expect("user-owned machine tree must be rejected");
+        assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+        assert!(error.to_string().contains("owner is not trusted"));
+        assert!(!layout.user_data_dir.exists());
     }
 
     #[test]
