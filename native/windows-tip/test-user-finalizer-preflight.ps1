@@ -37,19 +37,43 @@ $expectedStandardUserFailures = [ordered]@{
     'rollback-remove-current-user-fixed' = '80070002'
 }
 foreach ($command in $expectedStandardUserFailures.Keys) {
-    $output = @(& $RegistrarPath $command 2>&1 | ForEach-Object { "$_" })
-    if ($LASTEXITCODE -eq 0) { throw "Finalizer command unexpectedly succeeded without machine prerequisites: $command" }
-    $expected = if ($isElevatedAdministrator) { '80070005' } else { $expectedStandardUserFailures[$command] }
-    if (($output -join "`n") -cnotmatch "(?m)^Operation failed: 0x${expected}$") {
-        throw "Finalizer command failed at an unexpected gate: $command. Expected HRESULT 0x$expected; output: $($output -join ' | ')"
+    foreach ($arguments in @(
+        @($command),
+        @('burn-user-finalizer', $command)
+    )) {
+        $label = $arguments -join ' '
+        $output = @(& $RegistrarPath @arguments 2>&1 | ForEach-Object { "$_" })
+        if ($LASTEXITCODE -eq 0) { throw "Finalizer command unexpectedly succeeded without machine prerequisites: $label" }
+        $expected = if ($isElevatedAdministrator) { '80070005' } else { $expectedStandardUserFailures[$command] }
+        if (($output -join "`n") -cnotmatch "(?m)^Operation failed: 0x${expected}$") {
+            throw "Finalizer command failed at an unexpected gate: $label. Expected HRESULT 0x$expected; output: $($output -join ' | ')"
+        }
+        $after = Read-State
+        foreach ($name in $before.Keys) {
+            if ($after[$name] -cne $before[$name]) {
+                throw "Rejected finalizer command changed ${name}: $label"
+            }
+        }
+    }
+}
+
+foreach ($arguments in @(
+    @('burn-user-finalizer'),
+    @('burn-user-finalizer', 'unknown-current-user-operation'),
+    @('burn-user-finalizer', 'install-current-user-fixed', 'unexpected-extra')
+)) {
+    $label = $arguments -join ' '
+    $output = @(& $RegistrarPath @arguments 2>&1 | ForEach-Object { "$_" })
+    if ($LASTEXITCODE -eq 0 -or ($output -join "`n") -cnotmatch '(?m)^Operation failed: 0x80070057$') {
+        throw "Invalid Burn protocol was not rejected with E_INVALIDARG: $label"
     }
     $after = Read-State
     foreach ($name in $before.Keys) {
         if ($after[$name] -cne $before[$name]) {
-            throw "Rejected finalizer command changed ${name}: $command"
+            throw "Invalid Burn protocol changed ${name}: $label"
         }
     }
 }
 
 $mode = if ($isElevatedAdministrator) { 'elevated-token boundary' } else { 'missing machine/marker prerequisites' }
-Write-Host "Current-user finalizer fixed commands rejected the $mode at the expected HRESULTs with no state change."
+Write-Host "Current-user finalizer direct/Burn-prefixed commands and invalid Burn vectors were rejected at the expected HRESULTs with no state change ($mode)."

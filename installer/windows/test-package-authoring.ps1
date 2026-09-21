@@ -37,7 +37,8 @@ try {
     $namespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
     $packageNode = $package.SelectSingleNode('/w:Wix/w:Package', $namespace)
     Pass 'per-machine package boundary' {
-        if ($null -eq $packageNode -or $packageNode.GetAttribute('Scope') -cne 'perMachine') {
+        if ($package.DocumentElement.GetAttribute('RequiredVersion') -cne '4.0.6' -or
+            $null -eq $packageNode -or $packageNode.GetAttribute('Scope') -cne 'perMachine') {
             throw 'Package is not per-machine.'
         }
         $group = $package.SelectSingleNode('//w:ComponentGroupRef[@Id="MoPayloadComponents"]', $namespace)
@@ -126,6 +127,9 @@ try {
     $bundleNamespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
     $bundleNamespace.AddNamespace('util', 'http://wixtoolset.org/schemas/v4/wxs/util')
     Pass 'bundle machine/user privilege split' {
+        if ($bundle.DocumentElement.GetAttribute('RequiredVersion') -cne '4.0.6') {
+            throw 'Bundle does not require the locked WiX authoring version.'
+        }
         $packages = @($bundle.SelectNodes('/w:Wix/w:Bundle/w:Chain/*', $bundleNamespace))
         if ($packages.Count -ne 2 -or $packages[0].LocalName -cne 'MsiPackage' -or
             $packages[0].GetAttribute('Id') -cne 'MoMachinePackage' -or
@@ -138,9 +142,9 @@ try {
             After = 'MoMachinePackage'
             SourceFile = '$(var.UserFinalizerExe)'
             DetectCondition = 'MoUserFinalizerMarker = "mo-user-finalizer-v1"'
-            InstallArguments = ''
-            RepairArguments = ''
-            UninstallArguments = ''
+            InstallArguments = 'burn-user-finalizer'
+            RepairArguments = 'burn-user-finalizer'
+            UninstallArguments = 'burn-user-finalizer'
             PerMachine = 'no'
             Cache = 'keep'
             Permanent = 'no'
@@ -154,20 +158,20 @@ try {
         }
         foreach ($attribute in @('InstallArguments', 'RepairArguments', 'UninstallArguments')) {
             if (-not $finalizer.HasAttribute($attribute)) {
-                throw "Bundle finalizer must explicitly author empty base arguments: $attribute"
+                throw "Bundle finalizer must author the fixed Burn protocol prefix: $attribute"
             }
         }
         $commandLines = @($finalizer.SelectNodes('w:CommandLine', $bundleNamespace))
         $expectedCommandLines = [ordered]@{
-            'WixBundleAction = 3' = [ordered]@{
+            'WixBundleAction = 4' = [ordered]@{
                 InstallArgument = 'rollback-remove-current-user-fixed'
                 UninstallArgument = 'remove-current-user-fixed'
             }
-            'WixBundleAction = 5' = [ordered]@{
+            'WixBundleAction = 6' = [ordered]@{
                 InstallArgument = 'install-current-user-fixed'
                 UninstallArgument = 'rollback-install-current-user-fixed'
             }
-            'WixBundleAction = 7' = [ordered]@{
+            'WixBundleAction = 8' = [ordered]@{
                 InstallArgument = 'repair-current-user-fixed'
                 RepairArgument = 'repair-current-user-fixed'
             }
@@ -210,16 +214,17 @@ try {
         }
     }
 
-    Pass 'bundle build binds staged finalizer and required extensions' {
+    Pass 'bundle build binds locked toolchain, staged finalizer and linked verifier' {
         $buildSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'build.ps1') -Raw
         foreach ($contract in @(
-            "`$requiredWixVersion = '4.0.6'",
-            "'^4\.0\.6(?:\+.*)?`$'",
-            "'WixToolset.Bal.wixext/4.0.6'",
-            "'WixToolset.Util.wixext/4.0.6'",
-            "'WixToolset.Dependency.wixext/4.0.6'",
+            'Assert-MoWixToolchain',
+            '$toolchain.Extensions.Bal',
+            '$toolchain.Extensions.Util',
+            '$toolchain.Extensions.Dependency',
+            "'-sw1140'",
             'UserFinalizerExe=',
-            "Join-Path `$payload 'bin/mo-tip-registrar.exe'"
+            "Join-Path `$payload 'bin/mo-tip-registrar.exe'",
+            "Join-Path `$PSScriptRoot 'verify-linked-installer.ps1'"
         )) {
             if (-not $buildSource.Contains($contract, [StringComparison]::Ordinal)) {
                 throw "Bundle build input contract is missing: $contract"
@@ -243,6 +248,7 @@ try {
             'remove-current-user-fixed',
             'rollback-install-current-user-fixed',
             'rollback-remove-current-user-fixed',
+            'burn-user-finalizer',
             'require_standard_current_user_process',
             'UserFinalizerTransaction',
             'Software\\Classes\\Local Settings\\Software\\Mo\\InputMethod\\Setup',

@@ -129,9 +129,12 @@ try {
     Reject 'missing prebuilt data' { Assert-MoPrebuiltData $files } 'inventory count'
     Reject 'missing payload image' { Assert-MoStagePayloadNames @('data/rime-ice/default.yaml') } 'Required'
     Reject 'non-PE bytes' { Assert-MoPeArchitecture (Join-Path $files 'base.txt') x64 $false } 'Not a PE'
-    if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
-        Reject 'pinned WiX-unavailable gate' { & (Join-Path $PSScriptRoot 'build.ps1') -StageDirectory (Join-Path $fixture 'does-not-exist') } 'Pinned WiX 4\.0\.6 CLI'
-    }
+    Reject 'development installer authorization gate' {
+        & (Join-Path $PSScriptRoot 'build.ps1') `
+            -StageDirectory (Join-Path $fixture 'does-not-exist') `
+            -WixToolchainDirectory (Join-Path $fixture 'missing-toolchain') `
+            -OutputDirectory (Join-Path $fixture 'installer-output')
+    } 'Refusing to build a non-deployable installer'
 
     if ($StageDirectory) {
         $source = Assert-MoPlainPath $StageDirectory

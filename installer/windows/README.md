@@ -73,7 +73,7 @@ VC prerequisites, signatures, full per-file notices/SBOM, corresponding-source
 review or legal approval. All manifests explicitly remain development-only,
 non-redistributable and non-installable. This is not G3 or daily-use acceptance.
 
-## Full-payload WiX authoring (still non-deployable)
+## Full-payload WiX development packages (still non-deployable)
 
 `wix-payload.ps1` deterministically turns a verified stage into one file-owning
 WiX component per payload file, plus one registry-only component for the x86
@@ -102,9 +102,10 @@ Windows Installer cancellation or prove real TSF API rollback.
 
 `Bundle.wxs` now orders the per-machine MSI before a vital `PerMachine=no`
 finalizer package. Burn detects an exact marker under the machine-local HKCU
-`Software\Classes\Local Settings` tree. Empty base arguments plus global-action
-`CommandLine` rows select exact install/remove/repair and inverse rollback
-commands; Repair with no marker fails closed instead of installing. A stable
+`Software\Classes\Local Settings` tree. The three required base arguments use
+the fixed `burn-user-finalizer` prefix; global-action `CommandLine` rows append
+one exact install/remove/repair or inverse rollback command. Repair with no
+marker fails closed instead of installing. A stable
 `Mo.CurrentUserFinalizer.v1` dependency provider gives compatible upgrades one
 ref-counted identity. The native command rejects elevated, Session 0 and
 AppContainer tokens; rejects either HKCU COM shadow view; and verifies the files,
@@ -120,29 +121,56 @@ install rejects ambiguous pre-enabled/unowned state, repair requires the exact
 marker, and uninstall removes only marker-owned state. Failures preserve a
 detectable, retryable receipt.
 
-The authoring is still deliberately non-deployable. The standard BA is temporary
-and packages are unsigned; VC prerequisites, loaded-TIP upgrade handling,
+The repository now locks the WiX CLI plus Bal, Util and Dependency extensions to
+4.0.6, including exact official NuGet size/SHA-512 metadata and source commit.
+`prepare-wix-toolchain.ps1` creates a repository-local, inventoried development
+toolchain from either pre-existing packages or an explicit `-AllowDownload`;
+nothing is installed globally. A linked-artifact verifier decompiles the MSI,
+extracts the Burn attached container and rejects mismatched component/action
+counts, scopes, command routing, provider identity or embedded bytes.
+
+The packages remain deliberately non-deployable. The standard BA is temporary
+and both outputs are unsigned; VC prerequisites, loaded-TIP upgrade handling,
 multi-user uninstall policy, complete notices/SBOM, ACL inspection and release
-authorization remain open. This workstation has no WiX v4 CLI, so the WXS
-structure and generated inventory passed policy tests, but no MSI or Bundle was
-linked or executed and no real current-user input state was changed.
+authorization remain open. A fresh local build linked the MSI and Bundle and
+passed structural verification without executing either package or changing
+real current-user input state. MSI ICE validation could not run on this host
+because the Windows Installer service is unavailable and remains a VM gate.
+The mixed-scope chain also produces WIX1140: a per-user Bundle does not register
+a dependency on its per-machine MSI. The build suppresses that understood link
+warning only after the verifier confirms the intended split; upgrade and
+multi-user behavior still require disposable-VM tests.
 
-The build script has three safety gates:
+The build pipeline has four safety gates:
 
-1. If the exact WiX 4.0.6 `wix` command is absent or a different version is
-   present it fails immediately and never downloads anything. Bal, Util and
-   Dependency extension references are likewise pinned to 4.0.6 and must
-   already exist in the WiX extension cache.
+1. The toolchain must match the locked WiX `4.0.6+73c89738`, extension files and
+   complete inventory. Preparation never downloads unless `-AllowDownload` is
+   explicitly supplied.
 2. Even with WiX installed, `-AllowDevelopmentBuild` is required and outputs are
    explicitly named `development-unsigned`.
 3. The stage must pass development consistency validation; generated authoring
    is then independently verified before WiX is invoked.
+4. A build is successful only after the linked MSI and Bundle are decompiled or
+   extracted and their actual manifests and embedded payload hashes pass.
+
+For an offline, non-installing local build from already downloaded packages:
+
+```powershell
+./installer/windows/prepare-wix-toolchain.ps1 `
+  -PackageDirectory "$PWD/build/tools/wix-4.0.6-packages" `
+  -OutputDirectory "$PWD/build/mo-wix-toolchain-new"
+./installer/windows/build.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
+  -WixToolchainDirectory "$PWD/build/mo-wix-toolchain-new" `
+  -OutputDirectory "$PWD/build/mo-linked-installer-new" `
+  -AllowDevelopmentBuild
+```
 
 For non-mutating authoring checks:
 
 ```powershell
 ./installer/windows/test-package-authoring.ps1 `
-  -StageDirectory "$PWD/build/mo-windows-stage-user-finalizer-v2/stage"
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage"
 ```
 
 Before any release, replace or brand the temporary standard BA as needed; use

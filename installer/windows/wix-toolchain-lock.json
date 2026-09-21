@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "version": "4.0.6",
+  "source_commit": "73c897383236ddbbbc6ba257634013c1269ceec2",
+  "packages": [
+    {
+      "id": "wix",
+      "size": 4507014,
+      "sha512": "9wTcXMuWRtWEj2ccCVJn6vkLXnjTJWTJ+d3uIpzFYuYjPsyEbN9sBQLwzOSRszQ5IVK4wdBDoh0MhCcdYJ61yw=="
+    },
+    {
+      "id": "wixtoolset.bal.wixext",
+      "size": 1739369,
+      "sha512": "NRn+DldYU/tXhWq/eCoOcVoOCLME6ZUjC1UnbB3aU7ZqmQr7ReN5hey3Lu0bTyUcjCvcIfQoxjLuUazgzciLhw=="
+    },
+    {
+      "id": "wixtoolset.util.wixext",
+      "size": 887549,
+      "sha512": "446Wxfj8o7xm3Q61UgoQB+OT2Ut5scGq2INyYuZh2b8UmxQMw4N4XhcAYxJyKBY44bNYZPA+sbEaDj5EGcFY0A=="
+    },
+    {
+      "id": "wixtoolset.dependency.wixext",
+      "size": 338733,
+      "sha512": "tatOc8J7lkvpnDE9L0lnWFb93TugdS8kfRJhskqdP/ilF3oLTupWL7PQbfVqVUptf4+fAyGMTIPW7Yc2Qd25iA=="
+    }
+  ]
+}

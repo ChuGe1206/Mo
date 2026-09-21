@@ -2,7 +2,8 @@
 <Wix
     xmlns="http://wixtoolset.org/schemas/v4/wxs"
     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
-    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+    RequiredVersion="4.0.6">
   <!--
     Development-only one-click chain. Burn owns the elevation split: the MSI
     is per-machine, while the finalizer must remain in the initiating user.
@@ -34,9 +35,9 @@
           DisplayName="Mo current-user finalizer"
           Description="Enables Mo for the initiating user without making it default."
           DetectCondition="MoUserFinalizerMarker = &quot;mo-user-finalizer-v1&quot;"
-          InstallArguments=""
-          RepairArguments=""
-          UninstallArguments=""
+          InstallArguments="burn-user-finalizer"
+          RepairArguments="burn-user-finalizer"
+          UninstallArguments="burn-user-finalizer"
           PerMachine="no"
           Cache="keep"
           Permanent="no"
@@ -48,15 +49,15 @@
           code. Overall Repair must fail closed when the marker is absent.
         -->
         <CommandLine
-            Condition="WixBundleAction = 3"
+            Condition="WixBundleAction = 4"
             InstallArgument="rollback-remove-current-user-fixed"
             UninstallArgument="remove-current-user-fixed" />
         <CommandLine
-            Condition="WixBundleAction = 5"
+            Condition="WixBundleAction = 6"
             InstallArgument="install-current-user-fixed"
             UninstallArgument="rollback-install-current-user-fixed" />
         <CommandLine
-            Condition="WixBundleAction = 7"
+            Condition="WixBundleAction = 8"
             InstallArgument="repair-current-user-fixed"
             RepairArgument="repair-current-user-fixed" />
         <!-- Stable across compatible upgrades so Burn can ref-count this

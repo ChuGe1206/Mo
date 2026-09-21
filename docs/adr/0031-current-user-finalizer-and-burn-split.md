@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受（开发作者层与隔离状态协议已验证；真实 Bundle/用户输入状态尚未验收）
+已接受（开发 MSI/Bundle 已真实链接并完成反向结构核验；安装执行与真实用户输入状态尚未验收）
 
 ## 背景
 
@@ -15,9 +15,11 @@ bit；进程若在输入 API 与 marker 写入之间崩溃，也会留下无法�
 ## 决策
 
 1. Burn 先执行隐藏的 per-machine MSI，再执行 vital、`PerMachine=no` 的 registrar
-   ExePackage。三个基础 arguments 显式为空，`CommandLine` 根据不变的全局
-   `WixBundleAction` 选择完整命令：Install(5) 正向 install、逆向 rollback-install；
-   Uninstall(3) 正向 remove、逆向 rollback-remove；Repair(7) 只执行 repair。因而
+   ExePackage。WiX 要求可卸载 ExePackage 具有非空卸载参数，所以三个基础
+   arguments 均为固定前缀 `burn-user-finalizer`；`CommandLine` 根据不变的全局
+   `WixBundleAction` 选择完整命令：Install(6) 正向 install、逆向 rollback-install；
+   Uninstall(4) 正向 remove、逆向 rollback-remove；Repair(8) 只执行 repair。这些
+   数值来自锁定的 WiX 4.0.6 链接产物而不是旧版枚举。因而
    Repair 遇到 marker 缺失会在任何变更前失败，而不会误走 install。
 2. Bundle 在 64 位 HKCU 的机器本地、非漫游路径
    `Software\Classes\Local Settings\Software\Mo\InputMethod\Setup` 检测
@@ -55,21 +57,28 @@ bit；进程若在输入 API 与 marker 写入之间崩溃，也会留下无法�
   journal × enabled bit 的 140 个纯状态组合及四种进程上下文通过。
 - 隔离 HKCU 测试真实写入、读回并清理双 COM view、marker 和全部六种 journal；
   连续执行后无残留，不注册、不启用 Mo。
-- 缺少机器安装/profile 的本机 preflight 对五个正向/逆向命令核对精确 HRESULT，
-  前后 `status` 不变。状态解析器 18 个内存场景通过。
-- 作者层锁定 MSI -> finalizer 顺序、空基础参数、三组全局 action 路由、机器本地
-  marker、稳定 dependency provider、WiX CLI 与三项 4.0.6 extension 锁定和
-  native/WXS 协议；完整
-  素材共 17 项。新鲜 v2 stage 为 72-source/137-file，manifest SHA-256
-  `745DF9C48F5D72498ED9D8CD4970B586054F2D5E31F624E8C03ECC6A40317B3E`；79 项
+- 缺少机器安装/profile 的本机 preflight 对五个正向/逆向命令及其
+  `burn-user-finalizer <command>` 形式核对精确 HRESULT，前后 `status` 不变。
+  状态解析器 18 个内存场景通过。
+- 作者层锁定 MSI -> finalizer 顺序、固定基础前缀、三组全局 action 路由、机器本地
+  marker、两段式 Burn 命令、稳定 dependency provider、WiX CLI 与三项 4.0.6
+  extension 锁定及 native/WXS 协议；完整素材共 17 项。新鲜 stage 为
+  72-source/137-file，manifest SHA-256
+  `E75B602DB3F06F4C234A3773CB37923DC5DC344BEA02A7C843260F3D23C7F245`；79 项
   staging、7 组 golden、x64/Win32 各 10 轮故障恢复（40 次明确 Broker 退出）通过。
+- 由官方 NuGet 精确 SHA-512 锁定、仓库局部解包的 WiX
+  `4.0.6+73c89738` 已实际链接 131-file MSI 与 Burn Bundle。验收器反编译 MSI、
+  解包 attached container，核对 131 File、132 Component、7 CustomAction、
+  per-machine MSI/per-user finalizer、实际 action 值 4/6/8、dependency provider，
+  并证明嵌入 MSI/registrar 字节与已验证输入一致。未执行任一安装包。
 
 ## 限制
 
-本机没有 WiX v4 CLI，因此尚未链接或执行 MSI/Bundle，也未运行真实
-`InstallLayoutOrTip` 用户变更。仍须在隔离 VM 验证 clean install、marker 缺失的
-Repair、强制回滚、major upgrade、卸载，以及已提升启动/UAC 关闭时 per-user child
-不会越权。多用户机器上逐用户撤销、跨会话互斥、旧 Bundle 升级引用计数实测、
-loaded TIP 和签名也未闭环。锁定的 WiX 4.0.6/extension 尚未在本机安装和链接。
-Standard BA 仍是临时界面；开发包
-不可分发，G3 保持未通过。
+尚未执行 MSI/Bundle，也未运行真实 `InstallLayoutOrTip` 用户变更。MSI ICE 因本机
+Windows Installer 服务不可用而未完成。per-user Bundle 串联 per-machine MSI 会触发
+WIX1140，表示 Bundle 不为该 MSI 注册依赖；当前仅在已知且经结构核验后抑制链接
+警告，其升级/引用计数和多用户影响仍是发行风险。仍须在隔离 VM 验证 clean
+install、marker 缺失的 Repair、强制回滚、major upgrade、卸载，以及已提升启动/UAC
+关闭时 per-user child 不会越权。多用户逐用户撤销、跨会话互斥、旧 Bundle 升级、
+loaded TIP、签名和安装后 ACL 也未闭环。Standard BA 仍是临时界面；开发包不可
+分发，G3 保持未通过。

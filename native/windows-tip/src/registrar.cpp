@@ -1748,6 +1748,25 @@ HRESULT rollback_remove_current_user_fixed() noexcept {
         kUserFinalizerKey, transaction, false);
 }
 
+HRESULT run_fixed_current_user_operation(std::wstring_view command) noexcept {
+    if (command == L"install-current-user-fixed") {
+        return install_or_repair_current_user_fixed(false);
+    }
+    if (command == L"repair-current-user-fixed") {
+        return install_or_repair_current_user_fixed(true);
+    }
+    if (command == L"remove-current-user-fixed") {
+        return remove_current_user_fixed();
+    }
+    if (command == L"rollback-install-current-user-fixed") {
+        return rollback_install_current_user_fixed();
+    }
+    if (command == L"rollback-remove-current-user-fixed") {
+        return rollback_remove_current_user_fixed();
+    }
+    return E_INVALIDARG;
+}
+
 HRESULT self_test_user_finalizer_marker() noexcept {
     bool exists = false;
     HRESULT result = query_user_finalizer_marker_at(kProbeUserFinalizerKey, exists);
@@ -2117,6 +2136,7 @@ void print_usage() {
         << L"  mo_tip_registrar remove-current-user-fixed\n"
         << L"  mo_tip_registrar rollback-install-current-user-fixed\n"
         << L"  mo_tip_registrar rollback-remove-current-user-fixed\n"
+        << L"  mo_tip_registrar burn-user-finalizer <fixed-current-user-operation>\n"
         << L"  mo_tip_registrar enable-current-user\n"
         << L"  mo_tip_registrar disable-current-user\n"
         << L"  mo_tip_registrar status\n"
@@ -2163,18 +2183,15 @@ int wmain(int argument_count, wchar_t** arguments) {
                    || command == L"commit-remove-machine-profile-fixed")
                && argument_count == 2) {
         result = fixed_machine_profile_operation(command);
-    } else if (command == L"install-current-user-fixed" && argument_count == 2) {
-        result = install_or_repair_current_user_fixed(false);
-    } else if (command == L"repair-current-user-fixed" && argument_count == 2) {
-        result = install_or_repair_current_user_fixed(true);
-    } else if (command == L"remove-current-user-fixed" && argument_count == 2) {
-        result = remove_current_user_fixed();
-    } else if (command == L"rollback-install-current-user-fixed"
+    } else if ((command == L"install-current-user-fixed"
+                   || command == L"repair-current-user-fixed"
+                   || command == L"remove-current-user-fixed"
+                   || command == L"rollback-install-current-user-fixed"
+                   || command == L"rollback-remove-current-user-fixed")
                && argument_count == 2) {
-        result = rollback_install_current_user_fixed();
-    } else if (command == L"rollback-remove-current-user-fixed"
-               && argument_count == 2) {
-        result = rollback_remove_current_user_fixed();
+        result = run_fixed_current_user_operation(command);
+    } else if (command == L"burn-user-finalizer" && argument_count == 3) {
+        result = run_fixed_current_user_operation(arguments[2]);
     } else if (command == L"enable-current-user" && argument_count == 2) {
         result = require_standard_current_user_process();
         if (SUCCEEDED(result)) {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" RequiredVersion="4.0.6">
   <!--
     Development-only package authoring. Payload.generated.wxs is materialized
     from a verified stage and supplies MoPayloadComponents plus fixed file ids.
