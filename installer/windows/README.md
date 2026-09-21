@@ -210,6 +210,35 @@ The current host only prepares and rejects this kit; real results require a
 separately initialized disposable VM. See ADR 0033. Flavor isolation and linked
 production-shape evidence are recorded in ADR 0034.
 
+## Release-compliance drafts (still not release authorization)
+
+`prepare-release-compliance.ps1` consumes a verified stage plus the checked-in
+Phase 0 policy and produces a deterministic SPDX 2.3 document, a third-party
+notices draft and hash-bound evidence. All 131 payload files must map to exactly
+one component. The policy also locks Cargo.lock, rime-ice, the allowlisted
+librime source archives, Boost/Lua archives and package dependency/license
+expressions; unknown or overlapping ownership is rejected.
+File records carry SHA-1 and SHA-256; each file-owning component is marked
+`filesAnalyzed=true` with the SPDX package verification code calculated from
+its sorted SHA-1 list. Source-archive hashes remain source provenance and are
+not represented as checksums of the installed payload component.
+
+```powershell
+./installer/windows/prepare-release-compliance.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
+  -OutputDirectory "$PWD/build/mo-release-compliance-new"
+./installer/windows/verify-release-compliance.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
+  -ComplianceDirectory "$PWD/build/mo-release-compliance-new"
+./installer/windows/test-release-compliance.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage"
+```
+
+The evidence deliberately says `release_authorized=false` and
+`legal_review_complete=false`. The notices file lacks the complete license-text
+bundle; the GPL corresponding-source kit and formal conclusion for the combined
+librime DLL remain open. See ADR 0035.
+
 Before any release, replace or brand the temporary standard BA as needed; use
 versioned binaries to tolerate loaded TIP DLLs; validate clean
 install, repair, upgrade, forced rollback and uninstall in disposable VMs; sign

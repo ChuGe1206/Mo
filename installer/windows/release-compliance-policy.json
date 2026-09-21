@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "status": "phase-0-draft",
+  "document_created": "2026-09-21",
+  "expected_payload_files": 131,
+  "cargo_lock_sha256": "A2876D5A9431F3A207B1C809F18DFEA5E8AF2A4CB9F220B866C50480A1927928",
+  "rime_ice": {
+    "commit": "6810e8916d160498620a16fef2135956fecbd485",
+    "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3"
+  },
+  "runtime": {
+    "plugins": ["lua"],
+    "inputs": {
+      "": {"commit": "33e78140250125871856cdc5b42ddc6a5fcd3cd4", "archive_sha256": "B22594E1FCF55DF5BBF60E76DC49200671410E98540BE265F68465D03678C722"},
+      "deps/leveldb": {"commit": "99b3c03b3284f5886f9ef9a4ef703d57373e61be", "archive_sha256": "FE47E88AE4D2B1162209BF65C74D203753D2D5F105262192B9DAC41841E6C0B8"},
+      "deps/marisa-trie": {"commit": "3e87d53b78e15f2f43783d5e376561a8c9722051", "archive_sha256": "8F557F1171ABF1D205B81F9C40B3E09F90BBE2E664CBA3172ECF9D603E406CD8"},
+      "deps/opencc": {"commit": "556ed22496d650bd0b13b6c163be9814637970ae", "archive_sha256": "C46A6130BC85F09B64A144E6BB316374E1B919D07055B7C5FAD870983495A60E"},
+      "deps/yaml-cpp": {"commit": "2f86d13775d119edbb69af52e5f566fd65c6953b", "archive_sha256": "460796C79164719FFDBE7E57D0AB8E0C0A68990F8EB2814A56734C8415F8C59C"},
+      "plugins/lua": {"commit": "ec52e48ea18f11af37717a01c337f853215cf70b", "archive_sha256": "F13438CFA7AE8E64D722D89F9A76A05206CB18AEC5B34DB6E6A0546BBEE1A640"}
+    },
+    "boost_archive_sha256": "CC77EB8ED25DA4D596B25E77E4DBB6C5AFAAC9CDDD00DC9CA947B6B268CC76A4",
+    "lua_archive_sha256": "2335B6C582A52654F94612BF10D2F4672805D05329AA6568B1D8CD9E5C6FB8E6"
+  },
+  "packages": [
+    {"id": "mo-broker", "name": "Mo Broker", "version": "0.1.0", "license_declared": "Apache-2.0 AND (MIT OR Apache-2.0)", "license_concluded": "Apache-2.0 AND (MIT OR Apache-2.0)", "download_location": "https://github.com/mo-input/mo", "third_party": false, "depends_on": ["windows-sys", "windows-link"]},
+    {"id": "mo-native", "name": "Mo Windows TIP and registrar", "version": "0.1.0", "license_declared": "Apache-2.0", "license_concluded": "Apache-2.0", "download_location": "https://github.com/mo-input/mo", "third_party": false, "depends_on": []},
+    {"id": "librime-runtime", "name": "Mo allowlisted librime runtime composite", "version": "1.17.0", "license_declared": "Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT", "license_concluded": "NOASSERTION", "download_location": "NOASSERTION", "third_party": true, "depends_on": ["librime", "librime-lua", "leveldb", "marisa-trie", "opencc", "yaml-cpp", "boost", "lua"]},
+    {"id": "rime-ice", "name": "Rime Ice data and compiled derivatives", "version": "2026.06.30", "license_declared": "GPL-3.0-only", "license_concluded": "GPL-3.0-only", "download_location": "https://github.com/iDvel/rime-ice", "third_party": true, "source_required": true, "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3", "depends_on": []},
+    {"id": "opencc-data", "name": "OpenCC conversion data", "version": "556ed22496d650bd0b13b6c163be9814637970ae", "license_declared": "Apache-2.0", "license_concluded": "Apache-2.0", "download_location": "https://github.com/BYVoid/OpenCC", "third_party": true, "archive_sha256": "C46A6130BC85F09B64A144E6BB316374E1B919D07055B7C5FAD870983495A60E", "depends_on": []},
+    {"id": "rime-ice-opencc", "name": "Rime Ice OpenCC derived data", "version": "2026.06.30", "license_declared": "GPL-3.0-only", "license_concluded": "GPL-3.0-only", "download_location": "https://github.com/iDvel/rime-ice", "third_party": true, "source_required": true, "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3", "depends_on": []},
+    {"id": "windows-sys", "name": "windows-sys", "version": "0.61.2", "license_declared": "MIT OR Apache-2.0", "license_concluded": "MIT OR Apache-2.0", "download_location": "https://crates.io/crates/windows-sys/0.61.2", "third_party": true, "archive_sha256": "AE137229BCBD6CDF0F7B80A31DF61766145077DDF49416A728B02CB3921FF3FC", "depends_on": ["windows-link"]},
+    {"id": "windows-link", "name": "windows-link", "version": "0.2.1", "license_declared": "MIT OR Apache-2.0", "license_concluded": "MIT OR Apache-2.0", "download_location": "https://crates.io/crates/windows-link/0.2.1", "third_party": true, "archive_sha256": "F0805222E57F7521D6A62E36FA9163BC891ACD422F971DEFE97D64E70D0A4FE5", "depends_on": []},
+    {"id": "librime", "name": "librime", "version": "1.17.0", "license_declared": "BSD-3-Clause", "license_concluded": "BSD-3-Clause", "download_location": "https://github.com/rime/librime", "third_party": true, "archive_sha256": "B22594E1FCF55DF5BBF60E76DC49200671410E98540BE265F68465D03678C722", "depends_on": []},
+    {"id": "librime-lua", "name": "librime-lua", "version": "ec52e48ea18f11af37717a01c337f853215cf70b", "license_declared": "BSD-3-Clause", "license_concluded": "BSD-3-Clause", "download_location": "https://github.com/hchunhui/librime-lua", "third_party": true, "archive_sha256": "F13438CFA7AE8E64D722D89F9A76A05206CB18AEC5B34DB6E6A0546BBEE1A640", "depends_on": []},
+    {"id": "leveldb", "name": "LevelDB", "version": "99b3c03b3284f5886f9ef9a4ef703d57373e61be", "license_declared": "BSD-3-Clause", "license_concluded": "BSD-3-Clause", "download_location": "https://github.com/google/leveldb", "third_party": true, "archive_sha256": "FE47E88AE4D2B1162209BF65C74D203753D2D5F105262192B9DAC41841E6C0B8", "depends_on": []},
+    {"id": "marisa-trie", "name": "MARISA Trie", "version": "3e87d53b78e15f2f43783d5e376561a8c9722051", "license_declared": "BSD-2-Clause OR LGPL-2.1-or-later", "license_concluded": "BSD-2-Clause", "download_location": "https://github.com/s-yata/marisa-trie", "third_party": true, "archive_sha256": "8F557F1171ABF1D205B81F9C40B3E09F90BBE2E664CBA3172ECF9D603E406CD8", "depends_on": []},
+    {"id": "opencc", "name": "OpenCC", "version": "556ed22496d650bd0b13b6c163be9814637970ae", "license_declared": "Apache-2.0", "license_concluded": "Apache-2.0", "download_location": "https://github.com/BYVoid/OpenCC", "third_party": true, "archive_sha256": "C46A6130BC85F09B64A144E6BB316374E1B919D07055B7C5FAD870983495A60E", "depends_on": []},
+    {"id": "yaml-cpp", "name": "yaml-cpp", "version": "2f86d13775d119edbb69af52e5f566fd65c6953b", "license_declared": "MIT", "license_concluded": "MIT", "download_location": "https://github.com/jbeder/yaml-cpp", "third_party": true, "archive_sha256": "460796C79164719FFDBE7E57D0AB8E0C0A68990F8EB2814A56734C8415F8C59C", "depends_on": []},
+    {"id": "boost", "name": "Boost", "version": "1.84.0", "license_declared": "BSL-1.0", "license_concluded": "BSL-1.0", "download_location": "https://www.boost.org/", "third_party": true, "archive_sha256": "CC77EB8ED25DA4D596B25E77E4DBB6C5AFAAC9CDDD00DC9CA947B6B268CC76A4", "depends_on": []},
+    {"id": "lua", "name": "Lua", "version": "5.4.9", "license_declared": "MIT", "license_concluded": "MIT", "download_location": "https://www.lua.org/", "third_party": true, "archive_sha256": "2335B6C582A52654F94612BF10D2F4672805D05329AA6568B1D8CD9E5C6FB8E6", "depends_on": []}
+  ],
+  "file_rules": [
+    {"component": "mo-broker", "pattern": "^bin/mo-broker\\.exe$"},
+    {"component": "mo-native", "pattern": "^(bin/mo-tip-registrar\\.exe|tip/x64/mo-tip\\.dll|tip/x86/mo-tip\\.dll)$"},
+    {"component": "librime-runtime", "pattern": "^runtime/librime/rime\\.dll$"},
+    {"component": "rime-ice", "pattern": "^data/rime-ice/.+"},
+    {"component": "rime-ice-opencc", "pattern": "^runtime/librime/opencc/(emoji\\.json|emoji\\.ocd2|others\\.ocd2)$"},
+    {"component": "opencc-data", "pattern": "^runtime/librime/opencc/(?!emoji\\.json$|emoji\\.ocd2$|others\\.ocd2$).+"}
+  ],
+  "release_blockers": [
+    "formal_license_review",
+    "librime_composite_license_conclusion",
+    "complete_license_text_bundle",
+    "gpl_corresponding_source_bundle",
+    "authenticode_and_timestamp",
+    "msi_ice_and_disposable_vm_execution"
+  ]
+}
