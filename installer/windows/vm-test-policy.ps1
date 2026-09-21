@@ -124,6 +124,146 @@ function Get-MoVmPayloadContract(
     return $contract
 }
 
+function Get-MoVmSafeTreeItems([string]$Root) {
+    $pending = [Collections.Generic.Stack[string]]::new()
+    $items = [Collections.Generic.List[object]]::new()
+    $pending.Push($Root)
+    while ($pending.Count) {
+        foreach ($item in @(Get-ChildItem -LiteralPath $pending.Pop() -Force)) {
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw "Installed payload contains a reparse point: $($item.FullName)"
+            }
+            $items.Add($item)
+            if ($item.PSIsContainer) { $pending.Push($item.FullName) }
+        }
+    }
+    return $items.ToArray()
+}
+
+function Get-MoVmFileLinkCount([string]$Path) {
+    if ($null -eq ('MoVmFileIdentity' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+public static class MoVmFileIdentity {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BY_HANDLE_FILE_INFORMATION {
+        public uint FileAttributes;
+        public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(
+        string fileName, uint desiredAccess, uint shareMode, IntPtr securityAttributes,
+        uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetFileInformationByHandle(
+        SafeFileHandle file, out BY_HANDLE_FILE_INFORMATION information);
+
+    public static uint GetLinkCount(string path) {
+        const uint ShareAll = 0x00000001 | 0x00000002 | 0x00000004;
+        const uint OpenExisting = 3;
+        const uint OpenReparsePoint = 0x00200000;
+        using (SafeFileHandle file = CreateFile(
+            path, 0, ShareAll, IntPtr.Zero, OpenExisting, OpenReparsePoint, IntPtr.Zero)) {
+            if (file.IsInvalid) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
+            BY_HANDLE_FILE_INFORMATION information;
+            if (!GetFileInformationByHandle(file, out information)) {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            return information.NumberOfLinks;
+        }
+    }
+}
+'@
+    }
+    return [MoVmFileIdentity]::GetLinkCount($Path)
+}
+
+function Assert-MoVmSingleLinkFile([string]$Path) {
+    $links = Get-MoVmFileLinkCount $Path
+    if ($links -ne 1) { throw "Installed payload file has multiple hard links ($links): $Path" }
+}
+
+function Assert-MoVmAclSddl([string]$Sddl, [string]$Label) {
+    try { $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new($Sddl) }
+    catch { throw "Invalid security descriptor for ${Label}: $($_.Exception.Message)" }
+    $trustedOwners = @(
+        'S-1-5-18',       # LocalSystem
+        'S-1-5-32-544',   # Builtin Administrators
+        'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464' # TrustedInstaller
+    )
+    if ($null -eq $descriptor.Owner -or $descriptor.Owner.Value -cnotin $trustedOwners) {
+        throw "Installed path owner is not trusted: $Label"
+    }
+    if (($descriptor.ControlFlags -band [Security.AccessControl.ControlFlags]::DiscretionaryAclPresent) -eq 0 -or
+        $null -eq $descriptor.DiscretionaryAcl) {
+        throw "Installed path has a missing/null DACL: $Label"
+    }
+    $trustedWriters = $trustedOwners + @('S-1-3-0') # Creator Owner alone cannot create an entry.
+    # Data/append/EA/attributes/delete-child plus DELETE/WRITE_DAC/WRITE_OWNER,
+    # GENERIC_WRITE and GENERIC_ALL. Unknown allow ACEs are fail-closed.
+    [uint32]$dangerous = 0x500D0156
+    foreach ($ace in $descriptor.DiscretionaryAcl) {
+        if (-not $ace.AceType.ToString().StartsWith('AccessAllowed', [StringComparison]::Ordinal)) {
+            continue
+        }
+        $mask = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$ace.AccessMask), 0)
+        if (($mask -band $dangerous) -eq 0) { continue }
+        if ($null -eq $ace.SecurityIdentifier -or $ace.SecurityIdentifier.Value -cnotin $trustedWriters) {
+            $sid = if ($null -eq $ace.SecurityIdentifier) { '<unknown>' } else { $ace.SecurityIdentifier.Value }
+            throw "Installed path grants write-like access to untrusted SID ${sid}: $Label"
+        }
+    }
+}
+
+function Assert-MoVmPathAcl([string]$Path) {
+    $sections = [Security.AccessControl.AccessControlSections]::Owner -bor
+        [Security.AccessControl.AccessControlSections]::Access
+    try {
+        $acl = Get-Acl -LiteralPath $Path
+        $sddl = $acl.GetSecurityDescriptorSddlForm($sections)
+    } catch { throw "Unable to read installed path security descriptor ${Path}: $($_.Exception.Message)" }
+    Assert-MoVmAclSddl $sddl $Path
+}
+
+function Assert-MoVmInstalledSecurity([string]$InstallRoot) {
+    if (-not (Test-MoVmAbsoluteDosPath $InstallRoot) -or
+        -not (Test-Path -LiteralPath $InstallRoot -PathType Container)) {
+        throw "Installed security root is missing: $InstallRoot"
+    }
+    $programFiles = [Environment]::GetFolderPath('ProgramFiles').TrimEnd('\')
+    $expected = Join-Path $programFiles 'Mo'
+    $actual = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\')
+    if (-not [StringComparer]::OrdinalIgnoreCase.Equals($actual, $expected)) {
+        throw "Installed security root is not the fixed Program Files location: $actual"
+    }
+    $rootItem = Get-Item -LiteralPath $actual -Force
+    $programFilesItem = Get-Item -LiteralPath $programFiles -Force
+    if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+        ($programFilesItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Program Files or the Mo installation root is a reparse point.'
+    }
+    Assert-MoVmPathAcl $programFiles
+    Assert-MoVmPathAcl $actual
+    foreach ($item in @(Get-MoVmSafeTreeItems $actual)) {
+        Assert-MoVmPathAcl $item.FullName
+        if (-not $item.PSIsContainer) { Assert-MoVmSingleLinkFile $item.FullName }
+    }
+}
+
 function Assert-MoVmInstalledPayload(
     [string]$InstallRoot,
     [Collections.IDictionary]$Contract
@@ -133,10 +273,7 @@ function Assert-MoVmInstalledPayload(
         throw "Installed payload root is missing: $InstallRoot"
     }
     $root = (Resolve-Path -LiteralPath $InstallRoot).Path.TrimEnd('\')
-    $items = @(Get-ChildItem -LiteralPath $root -Recurse -Force)
-    if (@($items | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) {
-        throw 'Installed payload contains a reparse point.'
-    }
+    $items = @(Get-MoVmSafeTreeItems $root)
     $files = @($items | Where-Object { -not $_.PSIsContainer })
     if ($files.Count -ne $Contract.Count) {
         throw "Installed payload file count mismatch: expected $($Contract.Count), found $($files.Count)."
@@ -162,6 +299,7 @@ function Assert-MoVmInstalledPayload(
             (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash -cne $Contract[$key].sha256) {
             throw "Installed payload hash/size mismatch: $relative"
         }
+        Assert-MoVmSingleLinkFile $item.FullName
         $parent = [IO.Path]::GetDirectoryName($relative.Replace('/', '\'))
         while ($parent) {
             [void]$expectedDirectories.Add($parent.Replace('\', '/'))

@@ -77,6 +77,7 @@ function Assert-InstalledState([string]$ProductCode, [string]$OtherProductCode) 
     Assert-MoVmLifecycleState (Read-RegistrarState) Installed
     Assert-MoVmMachineComState Installed $installRoot
     Assert-MoVmInstalledPayload $installRoot $contract
+    Assert-MoVmInstalledSecurity $installRoot
     Assert-ProductState $ProductCode Installed
     Assert-ProductState $OtherProductCode Absent
 }
@@ -96,6 +97,7 @@ function Assert-MissingMarkerInstalledState {
     }
     Assert-MoVmMachineComState Installed $installRoot
     Assert-MoVmInstalledPayload $installRoot $contract
+    Assert-MoVmInstalledSecurity $installRoot
     Assert-ProductState $kit.base_product_code Installed
     Assert-ProductState $kit.upgrade_product_code Absent
 }
@@ -199,7 +201,7 @@ try {
         }
     }
     $evidence = [ordered]@{
-        format = 1
+        format = 2
         kind = 'mo-installer-vm-rollback-upgrade-matrix-evidence'
         development_only = $true
         completed = $completed
@@ -208,6 +210,7 @@ try {
         missing_marker_repair_failed_closed = $missingMarkerRepairFailedClosed
         major_upgrade_completed = if ($completed) { $true } else { $null }
         default_input_unchanged = if ($completed) { $true } else { $null }
+        install_tree_security_audited = if ($completed) { $true } else { $null }
         vm_id = $sentinel.vm_id
         computer_name = [Environment]::MachineName
         os_version = [Environment]::OSVersion.Version.ToString()

@@ -67,11 +67,13 @@ try {
     Assert-MoVmLifecycleState (Read-RegistrarState) Installed
     Assert-MoVmMachineComState Installed $installRoot
     Assert-MoVmInstalledPayload $installRoot $contract
+    Assert-MoVmInstalledSecurity $installRoot
 
     Invoke-BundlePhase Repair
     Assert-MoVmLifecycleState (Read-RegistrarState) Repaired
     Assert-MoVmMachineComState Installed $installRoot
     Assert-MoVmInstalledPayload $installRoot $contract
+    Assert-MoVmInstalledSecurity $installRoot
 
     Invoke-BundlePhase Uninstall
     Assert-MoVmLifecycleState (Read-RegistrarState) Uninstalled
@@ -92,11 +94,12 @@ try {
         }
     }
     $evidence = [ordered]@{
-        format = 1
+        format = 2
         kind = 'mo-installer-vm-lifecycle-evidence'
         development_only = $true
         completed = $completed
         install_default_unchanged = if ($completed) { $true } else { $null }
+        install_tree_security_audited = if ($completed) { $true } else { $null }
         vm_id = $sentinel.vm_id
         computer_name = [Environment]::MachineName
         os_version = [Environment]::OSVersion.Version.ToString()

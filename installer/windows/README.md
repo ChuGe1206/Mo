@@ -199,8 +199,11 @@ manifest into a hash-inventoried transfer directory. Its Windows PowerShell 5.1
 guest driver is fail-closed unless a separately initialized disposable VM,
 matching machine sentinel, two explicit execution switches and a non-elevated
 interactive token are all present. It validates clean install, repair and
-uninstall state plus every installed payload byte; it is not run automatically.
-See `docs/phase-0/VM-INSTALLER-TEST.md` and ADR 0032.
+uninstall state plus every installed payload byte. At every installed phase it
+also audits Program Files/install-tree owners and DACLs, rejects write-like ACEs
+for untrusted SIDs, walks without following reparse points and requires one hard
+link per file. It is not run automatically. See
+`docs/phase-0/VM-INSTALLER-TEST.md` and ADR 0032/0037.
 
 `verify-linked-upgrade-pair.ps1` and `prepare-vm-matrix-test-kit.ps1` additionally
 bind two versions into a hash-locked rollback/repair/Major Upgrade matrix. Its

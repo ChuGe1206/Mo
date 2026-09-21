@@ -82,6 +82,51 @@ try {
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
     $contract = Get-MoVmPayloadContract $manifestPath 3
     Pass 'exact installed payload' { Assert-MoVmInstalledPayload $install $contract }
+    Pass 'trusted installer ACL model' {
+        Assert-MoVmAclSddl `
+            'O:BAG:SYD:PAI(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;CO)(A;;0x1200A9;;;BU)' `
+            'synthetic-secure-install-root'
+    }
+    Reject 'untrusted installed owner' {
+        Assert-MoVmAclSddl 'O:BUG:SYD:PAI(A;;FA;;;SY)(A;;0x1200A9;;;BU)' 'bad-owner'
+    } 'owner is not trusted'
+    Reject 'users may modify installed tree' {
+        Assert-MoVmAclSddl 'O:BAG:SYD:PAI(A;;FA;;;SY)(A;;FA;;;BU)' 'users-write'
+    } 'untrusted SID'
+    Reject 'authenticated users receive generic write' {
+        Assert-MoVmAclSddl 'O:BAG:SYD:PAI(A;;FA;;;SY)(A;;GW;;;AU)' 'authenticated-write'
+    } 'untrusted SID'
+    $brokerPath = Join-Path $install 'bin/mo-broker.exe'
+    $outsideLink = Join-Path $fixture 'broker-hardlink.exe'
+    New-Item -ItemType HardLink -Path $outsideLink -Target $brokerPath | Out-Null
+    Reject 'installed payload multiple hard links' {
+        Assert-MoVmInstalledPayload $install $contract
+    } 'multiple hard links'
+    Remove-Item -LiteralPath $outsideLink -Force
+    $junctionTarget = Join-Path $fixture 'junction-target'
+    New-Item -ItemType Directory -Path $junctionTarget | Out-Null
+    $junctionPath = Join-Path $install 'unexpected-junction'
+    New-Item -ItemType Junction -Path $junctionPath -Target $junctionTarget | Out-Null
+    Reject 'installed payload reparse directory' {
+        Assert-MoVmInstalledPayload $install $contract
+    } 'reparse point'
+    Remove-Item -LiteralPath $junctionPath -Force
+    Pass 'guest drivers enforce installed security evidence' {
+        foreach ($name in @('run-vm-installer-lifecycle.ps1', 'run-vm-installer-matrix.ps1')) {
+            $text = Get-Content -LiteralPath (Join-Path $PSScriptRoot $name) -Raw
+            if ([regex]::Matches($text, 'Assert-MoVmInstalledSecurity \$installRoot').Count -ne 2 -or
+                $text -notmatch 'install_tree_security_audited = if \(\$completed\)' -or
+                $text -notmatch '(?m)^\s*format = 2\s*$') {
+                throw "Guest driver lost its installed-security evidence gate: $name"
+            }
+        }
+    }
+    Pass 'installed tree walk never uses recursive enumeration' {
+        $policyText = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'vm-test-policy.ps1') -Raw
+        if ($policyText -match 'Get-ChildItem[^\r\n]*-Recurse') {
+            throw 'Installed tree policy reintroduced recursive reparse traversal.'
+        }
+    }
     'changed' | Set-Content -LiteralPath (Join-Path $install 'data/default.yaml') -Encoding utf8NoBOM
     Reject 'tampered installed payload' { Assert-MoVmInstalledPayload $install $contract } 'hash/size'
     'schema' | Set-Content -LiteralPath (Join-Path $install 'data/default.yaml') -Encoding utf8NoBOM

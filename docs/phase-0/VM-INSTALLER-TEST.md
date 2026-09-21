@@ -50,6 +50,8 @@ current-user finalizer 必须保留发起用户的非提升令牌。根据 VM �
 - 初始状态无安装目录、机器 COM、TSF profile、用户 marker/journal；
 - install 后 131 个文件与 stage 清单逐字节一致，HKLM x64/x86 COM 路径正确，
   profile 已启用但 `active=false`，因此没有抢默认输入法；
+- install/repair 后重新审计 `Program Files\Mo`：Program Files、根和全部后代 owner/DACL
+  不允许普通主体写入，树中没有 reparse point，每个文件只有一个硬链接；
 - repair 后文件与机器注册仍精确，用户 journal 转为 repair receipt；
 - uninstall 后安装目录、机器 COM、profile 与 marker 均消失；
 - 每个 Burn 阶段退出码为 0，并保留 Bundle/package 日志及带哈希的 JSON 证据。
@@ -94,5 +96,5 @@ powershell.exe -ExecutionPolicy Bypass -File .\run-vm-installer-matrix.ps1 `
 驱动依次要求：机器 profile 变更后的 MSI 故障回到全 clean、用户 finalizer 后的
 Burn 故障回到全 clean、删除 marker 后 repair 必须失败且保持原安装、恢复精确 marker
 后完成 Major Upgrade、旧 ProductCode 消失且新 ProductCode 存在，最后卸载回到允许的
-remove receipt 状态。故障变量默认均为 0，只有 matrix 驱动使用精确
+remove receipt 状态。每个仍安装阶段都会重跑 ACL/reparse/hard-link 审计。故障变量默认均为 0，只有 matrix 驱动使用精确
 `MoTestFailAfterMachineProfile=1` 或 `MoTestFailAfterUserFinalizer=1` 开启。

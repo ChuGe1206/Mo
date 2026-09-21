@@ -41,9 +41,10 @@ Burn 权限拆分、TSF 注册 API 和当前用户 finalizer 在真实系统中�
 
 ## 验证
 
-- 22 项内存/fixture 测试覆盖 clean/install/repair/uninstall 精确状态、默认输入法
+- 33 项内存/fixture 测试覆盖 clean/install/repair/uninstall 精确状态、默认输入法
   变化拒绝、status 畸形输入、payload 篡改/缺失/额外文件/路径大小写/路径逃逸，以及测试包
-  篡改、额外文件和额外目录拒绝；不执行安装器、不提权、不修改输入状态。
+  篡改、额外文件和额外目录拒绝；新增 ACL owner/write-like ACE、reparse 与多硬链接拒绝，
+  详见 ADR 0037；不执行安装器、不提权、不修改输入状态。
 - 同一策略在 Windows PowerShell 5.1 中读取真实 131-file stage contract，并对实际
   生成的测试包完成 inventory/hash 核验。
 - 实体开发主机以完整授权参数调用初始化器时，因 HP 实体型号被拒绝，且哨兵没有
