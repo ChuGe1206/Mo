@@ -235,9 +235,43 @@ not represented as checksums of the installed payload component.
 ```
 
 The evidence deliberately says `release_authorized=false` and
-`legal_review_complete=false`. The notices file lacks the complete license-text
-bundle; the GPL corresponding-source kit and formal conclusion for the combined
-librime DLL remain open. See ADR 0035.
+`legal_review_complete=false`. Pair it with the independently verified release
+materials below; the formal conclusion for the combined librime DLL remains
+open. See ADR 0035.
+
+## Release source/license materials and signing order
+
+`prepare-release-materials.ps1` packages nine exact source archives and 15
+license/notice documents. It first re-verifies the stage and SPDX evidence, then
+binds both hashes into `materials-manifest.json`. The Cargo registry source
+directory and the retained Boost/Lua archives are explicit inputs so a missing
+cache cannot silently produce a partial kit.
+
+```powershell
+$cargoSource = (Get-ChildItem "$env:USERPROFILE/.cargo/registry/src" -Directory |
+  Select-Object -First 1).FullName
+./installer/windows/prepare-release-materials.ps1 `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
+  -RuntimeBuildDirectory "$PWD/build/mo-runtime-new" `
+  -CargoRegistrySourceDirectory $cargoSource `
+  -BoostArchivePath "$PWD/build/boost_1_84_0.zip" `
+  -LuaArchivePath "$PWD/build/lua-5.4.9.tar.gz" `
+  -ComplianceDirectory "$PWD/build/mo-release-compliance-new" `
+  -OutputDirectory "$PWD/build/mo-release-materials-new"
+```
+
+The resulting `technical_materials_complete=true` is an inventory assertion,
+not legal approval. `legal_review_complete` and `release_authorized` remain
+false. `test-release-materials.ps1` covers stale pins, missing GPL markers,
+tampered texts and forged authorization.
+
+`prepare-release-signing-plan.ps1` reads only a verified ProductionShape stage
+and linked format-3 evidence. It proves that five inner PE files, the MSI and the
+Bundle are currently unsigned, records their exact hashes, and emits the
+mandatory six-step inner-to-outer signing sequence. It does not sign anything.
+The existing unsigned stage must never be modified in place: sign copies into a
+new stage, reseal and verify it, rebuild/sign the MSI, rebuild the Bundle around
+that signed MSI and signed finalizer, then sign the Bundle last. See ADR 0036.
 
 Before any release, replace or brand the temporary standard BA as needed; use
 versioned binaries to tolerate loaded TIP DLLs; validate clean

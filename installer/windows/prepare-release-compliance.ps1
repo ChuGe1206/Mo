@@ -40,4 +40,4 @@ $evidence = [ordered]@{
 $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (
     Join-Path $output 'release-compliance-evidence.json') -Encoding utf8NoBOM
 Write-Host "Prepared deterministic SPDX 2.3 and notices drafts for $($model['files'].Count) payload files."
-Write-Warning 'Release authorization remains false: legal review, license texts, GPL source bundle, signatures, MSI ICE and disposable-VM execution are still required.'
+Write-Warning 'Release authorization remains false: pair this draft with verified release materials; legal review, signatures, MSI ICE and disposable-VM execution are still required.'

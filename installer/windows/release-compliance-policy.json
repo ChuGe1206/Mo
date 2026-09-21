@@ -50,8 +50,6 @@
   "release_blockers": [
     "formal_license_review",
     "librime_composite_license_conclusion",
-    "complete_license_text_bundle",
-    "gpl_corresponding_source_bundle",
     "authenticode_and_timestamp",
     "msi_ice_and_disposable_vm_execution"
   ]

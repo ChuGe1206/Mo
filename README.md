@@ -24,7 +24,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - WiX v4 已具备完整 payload、机器级 MSI 事务和非提升 current-user finalizer；用户状态使用持久 undo journal、精确 Burn 正反向命令及稳定升级引用计数。新鲜 137-file stage 已通过双架构故障回归，锁定的仓库局部 WiX 4.0.6 也已真实链接并反向核验未签名 MSI/Bundle。安装包尚未执行，MSI ICE、混合 scope 升级/多用户语义、签名及隔离 VM 中真实注册、启用、修复、回滚、升级与卸载均未验收，因此仍不可日常使用。
 - 一次性 VM 生命周期测试包已可把已核验 Bundle、registrar 和 131-file stage contract 绑定到同一哈希清单；来宾脚本以虚拟硬件、机器哨兵、双显式开关和非提升令牌防止误在开发主机运行，并为 install/repair/uninstall 采集逐字节与注册状态证据。当前尚无真实 VM 运行结果，见 ADR 0032。
 - 安装器现分为显式 `DevelopmentTest` 与 `ProductionShape` 两条构建路径。故障命令在 registrar 编译期默认移除，MSI/Burn 故障节点也从生产形态链接图物理排除；两条路径的 `0.0.3.0 -> 0.0.4.0` linked 升级对均已反向验证，开发版 VM lifecycle/matrix kit 已按新 evidence 格式重新绑定。生产形态仍是未签名、不可部署的开发验证物，且尚未在真实 VM 执行，见 ADR 0033/0034。
-- 生产形态 stage 已能生成哈希绑定、逐字节可重复的 SPDX 2.3 与第三方通知草案：131 个 payload 文件全部且仅归属一个组件，同时锁定 Cargo、rime-ice、允许列表 librime/Lua/OpenCC 来源。独立 verifier 会拒绝漏项、重叠、来源漂移、文档篡改和伪造发行授权；librime 组合许可证仍为 `NOASSERTION`，法律审查、许可证全文和 GPL 对应源包尚未完成，见 ADR 0035。
+- 生产形态 stage 已能生成哈希绑定、逐字节可重复的 SPDX 2.3 与第三方通知草案：131 个 payload 文件全部且仅归属一个组件。同时已组装并独立核验 9 份锁定源码归档与 15 份许可证/通知，rime-ice GPL 对应源被单独标记；签名合同固定五个内层 PE、MSI、Bundle 的六步内到外顺序，并拒绝开发 flavor 和哈希脱钩。技术材料已闭环，但 librime 组合许可证仍为 `NOASSERTION`，法律审查、实际签名和发行授权尚未完成，见 ADR 0035/0036。
 
 ## 架构路线
 

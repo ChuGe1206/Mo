@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "status": "phase-0-technical-materials",
+  "archives": [
+    {"id": "librime", "file_name": "librime-33e7814.tar", "origin": "runtime:inputs/source.tar", "sha256": "B22594E1FCF55DF5BBF60E76DC49200671410E98540BE265F68465D03678C722"},
+    {"id": "leveldb", "file_name": "leveldb-99b3c03.tar", "origin": "runtime:inputs/deps-leveldbsource.tar", "sha256": "FE47E88AE4D2B1162209BF65C74D203753D2D5F105262192B9DAC41841E6C0B8"},
+    {"id": "marisa-trie", "file_name": "marisa-trie-3e87d53.tar", "origin": "runtime:inputs/deps-marisa-triesource.tar", "sha256": "8F557F1171ABF1D205B81F9C40B3E09F90BBE2E664CBA3172ECF9D603E406CD8"},
+    {"id": "opencc", "file_name": "opencc-556ed22.tar", "origin": "runtime:inputs/deps-openccsource.tar", "sha256": "C46A6130BC85F09B64A144E6BB316374E1B919D07055B7C5FAD870983495A60E"},
+    {"id": "yaml-cpp", "file_name": "yaml-cpp-2f86d13.tar", "origin": "runtime:inputs/deps-yaml-cppsource.tar", "sha256": "460796C79164719FFDBE7E57D0AB8E0C0A68990F8EB2814A56734C8415F8C59C"},
+    {"id": "librime-lua", "file_name": "librime-lua-ec52e48.tar", "origin": "runtime:inputs/plugins-luasource.tar", "sha256": "F13438CFA7AE8E64D722D89F9A76A05206CB18AEC5B34DB6E6A0546BBEE1A640"},
+    {"id": "boost", "file_name": "boost_1_84_0.zip", "origin": "boost-archive", "sha256": "CC77EB8ED25DA4D596B25E77E4DBB6C5AFAAC9CDDD00DC9CA947B6B268CC76A4"},
+    {"id": "lua", "file_name": "lua-5.4.9.tar.gz", "origin": "lua-archive", "sha256": "2335B6C582A52654F94612BF10D2F4672805D05329AA6568B1D8CD9E5C6FB8E6"},
+    {"id": "rime-ice", "file_name": "rime-ice-6810e89.tar", "origin": "stage:evidence/rime-ice-source.tar", "sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3", "gpl_corresponding_source": true}
+  ],
+  "documents": [
+    {"id": "mo-apache", "component": "mo", "file_name": "mo-APACHE-2.0.txt", "origin": "repo:LICENSE", "sha256": "2C2B18F4B28C5636C3705DAAA4F1CC9A0161047F1083BC7C2164D8834E11CA6E"},
+    {"id": "rime-ice-gpl", "component": "rime-ice", "file_name": "rime-ice-GPL-3.0.txt", "origin": "stage:evidence/rime-ice-LICENSE", "sha256": "230184F60BAE2FEAF244F10A8BAC053C8FF33A183BCC365B4D8B876D2B7F4809"},
+    {"id": "rime-ice-credits", "component": "rime-ice", "file_name": "rime-ice-CREDITS.md", "origin": "stage:evidence/rime-ice-Credits.md", "sha256": "9A365C04F63FD5505680F5901FCDCD9E35AC21D0D886BB7E167C54582FE40109"},
+    {"id": "librime", "component": "librime", "file_name": "librime-BSD-3-Clause.txt", "origin": "runtime:inputs/librime/LICENSE", "sha256": "44C39955377BB15D825F8142DE500ED832309178CE34624C5D1A1F00761BB1EE"},
+    {"id": "librime-lua", "component": "librime-lua", "file_name": "librime-lua-BSD-3-Clause.txt", "origin": "runtime:inputs/librime/plugins/lua/LICENSE", "sha256": "4B42FA25F39C94B16588A2970A429C4D11A975AB32AC28F91CC823E836511A38"},
+    {"id": "leveldb", "component": "leveldb", "file_name": "leveldb-BSD-3-Clause.txt", "origin": "runtime:inputs/librime/deps/leveldb/LICENSE", "sha256": "2D0CC47B872BF81F665313243081D46807BFC3FCA2EC91FA093068E271598247"},
+    {"id": "marisa-trie", "component": "marisa-trie", "file_name": "marisa-trie-COPYING.md", "origin": "runtime:inputs/librime/deps/marisa-trie/COPYING.md", "sha256": "EF0DF74DC85A890202EA9EDF6C4C218855F421A8718FB8C3BD1C6D12529894B7"},
+    {"id": "opencc", "component": "opencc", "file_name": "opencc-APACHE-2.0.txt", "origin": "runtime:inputs/librime/deps/opencc/LICENSE", "sha256": "D4D265B6EF2CFD0FB645ACEE9D9092103D5FADBDAE887EB87C58A5D9B0780E19"},
+    {"id": "yaml-cpp", "component": "yaml-cpp", "file_name": "yaml-cpp-MIT.txt", "origin": "runtime:inputs/librime/deps/yaml-cpp/LICENSE", "sha256": "C06FD4EE9241E3B6841FCEE5D471475BE412C822DDF2876AF17127ACD426C011"},
+    {"id": "boost", "component": "boost", "file_name": "boost-BSL-1.0.txt", "origin": "runtime:inputs/boost/boost_1_84_0/LICENSE_1_0.txt", "sha256": "BEB8E42E9D6B4284E03304D05A81A0755200A965FC8D0A5E0AEA1E84CF805D6E"},
+    {"id": "lua", "component": "lua", "file_name": "lua-5.4.9-license.html", "origin": "runtime:inputs/lua-5.4.9/doc/readme.html", "sha256": "760D00C8B494EC2F170BCDD969E36B038027B0288232C60E15FFA6B0D784E9C7"},
+    {"id": "windows-sys-apache", "component": "windows-sys", "file_name": "windows-sys-APACHE-2.0.txt", "origin": "cargo:windows-sys-0.61.2/license-apache-2.0", "sha256": "C16F8DCF1A368B83BE78D826EA23DE4079FE1B4469A0AB9EE20563F37FF3D44B"},
+    {"id": "windows-sys-mit", "component": "windows-sys", "file_name": "windows-sys-MIT.txt", "origin": "cargo:windows-sys-0.61.2/license-mit", "sha256": "C2CFCCB812FE482101A8F04597DFC5A9991A6B2748266C47AC91B6A5AAE15383"},
+    {"id": "windows-link-apache", "component": "windows-link", "file_name": "windows-link-APACHE-2.0.txt", "origin": "cargo:windows-link-0.2.1/license-apache-2.0", "sha256": "C16F8DCF1A368B83BE78D826EA23DE4079FE1B4469A0AB9EE20563F37FF3D44B"},
+    {"id": "windows-link-mit", "component": "windows-link", "file_name": "windows-link-MIT.txt", "origin": "cargo:windows-link-0.2.1/license-mit", "sha256": "C2CFCCB812FE482101A8F04597DFC5A9991A6B2748266C47AC91B6A5AAE15383"}
+  ]
+}

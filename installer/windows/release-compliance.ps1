@@ -285,7 +285,7 @@ function Get-MoThirdPartyNotices([Collections.IDictionary]$Model) {
     $notice = [Collections.Generic.List[string]]::new()
     $notice.Add('Mo Windows payload — THIRD_PARTY_NOTICES draft')
     $notice.Add('')
-    $notice.Add('NOT FOR DISTRIBUTION. This inventory is hash-bound but still requires formal legal review, complete license texts and GPL corresponding-source packaging.')
+    $notice.Add('NOT FOR DISTRIBUTION. This inventory is hash-bound but must be paired with the separately verified license/source materials and still requires formal legal review.')
     $notice.Add('')
     foreach ($package in $Model['packages'].Values | Where-Object { $_['third_party'] } | Sort-Object { $_['id'] }) {
         $notice.Add("[$($package['id'])] $($package['name']) $($package['version'])")
