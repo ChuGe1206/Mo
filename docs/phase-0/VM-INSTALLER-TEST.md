@@ -62,3 +62,37 @@ enabled bit；下一次 clean install 会覆盖它。是否增加自有 Bootstra
 任一断言失败时停止后续动作、记录当前状态并保留 VM 供分析。收集证据后回滚快照
 或销毁 VM，不要把该 VM 当作日常环境。major upgrade、强制失败回滚、UAC 关闭、
 右键提升启动和多用户矩阵需要独立快照，不能由本 clean lifecycle 结果替代。
+
+## 4. 运行故障回滚与 Major Upgrade 矩阵
+
+开发主机先分别用 `0.0.1.0`、`0.0.2.0` 链接两个全新输出，再核对升级对并生成
+独立测试包：
+
+```powershell
+./installer/windows/verify-linked-upgrade-pair.ps1 `
+  -BaseEvidencePath "$PWD/build/mo-linked-base/verification/linked-installer-evidence.json" `
+  -UpgradeEvidencePath "$PWD/build/mo-linked-upgrade/verification/linked-installer-evidence.json" `
+  -OutputDirectory "$PWD/build/mo-linked-upgrade-pair"
+./installer/windows/prepare-vm-matrix-test-kit.ps1 `
+  -BaseBundlePath "$PWD/build/mo-linked-base/mo-setup-development-unsigned.exe" `
+  -UpgradeBundlePath "$PWD/build/mo-linked-upgrade/mo-setup-development-unsigned.exe" `
+  -ProbeRegistrarPath "$PWD/build/mo-windows-stage-new/stage/payload/Mo/bin/mo-tip-registrar.exe" `
+  -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
+  -UpgradePairEvidencePath "$PWD/build/mo-linked-upgrade-pair/linked-upgrade-pair-evidence.json" `
+  -OutputDirectory "$PWD/build/mo-vm-matrix-test-kit"
+```
+
+把 matrix kit 复制进另一份干净 Windows 11 x64 快照，按第 2 节初始化哨兵，然后从
+非提升 Windows PowerShell 运行：
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\run-vm-installer-matrix.ps1 `
+  -DisposableVm -AllowInstallerExecution `
+  -EvidenceDirectory "$env:LOCALAPPDATA\MoInstallerTest\evidence-matrix"
+```
+
+驱动依次要求：机器 profile 变更后的 MSI 故障回到全 clean、用户 finalizer 后的
+Burn 故障回到全 clean、删除 marker 后 repair 必须失败且保持原安装、恢复精确 marker
+后完成 Major Upgrade、旧 ProductCode 消失且新 ProductCode 存在，最后卸载回到允许的
+remove receipt 状态。故障变量默认均为 0，只有 matrix 驱动使用精确
+`MoTestFailAfterMachineProfile=1` 或 `MoTestFailAfterUserFinalizer=1` 开启。

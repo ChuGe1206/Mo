@@ -141,6 +141,14 @@ a dependency on its per-machine MSI. The build suppresses that understood link
 warning only after the verifier confirms the intended split; upgrade and
 multi-user behavior still require disposable-VM tests.
 
+The unsigned development Bundle also contains two hidden, default-zero fault
+variables. `MoTestFailAfterMachineProfile=1` forwards one secure MSI property
+and forces a deferred failure after the machine-profile mutation but before its
+commit action. `MoTestFailAfterUserFinalizer=1` schedules a vital chain-tail
+probe after the user finalizer. The linked verifier proves both paths in the
+actual manifests and embedded bytes. They are only for the guarded disposable-VM
+matrix and must not survive into a release flavor.
+
 The build pipeline has four safety gates:
 
 1. The toolchain must match the locked WiX `4.0.6+73c89738`, extension files and
@@ -181,6 +189,13 @@ matching machine sentinel, two explicit execution switches and a non-elevated
 interactive token are all present. It validates clean install, repair and
 uninstall state plus every installed payload byte; it is not run automatically.
 See `docs/phase-0/VM-INSTALLER-TEST.md` and ADR 0032.
+
+`verify-linked-upgrade-pair.ps1` and `prepare-vm-matrix-test-kit.ps1` additionally
+bind two versions into a hash-locked rollback/repair/Major Upgrade matrix. Its
+Windows PowerShell 5.1 driver verifies both forced rollback boundaries, missing-
+marker repair rejection, old/new MSI ProductCode transition and final uninstall.
+The current host only prepares and rejects this kit; real results require a
+separately initialized disposable VM. See ADR 0033.
 
 Before any release, replace or brand the temporary standard BA as needed; use
 versioned binaries to tolerate loaded TIP DLLs; validate clean

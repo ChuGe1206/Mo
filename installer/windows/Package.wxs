@@ -16,6 +16,7 @@
     <MajorUpgrade DowngradeErrorMessage="A newer Mo development build is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Property Id="ARPCOMMENTS" Value="Unsigned, non-redistributable development package." />
+    <Property Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE" Secure="yes" />
     <Launch Condition="NOT RollbackDisabled"
         Message="Mo setup requires Windows Installer rollback to protect the TSF registration transaction." />
 
@@ -30,6 +31,9 @@
         Impersonate="no" Return="check" />
     <CustomAction Id="InstallMachineProfile" BinaryRef="MoRegistrarCustomAction"
         ExeCommand="install-machine-profile-fixed" Execute="deferred"
+        Impersonate="no" Return="check" />
+    <CustomAction Id="DevelopmentFailAfterMachineProfile" BinaryRef="MoRegistrarCustomAction"
+        ExeCommand="development-test-fail-fixed" Execute="deferred"
         Impersonate="no" Return="check" />
     <CustomAction Id="CommitInstallMachineProfile" BinaryRef="MoRegistrarCustomAction"
         ExeCommand="commit-install-machine-profile-fixed" Execute="commit"
@@ -60,7 +64,9 @@
           Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED AND NOT REMOVE~=&quot;ALL&quot;" />
       <Custom Action="InstallMachineProfile" After="InstallNewMachineProfile"
           Condition="(Installed OR WIX_UPGRADE_DETECTED) AND NOT REMOVE~=&quot;ALL&quot;" />
-      <Custom Action="CommitInstallMachineProfile" After="InstallMachineProfile"
+      <Custom Action="DevelopmentFailAfterMachineProfile" After="InstallMachineProfile"
+          Condition="MO_TEST_FAIL_AFTER_MACHINE_PROFILE = &quot;1&quot; AND NOT REMOVE~=&quot;ALL&quot;" />
+      <Custom Action="CommitInstallMachineProfile" After="DevelopmentFailAfterMachineProfile"
           Condition="NOT REMOVE~=&quot;ALL&quot;" />
     </InstallExecuteSequence>
 

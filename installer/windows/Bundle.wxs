@@ -13,6 +13,11 @@
       Manufacturer="Mo Project"
       Version="$(var.ProductVersion)"
       UpgradeCode="{E08C0321-3F73-4D39-BC28-E7DF02C5134E}">
+    <!-- Hidden, default-off knobs for destructive disposable-VM verification. -->
+    <Variable Name="MoTestFailAfterMachineProfile" Type="numeric" Value="0"
+        Hidden="yes" bal:Overridable="yes" />
+    <Variable Name="MoTestFailAfterUserFinalizer" Type="numeric" Value="0"
+        Hidden="yes" bal:Overridable="yes" />
     <util:RegistrySearch
         Id="DetectMoUserFinalizer"
         Variable="MoUserFinalizerMarker"
@@ -27,7 +32,11 @@
           LicenseUrl="https://www.apache.org/licenses/LICENSE-2.0" />
     </BootstrapperApplication>
     <Chain>
-      <MsiPackage Id="MoMachinePackage" SourceFile="$(var.MsiPath)" Visible="no" />
+      <MsiPackage Id="MoMachinePackage" SourceFile="$(var.MsiPath)" Visible="no">
+        <MsiProperty Name="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"
+            Value="[MoTestFailAfterMachineProfile]"
+            Condition="MoTestFailAfterMachineProfile = 1" />
+      </MsiPackage>
       <ExePackage
           Id="MoCurrentUserFinalizer"
           After="MoMachinePackage"
@@ -67,6 +76,20 @@
             Version="$(var.ProductVersion)"
             DisplayName="Mo current-user finalizer" />
       </ExePackage>
+      <ExePackage
+          Id="MoDevelopmentFailureInjection"
+          After="MoCurrentUserFinalizer"
+          SourceFile="$(var.FailureInjectorExe)"
+          DisplayName="Mo development rollback probe"
+          Description="Deliberately fails after current-user finalization in disposable VM tests."
+          InstallCondition="MoTestFailAfterUserFinalizer = 1"
+          DetectCondition="0"
+          InstallArguments="development-test-fail-fixed"
+          CacheId="MoDevelopmentFailureInjection.v1"
+          PerMachine="no"
+          Cache="keep"
+          Permanent="yes"
+          Vital="yes" />
     </Chain>
   </Bundle>
 </Wix>

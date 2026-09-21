@@ -52,18 +52,25 @@ try {
             $binary.GetAttribute('SourceFile') -cne '$(var.StagePayload)\bin\mo-tip-registrar.exe') {
             throw 'Package custom-action binary is not pinned to the verified stage.'
         }
+        $failureProperty = $package.SelectSingleNode(
+            '//w:Property[@Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"]', $namespace)
+        if ($null -eq $failureProperty -or $failureProperty.GetAttribute('Secure') -cne 'yes' -or
+            $failureProperty.HasAttribute('Value')) {
+            throw 'Package failure property must be secure and default-unset.'
+        }
     }
 
     $expectedActions = [ordered]@{
         RollbackInstallMachineProfile = @('rollback-install-machine-profile-fixed', 'rollback', 'ignore')
         InstallNewMachineProfile = @('install-new-machine-profile-fixed', 'deferred', 'check')
         InstallMachineProfile = @('install-machine-profile-fixed', 'deferred', 'check')
+        DevelopmentFailAfterMachineProfile = @('development-test-fail-fixed', 'deferred', 'check')
         CommitInstallMachineProfile = @('commit-install-machine-profile-fixed', 'commit', 'check')
         RollbackRemoveMachineProfile = @('rollback-remove-machine-profile-fixed', 'rollback', 'ignore')
         RemoveMachineProfile = @('remove-machine-profile-fixed', 'deferred', 'check')
         CommitRemoveMachineProfile = @('commit-remove-machine-profile-fixed', 'commit', 'check')
     }
-    Pass 'seven elevated embedded transaction actions' {
+    Pass 'eight elevated embedded transaction actions' {
         $actions = @($package.SelectNodes('//w:CustomAction', $namespace))
         if ($actions.Count -ne $expectedActions.Count) { throw 'Unexpected package custom-action count.' }
         foreach ($action in $actions) {
@@ -81,7 +88,7 @@ try {
 
     Pass 'rollback ordering and mutually exclusive lifecycle conditions' {
         $sequence = @($package.SelectNodes('//w:InstallExecuteSequence/w:Custom', $namespace))
-        if ($sequence.Count -ne 7) { throw 'Unexpected custom-action sequence count.' }
+        if ($sequence.Count -ne 8) { throw 'Unexpected custom-action sequence count.' }
         $byAction = @{}
         foreach ($item in $sequence) { $byAction[$item.GetAttribute('Action')] = $item }
         $contracts = @(
@@ -91,7 +98,8 @@ try {
             @('RollbackInstallMachineProfile', 'After', 'InstallFiles', 'NOT REMOVE~="ALL"'),
             @('InstallNewMachineProfile', 'After', 'RollbackInstallMachineProfile', 'NOT Installed AND NOT WIX_UPGRADE_DETECTED AND NOT REMOVE~="ALL"'),
             @('InstallMachineProfile', 'After', 'InstallNewMachineProfile', '(Installed OR WIX_UPGRADE_DETECTED) AND NOT REMOVE~="ALL"'),
-            @('CommitInstallMachineProfile', 'After', 'InstallMachineProfile', 'NOT REMOVE~="ALL"')
+            @('DevelopmentFailAfterMachineProfile', 'After', 'InstallMachineProfile', 'MO_TEST_FAIL_AFTER_MACHINE_PROFILE = "1" AND NOT REMOVE~="ALL"'),
+            @('CommitInstallMachineProfile', 'After', 'DevelopmentFailAfterMachineProfile', 'NOT REMOVE~="ALL"')
         )
         foreach ($contract in $contracts) {
             $item = $byAction[$contract[0]]
@@ -131,10 +139,17 @@ try {
             throw 'Bundle does not require the locked WiX authoring version.'
         }
         $packages = @($bundle.SelectNodes('/w:Wix/w:Bundle/w:Chain/*', $bundleNamespace))
-        if ($packages.Count -ne 2 -or $packages[0].LocalName -cne 'MsiPackage' -or
+        if ($packages.Count -ne 3 -or $packages[0].LocalName -cne 'MsiPackage' -or
             $packages[0].GetAttribute('Id') -cne 'MoMachinePackage' -or
             $packages[0].GetAttribute('Visible') -cne 'no') {
             throw 'Bundle machine package contract mismatch.'
+        }
+        $msiProperty = $packages[0].SelectSingleNode('w:MsiProperty', $bundleNamespace)
+        if ($null -eq $msiProperty -or
+            $msiProperty.GetAttribute('Name') -cne 'MO_TEST_FAIL_AFTER_MACHINE_PROFILE' -or
+            $msiProperty.GetAttribute('Value') -cne '[MoTestFailAfterMachineProfile]' -or
+            $msiProperty.GetAttribute('Condition') -cne 'MoTestFailAfterMachineProfile = 1') {
+            throw 'Bundle machine failure-injection property contract mismatch.'
         }
         $finalizer = $packages[1]
         $expected = [ordered]@{
@@ -197,6 +212,46 @@ try {
             $provider.GetAttribute('DisplayName') -cne 'Mo current-user finalizer') {
             throw 'Bundle finalizer dependency provider contract mismatch.'
         }
+        $injector = $packages[2]
+        $injectorExpected = [ordered]@{
+            Id = 'MoDevelopmentFailureInjection'
+            After = 'MoCurrentUserFinalizer'
+            SourceFile = '$(var.FailureInjectorExe)'
+            InstallCondition = 'MoTestFailAfterUserFinalizer = 1'
+            DetectCondition = '0'
+            InstallArguments = 'development-test-fail-fixed'
+            CacheId = 'MoDevelopmentFailureInjection.v1'
+            PerMachine = 'no'
+            Cache = 'keep'
+            Permanent = 'yes'
+            Vital = 'yes'
+        }
+        if ($injector.LocalName -cne 'ExePackage') { throw 'Bundle rollback probe is not an ExePackage.' }
+        foreach ($attribute in $injectorExpected.Keys) {
+            if ($injector.GetAttribute($attribute) -cne $injectorExpected[$attribute]) {
+                throw "Bundle rollback probe mismatch: $attribute"
+            }
+        }
+    }
+
+    Pass 'bundle failure injection is hidden, explicit and default-off' {
+        $variables = @($bundle.SelectNodes('/w:Wix/w:Bundle/w:Variable', $bundleNamespace))
+        $expectedNames = @('MoTestFailAfterMachineProfile', 'MoTestFailAfterUserFinalizer')
+        if ($variables.Count -ne 2 -or
+            @($expectedNames | Where-Object {
+                $_ -cnotin @($variables | ForEach-Object { $_.GetAttribute('Name') })
+            }).Count) {
+            throw 'Unexpected Bundle variable set.'
+        }
+        foreach ($variable in $variables) {
+            if ($variable.GetAttribute('Name') -cnotin $expectedNames -or
+                $variable.GetAttribute('Type') -cne 'numeric' -or
+                $variable.GetAttribute('Value') -cne '0' -or
+                $variable.GetAttribute('Hidden') -cne 'yes' -or
+                $variable.GetAttribute('Overridable', 'http://wixtoolset.org/schemas/v4/wxs/bal') -cne 'yes') {
+                throw "Unsafe Bundle failure-injection variable: $($variable.GetAttribute('Name'))"
+            }
+        }
     }
 
     Pass 'bundle exact current-user detection marker' {
@@ -223,7 +278,9 @@ try {
             '$toolchain.Extensions.Dependency',
             "'-sw1140'",
             'UserFinalizerExe=',
+            'FailureInjectorExe=',
             "Join-Path `$payload 'bin/mo-tip-registrar.exe'",
+            'mo-development-failure-injection.exe',
             "Join-Path `$PSScriptRoot 'verify-linked-installer.ps1'"
         )) {
             if (-not $buildSource.Contains($contract, [StringComparison]::Ordinal)) {
@@ -249,6 +306,7 @@ try {
             'rollback-install-current-user-fixed',
             'rollback-remove-current-user-fixed',
             'burn-user-finalizer',
+            'development-test-fail-fixed',
             'require_standard_current_user_process',
             'UserFinalizerTransaction',
             'Software\\Classes\\Local Settings\\Software\\Mo\\InputMethod\\Setup',

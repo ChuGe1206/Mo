@@ -23,8 +23,9 @@ $null = Assert-MoPreparedStage $stage
 $stageManifest = Join-Path $stage 'mo-stage.json'
 $stageRegistrar = Join-Path $stage 'payload\Mo\bin\mo-tip-registrar.exe'
 $evidence = Read-MoStageJson $linkedEvidence
-if ($evidence.Count -ne 9 -or $evidence['format'] -ne 1 -or
+if ($evidence.Count -ne 15 -or $evidence['format'] -ne 2 -or
     $evidence['development_only'] -ne $true -or $evidence['install_executed'] -ne $false -or
+    $evidence['fault_injection_authoring_verified'] -ne $true -or
     $evidence['wix_version'] -cne '4.0.6+73c89738' -or
     $evidence['bundle_sha256'] -cnotmatch '^[A-F0-9]{64}$' -or
     $evidence['stage_manifest_sha256'] -cnotmatch '^[A-F0-9]{64}$') {

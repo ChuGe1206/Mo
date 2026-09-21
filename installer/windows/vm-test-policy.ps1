@@ -289,7 +289,9 @@ public static class MoVmVolumeIdentity {
 }
 
 function Assert-MoDisposableVmSentinel([string]$SentinelPath) {
-    if (-not [IO.Path]::IsPathFullyQualified($SentinelPath) -or
+    # Path.IsPathFullyQualified is unavailable on Windows PowerShell 5.1's
+    # .NET Framework runtime; the harness intentionally accepts DOS paths only.
+    if (-not (Test-MoVmAbsoluteDosPath $SentinelPath) -or
         -not (Test-Path -LiteralPath $SentinelPath -PathType Leaf)) {
         throw 'Disposable VM sentinel is missing.'
     }
@@ -369,6 +371,76 @@ function Assert-MoVmTestKit([string]$KitRoot) {
         (Get-FileHash -LiteralPath $stageManifest -Algorithm SHA256).Hash -cne
             $kit.stage_manifest_sha256) {
         throw 'VM test kit primary hash mismatch.'
+    }
+    return $kit
+}
+
+function Assert-MoVmMatrixTestKit([string]$KitRoot) {
+    if (-not (Test-MoVmAbsoluteDosPath $KitRoot) -or
+        -not (Test-Path -LiteralPath $KitRoot -PathType Container)) {
+        throw 'VM matrix test kit root must be an existing absolute DOS directory.'
+    }
+    $root = (Resolve-Path -LiteralPath $KitRoot).Path
+    $manifestPath = Join-Path $root 'vm-matrix-test-kit.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw 'VM matrix test kit manifest is missing.'
+    }
+    $kit = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    if (@($kit.PSObject.Properties).Count -ne 16 -or $kit.format -ne 1 -or
+        $kit.kind -cne 'mo-installer-vm-matrix-test-kit' -or
+        $kit.development_only -ne $true -or $kit.redistributable -ne $false -or
+        $kit.install_execution_authorized -ne $false -or
+        $kit.wix_version -cne '4.0.6+73c89738' -or
+        [version]$kit.base_version -ge [version]$kit.upgrade_version) {
+        throw 'Invalid VM matrix test kit manifest.'
+    }
+    foreach ($name in @('base_bundle_sha256', 'upgrade_bundle_sha256', 'stage_manifest_sha256')) {
+        if ($kit.$name -notmatch '^[A-F0-9]{64}$') { throw "Invalid VM matrix hash: $name" }
+    }
+    foreach ($name in @('msi_upgrade_code', 'bundle_upgrade_code', 'base_product_code', 'upgrade_product_code')) {
+        if ($kit.$name -notmatch '^\{[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}\}$') {
+            throw "Invalid VM matrix GUID: $name"
+        }
+    }
+    if ($kit.base_product_code -ceq $kit.upgrade_product_code) {
+        throw 'VM matrix product codes must differ.'
+    }
+    $expectedFiles = @(
+        'initialize-disposable-vm.ps1', 'mo-stage.json', 'mo-tip-registrar.exe',
+        'mo-setup-base-unsigned.exe', 'mo-setup-upgrade-unsigned.exe',
+        'run-vm-installer-matrix.ps1', 'vm-test-policy.ps1'
+    )
+    $properties = @($kit.files.PSObject.Properties)
+    $actualFiles = @(Get-ChildItem -LiteralPath $root -File | Where-Object {
+        $_.Name -cne 'vm-matrix-test-kit.json'
+    })
+    if ($properties.Count -ne $expectedFiles.Count -or
+        @($properties | Where-Object { $_.Name -cnotin $expectedFiles }).Count -or
+        $actualFiles.Count -ne $expectedFiles.Count -or
+        @($actualFiles | Where-Object { $_.Name -cnotin $expectedFiles }).Count) {
+        throw 'VM matrix test kit inventory name set mismatch.'
+    }
+    if (@(Get-ChildItem -LiteralPath $root -Directory -Force).Count) {
+        throw 'VM matrix test kit must not contain directories.'
+    }
+    foreach ($name in $expectedFiles) {
+        $property = $properties | Where-Object { $_.Name -ceq $name }
+        $path = Join-Path $root $name
+        if ($null -eq $property -or
+            ($property.Value.size -isnot [int] -and $property.Value.size -isnot [long]) -or
+            $property.Value.size -lt 0 -or $property.Value.sha256 -notmatch '^[A-F0-9]{64}$' -or
+            (Get-Item -LiteralPath $path).Length -ne $property.Value.size -or
+            (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $property.Value.sha256) {
+            throw "VM matrix test kit inventory mismatch: $name"
+        }
+    }
+    if ((Get-FileHash -LiteralPath (Join-Path $root 'mo-setup-base-unsigned.exe') -Algorithm SHA256).Hash -cne
+            $kit.base_bundle_sha256 -or
+        (Get-FileHash -LiteralPath (Join-Path $root 'mo-setup-upgrade-unsigned.exe') -Algorithm SHA256).Hash -cne
+            $kit.upgrade_bundle_sha256 -or
+        (Get-FileHash -LiteralPath (Join-Path $root 'mo-stage.json') -Algorithm SHA256).Hash -cne
+            $kit.stage_manifest_sha256) {
+        throw 'VM matrix test kit primary hash mismatch.'
     }
     return $kit
 }

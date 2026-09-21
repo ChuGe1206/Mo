@@ -40,7 +40,9 @@ New-Item -ItemType Directory -Path $outputDirectory | Out-Null
 $payloadWxs = Join-Path $outputDirectory 'Payload.generated.wxs'
 $msi = Join-Path $outputDirectory 'mo-development-unsigned.msi'
 $bundle = Join-Path $outputDirectory 'mo-setup-development-unsigned.exe'
+$failureInjector = Join-Path $outputDirectory 'mo-development-failure-injection.exe'
 $null = New-MoWixPayloadFragment $stage $payloadWxs
+Copy-Item -LiteralPath (Join-Path $payload 'bin/mo-tip-registrar.exe') -Destination $failureInjector
 
 Invoke-Wix @(
     'build', (Join-Path $PSScriptRoot 'Package.wxs'), $payloadWxs, '-arch', 'x64',
@@ -53,7 +55,8 @@ Invoke-Wix @(
     '-ext', $toolchain.Extensions.Dependency,
     '-sw1140',
     '-d', "ProductVersion=$ProductVersion", '-d', "MsiPath=$msi",
-    '-d', "UserFinalizerExe=$(Join-Path $payload 'bin/mo-tip-registrar.exe')", '-o', $bundle
+    '-d', "UserFinalizerExe=$(Join-Path $payload 'bin/mo-tip-registrar.exe')",
+    '-d', "FailureInjectorExe=$failureInjector", '-o', $bundle
 )
 
 & (Join-Path $PSScriptRoot 'verify-linked-installer.ps1') `

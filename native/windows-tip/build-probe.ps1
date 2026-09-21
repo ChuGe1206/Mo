@@ -83,6 +83,16 @@ foreach ($platform in $architectures) {
     Invoke-Checked $registrar @('self-test-machine-transaction', $transactionMarker)
     if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
     Invoke-Checked $registrar @('self-test-user-finalizer-policy')
+    $beforeFailureProbe = @(& $registrar status)
+    if ($LASTEXITCODE -ne 0) { throw 'Registrar failure-injection preflight status failed.' }
+    $failureProbe = @(& $registrar development-test-fail-fixed 2>&1)
+    if ($LASTEXITCODE -eq 0 -or ($failureProbe -join "`n") -cnotmatch '(?m)^Operation failed: 0x80004005$') {
+        throw 'Registrar development failure injection did not return deterministic E_FAIL.'
+    }
+    $afterFailureProbe = @(& $registrar status)
+    if ($LASTEXITCODE -ne 0 -or ($beforeFailureProbe -join "`n") -cne ($afterFailureProbe -join "`n")) {
+        throw 'Registrar development failure injection mutated observable state.'
+    }
 }
 
-Write-Host 'Compile/load plus non-mutating machine transaction and current-user finalizer policy probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'
+Write-Host 'Compile/load plus non-mutating machine transaction, current-user finalizer policy and deterministic failure probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'

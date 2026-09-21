@@ -134,6 +134,47 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $kitRoot 'unexpected') | Out-Null
     Reject 'extra VM test kit directory' { Assert-MoVmTestKit $kitRoot } 'must not contain directories'
     Remove-Item -LiteralPath (Join-Path $kitRoot 'unexpected')
+
+    $matrixRoot = Join-Path $fixture 'matrix-kit'
+    New-Item -ItemType Directory -Path $matrixRoot | Out-Null
+    $matrixNames = @(
+        'initialize-disposable-vm.ps1', 'mo-stage.json', 'mo-tip-registrar.exe',
+        'mo-setup-base-unsigned.exe', 'mo-setup-upgrade-unsigned.exe',
+        'run-vm-installer-matrix.ps1', 'vm-test-policy.ps1'
+    )
+    foreach ($name in $matrixNames) {
+        "matrix-$name" | Set-Content -LiteralPath (Join-Path $matrixRoot $name) -Encoding utf8NoBOM
+    }
+    $matrixManifestPath = Join-Path $matrixRoot 'vm-matrix-test-kit.json'
+    $matrixManifest = [ordered]@{
+        format = 1; kind = 'mo-installer-vm-matrix-test-kit'; development_only = $true
+        redistributable = $false; install_execution_authorized = $false
+        wix_version = '4.0.6+73c89738'; base_version = '0.0.1.0'; upgrade_version = '0.0.2.0'
+        base_bundle_sha256 = (Get-FileHash -LiteralPath (Join-Path $matrixRoot 'mo-setup-base-unsigned.exe')).Hash
+        upgrade_bundle_sha256 = (Get-FileHash -LiteralPath (Join-Path $matrixRoot 'mo-setup-upgrade-unsigned.exe')).Hash
+        stage_manifest_sha256 = (Get-FileHash -LiteralPath (Join-Path $matrixRoot 'mo-stage.json')).Hash
+        msi_upgrade_code = '{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}'
+        bundle_upgrade_code = '{E08C0321-3F73-4D39-BC28-E7DF02C5134E}'
+        base_product_code = '{11111111-1111-4111-8111-111111111111}'
+        upgrade_product_code = '{22222222-2222-4222-8222-222222222222}'
+        files = Get-MoStageInventory $matrixRoot
+    }
+    $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
+    Pass 'exact VM matrix test kit inventory' { $null = Assert-MoVmMatrixTestKit $matrixRoot }
+    $matrixManifest.upgrade_product_code = $matrixManifest.base_product_code
+    $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
+    Reject 'duplicate VM matrix product code' {
+        Assert-MoVmMatrixTestKit $matrixRoot
+    } 'product codes must differ'
+    $matrixManifest.upgrade_product_code = '{22222222-2222-4222-8222-222222222222}'
+    $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
+    $matrixPolicy = Join-Path $matrixRoot 'vm-test-policy.ps1'
+    $matrixPolicyBytes = [IO.File]::ReadAllBytes($matrixPolicy)
+    'tampered' | Set-Content -LiteralPath $matrixPolicy -Encoding utf8NoBOM
+    Reject 'tampered VM matrix test kit' {
+        Assert-MoVmMatrixTestKit $matrixRoot
+    } 'inventory mismatch'
+    [IO.File]::WriteAllBytes($matrixPolicy, $matrixPolicyBytes)
     Write-Host "VM lifecycle policy tests passed: $script:testCount. No installer, registration, elevation or input-state mutation."
 } finally {
     $resolved = Assert-MoPlainPath $fixture
