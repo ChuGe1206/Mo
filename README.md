@@ -22,6 +22,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - 已接入自主 Win32 纵向候选窗、鼠标选词/翻页、DPI 缩放和屏幕边缘避让。候选动作通过协商 feature 绑定当前会话的 revision，拒绝陈旧/越界点击；鼠标在可同步或异步的 TSF 编辑锁内执行，并在锁内再次复核身份。布局变化使用异步只读定位。x64/x86 受控真实词库探针已通过鼠标上屏、松键刷新、延迟动作取消与焦点恢复；普通软件尚未验收。
 - x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键与候选动作往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`、PageUp/PageDown、数字选词、前后翻页和当前页第二候选提交；CI 同时核对 TIP Edit Session 写入 EDIT 和 TSF context 的最终文本，而非仅停留在 IPC 快照。
 - WiX v4 已具备完整 payload、机器级 MSI 事务和非提升 current-user finalizer；用户状态使用持久 undo journal、精确 Burn 正反向命令及稳定升级引用计数。新鲜 137-file stage 已通过双架构故障回归，锁定的仓库局部 WiX 4.0.6 也已真实链接并反向核验未签名 MSI/Bundle。安装包尚未执行，MSI ICE、混合 scope 升级/多用户语义、签名及隔离 VM 中真实注册、启用、修复、回滚、升级与卸载均未验收，因此仍不可日常使用。
+- 一次性 VM 生命周期测试包已可把已核验 Bundle、registrar 和 131-file stage contract 绑定到同一哈希清单；来宾脚本以虚拟硬件、机器哨兵、双显式开关和非提升令牌防止误在开发主机运行，并为 install/repair/uninstall 采集逐字节与注册状态证据。当前尚无真实 VM 运行结果，见 ADR 0032。
 
 ## 架构路线
 
@@ -41,6 +42,7 @@ cargo +stable test --workspace
 ./tools/tip-broker-smoke.ps1 -Architecture All
 ./tools/broker-startup-smoke.ps1
 ./tools/test-registered-tip-state.ps1
+./installer/windows/test-vm-lifecycle-policy.ps1
 ```
 
 真实 librime/rime-ice 冒烟需要显式提供已核验的上游目录：

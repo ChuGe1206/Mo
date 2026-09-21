@@ -171,7 +171,16 @@ For non-mutating authoring checks:
 ```powershell
 ./installer/windows/test-package-authoring.ps1 `
   -StageDirectory "$PWD/build/mo-windows-stage-new/stage"
+./installer/windows/test-vm-lifecycle-policy.ps1
 ```
+
+`prepare-vm-test-kit.ps1` can bind a verified Bundle, staged registrar and stage
+manifest into a hash-inventoried transfer directory. Its Windows PowerShell 5.1
+guest driver is fail-closed unless a separately initialized disposable VM,
+matching machine sentinel, two explicit execution switches and a non-elevated
+interactive token are all present. It validates clean install, repair and
+uninstall state plus every installed payload byte; it is not run automatically.
+See `docs/phase-0/VM-INSTALLER-TEST.md` and ADR 0032.
 
 Before any release, replace or brand the temporary standard BA as needed; use
 versioned binaries to tolerate loaded TIP DLLs; validate clean
