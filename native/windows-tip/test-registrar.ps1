@@ -22,6 +22,10 @@ for ($attempt = 1; $attempt -le 2; $attempt++) {
         throw "Registrar isolated registry self-test attempt $attempt failed with exit code $LASTEXITCODE."
     }
 }
+& $registrar self-test-user-finalizer-marker
+if ($LASTEXITCODE -ne 0) {
+    throw "Registrar isolated user-finalizer marker self-test failed with exit code $LASTEXITCODE."
+}
 
-Write-Host 'Registrar isolated x64/x86 registry self-test passed twice and cleaned its test CLSID.'
+Write-Host 'Registrar isolated x64/x86 registry and user-finalizer marker self-tests passed and cleaned their test keys.'
 Write-Host 'This test did not register or enable the Mo input profile.'

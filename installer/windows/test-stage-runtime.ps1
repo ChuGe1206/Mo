@@ -46,6 +46,8 @@ try {
     if ($LASTEXITCODE -ne 0 -or (Test-Path -LiteralPath $registrarMarker)) {
         throw 'Staged registrar transaction marker self-test failed or left residue.'
     }
+    & (Join-Path $payload 'bin/mo-tip-registrar.exe') self-test-user-finalizer-policy
+    if ($LASTEXITCODE -ne 0) { throw 'Staged user-finalizer policy self-test failed.' }
     # A shipping-layout TIP authenticates its sibling bin/mo-broker.exe by file
     # identity. Never weaken that check or replace the staged release Broker.
     # Copy identical TIP bytes into a disposable installed-like layout, paired

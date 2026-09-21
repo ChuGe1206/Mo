@@ -6,7 +6,9 @@
 #include <msctf.h>
 #include <shlobj.h>
 
+#include <algorithm>
 #include <array>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -22,6 +24,8 @@ constexpr LANGID kLanguage = MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 constexpr DWORD kIlotUninstall = 0x00000001;
 constexpr wchar_t kComKey[] =
     L"Software\\Classes\\CLSID\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\InprocServer32";
+constexpr wchar_t kComClsidPath[] =
+    L"Software\\Classes\\CLSID\\{B4911146-2A27-47AA-9D12-109B6AE10A70}";
 constexpr wchar_t kComParentKey[] = L"Software\\Classes\\CLSID";
 constexpr wchar_t kComClsidKey[] = L"{B4911146-2A27-47AA-9D12-109B6AE10A70}";
 constexpr wchar_t kProbeComKey[] =
@@ -29,8 +33,22 @@ constexpr wchar_t kProbeComKey[] =
     L"{A51FCF97-6D9E-4C59-8905-C36A443AB7C2}\\InprocServer32";
 constexpr wchar_t kProbeComClsidKey[] = L"{A51FCF97-6D9E-4C59-8905-C36A443AB7C2}";
 constexpr wchar_t kFixedTipSuffix[] = L"\\Mo\\tip\\x64\\mo-tip.dll";
+constexpr wchar_t kFixedTipX86Suffix[] = L"\\Mo\\tip\\x86\\mo-tip.dll";
 constexpr wchar_t kInstallMarkerSuffix[] = L"\\Mo\\.machine-profile-install-rollback-v1";
 constexpr wchar_t kRemoveMarkerSuffix[] = L"\\Mo\\.machine-profile-remove-rollback-v1";
+// Software\Classes\Local Settings is deliberately machine-local for a roaming
+// user profile. Bundle detection must never roam to a machine without Mo.
+constexpr wchar_t kUserFinalizerKey[] =
+    L"Software\\Classes\\Local Settings\\Software\\Mo\\InputMethod\\Setup";
+constexpr wchar_t kUserFinalizerValue[] = L"UserFinalizer";
+constexpr wchar_t kUserFinalizerMarker[] = L"mo-user-finalizer-v1";
+constexpr wchar_t kUserFinalizerTransactionValue[] = L"UserFinalizerTransaction";
+constexpr DWORD kMaximumRegistryStringBytes = 64 * 1024;
+constexpr wchar_t kUserFinalizerMutex[] =
+    L"Local\\Mo.InputMethod.UserFinalizer.{5B37FACA-6075-49FD-B29B-3E14BC779C72}";
+constexpr wchar_t kProbeUserFinalizerKey[] =
+    L"Software\\Classes\\Local Settings\\Software\\Mo\\InputMethod\\Tests\\"
+    L"{24CD1DC4-1619-4A29-8E89-761D50F02A6D}";
 
 template <typename Interface>
 class ComPtr final {
@@ -67,6 +85,44 @@ private:
     HKEY value_ = nullptr;
 };
 
+class UserFinalizerLock final {
+public:
+    UserFinalizerLock() = default;
+    ~UserFinalizerLock() {
+        if (acquired_) {
+            ReleaseMutex(value_);
+        }
+        if (value_ != nullptr) {
+            CloseHandle(value_);
+        }
+    }
+    UserFinalizerLock(const UserFinalizerLock&) = delete;
+    UserFinalizerLock& operator=(const UserFinalizerLock&) = delete;
+
+    HRESULT acquire() noexcept {
+        value_ = CreateMutexW(nullptr, FALSE, kUserFinalizerMutex);
+        if (value_ == nullptr) {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+        const DWORD waited = WaitForSingleObject(value_, 30'000);
+        if (waited == WAIT_OBJECT_0 || waited == WAIT_ABANDONED) {
+            acquired_ = true;
+            return S_OK;
+        }
+        if (waited == WAIT_TIMEOUT) {
+            return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
+        }
+        if (waited == WAIT_FAILED) {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+        return E_UNEXPECTED;
+    }
+
+private:
+    HANDLE value_ = nullptr;
+    bool acquired_ = false;
+};
+
 HRESULT hresult_from_registry(LSTATUS status) noexcept {
     return status == ERROR_SUCCESS
         ? S_OK
@@ -101,7 +157,8 @@ bool is_64_bit_windows() noexcept {
 #endif
 }
 
-HRESULT require_elevated_process() noexcept {
+HRESULT query_process_elevation(bool& elevated) noexcept {
+    elevated = false;
     HANDLE token = nullptr;
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
         return HRESULT_FROM_WIN32(GetLastError());
@@ -115,9 +172,57 @@ HRESULT require_elevated_process() noexcept {
     if (queried == FALSE) {
         return HRESULT_FROM_WIN32(last_error);
     }
-    return elevation.TokenIsElevated != 0
-        ? S_OK
-        : HRESULT_FROM_WIN32(ERROR_ELEVATION_REQUIRED);
+    elevated = elevation.TokenIsElevated != 0;
+    return S_OK;
+}
+
+HRESULT require_elevated_process() noexcept {
+    bool elevated = false;
+    const HRESULT result = query_process_elevation(elevated);
+    if (FAILED(result)) {
+        return result;
+    }
+    return elevated ? S_OK : HRESULT_FROM_WIN32(ERROR_ELEVATION_REQUIRED);
+}
+
+HRESULT validate_user_finalizer_process_context(
+    bool elevated,
+    DWORD session,
+    bool app_container) noexcept {
+    if (elevated) {
+        return HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED);
+    }
+    if (session == 0) {
+        return HRESULT_FROM_WIN32(ERROR_NOT_LOGGED_ON);
+    }
+    return app_container ? HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED) : S_OK;
+}
+
+HRESULT require_standard_current_user_process() noexcept {
+    bool elevated = false;
+    HRESULT result = query_process_elevation(elevated);
+    if (FAILED(result)) {
+        return result;
+    }
+    DWORD session = 0;
+    if (ProcessIdToSessionId(GetCurrentProcessId(), &session) == FALSE) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    HANDLE token = nullptr;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    DWORD app_container = 0;
+    DWORD bytes = 0;
+    const BOOL queried = GetTokenInformation(
+        token, TokenIsAppContainer, &app_container, sizeof(app_container), &bytes);
+    const DWORD last_error = queried != FALSE ? ERROR_SUCCESS : GetLastError();
+    CloseHandle(token);
+    if (queried == FALSE) {
+        return HRESULT_FROM_WIN32(last_error);
+    }
+    return validate_user_finalizer_process_context(
+        elevated, session, app_container != 0);
 }
 
 HRESULT create_profile_manager(ComPtr<ITfInputProcessorProfileMgr>& manager) noexcept {
@@ -146,6 +251,18 @@ struct MachineProfileState final {
 enum class TransactionKind {
     install,
     remove,
+};
+
+enum class UserFinalizerTransactionKind {
+    none,
+    install,
+    repair,
+    remove,
+};
+
+struct UserFinalizerTransaction final {
+    UserFinalizerTransactionKind kind = UserFinalizerTransactionKind::none;
+    bool previous_enabled = false;
 };
 
 HRESULT query_profile_exists(
@@ -367,6 +484,27 @@ HRESULT get_fixed_machine_paths(
     return S_OK;
 }
 
+HRESULT get_fixed_tip_paths(
+    std::wstring& x64_path,
+    std::wstring& x86_path) noexcept {
+    std::wstring program_files;
+    HRESULT result = get_program_files_x64(program_files);
+    if (FAILED(result)) {
+        return result;
+    }
+    try {
+        while (!program_files.empty()
+               && (program_files.back() == L'\\' || program_files.back() == L'/')) {
+            program_files.pop_back();
+        }
+        x64_path = program_files + kFixedTipSuffix;
+        x86_path = program_files + kFixedTipX86Suffix;
+    } catch (...) {
+        return E_OUTOFMEMORY;
+    }
+    return S_OK;
+}
+
 std::string marker_contents(TransactionKind kind, const MachineProfileState& state) {
     std::string value = "mo-machine-profile-transaction-v1 ";
     value += kind == TransactionKind::install ? "install " : "remove ";
@@ -492,7 +630,8 @@ HRESULT delete_transaction_marker(
         : HRESULT_FROM_WIN32(GetLastError());
 }
 
-HRESULT query_registry_string(
+HRESULT query_registry_string_at(
+    HKEY root,
     const wchar_t* key_path,
     REGSAM view,
     const wchar_t* value_name,
@@ -502,7 +641,7 @@ HRESULT query_registry_string(
     value.clear();
     RegistryKey key;
     LSTATUS status = RegOpenKeyExW(
-        HKEY_CURRENT_USER,
+        root,
         key_path,
         0,
         KEY_QUERY_VALUE | view,
@@ -523,10 +662,12 @@ HRESULT query_registry_string(
     if (status != ERROR_SUCCESS) {
         return hresult_from_registry(status);
     }
-    if (type != REG_SZ || bytes == 0 || bytes % sizeof(wchar_t) != 0) {
+    if (type != REG_SZ || bytes == 0 || bytes > kMaximumRegistryStringBytes
+        || bytes % sizeof(wchar_t) != 0) {
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     }
 
+    const DWORD expected_bytes = bytes;
     std::vector<wchar_t> buffer(bytes / sizeof(wchar_t), L'\0');
     status = RegQueryValueExW(
         key.get(),
@@ -538,12 +679,330 @@ HRESULT query_registry_string(
     if (status != ERROR_SUCCESS) {
         return hresult_from_registry(status);
     }
-    if (buffer.empty() || buffer.back() != L'\0') {
-        buffer.push_back(L'\0');
+    if (type != REG_SZ || bytes != expected_bytes || bytes == 0
+        || bytes % sizeof(wchar_t) != 0 || buffer.empty() || buffer.back() != L'\0'
+        || std::find(buffer.begin(), buffer.end() - 1, L'\0') != buffer.end() - 1) {
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     }
-    value.assign(buffer.data());
+    value.assign(buffer.begin(), buffer.end() - 1);
     exists = true;
     return S_OK;
+}
+
+HRESULT query_registry_key_exists_at(
+    HKEY root,
+    const wchar_t* key_path,
+    REGSAM view,
+    bool& exists) noexcept {
+    exists = false;
+    RegistryKey key;
+    const LSTATUS status = RegOpenKeyExW(
+        root, key_path, 0, KEY_READ | view, key.put());
+    if (status == ERROR_FILE_NOT_FOUND || status == ERROR_PATH_NOT_FOUND) {
+        return S_OK;
+    }
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    exists = true;
+    return S_OK;
+}
+
+HRESULT query_registry_string(
+    const wchar_t* key_path,
+    REGSAM view,
+    const wchar_t* value_name,
+    std::wstring& value,
+    bool& exists) noexcept {
+    return query_registry_string_at(
+        HKEY_CURRENT_USER, key_path, view, value_name, value, exists);
+}
+
+HRESULT query_user_finalizer_marker_at(
+    const wchar_t* key_path,
+    bool& exists) noexcept {
+    std::wstring value;
+    HRESULT result = query_registry_string(
+        key_path, KEY_WOW64_64KEY, kUserFinalizerValue, value, exists);
+    if (FAILED(result) || !exists) {
+        return result;
+    }
+    return value == kUserFinalizerMarker
+        ? S_OK
+        : HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+}
+
+const wchar_t* user_finalizer_transaction_value(
+    const UserFinalizerTransaction& transaction) noexcept {
+    switch (transaction.kind) {
+    case UserFinalizerTransactionKind::install:
+        return transaction.previous_enabled
+            ? L"mo-user-finalizer-install-v1-enabled"
+            : L"mo-user-finalizer-install-v1-disabled";
+    case UserFinalizerTransactionKind::repair:
+        return transaction.previous_enabled
+            ? L"mo-user-finalizer-repair-v1-enabled"
+            : L"mo-user-finalizer-repair-v1-disabled";
+    case UserFinalizerTransactionKind::remove:
+        return transaction.previous_enabled
+            ? L"mo-user-finalizer-remove-v1-enabled"
+            : L"mo-user-finalizer-remove-v1-disabled";
+    case UserFinalizerTransactionKind::none:
+        return nullptr;
+    }
+    return nullptr;
+}
+
+HRESULT query_user_finalizer_transaction_at(
+    const wchar_t* key_path,
+    UserFinalizerTransaction& transaction) noexcept {
+    transaction = {};
+    std::wstring value;
+    bool exists = false;
+    const HRESULT result = query_registry_string(
+        key_path, KEY_WOW64_64KEY, kUserFinalizerTransactionValue, value, exists);
+    if (FAILED(result) || !exists) {
+        return result;
+    }
+    for (const UserFinalizerTransaction candidate : std::array{
+             UserFinalizerTransaction{UserFinalizerTransactionKind::install, false},
+             UserFinalizerTransaction{UserFinalizerTransactionKind::install, true},
+             UserFinalizerTransaction{UserFinalizerTransactionKind::repair, false},
+             UserFinalizerTransaction{UserFinalizerTransactionKind::repair, true},
+             UserFinalizerTransaction{UserFinalizerTransactionKind::remove, false},
+             UserFinalizerTransaction{UserFinalizerTransactionKind::remove, true}}) {
+        if (value == user_finalizer_transaction_value(candidate)) {
+            transaction = candidate;
+            return S_OK;
+        }
+    }
+    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+}
+
+HRESULT write_user_finalizer_value_at(
+    const wchar_t* key_path,
+    const wchar_t* value_name,
+    const wchar_t* value,
+    bool& written) noexcept {
+    written = false;
+    if (value == nullptr) {
+        return E_INVALIDARG;
+    }
+    RegistryKey key;
+    LSTATUS status = RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        key_path,
+        0,
+        nullptr,
+        REG_OPTION_NON_VOLATILE,
+        KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WOW64_64KEY,
+        nullptr,
+        key.put(),
+        nullptr);
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    status = RegSetValueExW(
+        key.get(),
+        value_name,
+        0,
+        REG_SZ,
+        reinterpret_cast<const BYTE*>(value),
+        static_cast<DWORD>(
+            (std::char_traits<wchar_t>::length(value) + 1) * sizeof(wchar_t)));
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    written = true;
+    status = RegFlushKey(key.get());
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    std::wstring actual;
+    bool exists = false;
+    const HRESULT result = query_registry_string(
+        key_path, KEY_WOW64_64KEY, value_name, actual, exists);
+    return SUCCEEDED(result) && exists && actual == value
+        ? S_OK
+        : (FAILED(result) ? result : E_UNEXPECTED);
+}
+
+HRESULT delete_user_finalizer_value_at(
+    const wchar_t* key_path,
+    const wchar_t* value_name,
+    const wchar_t* expected_value,
+    bool missing_is_success,
+    bool& deleted) noexcept {
+    deleted = false;
+    std::wstring actual;
+    bool exists = false;
+    HRESULT result = query_registry_string(
+        key_path, KEY_WOW64_64KEY, value_name, actual, exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (!exists) {
+        return missing_is_success ? S_OK : HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+    }
+    if (actual != expected_value) {
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    }
+    RegistryKey key;
+    LSTATUS status = RegOpenKeyExW(
+        HKEY_CURRENT_USER,
+        key_path,
+        0,
+        KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WOW64_64KEY,
+        key.put());
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    status = RegDeleteValueW(key.get(), value_name);
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    deleted = true;
+    status = RegFlushKey(key.get());
+    if (status != ERROR_SUCCESS) {
+        return hresult_from_registry(status);
+    }
+    actual.clear();
+    exists = true;
+    result = query_registry_string(
+        key_path, KEY_WOW64_64KEY, value_name, actual, exists);
+    return SUCCEEDED(result) && !exists ? S_OK : (FAILED(result) ? result : E_UNEXPECTED);
+}
+
+HRESULT create_user_finalizer_marker_at(
+    const wchar_t* key_path,
+    bool* marker_written = nullptr) noexcept {
+    if (marker_written != nullptr) {
+        *marker_written = false;
+    }
+    bool exists = false;
+    HRESULT result = query_user_finalizer_marker_at(key_path, exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (exists) {
+        return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+    }
+    bool written = false;
+    result = write_user_finalizer_value_at(
+        key_path, kUserFinalizerValue, kUserFinalizerMarker, written);
+    if (marker_written != nullptr) {
+        *marker_written = written;
+    }
+    return result;
+}
+
+HRESULT delete_user_finalizer_marker_at(
+    const wchar_t* key_path,
+    bool missing_is_success,
+    bool* marker_deleted = nullptr) noexcept {
+    bool deleted = false;
+    const HRESULT result = delete_user_finalizer_value_at(
+        key_path,
+        kUserFinalizerValue,
+        kUserFinalizerMarker,
+        missing_is_success,
+        deleted);
+    if (marker_deleted != nullptr) {
+        *marker_deleted = deleted;
+    }
+    return result;
+}
+
+HRESULT write_user_finalizer_transaction_at(
+    const wchar_t* key_path,
+    const UserFinalizerTransaction& transaction) noexcept {
+    const wchar_t* value = user_finalizer_transaction_value(transaction);
+    bool written = false;
+    HRESULT result = write_user_finalizer_value_at(
+        key_path, kUserFinalizerTransactionValue, value, written);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction actual{};
+    result = query_user_finalizer_transaction_at(key_path, actual);
+    return SUCCEEDED(result) && actual.kind == transaction.kind
+            && actual.previous_enabled == transaction.previous_enabled
+        ? S_OK
+        : (FAILED(result) ? result : E_UNEXPECTED);
+}
+
+HRESULT delete_user_finalizer_transaction_at(
+    const wchar_t* key_path,
+    const UserFinalizerTransaction& transaction,
+    bool missing_is_success) noexcept {
+    const wchar_t* value = user_finalizer_transaction_value(transaction);
+    bool deleted = false;
+    return delete_user_finalizer_value_at(
+        key_path,
+        kUserFinalizerTransactionValue,
+        value,
+        missing_is_success,
+        deleted);
+}
+
+HRESULT verify_machine_installation_for_user_finalizer() noexcept {
+    if (!is_64_bit_windows()) {
+        return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+    }
+    std::wstring x64_path;
+    std::wstring x86_path;
+    HRESULT result = get_fixed_tip_paths(x64_path, x86_path);
+    if (FAILED(result) || !is_absolute_file(x64_path) || !is_absolute_file(x86_path)) {
+        return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+    }
+    for (const auto& item : std::array{
+             std::pair{KEY_WOW64_64KEY, std::cref(x64_path)},
+             std::pair{KEY_WOW64_32KEY, std::cref(x86_path)}}) {
+        // HKCR merges CLSID at the GUID child. Any per-user GUID key can hide
+        // the machine registration even when its InprocServer32 is incomplete.
+        bool user_shadow_exists = false;
+        result = query_registry_key_exists_at(
+            HKEY_CURRENT_USER, kComClsidPath, item.first, user_shadow_exists);
+        if (FAILED(result) || user_shadow_exists) {
+            return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_INVALID_STATE);
+        }
+        std::wstring registered_path;
+        bool exists = false;
+        result = query_registry_string_at(
+            HKEY_LOCAL_MACHINE, kComKey, item.first, nullptr, registered_path, exists);
+        if (FAILED(result) || !exists
+            || _wcsicmp(registered_path.c_str(), item.second.get().c_str()) != 0) {
+            return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_PRODUCT_UNINSTALLED);
+        }
+        std::wstring threading_model;
+        result = query_registry_string_at(
+            HKEY_LOCAL_MACHINE,
+            kComKey,
+            item.first,
+            L"ThreadingModel",
+            threading_model,
+            exists);
+        if (FAILED(result) || !exists || threading_model != L"Apartment") {
+            return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+        }
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    ComPtr<ITfCategoryMgr> categories;
+    result = create_profile_manager(profiles);
+    if (SUCCEEDED(result)) {
+        result = create_category_manager(categories);
+    }
+    if (FAILED(result)) {
+        return result;
+    }
+    MachineProfileState state{};
+    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), state);
+    if (FAILED(result)) {
+        return result;
+    }
+    return state.profile && state.category
+        ? S_OK
+        : HRESULT_FROM_WIN32(ERROR_PRODUCT_UNINSTALLED);
 }
 
 HRESULT delete_com_view(
@@ -927,6 +1386,513 @@ HRESULT set_enabled_for_current_user(bool enabled) {
     return last_error == ERROR_SUCCESS ? E_FAIL : HRESULT_FROM_WIN32(last_error);
 }
 
+HRESULT query_current_user_enabled(
+    ITfInputProcessorProfileMgr* profiles,
+    bool& enabled) noexcept {
+    enabled = false;
+    bool profile_exists = false;
+    HRESULT result = query_profile_exists(profiles, profile_exists);
+    if (FAILED(result) || !profile_exists) {
+        return result;
+    }
+    TF_INPUTPROCESSORPROFILE profile{};
+    result = profiles->GetProfile(
+        TF_PROFILETYPE_INPUTPROCESSOR,
+        kLanguage,
+        mo::windows_tip::kTextServiceClsid,
+        mo::windows_tip::kSimplifiedChineseProfileGuid,
+        nullptr,
+        &profile);
+    if (FAILED(result)) {
+        return result;
+    }
+    enabled = (profile.dwFlags & TF_IPP_FLAG_ENABLED) != 0;
+    return S_OK;
+}
+
+HRESULT set_current_user_enabled_verified(
+    ITfInputProcessorProfileMgr* profiles,
+    bool enabled) noexcept {
+    HRESULT result = set_enabled_for_current_user(enabled);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool actual = false;
+    result = query_current_user_enabled(profiles, actual);
+    if (FAILED(result)) {
+        return result;
+    }
+    return actual == enabled ? S_OK : E_UNEXPECTED;
+}
+
+void report_user_state_rollback_failure(HRESULT result) noexcept {
+    if (FAILED(result)) {
+        std::wcerr << L"Current-user finalizer in-process rollback failed: 0x"
+                   << std::hex << result << L'\n';
+    }
+}
+
+enum class UserFinalizerOperation {
+    install,
+    repair,
+    remove,
+    rollback_install,
+    rollback_remove,
+};
+
+HRESULT validate_user_finalizer_state(
+    UserFinalizerOperation operation,
+    bool marker_exists,
+    const UserFinalizerTransaction& transaction,
+    bool enabled) noexcept {
+    switch (operation) {
+    case UserFinalizerOperation::install:
+        if (marker_exists || transaction.kind == UserFinalizerTransactionKind::repair) {
+            return HRESULT_FROM_WIN32(
+                marker_exists ? ERROR_ALREADY_EXISTS : ERROR_INVALID_STATE);
+        }
+        if (transaction.kind == UserFinalizerTransactionKind::install) {
+            return transaction.previous_enabled
+                ? HRESULT_FROM_WIN32(ERROR_INVALID_DATA)
+                : S_OK;
+        }
+        return enabled ? HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS) : S_OK;
+    case UserFinalizerOperation::repair:
+    case UserFinalizerOperation::remove:
+        return marker_exists ? S_OK : HRESULT_FROM_WIN32(ERROR_PRODUCT_UNINSTALLED);
+    case UserFinalizerOperation::rollback_install:
+        return transaction.kind == UserFinalizerTransactionKind::install
+                && !transaction.previous_enabled
+            ? S_OK
+            : HRESULT_FROM_WIN32(ERROR_INVALID_STATE);
+    case UserFinalizerOperation::rollback_remove:
+        return transaction.kind == UserFinalizerTransactionKind::remove
+            ? S_OK
+            : HRESULT_FROM_WIN32(ERROR_INVALID_STATE);
+    }
+    return E_UNEXPECTED;
+}
+
+HRESULT install_or_repair_current_user_fixed(bool repair) noexcept {
+    HRESULT result = require_standard_current_user_process();
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerLock lock;
+    result = lock.acquire();
+    if (FAILED(result)) {
+        return result;
+    }
+    result = verify_machine_installation_for_user_finalizer();
+    if (FAILED(result)) {
+        return result;
+    }
+    bool marker_exists = false;
+    result = query_user_finalizer_marker_at(kUserFinalizerKey, marker_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction existing_transaction{};
+    result = query_user_finalizer_transaction_at(
+        kUserFinalizerKey, existing_transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    result = create_profile_manager(profiles);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool enabled = false;
+    result = query_current_user_enabled(profiles.operator->(), enabled);
+    if (FAILED(result)) {
+        return result;
+    }
+    const UserFinalizerOperation operation = repair
+        ? UserFinalizerOperation::repair
+        : UserFinalizerOperation::install;
+    result = validate_user_finalizer_state(
+        operation, marker_exists, existing_transaction, enabled);
+    if (FAILED(result)) {
+        return result;
+    }
+
+    // Preserve the original state when resuming the same interrupted action.
+    // The journal intentionally survives success so a later Burn inverse action
+    // in another process can restore the exact pre-action enabled bit.
+    UserFinalizerTransaction transaction{
+        repair ? UserFinalizerTransactionKind::repair
+               : UserFinalizerTransactionKind::install,
+        enabled};
+    if ((repair && existing_transaction.kind == UserFinalizerTransactionKind::repair)
+        || (!repair && existing_transaction.kind == UserFinalizerTransactionKind::install)) {
+        transaction = existing_transaction;
+    }
+    result = write_user_finalizer_transaction_at(kUserFinalizerKey, transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    result = set_current_user_enabled_verified(profiles.operator->(), true);
+    if (FAILED(result)) {
+        report_user_state_rollback_failure(
+            set_current_user_enabled_verified(
+                profiles.operator->(), transaction.previous_enabled));
+        return result;
+    }
+    if (!repair) {
+        bool marker_written = false;
+        result = create_user_finalizer_marker_at(kUserFinalizerKey, &marker_written);
+        if (FAILED(result)) {
+            if (!marker_written) {
+                report_user_state_rollback_failure(
+                    set_current_user_enabled_verified(
+                        profiles.operator->(), transaction.previous_enabled));
+            }
+            return result;
+        }
+    }
+    return S_OK;
+}
+
+HRESULT remove_current_user_fixed() noexcept {
+    HRESULT result = require_standard_current_user_process();
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerLock lock;
+    result = lock.acquire();
+    if (FAILED(result)) {
+        return result;
+    }
+    bool marker_exists = false;
+    result = query_user_finalizer_marker_at(kUserFinalizerKey, marker_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction existing_transaction{};
+    result = query_user_finalizer_transaction_at(
+        kUserFinalizerKey, existing_transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    result = create_profile_manager(profiles);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool profile_exists = false;
+    result = query_profile_exists(profiles.operator->(), profile_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool previous_enabled = false;
+    if (profile_exists) {
+        result = query_current_user_enabled(profiles.operator->(), previous_enabled);
+        if (FAILED(result)) {
+            return result;
+        }
+    }
+    result = validate_user_finalizer_state(
+        UserFinalizerOperation::remove,
+        marker_exists,
+        existing_transaction,
+        previous_enabled);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction transaction{
+        UserFinalizerTransactionKind::remove, previous_enabled};
+    if (existing_transaction.kind == UserFinalizerTransactionKind::remove) {
+        transaction = existing_transaction;
+    }
+    result = write_user_finalizer_transaction_at(kUserFinalizerKey, transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (profile_exists) {
+        result = set_current_user_enabled_verified(profiles.operator->(), false);
+        if (FAILED(result)) {
+            report_user_state_rollback_failure(
+                set_current_user_enabled_verified(
+                    profiles.operator->(), transaction.previous_enabled));
+            return result;
+        }
+    }
+    bool marker_deleted = false;
+    result = delete_user_finalizer_marker_at(
+        kUserFinalizerKey, false, &marker_deleted);
+    if (FAILED(result)) {
+        if (marker_deleted) {
+            bool marker_restored = false;
+            const HRESULT restore_marker = create_user_finalizer_marker_at(
+                kUserFinalizerKey, &marker_restored);
+            report_user_state_rollback_failure(restore_marker);
+            if (FAILED(restore_marker) || !marker_restored) {
+                return result;
+            }
+        }
+        if (profile_exists) {
+            report_user_state_rollback_failure(
+                set_current_user_enabled_verified(
+                    profiles.operator->(), transaction.previous_enabled));
+        }
+        return result;
+    }
+    return S_OK;
+}
+
+HRESULT rollback_install_current_user_fixed() noexcept {
+    HRESULT result = require_standard_current_user_process();
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerLock lock;
+    result = lock.acquire();
+    if (FAILED(result)) {
+        return result;
+    }
+    bool marker_exists = false;
+    result = query_user_finalizer_marker_at(kUserFinalizerKey, marker_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction transaction{};
+    result = query_user_finalizer_transaction_at(kUserFinalizerKey, transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    result = validate_user_finalizer_state(
+        UserFinalizerOperation::rollback_install,
+        marker_exists,
+        transaction,
+        false);
+    if (FAILED(result)) {
+        return result;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    result = create_profile_manager(profiles);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool profile_exists = false;
+    result = query_profile_exists(profiles.operator->(), profile_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (profile_exists) {
+        result = set_current_user_enabled_verified(
+            profiles.operator->(), transaction.previous_enabled);
+        if (FAILED(result)) {
+            return result;
+        }
+    }
+    if (marker_exists) {
+        result = delete_user_finalizer_marker_at(kUserFinalizerKey, false);
+        if (FAILED(result)) {
+            return result;
+        }
+    }
+    return delete_user_finalizer_transaction_at(
+        kUserFinalizerKey, transaction, false);
+}
+
+HRESULT rollback_remove_current_user_fixed() noexcept {
+    HRESULT result = require_standard_current_user_process();
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerLock lock;
+    result = lock.acquire();
+    if (FAILED(result)) {
+        return result;
+    }
+    result = verify_machine_installation_for_user_finalizer();
+    if (FAILED(result)) {
+        return result;
+    }
+    bool marker_exists = false;
+    result = query_user_finalizer_marker_at(kUserFinalizerKey, marker_exists);
+    if (FAILED(result)) {
+        return result;
+    }
+    UserFinalizerTransaction transaction{};
+    result = query_user_finalizer_transaction_at(kUserFinalizerKey, transaction);
+    if (FAILED(result)) {
+        return result;
+    }
+    result = validate_user_finalizer_state(
+        UserFinalizerOperation::rollback_remove,
+        marker_exists,
+        transaction,
+        false);
+    if (FAILED(result)) {
+        return result;
+    }
+    ComPtr<ITfInputProcessorProfileMgr> profiles;
+    result = create_profile_manager(profiles);
+    if (FAILED(result)) {
+        return result;
+    }
+    result = set_current_user_enabled_verified(
+        profiles.operator->(), transaction.previous_enabled);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (!marker_exists) {
+        result = create_user_finalizer_marker_at(kUserFinalizerKey);
+        if (FAILED(result)) {
+            return result;
+        }
+    }
+    return delete_user_finalizer_transaction_at(
+        kUserFinalizerKey, transaction, false);
+}
+
+HRESULT self_test_user_finalizer_marker() noexcept {
+    bool exists = false;
+    HRESULT result = query_user_finalizer_marker_at(kProbeUserFinalizerKey, exists);
+    if (FAILED(result) || exists) {
+        return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+    }
+    UserFinalizerTransaction transaction{};
+    result = query_user_finalizer_transaction_at(kProbeUserFinalizerKey, transaction);
+    if (FAILED(result) || transaction.kind != UserFinalizerTransactionKind::none) {
+        return FAILED(result) ? result : HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+    }
+    result = create_user_finalizer_marker_at(kProbeUserFinalizerKey);
+    if (FAILED(result)) {
+        return result;
+    }
+    HRESULT outcome = S_OK;
+    do {
+        exists = false;
+        outcome = query_user_finalizer_marker_at(kProbeUserFinalizerKey, exists);
+        if (FAILED(outcome) || !exists) {
+            outcome = FAILED(outcome) ? outcome : E_UNEXPECTED;
+            break;
+        }
+        const HRESULT duplicate = create_user_finalizer_marker_at(kProbeUserFinalizerKey);
+        if (duplicate != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
+            outcome = E_UNEXPECTED;
+            break;
+        }
+        for (const UserFinalizerTransaction expected : std::array{
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::install, false},
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::install, true},
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::repair, false},
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::repair, true},
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::remove, false},
+                 UserFinalizerTransaction{UserFinalizerTransactionKind::remove, true}}) {
+            outcome = write_user_finalizer_transaction_at(
+                kProbeUserFinalizerKey, expected);
+            if (FAILED(outcome)) {
+                break;
+            }
+            transaction = {};
+            outcome = query_user_finalizer_transaction_at(
+                kProbeUserFinalizerKey, transaction);
+            if (FAILED(outcome) || transaction.kind != expected.kind
+                || transaction.previous_enabled != expected.previous_enabled) {
+                outcome = FAILED(outcome) ? outcome : E_UNEXPECTED;
+                break;
+            }
+            outcome = delete_user_finalizer_transaction_at(
+                kProbeUserFinalizerKey, expected, false);
+            if (FAILED(outcome)) {
+                break;
+            }
+        }
+    } while (false);
+    transaction = {};
+    if (SUCCEEDED(query_user_finalizer_transaction_at(
+            kProbeUserFinalizerKey, transaction))
+        && transaction.kind != UserFinalizerTransactionKind::none) {
+        const HRESULT transaction_cleanup = delete_user_finalizer_transaction_at(
+            kProbeUserFinalizerKey, transaction, false);
+        if (FAILED(transaction_cleanup)) {
+            return transaction_cleanup;
+        }
+    }
+    const HRESULT cleanup = delete_user_finalizer_marker_at(kProbeUserFinalizerKey, false);
+    if (FAILED(cleanup)) {
+        return cleanup;
+    }
+    exists = true;
+    result = query_user_finalizer_marker_at(kProbeUserFinalizerKey, exists);
+    if (FAILED(result) || exists) {
+        return FAILED(result) ? result : E_UNEXPECTED;
+    }
+    return outcome;
+}
+
+HRESULT self_test_user_finalizer_policy() noexcept {
+    const auto transactions = std::array{
+        UserFinalizerTransaction{},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::install, false},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::install, true},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::repair, false},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::repair, true},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::remove, false},
+        UserFinalizerTransaction{UserFinalizerTransactionKind::remove, true}};
+    for (const UserFinalizerOperation operation : {
+             UserFinalizerOperation::install,
+             UserFinalizerOperation::repair,
+             UserFinalizerOperation::remove,
+             UserFinalizerOperation::rollback_install,
+             UserFinalizerOperation::rollback_remove}) {
+        for (const bool marker : {false, true}) {
+            for (const UserFinalizerTransaction& transaction : transactions) {
+                for (const bool enabled : {false, true}) {
+                    bool allowed = false;
+                    switch (operation) {
+                    case UserFinalizerOperation::install:
+                        allowed = !marker
+                            && transaction.kind != UserFinalizerTransactionKind::repair
+                            && (transaction.kind == UserFinalizerTransactionKind::install
+                                    ? !transaction.previous_enabled
+                                    : !enabled);
+                        break;
+                    case UserFinalizerOperation::repair:
+                    case UserFinalizerOperation::remove:
+                        allowed = marker;
+                        break;
+                    case UserFinalizerOperation::rollback_install:
+                        allowed = transaction.kind == UserFinalizerTransactionKind::install
+                            && !transaction.previous_enabled;
+                        break;
+                    case UserFinalizerOperation::rollback_remove:
+                        allowed = transaction.kind == UserFinalizerTransactionKind::remove;
+                        break;
+                    }
+                    const HRESULT actual = validate_user_finalizer_state(
+                        operation, marker, transaction, enabled);
+                    if (SUCCEEDED(actual) != allowed) {
+                        return E_UNEXPECTED;
+                    }
+                }
+            }
+        }
+    }
+    struct ProcessCase final {
+        bool elevated;
+        DWORD session;
+        bool app_container;
+        HRESULT expected;
+    };
+    for (const ProcessCase& item : std::array{
+             ProcessCase{false, 1, false, S_OK},
+             ProcessCase{true, 1, false, HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)},
+             ProcessCase{false, 0, false, HRESULT_FROM_WIN32(ERROR_NOT_LOGGED_ON)},
+             ProcessCase{false, 1, true, HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)}}) {
+        if (validate_user_finalizer_process_context(
+                item.elevated, item.session, item.app_container)
+            != item.expected) {
+            return E_UNEXPECTED;
+        }
+    }
+    return S_OK;
+}
+
 HRESULT print_status() noexcept {
     for (const auto& item : std::array{
              std::pair{L"com.x64", KEY_WOW64_64KEY},
@@ -955,12 +1921,39 @@ HRESULT print_status() noexcept {
         &profile);
     if (FAILED(result)) {
         std::wcout << L"profile.registered=false\nprofile.enabled=false\nprofile.active=false\n";
+    } else {
+        std::wcout
+            << L"profile.registered=true\n"
+            << L"profile.enabled=" << ((profile.dwFlags & TF_IPP_FLAG_ENABLED) != 0 ? L"true" : L"false") << L'\n'
+            << L"profile.active=" << ((profile.dwFlags & TF_IPP_FLAG_ACTIVE) != 0 ? L"true" : L"false") << L'\n';
+    }
+    bool marker_exists = false;
+    result = query_user_finalizer_marker_at(kUserFinalizerKey, marker_exists);
+    if (result == HRESULT_FROM_WIN32(ERROR_INVALID_DATA)) {
+        std::wcout << L"user.finalizer=invalid\n";
+    } else if (FAILED(result)) {
+        return result;
+    } else {
+        std::wcout << L"user.finalizer=" << (marker_exists ? L"v1" : L"missing") << L'\n';
+    }
+    UserFinalizerTransaction transaction{};
+    result = query_user_finalizer_transaction_at(kUserFinalizerKey, transaction);
+    if (result == HRESULT_FROM_WIN32(ERROR_INVALID_DATA)) {
+        std::wcout << L"user.finalizer.transaction=invalid\n";
         return S_OK;
     }
-    std::wcout
-        << L"profile.registered=true\n"
-        << L"profile.enabled=" << ((profile.dwFlags & TF_IPP_FLAG_ENABLED) != 0 ? L"true" : L"false") << L'\n'
-        << L"profile.active=" << ((profile.dwFlags & TF_IPP_FLAG_ACTIVE) != 0 ? L"true" : L"false") << L'\n';
+    if (FAILED(result)) {
+        return result;
+    }
+    if (transaction.kind == UserFinalizerTransactionKind::none) {
+        std::wcout << L"user.finalizer.transaction=missing\n";
+    } else {
+        const wchar_t* value = user_finalizer_transaction_value(transaction);
+        if (value == nullptr) {
+            return E_UNEXPECTED;
+        }
+        std::wcout << L"user.finalizer.transaction=" << value << L'\n';
+    }
     return S_OK;
 }
 
@@ -1119,13 +2112,21 @@ void print_usage() {
         << L"  mo_tip_registrar remove-machine-profile-fixed\n"
         << L"  mo_tip_registrar rollback-remove-machine-profile-fixed\n"
         << L"  mo_tip_registrar commit-remove-machine-profile-fixed\n"
+        << L"  mo_tip_registrar install-current-user-fixed\n"
+        << L"  mo_tip_registrar repair-current-user-fixed\n"
+        << L"  mo_tip_registrar remove-current-user-fixed\n"
+        << L"  mo_tip_registrar rollback-install-current-user-fixed\n"
+        << L"  mo_tip_registrar rollback-remove-current-user-fixed\n"
         << L"  mo_tip_registrar enable-current-user\n"
         << L"  mo_tip_registrar disable-current-user\n"
         << L"  mo_tip_registrar status\n"
         << L"  mo_tip_registrar self-test-registry <absolute-x64-dll> <absolute-x86-dll>\n"
-        << L"  mo_tip_registrar self-test-machine-transaction <absolute-new-marker-path>\n\n"
+        << L"  mo_tip_registrar self-test-machine-transaction <absolute-new-marker-path>\n"
+        << L"  mo_tip_registrar self-test-user-finalizer-marker\n"
+        << L"  mo_tip_registrar self-test-user-finalizer-policy\n\n"
         << L"COM development registration is scoped to HKCU and writes both WOW64 views.\n"
         << L"Machine profile/category commands require an elevated process.\n"
+        << L"Current-user commands reject elevation, Session 0 and AppContainer tokens.\n"
         << L"TSF mutation commands are separate so an installer can own transaction rollback.\n";
 }
 
@@ -1162,16 +2163,38 @@ int wmain(int argument_count, wchar_t** arguments) {
                    || command == L"commit-remove-machine-profile-fixed")
                && argument_count == 2) {
         result = fixed_machine_profile_operation(command);
+    } else if (command == L"install-current-user-fixed" && argument_count == 2) {
+        result = install_or_repair_current_user_fixed(false);
+    } else if (command == L"repair-current-user-fixed" && argument_count == 2) {
+        result = install_or_repair_current_user_fixed(true);
+    } else if (command == L"remove-current-user-fixed" && argument_count == 2) {
+        result = remove_current_user_fixed();
+    } else if (command == L"rollback-install-current-user-fixed"
+               && argument_count == 2) {
+        result = rollback_install_current_user_fixed();
+    } else if (command == L"rollback-remove-current-user-fixed"
+               && argument_count == 2) {
+        result = rollback_remove_current_user_fixed();
     } else if (command == L"enable-current-user" && argument_count == 2) {
-        result = set_enabled_for_current_user(true);
+        result = require_standard_current_user_process();
+        if (SUCCEEDED(result)) {
+            result = set_enabled_for_current_user(true);
+        }
     } else if (command == L"disable-current-user" && argument_count == 2) {
-        result = set_enabled_for_current_user(false);
+        result = require_standard_current_user_process();
+        if (SUCCEEDED(result)) {
+            result = set_enabled_for_current_user(false);
+        }
     } else if (command == L"status" && argument_count == 2) {
         result = print_status();
     } else if (command == L"self-test-registry" && argument_count == 4) {
         result = self_test_registry(arguments[2], arguments[3]);
     } else if (command == L"self-test-machine-transaction" && argument_count == 3) {
         result = self_test_machine_transaction(arguments[2]);
+    } else if (command == L"self-test-user-finalizer-marker" && argument_count == 2) {
+        result = self_test_user_finalizer_marker();
+    } else if (command == L"self-test-user-finalizer-policy" && argument_count == 2) {
+        result = self_test_user_finalizer_policy();
     } else {
         print_usage();
     }

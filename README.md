@@ -21,7 +21,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - TSF 壳已实现 `OnTestKey*`/`OnKey*` 单次决策缓存、同步读写 Edit Session、预编辑 Range/Composition 生命周期和严格 UTF-8 转换；x64/x86 受控 TSF 文本存储探针均已把 Broker 提交写入真实 Windows EDIT 控件，且 Broker 不可用时 fail-open。
 - 已接入自主 Win32 纵向候选窗、鼠标选词/翻页、DPI 缩放和屏幕边缘避让。候选动作通过协商 feature 绑定当前会话的 revision，拒绝陈旧/越界点击；鼠标在可同步或异步的 TSF 编辑锁内执行，并在锁内再次复核身份。布局变化使用异步只读定位。x64/x86 受控真实词库探针已通过鼠标上屏、松键刷新、延迟动作取消与焦点恢复；普通软件尚未验收。
 - x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键与候选动作往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`、PageUp/PageDown、数字选词、前后翻页和当前页第二候选提交；CI 同时核对 TIP Edit Session 写入 EDIT 和 TSF context 的最终文本，而非仅停留在 IPC 快照。
-- WiX v4 安装器占位工程会主动拒绝生成“看似可发布”的安装包；真实注册、启用、修复与卸载尚未实现。
+- WiX v4 已具备完整 payload、机器级 MSI 事务和非提升 current-user finalizer 作者层；用户状态使用持久 undo journal、精确 Burn 正反向命令及稳定升级引用计数。新鲜 137-file stage 已通过双架构故障回归，但本机尚无 WiX CLI，未链接/执行 Bundle，也未在隔离 VM 验收真实注册、启用、修复、升级与卸载，因此仍不可日常使用。
 
 ## 架构路线
 

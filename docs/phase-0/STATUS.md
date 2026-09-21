@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-20
+- 快照日期：2026-09-21
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通，项目仍不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -89,13 +89,14 @@
 
 ## G3：安装——未通过
 
-- WiX v4 作者层已从“四个二进制占位”升级为完整 131-file payload：确定性生成器为 Broker/registrar、x64/x86 TIP、librime/OpenCC 与 rime-ice 源数据/预编译数据逐文件生成稳定 component/GUID，并从 XML 反向重建安装路径，锁定 Program Files 根并核对一一覆盖、bitness、key path、双 COM 视图且排除 evidence。13 项完整素材作者层/篡改拒绝检查通过；本机没有 WiX CLI，未链接或运行 MSI/Bundle。
+- WiX v4 作者层已从“四个二进制占位”升级为完整 131-file payload：确定性生成器为 Broker/registrar、x64/x86 TIP、librime/OpenCC 与 rime-ice 源数据/预编译数据逐文件生成稳定 component/GUID，并从 XML 反向重建安装路径，锁定 Program Files 根并核对一一覆盖、bitness、key path、双 COM 视图且排除 evidence。包含 Bundle 用户阶段的 17 项完整素材作者层/篡改拒绝检查通过；新鲜 72-source/137-file v2 stage manifest SHA-256 为 `745DF9C48F5D72498ED9D8CD4970B586054F2D5E31F624E8C03ECC6A40317B3E`，79 项 staging、7 组 golden、双架构各 10 轮故障恢复通过。本机没有 WiX CLI，未链接或运行 MSI/Bundle。
 - 机器级 TSF profile/category 已有 MSI 事务协议：install/repair/remove 延迟动作在变更前把 profile/category 两个 presence bit 写入 Program Files 固定标记，rollback 恢复原状态，commit 删除标记；全新安装遇到任一既有 Mo profile/category 会在变更前拒绝，repair/major upgrade 才可刷新，且旧包升级移除不先拆共享 profile。MSI 禁止关闭 rollback。动作使用内嵌 x64 registrar、无用户输入路径、以 non-impersonated 系统上下文执行。x64/x86 新鲜构建与 staged x64 registrar 的 8 组标记状态/重复创建/无残留自测通过，但尚未在 VM 注入真实 MSI 失败，也未以提升权限调用 TSF 变更 API。
 - 开发态 registrar 已补齐当前用户 COM activation：以显式 WOW64 视图分别注册 x64/x86 `InprocServer32`，拒绝相对/缺失文件与冲突路径；`status` 可读回 COM/profile 启用状态。隔离测试 CLSID 已连续两次完成双视图写入、读回和无残留清理，未注册或启用 Mo profile。
 - 已实现注册宿主 smoke 的权限拆分：提升脚本只管理机器级 TSF profile/category，普通权限脚本临时管理 HKCU 双视图 COM 与当前用户启用，并通过系统 `ITfKeystrokeMgr` 驱动 x64/Win32 探针后在 `finally` 中回滚用户状态。当前非提升开发会话只验证了双架构编译、权限门和干净状态，尚未执行需要人工提升准备的真实注册路由，因此 G2 不据此升级为通过。
-- fake 与真实词库 smoke 均已支持 `-Registered`，共享严格用户态事务：提升的测试/Broker 被拒绝，准备不足在构建/部署前拒绝；部分 native 写入失败仍触发独立清理，清理错误或状态残留不再只告警后报成功，检测到外来 COM 路径则保留并要求人工审查。16 个内存策略场景通过，不修改 Windows 输入状态。当前管理员准备仍缺失（profile=false），两种 registered 入口已实证在此前置条件下拒绝且没有残留；真实注册路由仍未运行。具体步骤见 `REGISTERED-TEST.md`。
-- 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。即使存在 WiX，也必须显式传 `-AllowDevelopmentBuild`，产物名带 `development-unsigned`。
-- 尚无非提升 current-user finalizer/Bundle 协调、真实 TSF API/MSI 失败注入、升级/修复/卸载 VM 矩阵、签名、首次启动性能或“不抢默认输入法”组合测试。
+- fake 与真实词库 smoke 均已支持 `-Registered`，共享严格用户态事务：提升的测试/Broker 被拒绝，准备不足在构建/部署前拒绝；部分 native 写入失败仍触发独立清理，清理错误或状态残留不再只告警后报成功，检测到外来 COM 路径则保留并要求人工审查。18 个内存策略场景通过，不修改 Windows 输入状态。当前管理员准备仍缺失（profile=false），两种 registered 入口已实证在此前置条件下拒绝且没有残留；真实注册路由仍未运行。具体步骤见 `REGISTERED-TEST.md`。
+- 构建脚本默认拒绝生成不可部署安装包；本机未安装 WiX，已验证其 fail-closed 行为。脚本只接受 WiX CLI 4.0.6，并将 Bal/Util/Dependency extension 固定为 4.0.6；即使工具链存在，也必须显式传 `-AllowDevelopmentBuild`，产物名带 `development-unsigned`。
+- Bundle 已在机器 MSI 后串联 vital、`PerMachine=no` 的 current-user finalizer：在机器本地 HKCU 路径检测精确 v1 marker，以空基础参数和全局 action 条件路由 install/remove/repair 及两个逆向 rollback，并用稳定 dependency provider 参与升级引用计数。native 拒绝提升、Session 0/AppContainer 与任一 HKCU COM shadow，启用前核对 Program Files 双架构文件、HKLM 双 COM 视图和 profile/category；named mutex 串行化同会话操作，输入 API 前持久化并读回含原 enabled bit 的 undo journal，跨 Burn 进程精确恢复。140 个状态组合、四类进程上下文、隔离 marker/六类 journal 真实 HKCU 清理测试及五命令缺前置条件无副作用拒绝均通过；只使用 `InstallLayoutOrTip` 的 0/UNINSTALL flags，不抢默认输入法。尚未执行真实 TSF 用户变更或链接后的 Burn 回滚。
+- 尚无真实 TSF API/MSI/Burn 失败注入、升级/修复/卸载 VM 矩阵、签名、首次启动性能或“不抢默认输入法”组合测试。
 - 自动拉起与首次用户目录代码已完成，但尚未把 release payload 安装到 Program Files 做“注册 TIP -> 拉起 -> 首次目录 -> 普通应用输入”的组合验收；G3 因此仍未通过。
 - 当前 development authoring 不得分发。
 
@@ -112,4 +113,4 @@
 
 ## 下一检查点
 
-Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap，以及完整 payload/机器 profile 回滚作者层已分别闭环，见 ADR 0025–0030。下一步先实现非提升 current-user finalizer 与 Bundle 协调，随后在隔离 VM 实际链接并注入 clean install/repair/major-upgrade/rollback/uninstall；这之前不运行当前 development package。并行的系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。签名、逐文件 SBOM、安装树 ACL/重解析点与资源内容认证仍是发行门。
+Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap、完整 payload/机器 profile 回滚，以及 current-user/Bundle 持久回滚作者层已分别闭环，见 ADR 0025–0031。下一步锁定受控 WiX 工具链后，在隔离 VM 实际链接并注入 clean install、marker 缺失 repair、major-upgrade、强制 rollback、uninstall，以及右键提升/UAC 关闭边界；这之前不运行当前 development package。并行的系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。签名、逐文件 SBOM、安装树 ACL/重解析点、多用户卸载策略、跨会话互斥与资源内容认证仍是发行门。

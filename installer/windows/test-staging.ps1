@@ -130,7 +130,7 @@ try {
     Reject 'missing payload image' { Assert-MoStagePayloadNames @('data/rime-ice/default.yaml') } 'Required'
     Reject 'non-PE bytes' { Assert-MoPeArchitecture (Join-Path $files 'base.txt') x64 $false } 'Not a PE'
     if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
-        Reject 'placeholder WiX-unavailable gate' { & (Join-Path $PSScriptRoot 'build.ps1') -StageDirectory (Join-Path $fixture 'does-not-exist') } 'WiX v4 CLI'
+        Reject 'pinned WiX-unavailable gate' { & (Join-Path $PSScriptRoot 'build.ps1') -StageDirectory (Join-Path $fixture 'does-not-exist') } 'Pinned WiX 4\.0\.6 CLI'
     }
 
     if ($StageDirectory) {

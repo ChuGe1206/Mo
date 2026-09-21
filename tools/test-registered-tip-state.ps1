@@ -9,13 +9,19 @@ function Assert-True([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
 }
 
-$valid = @('com.x64=missing', 'com.x86=missing', 'profile.registered=true', 'profile.enabled=false', 'profile.active=false')
+$valid = @(
+    'com.x64=missing', 'com.x86=missing',
+    'profile.registered=true', 'profile.enabled=false', 'profile.active=false',
+    'user.finalizer=missing', 'user.finalizer.transaction=missing'
+)
 Assert-MoRegisteredCleanState (ConvertFrom-MoRegistrarStatus $valid)
 $caseCount++
 foreach ($bad in @(
     ($valid + 'com.x64=foreign'),
     ($valid | Where-Object { $_ -notmatch '^profile.active=' }),
     ($valid -replace 'profile.enabled=false', 'profile.enabled=maybe'),
+    ($valid -replace 'user.finalizer=missing', 'user.finalizer=unknown'),
+    ($valid -replace 'user.finalizer.transaction=missing', 'user.finalizer.transaction=unknown'),
     ($valid + 'not-a-status-line')
 )) {
     $rejected = $false

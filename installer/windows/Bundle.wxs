@@ -1,20 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix
     xmlns="http://wixtoolset.org/schemas/v4/wxs"
-    xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
-  <!-- Standard BA remains temporary; the unelevated current-user finalizer is absent. -->
+    xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <!--
+    Development-only one-click chain. Burn owns the elevation split: the MSI
+    is per-machine, while the finalizer must remain in the initiating user.
+  -->
   <Bundle
       Name="Mo (墨) 输入法 — development build"
       Manufacturer="Mo Project"
       Version="$(var.ProductVersion)"
       UpgradeCode="{E08C0321-3F73-4D39-BC28-E7DF02C5134E}">
+    <util:RegistrySearch
+        Id="DetectMoUserFinalizer"
+        Variable="MoUserFinalizerMarker"
+        Root="HKCU"
+        Key="Software\Classes\Local Settings\Software\Mo\InputMethod\Setup"
+        Value="UserFinalizer"
+        Result="value"
+        Bitness="always64" />
     <BootstrapperApplication>
       <bal:WixStandardBootstrapperApplication
           Theme="hyperlinkLicense"
           LicenseUrl="https://www.apache.org/licenses/LICENSE-2.0" />
     </BootstrapperApplication>
     <Chain>
-      <MsiPackage SourceFile="$(var.MsiPath)" Visible="no" />
+      <MsiPackage Id="MoMachinePackage" SourceFile="$(var.MsiPath)" Visible="no" />
+      <ExePackage
+          Id="MoCurrentUserFinalizer"
+          After="MoMachinePackage"
+          SourceFile="$(var.UserFinalizerExe)"
+          DisplayName="Mo current-user finalizer"
+          Description="Enables Mo for the initiating user without making it default."
+          DetectCondition="MoUserFinalizerMarker = &quot;mo-user-finalizer-v1&quot;"
+          InstallArguments=""
+          RepairArguments=""
+          UninstallArguments=""
+          PerMachine="no"
+          Cache="keep"
+          Permanent="no"
+          Vital="yes">
+        <!--
+          ExePackage rollback uses the inverse package action. WixBundleAction
+          remains the overall plan action, so these mutually exclusive rows
+          select a full forward or inverse command without guessing in native
+          code. Overall Repair must fail closed when the marker is absent.
+        -->
+        <CommandLine
+            Condition="WixBundleAction = 3"
+            InstallArgument="rollback-remove-current-user-fixed"
+            UninstallArgument="remove-current-user-fixed" />
+        <CommandLine
+            Condition="WixBundleAction = 5"
+            InstallArgument="install-current-user-fixed"
+            UninstallArgument="rollback-install-current-user-fixed" />
+        <CommandLine
+            Condition="WixBundleAction = 7"
+            InstallArgument="repair-current-user-fixed"
+            RepairArgument="repair-current-user-fixed" />
+        <!-- Stable across compatible upgrades so Burn can ref-count this
+             non-MSI package instead of treating every bundle as a new owner. -->
+        <Provides
+            Key="Mo.CurrentUserFinalizer.v1"
+            Version="$(var.ProductVersion)"
+            DisplayName="Mo current-user finalizer" />
+      </ExePackage>
     </Chain>
   </Bundle>
 </Wix>

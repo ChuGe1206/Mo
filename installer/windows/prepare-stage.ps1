@@ -173,6 +173,7 @@ foreach ($platform in @('x64', 'Win32')) {
     $transactionMarker = Join-Path $working "native/$platform/machine-profile-transaction.marker"
     Checked (Join-Path $nativeOut 'mo_tip_registrar.exe') @('self-test-machine-transaction', $transactionMarker)
     if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
+    Checked (Join-Path $nativeOut 'mo_tip_registrar.exe') @('self-test-user-finalizer-policy')
     $architecture = if ($platform -eq 'x64') { 'x64' } else { 'x86' }
     Copy-StageFile (Join-Path $nativeOut 'mo_tip.dll') (Join-Path $payload "tip/$architecture/mo-tip.dll")
     if ($platform -eq 'x64') { Copy-StageFile (Join-Path $nativeOut 'mo_tip_registrar.exe') (Join-Path $payload 'bin/mo-tip-registrar.exe') }
@@ -205,4 +206,4 @@ $null = Assert-MoPreparedStage $stage 'mo-stage.pending.json'
 Move-Item -LiteralPath (Join-Path $stage 'mo-stage.pending.json') -Destination (Join-Path $stage 'mo-stage.json')
 $null = Assert-MoPreparedStage $stage
 Write-Host "Verified non-installable development stage: $stage"
-Write-Warning 'No MSI/Setup produced. Signatures, full notices/SBOM and transactional registration remain release gates.'
+Write-Warning 'No MSI/Setup produced. Signatures, full notices/SBOM and real installer transaction tests remain release gates.'

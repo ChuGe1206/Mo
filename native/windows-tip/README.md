@@ -101,7 +101,16 @@ profile/category presence in an exact protected marker before every deferred
 mutation; paired rollback restores that state and commit removes the marker.
 The marker format has non-elevated x64/x86 no-residue self-tests. MSI authoring
 uses those commands, but a real MSI cancellation/repair/upgrade/uninstall matrix
-has not run. Current-user finalization remains separate work.
+has not run. Fixed current-user finalizer commands reject elevated, Session 0 and
+AppContainer execution, verify the installed machine boundary, reject either
+HKCU COM shadow view, and own a machine-local HKCU version marker. A named mutex
+serializes the current login session. Each enable/repair/remove first flushes a
+durable journal containing the prior enabled bit; explicit rollback commands
+consume it across Burn processes and restore the exact prior state. Marker and
+journal mutations are read back, and status exposes both. They never request
+default or clean-install flags. Burn chains the helper as `PerMachine=no` with
+exact global-action command routing and a stable dependency provider; the real
+linked Bundle and user-state rollback matrix remain unverified.
 
 Still unverified: sink activation by a registered TSF host, formal composition
 behavior and candidate UI across the real Notepad/WinUI host matrix, mixed DPI,

@@ -8,11 +8,26 @@ function ConvertFrom-MoRegistrarStatus([string[]]$Lines) {
         }
         $state[$Matches[1]] = $Matches[2]
     }
-    foreach ($name in @('com.x64', 'com.x86', 'profile.registered', 'profile.enabled', 'profile.active')) {
+    foreach ($name in @('com.x64', 'com.x86', 'profile.registered', 'profile.enabled', 'profile.active', 'user.finalizer', 'user.finalizer.transaction')) {
         if (-not $state.ContainsKey($name)) { throw "Registrar status is missing $name" }
     }
     foreach ($name in @('profile.registered', 'profile.enabled', 'profile.active')) {
         if ($state[$name] -notin @('true', 'false')) { throw "Invalid registrar boolean: $name" }
+    }
+    if ($state['user.finalizer'] -notin @('missing', 'v1', 'invalid')) {
+        throw 'Invalid registrar user.finalizer state.'
+    }
+    $validTransactions = @(
+        'missing', 'invalid',
+        'mo-user-finalizer-install-v1-disabled',
+        'mo-user-finalizer-install-v1-enabled',
+        'mo-user-finalizer-repair-v1-disabled',
+        'mo-user-finalizer-repair-v1-enabled',
+        'mo-user-finalizer-remove-v1-disabled',
+        'mo-user-finalizer-remove-v1-enabled'
+    )
+    if ($state['user.finalizer.transaction'] -notin $validTransactions) {
+        throw 'Invalid registrar user.finalizer.transaction state.'
     }
     return $state
 }
@@ -33,6 +48,8 @@ function Assert-MoRegisteredCleanState([hashtable]$State) {
     $expected = @{
         'com.x64' = 'missing'; 'com.x86' = 'missing'
         'profile.registered' = 'true'; 'profile.enabled' = 'false'; 'profile.active' = 'false'
+        'user.finalizer' = 'missing'
+        'user.finalizer.transaction' = 'missing'
     }
     foreach ($name in $expected.Keys) {
         if ($State[$name] -ne $expected[$name]) {

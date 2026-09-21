@@ -82,6 +82,7 @@ foreach ($platform in $architectures) {
     }
     Invoke-Checked $registrar @('self-test-machine-transaction', $transactionMarker)
     if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
+    Invoke-Checked $registrar @('self-test-user-finalizer-policy')
 }
 
-Write-Host 'Compile/load and non-mutating registrar transaction probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'
+Write-Host 'Compile/load plus non-mutating machine transaction and current-user finalizer policy probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'

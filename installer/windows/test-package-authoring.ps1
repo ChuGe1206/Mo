@@ -121,6 +121,142 @@ try {
         }
     }
 
+    $bundle = Read-MoWixDocument (Join-Path $PSScriptRoot 'Bundle.wxs')
+    $bundleNamespace = [Xml.XmlNamespaceManager]::new($bundle.NameTable)
+    $bundleNamespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+    $bundleNamespace.AddNamespace('util', 'http://wixtoolset.org/schemas/v4/wxs/util')
+    Pass 'bundle machine/user privilege split' {
+        $packages = @($bundle.SelectNodes('/w:Wix/w:Bundle/w:Chain/*', $bundleNamespace))
+        if ($packages.Count -ne 2 -or $packages[0].LocalName -cne 'MsiPackage' -or
+            $packages[0].GetAttribute('Id') -cne 'MoMachinePackage' -or
+            $packages[0].GetAttribute('Visible') -cne 'no') {
+            throw 'Bundle machine package contract mismatch.'
+        }
+        $finalizer = $packages[1]
+        $expected = [ordered]@{
+            Id = 'MoCurrentUserFinalizer'
+            After = 'MoMachinePackage'
+            SourceFile = '$(var.UserFinalizerExe)'
+            DetectCondition = 'MoUserFinalizerMarker = "mo-user-finalizer-v1"'
+            InstallArguments = ''
+            RepairArguments = ''
+            UninstallArguments = ''
+            PerMachine = 'no'
+            Cache = 'keep'
+            Permanent = 'no'
+            Vital = 'yes'
+        }
+        if ($finalizer.LocalName -cne 'ExePackage') { throw 'Bundle user finalizer is not an ExePackage.' }
+        foreach ($attribute in $expected.Keys) {
+            if ($finalizer.GetAttribute($attribute) -cne $expected[$attribute]) {
+                throw "Bundle user finalizer mismatch: $attribute"
+            }
+        }
+        foreach ($attribute in @('InstallArguments', 'RepairArguments', 'UninstallArguments')) {
+            if (-not $finalizer.HasAttribute($attribute)) {
+                throw "Bundle finalizer must explicitly author empty base arguments: $attribute"
+            }
+        }
+        $commandLines = @($finalizer.SelectNodes('w:CommandLine', $bundleNamespace))
+        $expectedCommandLines = [ordered]@{
+            'WixBundleAction = 3' = [ordered]@{
+                InstallArgument = 'rollback-remove-current-user-fixed'
+                UninstallArgument = 'remove-current-user-fixed'
+            }
+            'WixBundleAction = 5' = [ordered]@{
+                InstallArgument = 'install-current-user-fixed'
+                UninstallArgument = 'rollback-install-current-user-fixed'
+            }
+            'WixBundleAction = 7' = [ordered]@{
+                InstallArgument = 'repair-current-user-fixed'
+                RepairArgument = 'repair-current-user-fixed'
+            }
+        }
+        if ($commandLines.Count -ne $expectedCommandLines.Count) {
+            throw 'Bundle finalizer action/rollback command count mismatch.'
+        }
+        foreach ($line in $commandLines) {
+            $condition = $line.GetAttribute('Condition')
+            $command = $expectedCommandLines[$condition]
+            if ($null -eq $command) { throw "Unexpected finalizer command condition: $condition" }
+            foreach ($attribute in @('InstallArgument', 'RepairArgument', 'UninstallArgument')) {
+                $expectedValue = if ($command.Contains($attribute)) { $command[$attribute] } else { '' }
+                if ($line.GetAttribute($attribute) -cne $expectedValue) {
+                    throw "Bundle finalizer command mismatch: $condition / $attribute"
+                }
+            }
+        }
+        $provider = $finalizer.SelectSingleNode('w:Provides', $bundleNamespace)
+        if ($null -eq $provider -or
+            $provider.GetAttribute('Key') -cne 'Mo.CurrentUserFinalizer.v1' -or
+            $provider.GetAttribute('Version') -cne '$(var.ProductVersion)' -or
+            $provider.GetAttribute('DisplayName') -cne 'Mo current-user finalizer') {
+            throw 'Bundle finalizer dependency provider contract mismatch.'
+        }
+    }
+
+    Pass 'bundle exact current-user detection marker' {
+        $search = $bundle.SelectSingleNode(
+            '/w:Wix/w:Bundle/util:RegistrySearch[@Id="DetectMoUserFinalizer"]',
+            $bundleNamespace)
+        if ($null -eq $search -or
+            $search.GetAttribute('Variable') -cne 'MoUserFinalizerMarker' -or
+            $search.GetAttribute('Root') -cne 'HKCU' -or
+            $search.GetAttribute('Key') -cne 'Software\Classes\Local Settings\Software\Mo\InputMethod\Setup' -or
+            $search.GetAttribute('Value') -cne 'UserFinalizer' -or
+            $search.GetAttribute('Result') -cne 'value' -or
+            $search.GetAttribute('Bitness') -cne 'always64') {
+            throw 'Bundle user-finalizer detection contract mismatch.'
+        }
+    }
+
+    Pass 'bundle build binds staged finalizer and required extensions' {
+        $buildSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'build.ps1') -Raw
+        foreach ($contract in @(
+            "`$requiredWixVersion = '4.0.6'",
+            "'^4\.0\.6(?:\+.*)?`$'",
+            "'WixToolset.Bal.wixext/4.0.6'",
+            "'WixToolset.Util.wixext/4.0.6'",
+            "'WixToolset.Dependency.wixext/4.0.6'",
+            'UserFinalizerExe=',
+            "Join-Path `$payload 'bin/mo-tip-registrar.exe'"
+        )) {
+            if (-not $buildSource.Contains($contract, [StringComparison]::Ordinal)) {
+                throw "Bundle build input contract is missing: $contract"
+            }
+        }
+    }
+
+    Pass 'bundle and native finalizer protocol agree' {
+        $registrarSource = Get-Content -LiteralPath (
+            Join-Path $repo 'native/windows-tip/src/registrar.cpp') -Raw
+        $markerMatch = [regex]::Match(
+            $registrarSource,
+            'constexpr wchar_t kUserFinalizerMarker\[\] = L"([^"]+)";')
+        if (-not $markerMatch.Success -or
+            $markerMatch.Groups[1].Value -cne 'mo-user-finalizer-v1') {
+            throw 'Native user-finalizer marker protocol mismatch.'
+        }
+        foreach ($command in @(
+            'install-current-user-fixed',
+            'repair-current-user-fixed',
+            'remove-current-user-fixed',
+            'rollback-install-current-user-fixed',
+            'rollback-remove-current-user-fixed',
+            'require_standard_current_user_process',
+            'UserFinalizerTransaction',
+            'Software\\Classes\\Local Settings\\Software\\Mo\\InputMethod\\Setup',
+            'enabled ? 0 : kIlotUninstall'
+        )) {
+            if (-not $registrarSource.Contains($command, [StringComparison]::Ordinal)) {
+                throw "Native user-finalizer protocol is missing: $command"
+            }
+        }
+        if ($registrarSource -match '(?i)ILOT_(DEFPROFILE|DEFUSER4|CLEANINSTALL)') {
+            throw 'Native finalizer contains a default/global input mutation flag.'
+        }
+    }
+
     if ($StageDirectory) {
         $stage = Assert-MoPlainPath $StageDirectory
         Pass 'real stage preflight' { $null = Assert-MoPreparedStage $stage }

@@ -83,8 +83,7 @@ the selected/precompiled rime-ice tree. Stable path-derived identifiers and GUID
 make repeated authoring byte-identical. A verifier locks the Program Files root,
 reconstructs every installed path from XML, checks component/ref/key-path/
 bitness/COM ownership one-to-one, and rejects missing, duplicate or redirected
-files and roots. Evidence and source archives
-remain outside the install image.
+files and roots. Evidence and source archives remain outside the install image.
 
 `Package.wxs` is a per-machine x64 MSI authoring input. MSI components own both
 COM registry views. An embedded x64 registrar performs machine profile/category
@@ -101,17 +100,39 @@ x86 build probes and in the freshly staged x64 binary. This validates all eight
 operation/state marker combinations and no-residue cleanup, but does not simulate
 Windows Installer cancellation or prove real TSF API rollback.
 
-The authoring is still deliberately non-deployable. `Bundle.wxs` uses the
-temporary standard BA and has no non-elevated current-user finalizer. Packages
-are unsigned; VC prerequisites, loaded-TIP upgrade handling, complete notices/
-SBOM, ACL inspection and release authorization remain open. This workstation has
-no WiX v4 CLI, so the WXS structure and generated inventory passed policy tests,
-but no MSI or Bundle was linked or executed.
+`Bundle.wxs` now orders the per-machine MSI before a vital `PerMachine=no`
+finalizer package. Burn detects an exact marker under the machine-local HKCU
+`Software\Classes\Local Settings` tree. Empty base arguments plus global-action
+`CommandLine` rows select exact install/remove/repair and inverse rollback
+commands; Repair with no marker fails closed instead of installing. A stable
+`Mo.CurrentUserFinalizer.v1` dependency provider gives compatible upgrades one
+ref-counted identity. The native command rejects elevated, Session 0 and
+AppContainer tokens; rejects either HKCU COM shadow view; and verifies the files,
+HKLM COM views, profile and keyboard category before enabling the initiating
+user without default/clean-install flags.
+
+A same-session named mutex serializes operations. Before input state changes,
+the helper flushes and reads back a durable journal containing the operation and
+prior enabled bit. The journal remains after success because Burn may run the
+inverse action in another process; rollback consumes it to restore the exact
+prior bit. Marker and journal deletion are also flushed and verified. Fresh
+install rejects ambiguous pre-enabled/unowned state, repair requires the exact
+marker, and uninstall removes only marker-owned state. Failures preserve a
+detectable, retryable receipt.
+
+The authoring is still deliberately non-deployable. The standard BA is temporary
+and packages are unsigned; VC prerequisites, loaded-TIP upgrade handling,
+multi-user uninstall policy, complete notices/SBOM, ACL inspection and release
+authorization remain open. This workstation has no WiX v4 CLI, so the WXS
+structure and generated inventory passed policy tests, but no MSI or Bundle was
+linked or executed and no real current-user input state was changed.
 
 The build script has three safety gates:
 
-1. If the WiX v4 `wix` command is absent it fails immediately and never downloads
-   anything.
+1. If the exact WiX 4.0.6 `wix` command is absent or a different version is
+   present it fails immediately and never downloads anything. Bal, Util and
+   Dependency extension references are likewise pinned to 4.0.6 and must
+   already exist in the WiX extension cache.
 2. Even with WiX installed, `-AllowDevelopmentBuild` is required and outputs are
    explicitly named `development-unsigned`.
 3. The stage must pass development consistency validation; generated authoring
@@ -121,11 +142,11 @@ For non-mutating authoring checks:
 
 ```powershell
 ./installer/windows/test-package-authoring.ps1 `
-  -StageDirectory "$PWD/build/mo-windows-stage-installer-transaction-v3/stage"
+  -StageDirectory "$PWD/build/mo-windows-stage-user-finalizer-v2/stage"
 ```
 
-Before any release, implement the unelevated user finalizer and bootstrapper
-coordination; use versioned binaries to tolerate loaded TIP DLLs; validate clean
+Before any release, replace or brand the temporary standard BA as needed; use
+versioned binaries to tolerate loaded TIP DLLs; validate clean
 install, repair, upgrade, forced rollback and uninstall in disposable VMs; sign
 the x64/x86 DLLs, Broker, MSI and Bundle with timestamping; and enforce signature
 checks in CI. Never run the Broker, updater or current-user finalizer as

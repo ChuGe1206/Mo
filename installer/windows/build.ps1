@@ -13,7 +13,12 @@ $ErrorActionPreference = 'Stop'
 # Fail before creating output or inspecting artifacts when WiX is unavailable.
 $wix = Get-Command wix -ErrorAction SilentlyContinue
 if ($null -eq $wix) {
-    throw 'WiX v4 CLI (`wix`) was not found. Install WiX v4 explicitly; this script will not download tools.'
+    throw 'Pinned WiX 4.0.6 CLI (`wix`) was not found. Install it explicitly; this script will not download tools.'
+}
+$requiredWixVersion = '4.0.6'
+$wixVersion = (& $wix.Source --version | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $wixVersion -notmatch '^4\.0\.6(?:\+.*)?$') {
+    throw "Expected WiX $requiredWixVersion, found '$wixVersion'."
 }
 if (-not $AllowDevelopmentBuild) {
     throw 'Refusing to build a non-deployable installer. Pass -AllowDevelopmentBuild only for explicit local authoring validation.'
@@ -45,8 +50,11 @@ Invoke-Wix @(
 )
 Invoke-Wix @(
     'build', (Join-Path $PSScriptRoot 'Bundle.wxs'),
-    '-ext', 'WixToolset.Bal.wixext', '-d', "ProductVersion=$ProductVersion",
-    '-d', "MsiPath=$msi", '-o', $bundle
+    '-ext', 'WixToolset.Bal.wixext/4.0.6',
+    '-ext', 'WixToolset.Util.wixext/4.0.6',
+    '-ext', 'WixToolset.Dependency.wixext/4.0.6',
+    '-d', "ProductVersion=$ProductVersion", '-d', "MsiPath=$msi",
+    '-d', "UserFinalizerExe=$(Join-Path $payload 'bin/mo-tip-registrar.exe')", '-o', $bundle
 )
 
-Write-Warning 'Built an unsigned development package with full payload and transactional machine-profile actions. It has no current-user finalizer or release authorization and must not be distributed.'
+Write-Warning 'Built an unsigned development package with full payload, machine-profile rollback and an unelevated current-user finalizer. It has no release authorization and must not be distributed.'

@@ -62,5 +62,5 @@
 Windows Installer 序列真实通过。marker 是一致性/回滚协议，不是抵御本机
 管理员的安全边界；Program Files ACL、祖先 reparse 与竞态仍需安装后检查。
 尚未注入 custom action 中止、commit 失败、系统重启、loaded TIP、major upgrade
-和卸载失败。Standard BA 没有 current-user finalizer，产物未签名，不能分发，
-G3 保持未通过。
+和卸载失败。本文当时尚无 current-user finalizer；后续作者层由 ADR 0031 补齐，
+但仍未真实链接或运行。产物未签名、不能分发，G3 保持未通过。
