@@ -141,21 +141,26 @@ a dependency on its per-machine MSI. The build suppresses that understood link
 warning only after the verifier confirms the intended split; upgrade and
 multi-user behavior still require disposable-VM tests.
 
-The unsigned development Bundle also contains two hidden, default-zero fault
+The `DevelopmentTest` Bundle also contains two hidden, default-zero fault
 variables. `MoTestFailAfterMachineProfile=1` forwards one secure MSI property
 and forces a deferred failure after the machine-profile mutation but before its
 commit action. `MoTestFailAfterUserFinalizer=1` schedules a vital chain-tail
 probe after the user finalizer. The linked verifier proves both paths in the
 actual manifests and embedded bytes. They are only for the guarded disposable-VM
-matrix and must not survive into a release flavor.
+matrix. The `ProductionShape` flavor removes these variables, the MSI property
+and deferred failure action, the Burn failure package, and the registrar command
+at compile/preprocess time. Its linked verifier requires that absence; it is
+still unsigned, development-branded and non-deployable, not a release candidate.
 
 The build pipeline has four safety gates:
 
 1. The toolchain must match the locked WiX `4.0.6+73c89738`, extension files and
    complete inventory. Preparation never downloads unless `-AllowDownload` is
    explicitly supplied.
-2. Even with WiX installed, `-AllowDevelopmentBuild` is required and outputs are
-   explicitly named `development-unsigned`.
+2. Even with WiX installed, `-AllowDevelopmentBuild` is required. The default
+   `DevelopmentTest` outputs are named `development-unsigned`; `ProductionShape`
+   additionally requires `-AllowProductionShapeBuild` and is named
+   `production-shape-unsigned`.
 3. The stage must pass development consistency validation; generated authoring
    is then independently verified before WiX is invoked.
 4. A build is successful only after the linked MSI and Bundle are decompiled or
@@ -173,6 +178,13 @@ For an offline, non-installing local build from already downloaded packages:
   -OutputDirectory "$PWD/build/mo-linked-installer-new" `
   -AllowDevelopmentBuild
 ```
+
+To prove the fault-free linked shape without producing a distributable package,
+prepare a stage without `-DevelopmentFaultInjection`, then build with
+`-BuildFlavor ProductionShape -AllowDevelopmentBuild -AllowProductionShapeBuild`.
+To build the destructive VM-test flavor, prepare its stage with
+`-DevelopmentFaultInjection` and use the default `DevelopmentTest` flavor. The
+builder rejects a stage whose registrar does not match the requested flavor.
 
 For non-mutating authoring checks:
 
@@ -195,7 +207,8 @@ bind two versions into a hash-locked rollback/repair/Major Upgrade matrix. Its
 Windows PowerShell 5.1 driver verifies both forced rollback boundaries, missing-
 marker repair rejection, old/new MSI ProductCode transition and final uninstall.
 The current host only prepares and rejects this kit; real results require a
-separately initialized disposable VM. See ADR 0033.
+separately initialized disposable VM. See ADR 0033. Flavor isolation and linked
+production-shape evidence are recorded in ADR 0034.
 
 Before any release, replace or brand the temporary standard BA as needed; use
 versioned binaries to tolerate loaded TIP DLLs; validate clean

@@ -11,6 +11,8 @@ param(
     [string]$BundlePath,
     [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')]
     [string]$ProductVersion = '0.0.1.0',
+    [ValidateSet('DevelopmentTest', 'ProductionShape')]
+    [string]$BuildFlavor = 'DevelopmentTest',
     [Parameter(Mandatory = $true)]
     [string]$OutputDirectory,
     [switch]$ValidateMsi
@@ -25,6 +27,7 @@ $stage = Assert-MoPlainPath $StageDirectory
 $msi = Assert-MoPlainPath $MsiPath
 $bundle = Assert-MoPlainPath $BundlePath
 $output = Assert-MoNewBuildOutput $OutputDirectory $repo
+$faultInjectionIncluded = $BuildFlavor -eq 'DevelopmentTest'
 foreach ($file in @($wix, $msi, $bundle)) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Linked-installer input is missing: $file" }
 }
@@ -45,7 +48,7 @@ $packageNamespace = [Xml.XmlNamespaceManager]::new($package.NameTable)
 $packageNamespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
 if (@($package.SelectNodes('//w:File', $packageNamespace)).Count -ne 131 -or
     @($package.SelectNodes('//w:Component', $packageNamespace)).Count -ne 132 -or
-    @($package.SelectNodes('//w:CustomAction', $packageNamespace)).Count -ne 8) {
+    @($package.SelectNodes('//w:CustomAction', $packageNamespace)).Count -ne $(if ($faultInjectionIncluded) { 8 } else { 7 })) {
     throw 'Linked MSI payload/component/custom-action count mismatch.'
 }
 $failureProperty = $package.SelectSingleNode('//w:Property[@Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"]', $packageNamespace)
@@ -56,17 +59,22 @@ $failureSequence = $package.SelectSingleNode(
 $commitSequence = $package.SelectSingleNode(
     '//w:InstallExecuteSequence/w:Custom[@Action="CommitInstallMachineProfile"]',
     $packageNamespace)
-if ($null -eq $failureProperty -or $failureProperty.GetAttribute('Secure') -cne 'yes' -or
-    $null -eq $failureAction -or $failureAction.GetAttribute('BinaryRef') -cne 'MoRegistrarCustomAction' -or
-    $failureAction.GetAttribute('ExeCommand') -cne 'development-test-fail-fixed' -or
-    $failureAction.GetAttribute('Execute') -cne 'deferred' -or
-    $failureAction.GetAttribute('Impersonate') -cne 'no' -or
-    $null -eq $failureSequence -or
-    $failureSequence.GetAttribute('After') -cne 'InstallMachineProfile' -or
-    $failureSequence.GetAttribute('Condition') -cne 'MO_TEST_FAIL_AFTER_MACHINE_PROFILE = "1" AND NOT REMOVE~="ALL"' -or
-    $null -eq $commitSequence -or
-    $commitSequence.GetAttribute('After') -cne 'DevelopmentFailAfterMachineProfile') {
-    throw 'Linked MSI failure-injection rollback boundary mismatch.'
+if ($faultInjectionIncluded) {
+    if ($null -eq $failureProperty -or $failureProperty.GetAttribute('Secure') -cne 'yes' -or
+        $null -eq $failureAction -or $failureAction.GetAttribute('BinaryRef') -cne 'MoRegistrarCustomAction' -or
+        $failureAction.GetAttribute('ExeCommand') -cne 'development-test-fail-fixed' -or
+        $failureAction.GetAttribute('Execute') -cne 'deferred' -or
+        $failureAction.GetAttribute('Impersonate') -cne 'no' -or
+        $null -eq $failureSequence -or
+        $failureSequence.GetAttribute('After') -cne 'InstallMachineProfile' -or
+        $failureSequence.GetAttribute('Condition') -cne 'MO_TEST_FAIL_AFTER_MACHINE_PROFILE = "1" AND NOT REMOVE~="ALL"' -or
+        $null -eq $commitSequence -or
+        $commitSequence.GetAttribute('After') -cne 'DevelopmentFailAfterMachineProfile') {
+        throw 'Linked MSI failure-injection rollback boundary mismatch.'
+    }
+} elseif ($null -ne $failureProperty -or $null -ne $failureAction -or $null -ne $failureSequence -or
+    $null -eq $commitSequence -or $commitSequence.GetAttribute('After') -cne 'InstallMachineProfile') {
+    throw 'Production-shape MSI contains a development failure-injection surface.'
 }
 $launch = $package.SelectSingleNode('//w:Launch', $packageNamespace)
 if ($null -eq $launch -or $launch.GetAttribute('Condition') -cne 'NOT RollbackDisabled') {
@@ -101,40 +109,54 @@ if ($manifest.DocumentElement.GetAttribute('EngineVersion') -cne '4.0.6.0' -or
     $finalizer.GetAttribute('RepairArguments') -cne 'burn-user-finalizer' -or
     $finalizer.GetAttribute('UninstallArguments') -cne 'burn-user-finalizer' -or
     $finalizer.GetAttribute('Repairable') -cne 'yes' -or
-    $finalizer.GetAttribute('Uninstallable') -cne 'yes' -or
-    $null -eq $failureInjector -or $failureInjector.GetAttribute('PerMachine') -cne 'no' -or
-    $failureInjector.GetAttribute('Permanent') -cne 'yes' -or
-    $failureInjector.GetAttribute('Vital') -cne 'yes' -or
-    $failureInjector.GetAttribute('CacheId') -cne 'MoDevelopmentFailureInjection.v1' -or
-    $failureInjector.GetAttribute('InstallCondition') -cne 'MoTestFailAfterUserFinalizer = 1' -or
-    $failureInjector.GetAttribute('DetectCondition') -cne '0' -or
-    $failureInjector.GetAttribute('InstallArguments') -cne 'development-test-fail-fixed' -or
-    $failureInjector.GetAttribute('Repairable') -cne 'no') {
+    $finalizer.GetAttribute('Uninstallable') -cne 'yes') {
     throw 'Linked Bundle scope or finalizer base protocol mismatch.'
+}
+if ($faultInjectionIncluded) {
+    if ($null -eq $failureInjector -or $failureInjector.GetAttribute('PerMachine') -cne 'no' -or
+        $failureInjector.GetAttribute('Permanent') -cne 'yes' -or
+        $failureInjector.GetAttribute('Vital') -cne 'yes' -or
+        $failureInjector.GetAttribute('CacheId') -cne 'MoDevelopmentFailureInjection.v1' -or
+        $failureInjector.GetAttribute('InstallCondition') -cne 'MoTestFailAfterUserFinalizer = 1' -or
+        $failureInjector.GetAttribute('DetectCondition') -cne '0' -or
+        $failureInjector.GetAttribute('InstallArguments') -cne 'development-test-fail-fixed' -or
+        $failureInjector.GetAttribute('Repairable') -cne 'no') {
+        throw 'Linked Bundle development failure package mismatch.'
+    }
+} elseif ($null -ne $failureInjector) {
+    throw 'Production-shape Bundle contains the development failure package.'
 }
 $failureVariables = @($manifest.SelectNodes('/b:BurnManifest/b:Variable', $burnNamespace))
 $expectedFailureVariables = @('MoTestFailAfterMachineProfile', 'MoTestFailAfterUserFinalizer')
-if ($failureVariables.Count -ne 2 -or
-    @($expectedFailureVariables | Where-Object {
-        $_ -cnotin @($failureVariables | ForEach-Object { $_.GetAttribute('Id') })
-    }).Count) {
-    throw 'Linked Bundle failure-variable count mismatch.'
-}
-foreach ($variable in $failureVariables) {
-    if ($variable.GetAttribute('Id') -cnotin $expectedFailureVariables -or
-        $variable.GetAttribute('Value') -cne '0' -or
-        $variable.GetAttribute('Type') -cne 'numeric' -or
-        $variable.GetAttribute('Hidden') -cne 'yes' -or
-        $variable.GetAttribute('Persisted') -cne 'no') {
-        throw "Linked Bundle failure variable mismatch: $($variable.GetAttribute('Id'))"
+if ($faultInjectionIncluded) {
+    if ($failureVariables.Count -ne 2 -or
+        @($expectedFailureVariables | Where-Object {
+            $_ -cnotin @($failureVariables | ForEach-Object { $_.GetAttribute('Id') })
+        }).Count) {
+        throw 'Linked Bundle failure-variable count mismatch.'
     }
+    foreach ($variable in $failureVariables) {
+        if ($variable.GetAttribute('Id') -cnotin $expectedFailureVariables -or
+            $variable.GetAttribute('Value') -cne '0' -or
+            $variable.GetAttribute('Type') -cne 'numeric' -or
+            $variable.GetAttribute('Hidden') -cne 'yes' -or
+            $variable.GetAttribute('Persisted') -cne 'no') {
+            throw "Linked Bundle failure variable mismatch: $($variable.GetAttribute('Id'))"
+        }
+    }
+} elseif ($failureVariables.Count -ne 0) {
+    throw 'Production-shape Bundle contains development variables.'
 }
 $failureMsiProperty = $machinePackage.SelectSingleNode(
     'b:MsiProperty[@Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"]', $burnNamespace)
-if ($null -eq $failureMsiProperty -or
-    $failureMsiProperty.GetAttribute('Value') -cne '[MoTestFailAfterMachineProfile]' -or
-    $failureMsiProperty.GetAttribute('Condition') -cne 'MoTestFailAfterMachineProfile = 1') {
-    throw 'Linked Bundle lost the conditional MSI failure property.'
+if ($faultInjectionIncluded) {
+    if ($null -eq $failureMsiProperty -or
+        $failureMsiProperty.GetAttribute('Value') -cne '[MoTestFailAfterMachineProfile]' -or
+        $failureMsiProperty.GetAttribute('Condition') -cne 'MoTestFailAfterMachineProfile = 1') {
+        throw 'Linked Bundle lost the conditional MSI failure property.'
+    }
+} elseif ($null -ne $failureMsiProperty) {
+    throw 'Production-shape Bundle forwards the development MSI failure property.'
 }
 $baDataPath = Join-Path $bundleBa 'BootstrapperApplicationData.xml'
 $baData = [xml](Get-Content -Raw -LiteralPath $baDataPath)
@@ -149,10 +171,14 @@ if ($null -eq $bundleProperties -or
 }
 $overridableVariables = @($baData.SelectNodes('//ba:WixStdbaOverridableVariable', $baNamespace) |
     ForEach-Object { $_.GetAttribute('Name') })
-if ($overridableVariables.Count -ne 2 -or
-    @($overridableVariables | Where-Object { $_ -cnotin $expectedFailureVariables }).Count -or
-    @($expectedFailureVariables | Where-Object { $_ -cnotin $overridableVariables }).Count) {
-    throw 'Linked WixStdBA failure-variable override contract mismatch.'
+if ($faultInjectionIncluded) {
+    if ($overridableVariables.Count -ne 2 -or
+        @($overridableVariables | Where-Object { $_ -cnotin $expectedFailureVariables }).Count -or
+        @($expectedFailureVariables | Where-Object { $_ -cnotin $overridableVariables }).Count) {
+        throw 'Linked WixStdBA failure-variable override contract mismatch.'
+    }
+} elseif ($overridableVariables.Count -ne 0) {
+    throw 'Production-shape WixStdBA exposes development variable overrides.'
 }
 $expectedCommands = [ordered]@{
     'WixBundleAction = 4' = @('rollback-remove-current-user-fixed', '', 'remove-current-user-fixed')
@@ -181,30 +207,34 @@ $machinePayload = $payloads | Where-Object { $_.GetAttribute('Id') -ceq 'MoMachi
 $finalizerPayload = $payloads | Where-Object { $_.GetAttribute('Id') -ceq 'MoCurrentUserFinalizer' }
 $failurePayload = $payloads | Where-Object { $_.GetAttribute('Id') -ceq 'MoDevelopmentFailureInjection' }
 if (@($machinePayload).Count -ne 1 -or @($finalizerPayload).Count -ne 1 -or
-    @($failurePayload).Count -ne 1) {
+    @($failurePayload).Count -ne $(if ($faultInjectionIncluded) { 1 } else { 0 })) {
     throw 'Linked Bundle payload identity mismatch.'
 }
 if ($machinePayload.GetAttribute('Container') -cne 'WixAttachedContainer' -or
     $finalizerPayload.GetAttribute('Container') -cne 'WixAttachedContainer' -or
-    $failurePayload.GetAttribute('Container') -cne 'WixAttachedContainer' -or
-    $machinePayload.GetAttribute('FilePath') -cne 'mo-development-unsigned.msi' -or
+    $machinePayload.GetAttribute('FilePath') -cne [IO.Path]::GetFileName($msi) -or
     $finalizerPayload.GetAttribute('FilePath') -cne 'mo-tip-registrar.exe' -or
-    $failurePayload.GetAttribute('FilePath') -cne 'mo-development-failure-injection.exe') {
+    ($faultInjectionIncluded -and (
+        $failurePayload.GetAttribute('Container') -cne 'WixAttachedContainer' -or
+        $failurePayload.GetAttribute('FilePath') -cne 'mo-development-failure-injection.exe'))) {
     throw 'Linked Bundle attached-container payload path mismatch.'
 }
 $attachedContainer = Join-Path $bundlePayload 'WixAttachedContainer'
 $extractedMsi = Join-Path $attachedContainer $machinePayload.GetAttribute('FilePath')
 $extractedFinalizer = Join-Path $attachedContainer $finalizerPayload.GetAttribute('FilePath')
-$extractedFailureInjector = Join-Path $attachedContainer $failurePayload.GetAttribute('FilePath')
-if (@(Get-ChildItem -LiteralPath $attachedContainer -File).Count -ne 3) {
+$extractedFailureInjector = if ($faultInjectionIncluded) {
+    Join-Path $attachedContainer $failurePayload.GetAttribute('FilePath')
+} else { $null }
+if (@(Get-ChildItem -LiteralPath $attachedContainer -File).Count -ne $(if ($faultInjectionIncluded) { 3 } else { 2 })) {
     throw 'Linked Bundle attached-container file count mismatch.'
 }
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $extractedMsi).Hash -cne
         (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash -or
     (Get-FileHash -Algorithm SHA256 -LiteralPath $extractedFinalizer).Hash -cne
         (Get-FileHash -Algorithm SHA256 -LiteralPath $stageRegistrar).Hash -or
-    (Get-FileHash -Algorithm SHA256 -LiteralPath $extractedFailureInjector).Hash -cne
-        (Get-FileHash -Algorithm SHA256 -LiteralPath $stageRegistrar).Hash) {
+    ($faultInjectionIncluded -and
+        (Get-FileHash -Algorithm SHA256 -LiteralPath $extractedFailureInjector).Hash -cne
+            (Get-FileHash -Algorithm SHA256 -LiteralPath $stageRegistrar).Hash)) {
     throw 'Linked Bundle embedded payload differs from its verified input.'
 }
 
@@ -215,10 +245,11 @@ if ($ValidateMsi) {
     $iceValidated = $true
 }
 $evidence = [ordered]@{
-    format = 2
+    format = 3
     development_only = $true
     install_executed = $false
-    fault_injection_authoring_verified = $true
+    build_flavor = $BuildFlavor
+    fault_injection_included = $faultInjectionIncluded
     wix_version = $version
     product_version = $ProductVersion
     msi_product_code = $machinePackage.GetAttribute('ProductCode')

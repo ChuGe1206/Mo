@@ -88,9 +88,7 @@ try {
 
     Pass 'rollback ordering and mutually exclusive lifecycle conditions' {
         $sequence = @($package.SelectNodes('//w:InstallExecuteSequence/w:Custom', $namespace))
-        if ($sequence.Count -ne 8) { throw 'Unexpected custom-action sequence count.' }
-        $byAction = @{}
-        foreach ($item in $sequence) { $byAction[$item.GetAttribute('Action')] = $item }
+        if ($sequence.Count -ne 9) { throw 'Unexpected conditional custom-action sequence count.' }
         $contracts = @(
             @('RollbackRemoveMachineProfile', 'Before', 'RemoveMachineProfile', 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE'),
             @('RemoveMachineProfile', 'Before', 'CommitRemoveMachineProfile', 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE'),
@@ -99,12 +97,16 @@ try {
             @('InstallNewMachineProfile', 'After', 'RollbackInstallMachineProfile', 'NOT Installed AND NOT WIX_UPGRADE_DETECTED AND NOT REMOVE~="ALL"'),
             @('InstallMachineProfile', 'After', 'InstallNewMachineProfile', '(Installed OR WIX_UPGRADE_DETECTED) AND NOT REMOVE~="ALL"'),
             @('DevelopmentFailAfterMachineProfile', 'After', 'InstallMachineProfile', 'MO_TEST_FAIL_AFTER_MACHINE_PROFILE = "1" AND NOT REMOVE~="ALL"'),
-            @('CommitInstallMachineProfile', 'After', 'DevelopmentFailAfterMachineProfile', 'NOT REMOVE~="ALL"')
+            @('CommitInstallMachineProfile', 'After', 'DevelopmentFailAfterMachineProfile', 'NOT REMOVE~="ALL"'),
+            @('CommitInstallMachineProfile', 'After', 'InstallMachineProfile', 'NOT REMOVE~="ALL"')
         )
         foreach ($contract in $contracts) {
-            $item = $byAction[$contract[0]]
-            if ($null -eq $item -or $item.GetAttribute($contract[1]) -cne $contract[2] -or
-                $item.GetAttribute('Condition') -cne $contract[3]) {
+            $matches = @($sequence | Where-Object {
+                $_.GetAttribute('Action') -ceq $contract[0] -and
+                $_.GetAttribute($contract[1]) -ceq $contract[2] -and
+                $_.GetAttribute('Condition') -ceq $contract[3]
+            })
+            if ($matches.Count -ne 1) {
                 throw "Invalid sequence contract: $($contract[0])"
             }
         }
@@ -273,6 +275,10 @@ try {
         $buildSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'build.ps1') -Raw
         foreach ($contract in @(
             'Assert-MoWixToolchain',
+            "[ValidateSet('DevelopmentTest', 'ProductionShape')]",
+            'AllowProductionShapeBuild',
+            "if (`$BuildFlavor -eq 'DevelopmentTest') { '1' } else { '0' }",
+            'IncludeFaultInjection=',
             '$toolchain.Extensions.Bal',
             '$toolchain.Extensions.Util',
             '$toolchain.Extensions.Dependency',
@@ -286,6 +292,30 @@ try {
             if (-not $buildSource.Contains($contract, [StringComparison]::Ordinal)) {
                 throw "Bundle build input contract is missing: $contract"
             }
+        }
+    }
+
+    Pass 'production shape excludes development fault injection at every layer' {
+        $packageSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Package.wxs') -Raw
+        $bundleSource = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Bundle.wxs') -Raw
+        $registrarSource = Get-Content -LiteralPath (
+            Join-Path $repo 'native/windows-tip/src/registrar.cpp') -Raw
+        $projectSource = Get-Content -LiteralPath (
+            Join-Path $repo 'native/windows-tip/MoTipRegistrar.vcxproj') -Raw
+        $cmakeSource = Get-Content -LiteralPath (
+            Join-Path $repo 'native/windows-tip/CMakeLists.txt') -Raw
+        foreach ($source in @($packageSource, $bundleSource)) {
+            if ($source -notmatch '<\?if \$\(var\.IncludeFaultInjection\) = 1 \?>' -or
+                $source -notmatch '<\?endif\?>') {
+                throw 'WiX fault-injection authoring is not preprocessor-gated.'
+            }
+        }
+        if ($registrarSource -notmatch '#if defined\(MO_DEVELOPMENT_FAULT_INJECTION\)[\s\S]+development-test-fail-fixed[\s\S]+#endif' -or
+            $projectSource -notmatch "'\$\(MoDevelopmentFaultInjection\)' == 'true'" -or
+            $projectSource -notmatch 'MO_DEVELOPMENT_FAULT_INJECTION' -or
+            $cmakeSource -notmatch 'option\(MO_DEVELOPMENT_FAULT_INJECTION[\s\S]+OFF\)' -or
+            $cmakeSource -notmatch 'target_compile_definitions\(mo_tip_registrar PRIVATE MO_DEVELOPMENT_FAULT_INJECTION\)') {
+            throw 'Native registrar fault injection is not default-off and compile-time-gated.'
         }
     }
 

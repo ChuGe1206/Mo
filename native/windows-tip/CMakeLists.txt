@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(mo_windows_tip LANGUAGES CXX)
 option(MO_LATENCY_TRACE "Development-only input timing metadata" OFF)
+option(MO_DEVELOPMENT_FAULT_INJECTION "Development-only installer rollback probe" OFF)
 
 if(NOT WIN32 OR NOT MSVC)
     message(FATAL_ERROR "The Phase 0 TSF shell requires MSVC and the Windows SDK.")
@@ -23,6 +24,9 @@ set_target_properties(mo_tip PROPERTIES OUTPUT_NAME "mo_tip")
 
 add_executable(mo_tip_registrar src/registrar.cpp)
 mo_apply_compile_policy(mo_tip_registrar)
+if(MO_DEVELOPMENT_FAULT_INJECTION)
+    target_compile_definitions(mo_tip_registrar PRIVATE MO_DEVELOPMENT_FAULT_INJECTION)
+endif()
 target_link_libraries(mo_tip_registrar PRIVATE advapi32 ole32 shell32 uuid)
 
 add_executable(mo_tip_abi_probe probe/abi_probe.cpp src/mo_broker_launcher.cpp)

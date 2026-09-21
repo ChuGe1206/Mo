@@ -22,16 +22,18 @@ function Read-LinkedEvidence([string]$Path) {
     $item = Read-MoStageJson $Path
     $required = @(
         'format', 'development_only', 'install_executed',
-        'fault_injection_authoring_verified', 'wix_version', 'product_version',
+        'build_flavor', 'fault_injection_included', 'wix_version', 'product_version',
         'msi_product_code', 'msi_upgrade_code', 'bundle_id', 'bundle_upgrade_code',
         'known_link_warning', 'msi_ice_validated', 'stage_manifest_sha256',
         'msi_sha256', 'bundle_sha256'
     )
     if ($item.Count -ne $required.Count -or
         @($required | Where-Object { -not $item.Contains($_) }).Count -or
-        $item['format'] -ne 2 -or $item['development_only'] -ne $true -or
+        $item['format'] -ne 3 -or $item['development_only'] -ne $true -or
         $item['install_executed'] -ne $false -or
-        $item['fault_injection_authoring_verified'] -ne $true -or
+        $item['build_flavor'] -cnotin @('DevelopmentTest', 'ProductionShape') -or
+        $item['fault_injection_included'] -isnot [bool] -or
+        ($item['build_flavor'] -ceq 'DevelopmentTest') -ne $item['fault_injection_included'] -or
         $item['wix_version'] -cne '4.0.6+73c89738') {
         throw "Invalid linked installer evidence: $Path"
     }
@@ -53,6 +55,8 @@ $upgrade = Read-LinkedEvidence $upgradePath
 $baseVersion = [version]$base['product_version']
 $upgradeVersion = [version]$upgrade['product_version']
 if ($baseVersion -ge $upgradeVersion -or
+    $base['build_flavor'] -cne $upgrade['build_flavor'] -or
+    $base['fault_injection_included'] -ne $upgrade['fault_injection_included'] -or
     $base['stage_manifest_sha256'] -cne $upgrade['stage_manifest_sha256'] -or
     $base['msi_upgrade_code'] -cne $upgrade['msi_upgrade_code'] -or
     $base['bundle_upgrade_code'] -cne $upgrade['bundle_upgrade_code'] -or
@@ -65,10 +69,12 @@ if ($baseVersion -ge $upgradeVersion -or
 
 New-Item -ItemType Directory -Path $output | Out-Null
 $result = [ordered]@{
-    format = 1
-    kind = 'mo-development-linked-upgrade-pair'
+    format = 2
+    kind = 'mo-linked-upgrade-pair'
     development_only = $true
     install_executed = $false
+    build_flavor = $base['build_flavor']
+    fault_injection_included = $base['fault_injection_included']
     base_version = $base['product_version']
     upgrade_version = $upgrade['product_version']
     stage_manifest_sha256 = $base['stage_manifest_sha256']

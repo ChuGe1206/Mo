@@ -13,11 +13,13 @@
       Manufacturer="Mo Project"
       Version="$(var.ProductVersion)"
       UpgradeCode="{E08C0321-3F73-4D39-BC28-E7DF02C5134E}">
+    <?if $(var.IncludeFaultInjection) = 1 ?>
     <!-- Hidden, default-off knobs for destructive disposable-VM verification. -->
     <Variable Name="MoTestFailAfterMachineProfile" Type="numeric" Value="0"
         Hidden="yes" bal:Overridable="yes" />
     <Variable Name="MoTestFailAfterUserFinalizer" Type="numeric" Value="0"
         Hidden="yes" bal:Overridable="yes" />
+    <?endif?>
     <util:RegistrySearch
         Id="DetectMoUserFinalizer"
         Variable="MoUserFinalizerMarker"
@@ -33,9 +35,11 @@
     </BootstrapperApplication>
     <Chain>
       <MsiPackage Id="MoMachinePackage" SourceFile="$(var.MsiPath)" Visible="no">
+        <?if $(var.IncludeFaultInjection) = 1 ?>
         <MsiProperty Name="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"
             Value="[MoTestFailAfterMachineProfile]"
             Condition="MoTestFailAfterMachineProfile = 1" />
+        <?endif?>
       </MsiPackage>
       <ExePackage
           Id="MoCurrentUserFinalizer"
@@ -76,6 +80,7 @@
             Version="$(var.ProductVersion)"
             DisplayName="Mo current-user finalizer" />
       </ExePackage>
+      <?if $(var.IncludeFaultInjection) = 1 ?>
       <ExePackage
           Id="MoDevelopmentFailureInjection"
           After="MoCurrentUserFinalizer"
@@ -90,6 +95,7 @@
           Cache="keep"
           Permanent="yes"
           Vital="yes" />
+      <?endif?>
     </Chain>
   </Bundle>
 </Wix>

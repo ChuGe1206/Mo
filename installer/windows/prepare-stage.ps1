@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$RuntimeBuildDirectory,
     [Parameter(Mandatory)][string]$RimeIceSourceDir,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [ValidatePattern('^[A-Za-z0-9._-]+$')][string]$RustToolchain = 'stable'
+    [ValidatePattern('^[A-Za-z0-9._-]+$')][string]$RustToolchain = 'stable',
+    [switch]$DevelopmentFaultInjection
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'staging-policy.ps1')
@@ -164,8 +165,10 @@ foreach ($platform in @('x64', 'Win32')) {
     $nativeOut = Join-Path $working "native/$platform"
     foreach ($project in @('MoTip', 'MoTipAbiProbe', 'MoTipRegistrar')) {
         $objectOut = Join-Path $working "native-obj/$platform/$project"
+        $faultOption = if ($DevelopmentFaultInjection) { 'true' } else { 'false' }
         Checked $msbuild @((Join-Path $nativeSource "$project.vcxproj"), '/nologo', '/t:Rebuild', '/m',
             '/p:Configuration=Release', "/p:Platform=$platform", '/p:MoLatencyTrace=false',
+            "/p:MoDevelopmentFaultInjection=$faultOption",
             "/p:OutDir=$nativeOut\", "/p:IntDir=$objectOut\")
     }
     # Default probe explicitly checks the diagnostics IID returns E_NOINTERFACE.
@@ -174,6 +177,26 @@ foreach ($platform in @('x64', 'Win32')) {
     Checked (Join-Path $nativeOut 'mo_tip_registrar.exe') @('self-test-machine-transaction', $transactionMarker)
     if (Test-Path -LiteralPath $transactionMarker) { throw 'Registrar transaction self-test left a marker.' }
     Checked (Join-Path $nativeOut 'mo_tip_registrar.exe') @('self-test-user-finalizer-policy')
+    $builtRegistrar = Join-Path $nativeOut 'mo_tip_registrar.exe'
+    $beforeFaultProbe = @(& $builtRegistrar status)
+    if ($LASTEXITCODE -ne 0) { throw 'Staged registrar failure-injection preflight status failed.' }
+    $faultProbe = @(& $builtRegistrar development-test-fail-fixed 2>&1)
+    $faultExitCode = $LASTEXITCODE
+    $faultText = $faultProbe -join "`n"
+    if ($DevelopmentFaultInjection) {
+        if ($faultExitCode -eq 0 -or $faultText -cnotmatch '(?m)^Operation failed: 0x80004005$' -or
+            $faultText -match '(?m)^Usage:$') {
+            throw 'Staged registrar development fault command mismatch.'
+        }
+    } elseif ($faultExitCode -eq 0 -or $faultText -cnotmatch '(?m)^Usage:$' -or
+        $faultText -cnotmatch '(?m)^Operation failed: 0x80070057$' -or
+        $faultText -match '0x80004005') {
+        throw 'Staged production-shape registrar exposes development fault injection.'
+    }
+    $afterFaultProbe = @(& $builtRegistrar status)
+    if ($LASTEXITCODE -ne 0 -or ($beforeFaultProbe -join "`n") -cne ($afterFaultProbe -join "`n")) {
+        throw 'Staged registrar flavor probe changed observable state.'
+    }
     $architecture = if ($platform -eq 'x64') { 'x64' } else { 'x86' }
     Copy-StageFile (Join-Path $nativeOut 'mo_tip.dll') (Join-Path $payload "tip/$architecture/mo-tip.dll")
     if ($platform -eq 'x64') { Copy-StageFile (Join-Path $nativeOut 'mo_tip_registrar.exe') (Join-Path $payload 'bin/mo-tip-registrar.exe') }

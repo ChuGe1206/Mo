@@ -4,7 +4,8 @@ param(
     [string]$Architecture = 'All',
     [ValidateSet('Auto', 'CMake', 'MSBuild')]
     [string]$Backend = 'Auto',
-    [switch]$LatencyTrace
+    [switch]$LatencyTrace,
+    [switch]$DevelopmentFaultInjection
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,13 +59,15 @@ foreach ($platform in $architectures) {
     if ($Backend -eq 'CMake') {
         $buildDirectory = Join-Path $sourceRoot "out\cmake\$platform"
         $traceOption = if ($LatencyTrace) { 'ON' } else { 'OFF' }
-        Invoke-Checked $cmake @('-S', $sourceRoot, '-B', $buildDirectory, '-G', 'Visual Studio 17 2022', '-A', $platform, "-DMO_LATENCY_TRACE=$traceOption")
+        $faultOption = if ($DevelopmentFaultInjection) { 'ON' } else { 'OFF' }
+        Invoke-Checked $cmake @('-S', $sourceRoot, '-B', $buildDirectory, '-G', 'Visual Studio 17 2022', '-A', $platform, "-DMO_LATENCY_TRACE=$traceOption", "-DMO_DEVELOPMENT_FAULT_INJECTION=$faultOption")
         Invoke-Checked $cmake @('--build', $buildDirectory, '--config', 'Release')
         $binaryDirectory = Join-Path $buildDirectory 'Release'
     } else {
         foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj', 'MoTipIpcProbe.vcxproj')) {
             $traceOption = if ($LatencyTrace) { 'true' } else { 'false' }
-            Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform", "/p:MoLatencyTrace=$traceOption")
+            $faultOption = if ($DevelopmentFaultInjection) { 'true' } else { 'false' }
+            Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform", "/p:MoLatencyTrace=$traceOption", "/p:MoDevelopmentFaultInjection=$faultOption")
         }
         $binaryDirectory = Join-Path $sourceRoot "out\msbuild\$platform\Release"
     }
@@ -86,8 +89,16 @@ foreach ($platform in $architectures) {
     $beforeFailureProbe = @(& $registrar status)
     if ($LASTEXITCODE -ne 0) { throw 'Registrar failure-injection preflight status failed.' }
     $failureProbe = @(& $registrar development-test-fail-fixed 2>&1)
-    if ($LASTEXITCODE -eq 0 -or ($failureProbe -join "`n") -cnotmatch '(?m)^Operation failed: 0x80004005$') {
-        throw 'Registrar development failure injection did not return deterministic E_FAIL.'
+    $failureText = $failureProbe -join "`n"
+    if ($DevelopmentFaultInjection) {
+        if ($LASTEXITCODE -eq 0 -or $failureText -cnotmatch '(?m)^Operation failed: 0x80004005$' -or
+            $failureText -match '(?m)^Usage:$') {
+            throw 'Registrar development failure injection did not return deterministic E_FAIL.'
+        }
+    } elseif ($LASTEXITCODE -eq 0 -or $failureText -cnotmatch '(?m)^Usage:$' -or
+        $failureText -cnotmatch '(?m)^Operation failed: 0x80070057$' -or
+        $failureText -match '0x80004005') {
+        throw 'Production-shape registrar exposes the development failure command.'
     }
     $afterFailureProbe = @(& $registrar status)
     if ($LASTEXITCODE -ne 0 -or ($beforeFailureProbe -join "`n") -cne ($afterFailureProbe -join "`n")) {
@@ -95,4 +106,5 @@ foreach ($platform in $architectures) {
     }
 }
 
-Write-Host 'Compile/load plus non-mutating machine transaction, current-user finalizer policy and deterministic failure probes passed. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.'
+$faultLabel = if ($DevelopmentFaultInjection) { 'included and deterministic' } else { 'physically absent' }
+Write-Host "Compile/load plus non-mutating machine transaction and current-user finalizer policy probes passed; development fault injection is $faultLabel. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts."

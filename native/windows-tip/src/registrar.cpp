@@ -2131,7 +2131,9 @@ void print_usage() {
         << L"  mo_tip_registrar remove-machine-profile-fixed\n"
         << L"  mo_tip_registrar rollback-remove-machine-profile-fixed\n"
         << L"  mo_tip_registrar commit-remove-machine-profile-fixed\n"
+#if defined(MO_DEVELOPMENT_FAULT_INJECTION)
         << L"  mo_tip_registrar development-test-fail-fixed\n"
+#endif
         << L"  mo_tip_registrar install-current-user-fixed\n"
         << L"  mo_tip_registrar repair-current-user-fixed\n"
         << L"  mo_tip_registrar remove-current-user-fixed\n"
@@ -2184,10 +2186,12 @@ int wmain(int argument_count, wchar_t** arguments) {
                    || command == L"commit-remove-machine-profile-fixed")
                && argument_count == 2) {
         result = fixed_machine_profile_operation(command);
+#if defined(MO_DEVELOPMENT_FAULT_INJECTION)
     } else if (command == L"development-test-fail-fixed" && argument_count == 2) {
         // Deliberate, side-effect-free failure used only by the unsigned
         // development installer to prove MSI/Burn rollback behavior.
         result = E_FAIL;
+#endif
     } else if ((command == L"install-current-user-fixed"
                    || command == L"repair-current-user-fixed"
                    || command == L"remove-current-user-fixed"

@@ -28,7 +28,8 @@ $stageManifest = Join-Path $stage 'mo-stage.json'
 $stageRegistrar = Join-Path $stage 'payload\Mo\bin\mo-tip-registrar.exe'
 $pair = Read-MoStageJson $pairPath
 $required = @(
-    'format', 'kind', 'development_only', 'install_executed', 'base_version',
+    'format', 'kind', 'development_only', 'install_executed', 'build_flavor',
+    'fault_injection_included', 'base_version',
     'upgrade_version', 'stage_manifest_sha256', 'msi_upgrade_code',
     'bundle_upgrade_code', 'base_product_code', 'upgrade_product_code',
     'base_bundle_id', 'upgrade_bundle_id', 'base_bundle_sha256',
@@ -36,8 +37,10 @@ $required = @(
 )
 if ($pair.Count -ne $required.Count -or
     @($required | Where-Object { -not $pair.Contains($_) }).Count -or
-    $pair['format'] -ne 1 -or $pair['kind'] -cne 'mo-development-linked-upgrade-pair' -or
+    $pair['format'] -ne 2 -or $pair['kind'] -cne 'mo-linked-upgrade-pair' -or
     $pair['development_only'] -ne $true -or $pair['install_executed'] -ne $false -or
+    $pair['build_flavor'] -cne 'DevelopmentTest' -or
+    $pair['fault_injection_included'] -ne $true -or
     [version]$pair['base_version'] -ge [version]$pair['upgrade_version']) {
     throw 'Invalid linked upgrade-pair evidence.'
 }
