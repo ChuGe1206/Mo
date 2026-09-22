@@ -28,7 +28,7 @@ This restriction is build-only, not a limitation on end-user Chinese input.
 
 The builder:
 
-- Checks the v2 core+Lua runtime's six source archive pins, eleven Mo source
+- Checks the v2 core+Lua runtime's six source archive pins, twelve Mo source
   snapshots, public ABI header, DLL and all 33 adjacent OpenCC resources.
 - Archives the locked rime-ice Git object, verifies its archive hash and extracts
   fresh inputs. Mutable checkout files, ignored `build/`, upstream platform
@@ -58,17 +58,18 @@ test **does execute trusted, locally built artifacts**: unchanged staged TIP
 Broker, plus the staged runtime/data. It does not run the installed release
 Broker as a working input service or prove real system registration.
 
-The resource-pack golden probe starts with empty managed user/staging directories
-and an explicit installed prebuilt-data path. Chinese, Emoji, English, date,
-Unicode, number and calculator selections each commit exactly once; staging
-must stay empty throughout. These seven cases do not prove every Lua module,
-all enabled schemas or real host input behavior.
+The resource-pack golden probe uses the machine prebuilt directory as staging and
+plants malicious same-name Lua/module traps in the managed user directory. Chinese,
+Emoji, English, date, Unicode, number and calculator selections each commit exactly
+once; the user `build` stays empty and the `rime.lua` sentinel is not written.
+These seven cases do not prove every machine Lua module, all enabled schemas or
+real host input behavior.
 
 These unsigned, self-declared receipts are **consistency evidence, not
 authentication**. Do not run untrusted stages just because verification passes.
 The trusted build host/toolchain/Cargo home are not hermetically isolated; path
 checks are not a handle-based concurrency/ACL proof and do not reject every
-possible hard link. The bundle has not closed user/Lua/staging override policy,
+possible hard link. The bundle has not closed typed settings generation/migration,
 VC prerequisites, signatures, full per-file notices/SBOM, corresponding-source
 review or legal approval. All manifests explicitly remain development-only,
 non-redistributable and non-installable. This is not G3 or daily-use acceptance.

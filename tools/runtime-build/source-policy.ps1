@@ -31,3 +31,23 @@ function Assert-MoRuntimeSourcePaths([string]$CachePath, [hashtable]$Expected) {
         }
     }
 }
+
+function Assert-MoLuaMachineDataPolicy([string]$SourcePath) {
+    $text = Get-Content -LiteralPath $SourcePath -Raw
+    $match = [regex]::Match($text, '(?s)static void lua_init\(lua_State \*L\) \{(?<body>.*?)\r?\n\}\r?\n\r?\nstatic void rime_lua_initialize')
+    if (-not $match.Success) { throw 'Lua initialization policy function is missing or ambiguous.' }
+    $body = $match.Groups['body'].Value
+    foreach ($required in @(
+        'const auto shared_dir = COMPAT<rime::Deployer>::get_shared_data_dir();',
+        'lua_setfield(L, -2, "path");',
+        'lua_pushliteral(L, "");',
+        'lua_setfield(L, -2, "cpath");',
+        'const auto shared_file = shared_dir + LUA_DIRSEP "rime.lua";'
+    )) {
+        if ($body.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw 'Lua machine-data policy is incomplete.' }
+    }
+    foreach ($forbidden in @('user_dir', 'get_user_data_dir', 'lua_getfield(L, -2, "path")', 'lua_concat(L, 2)')) {
+        if ($body.IndexOf($forbidden, [StringComparison]::Ordinal) -ge 0) { throw 'Lua initialization retains a user/environment search path.' }
+    }
+    if ([regex]::Matches($body, 'luaL_dofile\(').Count -ne 1) { throw 'Lua initialization must have exactly one machine rime.lua entry point.' }
+}

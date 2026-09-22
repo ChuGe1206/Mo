@@ -2,7 +2,7 @@
 
 - 状态：接受
 - 日期：2026-09-16
-- 后续：ADR 0025 在固定机器布局加入 `Mo/runtime/librime/opencc` 与六份必要资源预检查；ADR 0038 在启动时加入安装树 ACL/reparse/硬链接信任门。签名与全部配置覆盖策略仍是独立门。
+- 后续：ADR 0025 在固定机器布局加入 `Mo/runtime/librime/opencc` 与六份必要资源预检查；ADR 0038 在启动时加入安装树 ACL/reparse/硬链接信任门；ADR 0039 取消用户 staging，并关闭用户 Lua/部署数据覆盖。签名仍是独立门。
 
 ## 背景
 

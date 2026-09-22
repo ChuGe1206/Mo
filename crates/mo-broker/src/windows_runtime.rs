@@ -101,7 +101,7 @@ impl InstalledLayout {
             dll_path: install.join("runtime/librime/rime.dll"),
             opencc_data_dir: install.join("runtime/librime/opencc"),
             prebuilt_data_dir: shared.join("build"),
-            staging_dir: user.join("build"),
+            staging_dir: shared.join("build"),
             shared_data_dir: shared,
             user_data_dir: user,
         })
@@ -193,11 +193,10 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
 fn ensure_managed_user_directories(layout: &InstalledLayout) -> io::Result<()> {
     let expected_mo = layout.local_app_data_root.join("Mo");
     let expected_user = expected_mo.join("Rime");
-    let expected_staging = expected_user.join("build");
-    if layout.user_data_dir != expected_user || layout.staging_dir != expected_staging {
+    if layout.user_data_dir != expected_user || layout.staging_dir != layout.prebuilt_data_dir {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
-            "managed user paths must remain under the fixed LocalAppData/Mo/Rime layout",
+            "managed user paths and machine-only staging must remain fixed",
         ));
     }
 
@@ -205,7 +204,6 @@ fn ensure_managed_user_directories(layout: &InstalledLayout) -> io::Result<()> {
     for (path, label) in [
         (&expected_mo, "managed Mo directory"),
         (&expected_user, "managed Rime directory"),
-        (&expected_staging, "managed staging directory"),
     ] {
         match std::fs::create_dir(path) {
             Ok(()) => {}
@@ -218,6 +216,36 @@ fn ensure_managed_user_directories(layout: &InstalledLayout) -> io::Result<()> {
             }
         }
         checked_directory(path, label)?;
+    }
+    reject_user_code_overrides(&expected_user)?;
+    Ok(())
+}
+
+#[cfg(any(not(debug_assertions), test))]
+fn reject_user_code_overrides(user_data_dir: &Path) -> io::Result<()> {
+    for relative in ["rime.lua", "lua"] {
+        let path = user_data_dir.join(relative);
+        match std::fs::symlink_metadata(&path) {
+            Ok(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    format!(
+                        "installed mode does not allow user Lua override path: {}",
+                        path.display()
+                    ),
+                ));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(io::Error::new(
+                    error.kind(),
+                    format!(
+                        "failed to inspect user Lua override path {}: {error}",
+                        path.display()
+                    ),
+                ));
+            }
+        }
     }
     Ok(())
 }
@@ -409,7 +437,7 @@ mod tests {
             layout.prebuilt_data_dir,
             layout.shared_data_dir.join("build")
         );
-        assert_eq!(layout.staging_dir, layout.user_data_dir.join("build"));
+        assert_eq!(layout.staging_dir, layout.prebuilt_data_dir);
         assert_eq!(layout.user_data_dir, roots.local_app_data.join("Mo/Rime"));
         assert_eq!(layout.local_app_data_root, roots.local_app_data);
         assert!(
@@ -489,6 +517,7 @@ mod tests {
         let mode = prepare_installed_startup(&layout.broker_path, &layout).unwrap();
         assert!(layout.user_data_dir.is_dir());
         assert!(layout.staging_dir.is_dir());
+        assert!(!layout.user_data_dir.join("build").exists());
         #[cfg(not(debug_assertions))]
         let StartupMode::Rime(startup) = mode;
         #[cfg(debug_assertions)]
@@ -569,13 +598,38 @@ mod tests {
             io::ErrorKind::PermissionDenied
         );
 
-        layout.staging_dir = layout.user_data_dir.join("build");
+        layout.staging_dir = layout.prebuilt_data_dir.clone();
         std::fs::write(local.join("Mo"), b"not a directory").unwrap();
         assert_eq!(
             ensure_managed_user_directories(&layout).unwrap_err().kind(),
             io::ErrorKind::InvalidInput
         );
         assert!(!layout.user_data_dir.exists());
+    }
+
+    #[test]
+    fn installed_mode_rejects_user_lua_override_surfaces() {
+        for relative in ["rime.lua", "lua"] {
+            let fixture = Fixture::new();
+            let local = fixture.0.join("local");
+            std::fs::create_dir(&local).unwrap();
+            let layout = InstalledLayout::from_roots(mo_windows_platform::RuntimeRoots {
+                program_files_x64: fixture.0.join("machine"),
+                local_app_data: local,
+            })
+            .unwrap();
+            std::fs::create_dir_all(&layout.user_data_dir).unwrap();
+            let trap = layout.user_data_dir.join(relative);
+            if relative == "lua" {
+                std::fs::create_dir(&trap).unwrap();
+            } else {
+                std::fs::write(&trap, b"error('must never run')").unwrap();
+            }
+
+            let error = ensure_managed_user_directories(&layout).unwrap_err();
+            assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+            assert!(error.to_string().contains("user Lua override path"));
+        }
     }
 
     #[test]

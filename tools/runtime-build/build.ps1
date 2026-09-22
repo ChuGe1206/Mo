@@ -73,6 +73,7 @@ $moHashes = [ordered]@{}
 foreach ($name in @('tools/runtime-build/build.ps1', 'tools/runtime-build/source-policy.ps1',
     'tools/opencc-data.ps1', 'native/librime/preparation/resources-v2.patch',
     'native/librime/preparation/opencc-directory.patch', 'native/librime/preparation/lua-signed-stack.patch',
+    'native/librime/preparation/lua-machine-data-only.patch',
     'native/librime/preparation/mo_preparation.cc', 'native/librime/preparation/mo_project.cmake',
     'native/librime/preparation/mo_resource_directory.cpp', 'native/librime/preparation/mo_resource_file.h',
     'native/librime/preparation/mo_resource_file.cpp')) {
@@ -119,6 +120,12 @@ Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/pl
     "--work-tree=$prepared/plugins/lua", 'apply', '--check', $luaPatch)
 Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/plugins/lua/.git",
     "--work-tree=$prepared/plugins/lua", 'apply', $luaPatch)
+$luaDataPolicyPatch = Join-Path $moInputs 'native/librime/preparation/lua-machine-data-only.patch'
+Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/plugins/lua/.git",
+    "--work-tree=$prepared/plugins/lua", 'apply', '--check', $luaDataPolicyPatch)
+Checked 'git' @('-C', (Join-Path $prepared 'plugins/lua'), "--git-dir=$source/plugins/lua/.git",
+    "--work-tree=$prepared/plugins/lua", 'apply', $luaDataPolicyPatch)
+Assert-MoLuaMachineDataPolicy (Join-Path $prepared 'plugins/lua/src/modules.cc')
 $cmake = Join-Path $inputs 'cmake/cmake-3.31.10-windows-x86_64/bin/cmake.exe'
 $boost = Join-Path $inputs 'boost/boost_1_84_0'
 $prefix = Join-Path $output 'prefix'
@@ -189,7 +196,7 @@ foreach ($file in (Get-ChildItem -LiteralPath $resources | Sort-Object Name)) {
 
 # Build provenance, NOT a signed release manifest or permission to distribute.
 $provenance = [ordered]@{ format = 2; development_only = $true; redistributable = $false;
-    plugins = @('lua'); preparation_abi = 2; inputs = $inputHashes;
+    plugins = @('lua'); preparation_abi = 2; lua_data_policy = 'machine-shared-only-v1'; inputs = $inputHashes;
     mo_inputs = $moHashes; resource_directory = 'lib/opencc'; resources = $resourceHashes;
     opencc_pack_manifest_sha256 = (Get-FileHash -LiteralPath (Join-Path $openccPack 'manifest.json')).Hash;
     cmake_archive_sha256 = (Get-FileHash -LiteralPath $cmakeArchive).Hash;
@@ -197,6 +204,7 @@ $provenance = [ordered]@{ format = 2; development_only = $true; redistributable 
     lua_archive_sha256 = (Get-FileHash -LiteralPath $luaArchive).Hash;
     patch_sha256 = (Get-FileHash -LiteralPath $patch).Hash;
     lua_patch_sha256 = (Get-FileHash -LiteralPath $luaPatch).Hash;
+    lua_data_policy_patch_sha256 = (Get-FileHash -LiteralPath $luaDataPolicyPatch).Hash;
     opencc_patch_sha256 = (Get-FileHash -LiteralPath $openccPatch).Hash;
     dll_sha256 = (Get-FileHash -LiteralPath (Join-Path $dist 'lib/rime.dll')).Hash }
 $provenance | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dist 'mo-build-provenance.json') -Encoding utf8NoBOM

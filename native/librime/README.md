@@ -38,6 +38,9 @@ Official verification DLLs remain
 usable only via the explicit legacy debug entry point. Build provenance is not
 release approval. The Mo Simplifier path uses only verified files in the loaded
 DLL's adjacent `opencc` directory, with no cwd/prefix/user/shared search. Legacy
-OpenCC tooling APIs remain upstream-compatible. Installation ACLs/ancestors,
-signatures, authenticated resource updates and full Rime/Lua configuration
-override policy remain separate release gates.
+OpenCC tooling APIs remain upstream-compatible. The Lua data-policy patch replaces
+`package.path` with the two machine shared-data patterns, clears `package.cpath`,
+and executes only the machine shared `rime.lua`; installed staging and prebuilt
+data are the same Program Files directory. This is a source boundary, not a Lua
+sandbox. Signatures, authenticated resource updates and final release review remain
+separate gates.

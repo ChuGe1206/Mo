@@ -73,6 +73,40 @@ try {
         if (-not $rejected) { throw 'Invalid generated strict source properties accepted.' }
     }
     Write-Host 'Seven generated native strict-source property cases passed.'
+    $luaPolicy = Join-Path $fixture 'modules.cc'
+    @'
+static void lua_init(lua_State *L) {
+  const auto shared_dir = COMPAT<rime::Deployer>::get_shared_data_dir();
+  lua_setfield(L, -2, "path");
+  lua_pushliteral(L, "");
+  lua_setfield(L, -2, "cpath");
+  const auto shared_file = shared_dir + LUA_DIRSEP "rime.lua";
+  luaL_dofile(L, shared_file.c_str());
+}
+
+static void rime_lua_initialize() {
+}
+'@ | Set-Content -LiteralPath $luaPolicy -Encoding utf8NoBOM
+    Assert-MoLuaMachineDataPolicy $luaPolicy
+    foreach ($invalid in @(
+        '  const auto user_dir = COMPAT<rime::Deployer>::get_user_data_dir();',
+        '  lua_getfield(L, -2, "path");',
+        '  lua_concat(L, 2);',
+        '  luaL_dofile(L, shared_file.c_str());'
+    )) {
+        $original = Get-Content -LiteralPath $luaPolicy -Raw
+        $changed = if ($invalid.StartsWith('  luaL_dofile', [StringComparison]::Ordinal)) {
+            $original.Replace($invalid, "$invalid`n$invalid")
+        } else {
+            $original.Replace('  const auto shared_dir', "$invalid`n  const auto shared_dir")
+        }
+        $changed | Set-Content -LiteralPath $luaPolicy -Encoding utf8NoBOM
+        $rejected = $false
+        try { Assert-MoLuaMachineDataPolicy $luaPolicy } catch { $rejected = $true }
+        if (-not $rejected) { throw 'Invalid Lua machine-data policy accepted.' }
+        $original | Set-Content -LiteralPath $luaPolicy -Encoding utf8NoBOM
+    }
+    Write-Host 'Five Lua machine-data policy cases passed.'
 } finally {
     $resolved = (Resolve-Path -LiteralPath $fixture).Path
     if (-not $resolved.StartsWith((Join-Path $repoRoot 'build').TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {

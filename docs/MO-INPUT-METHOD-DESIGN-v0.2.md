@@ -438,10 +438,11 @@ LocalAppData/Mo/profile/settings/
 LocalAppData/Mo/profile/userdb/
 LocalAppData/Mo/profile/phrases/
 LocalAppData/Mo/profile/blacklist/
-LocalAppData/Mo/profile/build/
 ```
 
 `builtin` 与 `managed` 可替换；`profile` 归用户所有，更新器永不覆盖。
+`profile` 不存放 deployed schema、Lua 或 native module；安装态可执行数据只从
+经过机器安装树审计的只读槽读取，见 ADR 0039。
 
 ### 7.4 本地学习
 

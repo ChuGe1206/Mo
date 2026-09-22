@@ -3,7 +3,7 @@
 This Windows x64 builder uses only exact Git objects from the locked librime,
 four dependency submodules and Lua plugin. It exports fresh archives, checks
 every source archive hash, extracts into a new repository `build/` child and
-applies the tracked resource and Lua build patches. Mutable checkouts, old headers/libs and other
+applies the tracked resource and Lua build/data-boundary patches. Mutable checkouts, old headers/libs and other
 plugins are not build inputs. No downloads or overwrites occur in the builder.
 Run the scripts with PowerShell 7 (`pwsh`). Mo sources/patches and the validated
 Emoji pack are snapshotted under the new output's `inputs/` before compilation.
@@ -42,6 +42,10 @@ OpenCC resource hash; format 2 is not a signed release manifest.
 Full command logs remain under `commands/`. Lua's signed stack-count fixes keep
 `/sdl` enabled; its CLI `main` sources are excluded from the merged DLL. CMP0091
 is set before every first project to keep static MSVC runtimes consistent.
+The machine-data patch replaces Lua's search path with only shared `lua/?.lua`
+and `lua/?/init.lua`, clears the native-module path and loads only shared
+`rime.lua`. A source-policy parser rejects user/default search paths and ambiguous
+entry points; provenance binds the policy version and patch hash.
 OpenCC uses the same pinned Marisa 0.3.1 as librime, via explicit include/library
 paths. The builder verifies OpenCC did not replace that library with its bundled
 0.2.6 copy. This is separate from the existing standalone dictionary compiler's
@@ -101,8 +105,8 @@ for development tooling and are not the Mo runtime loading path.
 **Development only, do not distribute.** Removing non-allowlisted plugins is not
 license approval. Full transitive SBOM/notices, resource provenance, code
 signatures, installation ACLs and update authentication remain separate gates.
-Path/handle checks do not authenticate resource contents or all installation
-ancestors, establish tamper-resistant permissions, or validate the entire
-Rime/Lua configuration surface. Build hashes are provenance, not a trust root.
+Path/handle checks do not authenticate resource contents or establish a Lua
+sandbox. Machine scripts remain trusted executable code. Build hashes are
+provenance, not a trust root.
 
-See ADR 0024/0025 for measured results and acceptance boundaries.
+See ADR 0024/0025/0039 for measured results and acceptance boundaries.

@@ -192,6 +192,23 @@ try {
         Reject 'resealed diagnostic build receipt' { Assert-MoPreparedStage $copy } 'Mo build contract'
         [IO.File]::WriteAllBytes($receiptPath, $originalReceipt)
         [IO.File]::WriteAllBytes($manifest, $originalManifest)
+        $runtimePath = Join-Path $copy 'evidence/runtime-provenance.json'
+        $originalRuntime = [IO.File]::ReadAllBytes($runtimePath)
+        foreach ($mutation in @('policy', 'patch-binding', 'own-source')) {
+            $badRuntime = Read-MoStageJson $runtimePath
+            switch ($mutation) {
+                'policy' { $badRuntime['lua_data_policy'] = 'user-first' }
+                'patch-binding' { $badRuntime['lua_data_policy_patch_sha256'] = '0' * 64 }
+                'own-source' { [void]$badRuntime['mo_inputs'].Remove('native/librime/preparation/lua-machine-data-only.patch') }
+            }
+            Write-FixtureJson $runtimePath $badRuntime
+            $changedMeta = Read-MoStageJson $manifest
+            $changedMeta['files'] = Get-MoStageInventory $copy @('mo-stage.json')
+            Write-FixtureJson $manifest $changedMeta
+            Reject "resealed runtime Lua $mutation" { Assert-MoPreparedStage $copy } 'runtime.*(contract|own-source|patch)'
+            [IO.File]::WriteAllBytes($runtimePath, $originalRuntime)
+            [IO.File]::WriteAllBytes($manifest, $originalManifest)
+        }
         Move-Item -LiteralPath $manifest -Destination (Join-Path $fixture 'completion-marker.json')
         Reject 'missing completion marker' { Assert-MoPreparedStage $copy } 'does not exist'
         Move-Item -LiteralPath (Join-Path $fixture 'completion-marker.json') -Destination $manifest

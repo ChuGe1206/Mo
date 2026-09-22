@@ -173,12 +173,22 @@ function Get-MoRuntimeResourceNames {
         'TWPhrasesRev.ocd2', 'TWVariants.ocd2', 'TWVariantsRev.ocd2', 'TWVariantsRevPhrases.ocd2')
 }
 
+function Get-MoRuntimeOwnSourceNames {
+    return @('tools/runtime-build/build.ps1', 'tools/runtime-build/source-policy.ps1', 'tools/opencc-data.ps1',
+        'native/librime/preparation/resources-v2.patch', 'native/librime/preparation/opencc-directory.patch',
+        'native/librime/preparation/lua-signed-stack.patch', 'native/librime/preparation/lua-machine-data-only.patch',
+        'native/librime/preparation/mo_preparation.cc', 'native/librime/preparation/mo_project.cmake',
+        'native/librime/preparation/mo_resource_directory.cpp', 'native/librime/preparation/mo_resource_file.h',
+        'native/librime/preparation/mo_resource_file.cpp')
+}
+
 function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
     $root = Assert-MoPlainPath $BuildDirectory
     $dist = Join-Path $root 'dist'
     $metadata = Read-MoStageJson (Join-Path $dist 'mo-build-provenance.json')
     Assert-MoDevelopmentMetadata $metadata 2
     if ($metadata['preparation_abi'] -ne 2 -or $metadata['resource_directory'] -cne 'lib/opencc' -or
+        $metadata['lua_data_policy'] -cne 'machine-shared-only-v1' -or
         @($metadata['plugins']).Count -ne 1 -or $metadata['plugins'][0] -cne 'lua') { throw 'Runtime ABI/plugin policy mismatch.' }
     $pins = Get-MoRuntimePins
     if ($metadata['inputs'].Count -ne $pins.Count) { throw 'Runtime source pin count mismatch.' }
@@ -189,17 +199,16 @@ function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
             $actual['archive_sha256'] -ine $pin.Value[1] -or
             (Get-FileHash -LiteralPath (Assert-MoPlainPath $archive)).Hash -ine $pin.Value[1]) { throw 'Runtime source archive/pin mismatch.' }
     }
-    $ownFiles = @('tools/runtime-build/build.ps1', 'tools/runtime-build/source-policy.ps1', 'tools/opencc-data.ps1',
-        'native/librime/preparation/resources-v2.patch', 'native/librime/preparation/opencc-directory.patch',
-        'native/librime/preparation/lua-signed-stack.patch', 'native/librime/preparation/mo_preparation.cc',
-        'native/librime/preparation/mo_project.cmake', 'native/librime/preparation/mo_resource_directory.cpp',
-        'native/librime/preparation/mo_resource_file.h', 'native/librime/preparation/mo_resource_file.cpp')
+    $ownFiles = Get-MoRuntimeOwnSourceNames
     if ($metadata['mo_inputs'].Count -ne $ownFiles.Count) { throw 'Runtime own-source inventory mismatch.' }
     foreach ($name in $ownFiles) {
         $hash = $metadata['mo_inputs'][$name]
         foreach ($path in @((Join-Path $Repository $name), (Join-Path $root "inputs/mo-runtime/$name"))) {
             if ($hash -isnot [string] -or (Get-FileHash -LiteralPath (Assert-MoPlainPath $path)).Hash -ine $hash) { throw 'Runtime own-source snapshot mismatch.' }
         }
+    }
+    if ($metadata['lua_data_policy_patch_sha256'] -ine $metadata['mo_inputs']['native/librime/preparation/lua-machine-data-only.patch']) {
+        throw 'Runtime Lua data-policy patch binding mismatch.'
     }
     $names = Get-MoRuntimeResourceNames
     $resources = Join-Path $dist 'lib/opencc'
@@ -285,6 +294,7 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
     $runtime = Read-MoStageJson (Join-Path $root 'evidence/runtime-provenance.json')
     Assert-MoDevelopmentMetadata $runtime 2
     if ($runtime['preparation_abi'] -ne 2 -or $runtime['resource_directory'] -cne 'lib/opencc' -or
+        $runtime['lua_data_policy'] -cne 'machine-shared-only-v1' -or
         @($runtime['plugins']).Count -ne 1 -or $runtime['plugins'][0] -cne 'lua' -or
         (Get-FileHash -LiteralPath (Join-Path $payload 'runtime/librime/rime.dll')).Hash -ine $runtime['dll_sha256']) { throw 'Staged runtime contract mismatch.' }
     $pins = Get-MoRuntimePins
@@ -294,6 +304,16 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
         if ($null -eq $input -or $input['commit'] -cne $pin.Value[0] -or $input['archive_sha256'] -ine $pin.Value[1]) {
             throw 'Staged runtime source pin mismatch.'
         }
+    }
+    $runtimeOwnFiles = Get-MoRuntimeOwnSourceNames
+    if ($runtime['mo_inputs'].Count -ne $runtimeOwnFiles.Count) { throw 'Staged runtime own-source inventory mismatch.' }
+    foreach ($name in $runtimeOwnFiles) {
+        if ($runtime['mo_inputs'][$name] -isnot [string] -or $runtime['mo_inputs'][$name] -cnotmatch '^[A-Fa-f0-9]{64}$') {
+            throw 'Staged runtime own-source hash mismatch.'
+        }
+    }
+    if ($runtime['lua_data_policy_patch_sha256'] -ine $runtime['mo_inputs']['native/librime/preparation/lua-machine-data-only.patch']) {
+        throw 'Staged runtime Lua data-policy patch binding mismatch.'
     }
     $resources = Get-MoRuntimeResourceNames
     if ($runtime['resources'].Count -ne $resources.Count) { throw 'Staged runtime resource count mismatch.' }

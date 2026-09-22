@@ -14,6 +14,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - 首键专项已定位 Emoji 延迟加载，并补齐无输入的共享资源保活、构建态 Emoji `.ocd2` 预编译/全部词条读回校验、显式开启的无内容分段诊断与高精度完成检查 deadline；不放宽 50 ms、不注入预热按键。首次转换尾延迟、高频候选显示与普通宿主验收仍待闭环，见 ADR 0022。
 - 候选定位增加宿主重入后的 context/range/epoch 身份保护，确定性回归证明并修复“布局已失效却重显旧位置”；按键重连和发送共用一份绝对 50 ms 传输预算，不重复续期。它不替代普通宿主或首次转换尾延迟验收，见 ADR 0023。
 - 新增锁定来源的 core + Lua 自构建开发运行时与无输入资源准备扩展，将实际 OpenCC owner 初始化移至 Broker ready 前。v2 固定读取 DLL 旁的 `opencc` 目录，不搜索 cwd/构建 prefix，也不接受用户/共享目录转换资源覆盖；安装模式缺导出/缺资源或只有 v1 均拒绝。签名、安装权限和发行 SBOM 仍待验收，见 ADR 0024/0025。
+- 安装态 deployed schema 与 Lua 已收口到 Program Files 机器素材：staging 与 prebuilt 使用同一只读目录，Lua 只搜索机器 shared 路径、禁用 native module，并拒绝用户 `rime.lua`/`lua`。用户词典与学习状态仍写入 LocalAppData；这不是 Lua 沙箱，机器脚本仍须签名和审查，见 ADR 0039。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 51 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。Actor 的当前页候选选择和前后翻页已用真实 rime-ice 验证。
 - 默认 release Broker 只接受无参数的固定安装布局；`--fake`/调用者指定运行时仅在启用 debug assertions 的开发构建可用。TIP 的 x64 路径来自 Known Folder，x86 使用只读 64 位机器注册表回退，不读取环境变量；搬迁素材只允许连接、不允许自动启动。Broker 在创建用户目录、绑定 Pipe 或加载 `rime.dll` 前重新审计 Program Files、完整安装树 owner/DACL、reparse 和文件硬链接数；签名资源、持续防替换、AppContainer 和真实首次启动组合仍未验收，见 ADR 0038。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。
@@ -21,7 +22,7 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - TSF 壳已实现 `OnTestKey*`/`OnKey*` 单次决策缓存、同步读写 Edit Session、预编辑 Range/Composition 生命周期和严格 UTF-8 转换；x64/x86 受控 TSF 文本存储探针均已把 Broker 提交写入真实 Windows EDIT 控件，且 Broker 不可用时 fail-open。
 - 已接入自主 Win32 纵向候选窗、鼠标选词/翻页、DPI 缩放和屏幕边缘避让。候选动作通过协商 feature 绑定当前会话的 revision，拒绝陈旧/越界点击；鼠标在可同步或异步的 TSF 编辑锁内执行，并在锁内再次复核身份。布局变化使用异步只读定位。x64/x86 受控真实词库探针已通过鼠标上屏、松键刷新、延迟动作取消与焦点恢复；普通软件尚未验收。
 - x64/x86 原生链路均已通过受限 Named Pipe 与同一个 x64 Rust Broker 完成真实握手、会话、按键与候选动作往返，并穿过真实 librime/rime-ice 验证 `nihao + Space -> 你好`、PageUp/PageDown、数字选词、前后翻页和当前页第二候选提交；CI 同时核对 TIP Edit Session 写入 EDIT 和 TSF context 的最终文本，而非仅停留在 IPC 快照。
-- WiX v4 已具备完整 payload、机器级 MSI 事务和非提升 current-user finalizer；用户状态使用持久 undo journal、精确 Burn 正反向命令及稳定升级引用计数。新鲜 137-file stage 已通过双架构故障回归，锁定的仓库局部 WiX 4.0.6 也已真实链接并反向核验未签名 MSI/Bundle。安装包尚未执行，MSI ICE、混合 scope 升级/多用户语义、签名及隔离 VM 中真实注册、启用、修复、回滚、升级与卸载均未验收，因此仍不可日常使用。
+- WiX v4 已具备完整 payload、机器级 MSI 事务和非提升 current-user finalizer；用户状态使用持久 undo journal、精确 Burn 正反向命令及稳定升级引用计数。新鲜 73-source/137-file stage 已通过 82 项策略、机器数据 golden 与双架构故障回归，锁定的仓库局部 WiX 4.0.6 也已真实链接并反向核验未签名 MSI/Bundle。安装包尚未执行，MSI ICE、混合 scope 升级/多用户语义、签名及隔离 VM 中真实注册、启用、修复、回滚、升级与卸载均未验收，因此仍不可日常使用。
 - 一次性 VM 生命周期测试包已可把已核验 Bundle、registrar 和 131-file stage contract 绑定到同一哈希清单；来宾脚本以虚拟硬件、机器哨兵、双显式开关和非提升令牌防止误在开发主机运行，并为 install/repair/uninstall 采集逐字节与注册状态证据。每个已安装阶段会审计 Program Files/安装树 owner 与 DACL，拒绝普通主体写权限、任意重解析点和多硬链接文件；release Broker 也在每次启动时执行同一类 fail-closed 信任门。当前尚无真实 VM 运行结果，见 ADR 0032/0037/0038。
 - 安装器现分为显式 `DevelopmentTest` 与 `ProductionShape` 两条构建路径。故障命令在 registrar 编译期默认移除，MSI/Burn 故障节点也从生产形态链接图物理排除；两条路径的 `0.0.3.0 -> 0.0.4.0` linked 升级对均已反向验证，开发版 VM lifecycle/matrix kit 已按新 evidence 格式重新绑定。生产形态仍是未签名、不可部署的开发验证物，且尚未在真实 VM 执行，见 ADR 0033/0034。
 - 生产形态 stage 已能生成哈希绑定、逐字节可重复的 SPDX 2.3 与第三方通知草案：131 个 payload 文件全部且仅归属一个组件。同时已组装并独立核验 9 份锁定源码归档与 15 份许可证/通知，rime-ice GPL 对应源被单独标记；签名合同固定五个内层 PE、MSI、Bundle 的六步内到外顺序，并拒绝开发 flavor 和哈希脱钩。技术材料已闭环，但 librime 组合许可证仍为 `NOASSERTION`，法律审查、实际签名和发行授权尚未完成，见 ADR 0035/0036。

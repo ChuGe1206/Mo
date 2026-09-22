@@ -4,6 +4,8 @@
 
 已接受（代码和非安装回归已闭环；真实 Program Files 安装启动仍待一次性 VM）
 
+后续 ADR 0039 把 staging/prebuilt 与 Lua 模块入口一并固定到本信任门审计的机器安装树；本文提到的用户 `build` 创建步骤已取消。
+
 ## 背景
 
 ADR 0037 已让一次性 VM 在 install、repair、rollback 保持态和 major upgrade 后审计
