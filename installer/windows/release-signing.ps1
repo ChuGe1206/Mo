@@ -53,6 +53,7 @@ function Get-MoReleaseSigningModel(
     $order = 0
     foreach ($item in @(
         @('broker-x64', 'bin/mo-broker.exe'),
+        @('settings-x64', 'bin/mo-settings.exe'),
         @('registrar-and-finalizer-x64', 'bin/mo-tip-registrar.exe'),
         @('tip-x64', 'tip/x64/mo-tip.dll'),
         @('tip-x86', 'tip/x86/mo-tip.dll'),
@@ -85,7 +86,7 @@ function ConvertTo-MoReleaseSigningPlan([Collections.IDictionary]$Model) {
             [ordered]@{ order = $_['order']; role = $_['role']; size = $_['size']; sha256 = $_['sha256']; observed_authenticode_status = $_['observed_authenticode_status'] }
         })
         required_sequence = @(
-            [ordered]@{ order = 1; action = 'sign-inner-pe'; targets = @('broker-x64', 'registrar-and-finalizer-x64', 'tip-x64', 'tip-x86', 'librime-runtime-x64') },
+            [ordered]@{ order = 1; action = 'sign-inner-pe'; targets = @('broker-x64', 'settings-x64', 'registrar-and-finalizer-x64', 'tip-x64', 'tip-x86', 'librime-runtime-x64') },
             [ordered]@{ order = 2; action = 'timestamp-and-verify-inner-pe'; requirement = 'every target must have a valid trusted Authenticode signature and RFC3161 timestamp' },
             [ordered]@{ order = 3; action = 'reseal-stage-and-rebuild-msi'; requirement = 'never mutate the existing sealed stage; create and independently verify a new signed stage' },
             [ordered]@{ order = 4; action = 'sign-timestamp-and-verify-msi'; requirement = 'MSI must embed only signed inner payloads' },

@@ -16,5 +16,5 @@ $model = Get-MoReleaseSigningModel $StageDirectory $LinkedEvidencePath $MsiPath 
 New-Item -ItemType Directory -Path $output | Out-Null
 ConvertTo-MoReleaseSigningPlan $model | ConvertTo-Json -Depth 10 |
     Set-Content (Join-Path $output 'release-signing-plan.json') -Encoding utf8NoBOM
-Write-Host 'Prepared hash-bound six-step Authenticode plan for five inner payloads, MSI and final Bundle.'
+Write-Host 'Prepared hash-bound six-step Authenticode plan for six inner payloads, MSI and final Bundle.'
 Write-Warning 'No signing occurred. The existing stage, MSI and Bundle remain unsigned development evidence.'

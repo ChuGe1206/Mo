@@ -23,6 +23,46 @@ pub fn installed_settings_path(local_app_data_root: &Path) -> PathBuf {
         .join("settings-v1.mo")
 }
 
+/// Creates only Mo's direct settings directories beneath a trusted
+/// `FOLDERID_LocalAppData` root. Existing files, links and reparse points are
+/// rejected instead of followed.
+pub fn ensure_installed_settings_directory(
+    local_app_data_root: &Path,
+) -> Result<PathBuf, StoreError> {
+    checked_directory(local_app_data_root)?;
+    let mo = local_app_data_root.join("Mo");
+    let profile = mo.join("Profile");
+    for directory in [&mo, &profile] {
+        match fs::create_dir(directory) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.into()),
+        }
+        checked_directory(directory)?;
+    }
+    Ok(profile)
+}
+
+fn checked_directory(path: &Path) -> Result<(), StoreError> {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_dir() || is_reparse_point(&metadata) {
+        return Err(StoreError::UnsafeDirectory);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn is_reparse_point(metadata: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+#[cfg(not(windows))]
+fn is_reparse_point(_metadata: &fs::Metadata) -> bool {
+    false
+}
+
 const HEADER: &str = "mo-settings";
 const FORMAT: &str = "1";
 const REQUIRED_FIELDS: [&str; 9] = [
@@ -349,6 +389,7 @@ pub enum StoreError {
     Io(io::Error),
     InvalidDocument(SettingsError),
     UnsafeFileType,
+    UnsafeDirectory,
     MissingParent,
 }
 
@@ -360,6 +401,9 @@ impl fmt::Display for StoreError {
                 write!(formatter, "settings document is invalid: {error}")
             }
             Self::UnsafeFileType => formatter.write_str("settings path is not a regular file"),
+            Self::UnsafeDirectory => {
+                formatter.write_str("settings directory is not a safe directory")
+            }
             Self::MissingParent => formatter.write_str("settings parent directory does not exist"),
         }
     }
@@ -370,7 +414,7 @@ impl std::error::Error for StoreError {
         match self {
             Self::Io(error) => Some(error),
             Self::InvalidDocument(error) => Some(error),
-            Self::UnsafeFileType | Self::MissingParent => None,
+            Self::UnsafeFileType | Self::UnsafeDirectory | Self::MissingParent => None,
         }
     }
 }
@@ -694,6 +738,28 @@ mod tests {
                 .to_string_lossy()
                 .contains("Rime")
         );
+    }
+
+    #[test]
+    fn installed_settings_directory_is_created_one_component_at_a_time() {
+        let fixture = Fixture::new();
+        let profile = ensure_installed_settings_directory(&fixture.0).unwrap();
+        assert_eq!(profile, fixture.0.join("Mo/Profile"));
+        assert!(profile.is_dir());
+        assert_eq!(
+            ensure_installed_settings_directory(&fixture.0).unwrap(),
+            profile
+        );
+    }
+
+    #[test]
+    fn installed_settings_directory_rejects_file_components() {
+        let fixture = Fixture::new();
+        fs::write(fixture.0.join("Mo"), b"not a directory").unwrap();
+        assert!(matches!(
+            ensure_installed_settings_directory(&fixture.0),
+            Err(StoreError::UnsafeDirectory)
+        ));
     }
 
     #[test]

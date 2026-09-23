@@ -85,7 +85,7 @@ function Copy-StageFile([string]$InputPath, [string]$Destination) {
 # prebuilt Broker/TIP parameters. Only explicit files/trees enter this snapshot.
 foreach ($name in @('Cargo.toml', 'Cargo.lock')) { Copy-StageFile (Join-Path $repo $name) (Join-Path $moSource $name) }
 foreach ($name in Get-MoStageFiles (Join-Path $repo 'crates')) {
-    if ($name -cnotmatch '\.(rs|toml)$') { throw 'Unexpected Cargo source snapshot file.' }
+    if ($name -cnotmatch '\.(rs|toml|md)$') { throw 'Unexpected Cargo source snapshot file.' }
     Copy-StageFile (Join-Path $repo "crates/$name") (Join-Path $moSource "crates/$name")
 }
 $nativeSource = Join-Path $moSource 'native/windows-tip'
@@ -159,9 +159,12 @@ Push-Location $moSource
 try {
     Checked 'cargo' @("+$RustToolchain", 'build', '--locked', '--offline', '--release', '--no-default-features',
         '--target', 'x86_64-pc-windows-msvc', '--target-dir', (Join-Path $working 'rust-target'),
-        '--config', 'profile.release.debug-assertions=false', '-p', 'mo-broker', '--bin', 'mo-broker')
+        '--config', 'profile.release.debug-assertions=false',
+        '-p', 'mo-broker', '--bin', 'mo-broker',
+        '-p', 'mo-settings-app', '--bin', 'mo-settings')
 } finally { Pop-Location }
 $broker = Join-Path $working 'rust-target/x86_64-pc-windows-msvc/release/mo-broker.exe'
+$settings = Join-Path $working 'rust-target/x86_64-pc-windows-msvc/release/mo-settings.exe'
 # Independent binary check, not just trusting the build command/receipt.
 $start = [Diagnostics.ProcessStartInfo]::new()
 $start.FileName = $broker; $start.UseShellExecute = $false; $start.CreateNoWindow = $true
@@ -175,6 +178,7 @@ try {
     }
 } finally { if (-not $process.HasExited) { $process.Kill($true) }; $process.Dispose() }
 Copy-StageFile $broker (Join-Path $payload 'bin/mo-broker.exe')
+Copy-StageFile $settings (Join-Path $payload 'bin/mo-settings.exe')
 foreach ($platform in @('x64', 'Win32')) {
     $nativeOut = Join-Path $working "native/$platform"
     foreach ($project in @('MoTip', 'MoTipAbiProbe', 'MoTipRegistrar')) {
@@ -219,7 +223,8 @@ foreach ($platform in @('x64', 'Win32')) {
 Assert-MoInventory $moSource $moSourceInventory
 $null = Assert-MoStageRuntime $runtimeRoot $repo
 $images = [ordered]@{}
-foreach ($name in @('bin/mo-broker.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll')) {
+foreach ($name in @('bin/mo-broker.exe', 'bin/mo-settings.exe', 'bin/mo-tip-registrar.exe',
+    'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll')) {
     $images[$name] = (Get-FileHash -LiteralPath (Join-Path $payload $name)).Hash
 }
 $probeImages = [ordered]@{}

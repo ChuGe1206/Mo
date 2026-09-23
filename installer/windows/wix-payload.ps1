@@ -15,6 +15,7 @@ function Get-MoWixDirectoryId([string]$Name) {
 function Get-MoWixComponentId([string]$Name) {
     switch -CaseSensitive ($Name) {
         'bin/mo-broker.exe' { return 'BrokerX64Component' }
+        'bin/mo-settings.exe' { return 'SettingsX64Component' }
         'bin/mo-tip-registrar.exe' { return 'RegistrarX64Component' }
         'tip/x64/mo-tip.dll' { return 'TipX64Component' }
         'tip/x86/mo-tip.dll' { return 'TipX86Component' }
@@ -25,6 +26,7 @@ function Get-MoWixComponentId([string]$Name) {
 function Get-MoWixFileId([string]$Name) {
     switch -CaseSensitive ($Name) {
         'bin/mo-broker.exe' { return 'BrokerX64File' }
+        'bin/mo-settings.exe' { return 'SettingsX64File' }
         'bin/mo-tip-registrar.exe' { return 'RegistrarX64File' }
         'tip/x64/mo-tip.dll' { return 'TipX64File' }
         'tip/x86/mo-tip.dll' { return 'TipX86File' }
@@ -79,6 +81,15 @@ function Write-MoWixComponent([Xml.XmlWriter]$Writer, [string]$Name) {
     $Writer.WriteAttributeString('Source', ('$(var.StagePayload)\' + $Name.Replace('/', '\')))
     $Writer.WriteAttributeString('Name', $Name.Substring($Name.LastIndexOf('/') + 1))
     $Writer.WriteAttributeString('KeyPath', 'yes')
+    if ($Name -ceq 'bin/mo-settings.exe') {
+        $Writer.WriteStartElement('Shortcut')
+        $Writer.WriteAttributeString('Id', 'MoSettingsStartMenuShortcut')
+        $Writer.WriteAttributeString('Directory', 'ProgramMenuFolder')
+        $Writer.WriteAttributeString('Name', 'Mo (墨) 输入法设置')
+        $Writer.WriteAttributeString('Description', '设置 Mo (墨) 输入法')
+        $Writer.WriteAttributeString('Advertise', 'yes')
+        $Writer.WriteEndElement()
+    }
     $Writer.WriteEndElement()
 
     if ($Name -ceq 'tip/x64/mo-tip.dll') {
@@ -159,6 +170,12 @@ function New-MoWixPayloadFragment([string]$StageDirectory, [string]$OutputPath) 
         $writer.WriteEndElement()
         $writer.WriteEndElement()
 
+        # Advertised Start-menu entry targets the settings file component and
+        # requires no per-user registry key path in this per-machine package.
+        $writer.WriteStartElement('StandardDirectory')
+        $writer.WriteAttributeString('Id', 'ProgramMenuFolder')
+        $writer.WriteEndElement()
+
         # A 32-bit component cannot use ProgramFiles64Folder (ICE80), even when
         # its only payload is registry data. ProgramFilesFolder is the canonical
         # 32-bit directory; the value references the separately installed file.
@@ -235,11 +252,14 @@ function Assert-MoWixPayloadFragment([string]$StageDirectory, [string]$FragmentP
     $installRoot = $document.SelectSingleNode(
         '/w:Wix/w:Fragment/w:StandardDirectory[@Id="ProgramFiles64Folder"]/w:Directory[@Id="INSTALLFOLDER" and @Name="Mo"]',
         $namespace)
+    $programMenu = $document.SelectSingleNode(
+        '/w:Wix/w:Fragment/w:StandardDirectory[@Id="ProgramMenuFolder"]',
+        $namespace)
     if ($files.Count -ne $expected.Count -or $components.Count -ne ($expected.Count + 1) -or
         $references.Count -ne ($expected.Count + 1)) {
         throw 'Generated WiX payload count mismatch.'
     }
-    if ($installFolders.Count -ne 1 -or $null -eq $installRoot) {
+    if ($installFolders.Count -ne 1 -or $null -eq $installRoot -or $null -eq $programMenu) {
         throw 'Generated WiX install-root contract mismatch.'
     }
     $seenFiles = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -285,6 +305,16 @@ function Assert-MoWixPayloadFragment([string]$StageDirectory, [string]$FragmentP
                 throw 'Generated WiX COM value contract mismatch.'
             }
         } elseif ($registryKeys.Count -ne 0) { throw 'Unexpected generated WiX registry ownership.' }
+        $shortcuts = @($file.SelectNodes('w:Shortcut', $namespace))
+        if ($name -ceq 'bin/mo-settings.exe') {
+            if ($shortcuts.Count -ne 1 -or
+                $shortcuts[0].GetAttribute('Id') -cne 'MoSettingsStartMenuShortcut' -or
+                $shortcuts[0].GetAttribute('Directory') -cne 'ProgramMenuFolder' -or
+                $shortcuts[0].GetAttribute('Name') -cne 'Mo (墨) 输入法设置' -or
+                $shortcuts[0].GetAttribute('Advertise') -cne 'yes') {
+                throw 'Generated WiX settings shortcut contract mismatch.'
+            }
+        } elseif ($shortcuts.Count -ne 0) { throw 'Unexpected generated WiX shortcut ownership.' }
     }
     $x86Registry = $document.SelectSingleNode(
         '//w:StandardDirectory[@Id="ProgramFilesFolder"]/w:Component[@Id="TipX86ComRegistryComponent"]',

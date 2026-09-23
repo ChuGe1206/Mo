@@ -2,8 +2,8 @@
   "format": 1,
   "status": "phase-0-draft",
   "document_created": "2026-09-21",
-  "expected_payload_files": 131,
-  "cargo_lock_sha256": "A2876D5A9431F3A207B1C809F18DFEA5E8AF2A4CB9F220B866C50480A1927928",
+  "expected_payload_files": 132,
+  "cargo_lock_sha256": "D3B4AD97091A3F11814251F06B42FF147889D7C2910A75BEC1B2F13A1889706C",
   "rime_ice": {
     "commit": "6810e8916d160498620a16fef2135956fecbd485",
     "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3"
@@ -23,6 +23,7 @@
   },
   "packages": [
     {"id": "mo-broker", "name": "Mo Broker", "version": "0.1.0", "license_declared": "Apache-2.0 AND (MIT OR Apache-2.0)", "license_concluded": "Apache-2.0 AND (MIT OR Apache-2.0)", "download_location": "https://github.com/mo-input/mo", "third_party": false, "depends_on": ["windows-sys", "windows-link"]},
+    {"id": "mo-settings-app", "name": "Mo Settings", "version": "0.1.0", "license_declared": "Apache-2.0 AND (MIT OR Apache-2.0)", "license_concluded": "Apache-2.0 AND (MIT OR Apache-2.0)", "download_location": "https://github.com/mo-input/mo", "third_party": false, "depends_on": ["windows-sys", "windows-link"]},
     {"id": "mo-native", "name": "Mo Windows TIP and registrar", "version": "0.1.0", "license_declared": "Apache-2.0", "license_concluded": "Apache-2.0", "download_location": "https://github.com/mo-input/mo", "third_party": false, "depends_on": []},
     {"id": "librime-runtime", "name": "Mo allowlisted librime runtime composite", "version": "1.17.0", "license_declared": "Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT", "license_concluded": "NOASSERTION", "download_location": "NOASSERTION", "third_party": true, "depends_on": ["librime", "librime-lua", "leveldb", "marisa-trie", "opencc", "yaml-cpp", "boost", "lua"]},
     {"id": "rime-ice", "name": "Rime Ice data and compiled derivatives", "version": "2026.06.30", "license_declared": "GPL-3.0-only", "license_concluded": "GPL-3.0-only", "download_location": "https://github.com/iDvel/rime-ice", "third_party": true, "source_required": true, "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3", "depends_on": []},
@@ -41,6 +42,7 @@
   ],
   "file_rules": [
     {"component": "mo-broker", "pattern": "^bin/mo-broker\\.exe$"},
+    {"component": "mo-settings-app", "pattern": "^bin/mo-settings\\.exe$"},
     {"component": "mo-native", "pattern": "^(bin/mo-tip-registrar\\.exe|tip/x64/mo-tip\\.dll|tip/x86/mo-tip\\.dll)$"},
     {"component": "librime-runtime", "pattern": "^runtime/librime/rime\\.dll$"},
     {"component": "rime-ice", "pattern": "^data/rime-ice/.+"},

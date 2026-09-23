@@ -34,9 +34,10 @@ try {
         & (Join-Path $PSScriptRoot 'verify-release-signing-plan.ps1') -StageDirectory $stage `
             -LinkedEvidencePath $evidence -MsiPath $msi -BundlePath $bundle -SigningPlanDirectory $plan
     }
-    Pass 'five inner payloads and six ordered steps' {
+    Pass 'six inner payloads and six ordered steps' {
         $document = Read-MoStageJson (Join-Path $plan 'release-signing-plan.json')
-        if ($document['unsigned_inner_payloads'].Count -ne 5 -or
+        if ($document['unsigned_inner_payloads'].Count -ne 6 -or
+            $document['unsigned_inner_payloads'][1]['role'] -cne 'settings-x64' -or
             $document['unsigned_linked_baselines'].Count -ne 2 -or
             $document['required_sequence'].Count -ne 6 -or
             $document['required_sequence'][5]['action'] -cne 'sign-timestamp-and-verify-bundle' -or

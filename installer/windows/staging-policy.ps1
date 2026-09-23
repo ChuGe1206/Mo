@@ -276,12 +276,12 @@ function Assert-MoPrebuiltData([string]$Directory) {
 }
 
 function Assert-MoStagePayloadNames([string[]]$Names) {
-    foreach ($required in @('bin/mo-broker.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll',
+    foreach ($required in @('bin/mo-broker.exe', 'bin/mo-settings.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll',
         'tip/x86/mo-tip.dll', 'runtime/librime/rime.dll', 'data/rime-ice/default.yaml', 'data/rime-ice/rime_ice.schema.yaml')) {
         if ($required -cnotin $Names) { throw 'Required staging payload file is missing.' }
     }
     foreach ($name in $Names) {
-        if ($name -cin @('bin/mo-broker.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll', 'runtime/librime/rime.dll')) { continue }
+        if ($name -cin @('bin/mo-broker.exe', 'bin/mo-settings.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll', 'runtime/librime/rime.dll')) { continue }
         if ($name.StartsWith('runtime/librime/opencc/', [StringComparison]::Ordinal) -and
             $name.Substring(23) -cin (Get-MoRuntimeResourceNames)) { continue }
         if ($name -cmatch '^data/rime-ice/(build/[A-Za-z0-9_.-]+|[A-Za-z0-9_.-]+\.yaml|custom_phrase\.txt|cn_dicts/[A-Za-z0-9_.-]+\.yaml|en_dicts/[A-Za-z0-9_.-]+\.(yaml|txt)|lua/[A-Za-z0-9_./-]+\.(lua|db))$') { continue }
@@ -313,7 +313,8 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
     $names = @(Get-MoStageFiles $payload)
     Assert-MoStagePayloadNames $names
     Assert-MoPrebuiltData (Join-Path $payload 'data/rime-ice/build')
-    foreach ($image in @(@('bin/mo-broker.exe', 'x64', $false), @('bin/mo-tip-registrar.exe', 'x64', $false),
+    foreach ($image in @(@('bin/mo-broker.exe', 'x64', $false), @('bin/mo-settings.exe', 'x64', $false),
+        @('bin/mo-tip-registrar.exe', 'x64', $false),
         @('tip/x64/mo-tip.dll', 'x64', $true), @('tip/x86/mo-tip.dll', 'x86', $true), @('runtime/librime/rime.dll', 'x64', $true))) {
         Assert-MoPeArchitecture (Join-Path $payload $image[0]) $image[1] $image[2]
     }
@@ -362,13 +363,14 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
         $receipt['debug_assertions'] -isnot [bool] -or $receipt['debug_assertions'] -ne $false -or
         $receipt['latency_trace'] -isnot [bool] -or $receipt['latency_trace'] -ne $false -or
         $receipt['native_platforms'].Count -ne 2 -or $receipt['native_platforms'][0] -cne 'x64' -or
-        $receipt['native_platforms'][1] -cne 'Win32' -or $receipt['images'].Count -ne 4 -or
+        $receipt['native_platforms'][1] -cne 'Win32' -or $receipt['images'].Count -ne 5 -or
         $receipt['abi_probe_images'].Count -ne 2) { throw 'Staged Mo build contract mismatch.' }
     foreach ($platform in @('x64', 'Win32')) {
         if ($receipt['abi_probe_images'][$platform] -isnot [string] -or
             $receipt['abi_probe_images'][$platform] -cnotmatch '^[A-Fa-f0-9]{64}$') { throw 'Staged ABI probe receipt mismatch.' }
     }
-    foreach ($name in @('bin/mo-broker.exe', 'bin/mo-tip-registrar.exe', 'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll')) {
+    foreach ($name in @('bin/mo-broker.exe', 'bin/mo-settings.exe', 'bin/mo-tip-registrar.exe',
+        'tip/x64/mo-tip.dll', 'tip/x86/mo-tip.dll')) {
         if ((Get-FileHash -LiteralPath (Join-Path $payload $name)).Hash -ine $receipt['images'][$name]) { throw 'Staged Mo image receipt mismatch.' }
     }
     return $metadata

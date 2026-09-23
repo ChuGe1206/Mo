@@ -85,7 +85,7 @@ function Assert-MoVmLifecycleState(
 
 function Get-MoVmPayloadContract(
     [string]$ManifestPath,
-    [int]$ExpectedFileCount = 131
+    [int]$ExpectedFileCount = 132
 ) {
     if (-not (Test-MoVmAbsoluteDosPath $ManifestPath) -or
         -not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {

@@ -52,6 +52,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mo-settings-app"
+version = "0.1.0"
+dependencies = [
+ "mo-settings",
+ "mo-windows-platform",
+ "windows-sys",
+]
+
+[[package]]
 name = "mo-windows-pipe"
 version = "0.1.0"
 dependencies = [

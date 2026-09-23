@@ -14,7 +14,7 @@ function Read-MoReleaseCompliancePolicy([string]$Path) {
         $policy['format'] -ne 1 -or $policy['status'] -cne 'phase-0-draft' -or
         $policy['document_created'] -cnotmatch '^\d{4}-\d{2}-\d{2}$' -or
         $policy['expected_payload_files'] -isnot [long] -or
-        $policy['expected_payload_files'] -ne 131 -or
+        $policy['expected_payload_files'] -ne 132 -or
         $policy['cargo_lock_sha256'] -cnotmatch '^[A-F0-9]{64}$' -or
         $policy['packages'] -isnot [Collections.IList] -or $policy['packages'].Count -lt 10 -or
         $policy['file_rules'] -isnot [Collections.IList] -or $policy['file_rules'].Count -lt 5 -or

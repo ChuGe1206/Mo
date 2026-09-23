@@ -49,10 +49,11 @@ try {
             }
         }
     }
-    Pass 'exact 131-file component coverage' {
+    Pass 'exact 132-file component coverage' {
         $model = Get-MoReleaseComplianceModel $stage $policyPath
-        if ($model['files'].Count -ne 131 -or
-            ($model['component_counts'].Values | Measure-Object -Sum).Sum -ne 131 -or
+        if ($model['files'].Count -ne 132 -or
+            ($model['component_counts'].Values | Measure-Object -Sum).Sum -ne 132 -or
+            $model['component_counts']['mo-settings-app'] -ne 1 -or
             $model['component_counts']['rime-ice'] -ne 93 -or
             $model['component_counts']['opencc-data'] -ne 30) {
             throw 'Unexpected release component coverage.'
@@ -67,7 +68,7 @@ try {
 
     $policy = Read-MoStageJson $policyPath
     $overlapPolicy = Join-Path $fixture 'overlap-policy.json'
-    $policy['file_rules'][4]['pattern'] = '^runtime/librime/opencc/.+'
+    $policy['file_rules'][5]['pattern'] = '^runtime/librime/opencc/.+'
     $policy | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $overlapPolicy -Encoding utf8NoBOM
     Reject 'overlapping ownership' { Get-MoReleaseComplianceModel $stage $overlapPolicy } 'exactly one'
 

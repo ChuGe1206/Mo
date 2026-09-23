@@ -126,6 +126,7 @@ try {
             (Get-MoWixComponentId $sample) -cne (Get-MoWixComponentId $sample) -or
             (Get-MoWixComponentGuid $sample) -cnotmatch '^\{[A-F0-9]{8}-[A-F0-9]{4}-5[A-F0-9]{3}-8[A-F0-9]{3}-[A-F0-9]{12}\}$' -or
             (Get-MoWixFileId $sample) -ceq (Get-MoWixFileId 'data/rime-ice/rime_ice.schema.yaml') -or
+            (Get-MoWixFileId 'bin/mo-settings.exe') -cne 'SettingsX64File' -or
             (Get-MoWixFileId 'tip/x64/mo-tip.dll') -cne 'TipX64File' -or
             (Get-MoWixFileId 'tip/x86/mo-tip.dll') -cne 'TipX86File') {
             throw 'Deterministic WiX identifier contract failed.'
@@ -365,6 +366,17 @@ try {
             }
         }
         Pass 'full payload one-to-one verification' { Assert-MoWixPayloadFragment $stage $first }
+        Pass 'settings Start-menu shortcut is advertised and file-owned' {
+            $document = Read-MoWixDocument $first
+            $ns = [Xml.XmlNamespaceManager]::new($document.NameTable)
+            $ns.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+            $shortcut = $document.SelectSingleNode(
+                '//w:File[@Id="SettingsX64File"]/w:Shortcut[@Id="MoSettingsStartMenuShortcut"]', $ns)
+            if ($null -eq $shortcut -or $shortcut.GetAttribute('Directory') -cne 'ProgramMenuFolder' -or
+                $shortcut.GetAttribute('Advertise') -cne 'yes') {
+                throw 'Settings Start-menu shortcut contract mismatch.'
+            }
+        }
 
         $badSource = Join-Path $fixture 'Payload.bad-source.wxs'
         Copy-Item -LiteralPath $first -Destination $badSource

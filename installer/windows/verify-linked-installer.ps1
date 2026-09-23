@@ -46,10 +46,19 @@ if ($LASTEXITCODE -ne 0) { throw 'WiX failed to decompile the linked MSI.' }
 $package = [xml](Get-Content -Raw -LiteralPath $decompiled)
 $packageNamespace = [Xml.XmlNamespaceManager]::new($package.NameTable)
 $packageNamespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
-if (@($package.SelectNodes('//w:File', $packageNamespace)).Count -ne 131 -or
-    @($package.SelectNodes('//w:Component', $packageNamespace)).Count -ne 132 -or
+if (@($package.SelectNodes('//w:File', $packageNamespace)).Count -ne 132 -or
+    @($package.SelectNodes('//w:Component', $packageNamespace)).Count -ne 133 -or
     @($package.SelectNodes('//w:CustomAction', $packageNamespace)).Count -ne $(if ($faultInjectionIncluded) { 8 } else { 7 })) {
     throw 'Linked MSI payload/component/custom-action count mismatch.'
+}
+$settingsShortcut = $package.SelectSingleNode(
+    '//w:Component[@Id="SettingsX64Component"]/w:Shortcut[@Id="MoSettingsStartMenuShortcut"]',
+    $packageNamespace)
+if ($null -eq $settingsShortcut -or
+    $settingsShortcut.GetAttribute('Directory') -cne 'ProgramMenuFolder' -or
+    $settingsShortcut.GetAttribute('Name') -cne 'Mo (墨) 输入法设置' -or
+    $settingsShortcut.GetAttribute('Advertise') -cne 'yes') {
+    throw 'Linked MSI settings shortcut contract mismatch.'
 }
 $failureProperty = $package.SelectSingleNode('//w:Property[@Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"]', $packageNamespace)
 $failureAction = $package.SelectSingleNode('//w:CustomAction[@Id="DevelopmentFailAfterMachineProfile"]', $packageNamespace)

@@ -48,7 +48,7 @@ current-user finalizer 必须保留发起用户的非提升令牌。根据 VM �
 脚本依次验证：
 
 - 初始状态无安装目录、机器 COM、TSF profile、用户 marker/journal；
-- install 后 131 个文件与 stage 清单逐字节一致，HKLM x64/x86 COM 路径正确，
+- install 后 132 个文件与 stage 清单逐字节一致，HKLM x64/x86 COM 路径正确，
   profile 已启用但 `active=false`，因此没有抢默认输入法；
 - install/repair 后重新审计 `Program Files\Mo`：Program Files、根和全部后代 owner/DACL
   不允许普通主体写入，树中没有 reparse point，每个文件只有一个硬链接；

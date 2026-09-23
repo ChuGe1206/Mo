@@ -38,8 +38,9 @@ The builder:
   or Lua, then compiles all 29 required schema/dictionary outputs with a small
   `/W4 /WX` build-only deploy helper and the verified DLL. Deployment happens
   only in an isolated marked directory, never on the input hot path.
-- Snapshots Mo sources and freshly builds the release Broker, x64/x86 TIPs and
-  registrar. No arbitrary prebuilt Broker/TIP arguments are accepted. The Broker
+- Snapshots Mo sources and freshly builds the release Broker, native x64 settings
+  center, x64/x86 TIPs and registrar. No arbitrary prebuilt application/Broker/TIP
+  arguments are accepted. The Broker
   must reject `--fake`; both default ABI probes verify the diagnostics interface
   is absent. Compiler environment overrides are rejected.
 - Retains the exact rime-ice archive, LICENSE and Credits outside the payload,
@@ -79,13 +80,17 @@ non-redistributable and non-installable. This is not G3 or daily-use acceptance.
 
 `wix-payload.ps1` deterministically turns a verified stage into one file-owning
 WiX component per payload file, plus one registry-only component for the x86
-COM view. The generated fragment covers all 131 payload files: x64/x86
+COM view. The generated fragment covers all 132 payload files: the native
+settings center, x64/x86
 TIPs, release Broker/registrar, self-built librime plus 33 OpenCC resources, and
 the selected/precompiled rime-ice tree. Stable path-derived identifiers and GUIDs
 make repeated authoring byte-identical. A verifier locks the Program Files root,
 reconstructs every installed path from XML, checks component/ref/key-path/
 bitness/COM ownership one-to-one, and rejects missing, duplicate or redirected
 files and roots. Evidence and source archives remain outside the install image.
+The settings executable owns one advertised `ProgramMenuFolder` shortcut; linked
+MSI verification decompiles the package and proves that exact shortcut identity,
+name and ownership without executing the installer.
 
 `Package.wxs` is a per-machine x64 MSI authoring input. MSI components own both
 COM registry views. An embedded x64 registrar performs machine profile/category
@@ -219,7 +224,7 @@ production-shape evidence are recorded in ADR 0034.
 
 `prepare-release-compliance.ps1` consumes a verified stage plus the checked-in
 Phase 0 policy and produces a deterministic SPDX 2.3 document, a third-party
-notices draft and hash-bound evidence. All 131 payload files must map to exactly
+notices draft and hash-bound evidence. All 132 payload files must map to exactly
 one component. The policy also locks Cargo.lock, rime-ice, the allowlisted
 librime source archives, Boost/Lua archives and package dependency/license
 expressions; unknown or overlapping ownership is rejected.
@@ -271,7 +276,7 @@ false. `test-release-materials.ps1` covers stale pins, missing GPL markers,
 tampered texts and forged authorization.
 
 `prepare-release-signing-plan.ps1` reads only a verified ProductionShape stage
-and linked format-3 evidence. It proves that five inner PE files, the MSI and the
+and linked format-3 evidence. It proves that six inner PE files, the MSI and the
 Bundle are currently unsigned, records their exact hashes, and emits the
 mandatory six-step inner-to-outer signing sequence. It does not sign anything.
 The existing unsigned stage must never be modified in place: sign copies into a
