@@ -49,6 +49,7 @@
 - ADR 0029 补齐安装态 Broker bootstrap：只有精确 `Program Files\Mo\tip\<arch>\mo-tip.dll` 获得固定相邻 Broker 的进程创建权限，搬迁/仓库布局保持 connect-only。无 shell/参数/继承 handle/控制台启动，Broker image reparse 拒绝；x86 对不可用的 ProgramFilesX64 Known Folder 只读 HKLM 64 位视图回退。端点缺失才启动，2 秒进程节流与 16 槽 first-instance 绑定保证唯一存活 Broker；并发宿主仍可能短暂创建多个 contender。连接后的 SID/PID/文件身份校验不变。
 - release Broker 在完整验证机器资产后只逐级创建精确的 `LocalAppData\Mo\Rime`，拒绝路径逃逸、文件占位、每一级 reparse point 以及已有用户 `rime.lua`/`lua`；不再创建用户 `build`。staging 与 prebuilt 都固定到 Program Files 机器目录，用户目录只承载词典和学习状态。debug/release 安装布局测试、双架构 launcher 探针、fake 3 轮/架构故障矩阵均通过，见 ADR 0039。
 - 安装模式将 DLL/shared/prebuilt/staging/相邻 OpenCC 固定在机器安装根，只把 user 固定在当前用户根；缺少目录、default/schema 标记或六份必要转换文件时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证字段隔离及每份转换文件缺失拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。运行时 ACL/reparse/硬链接门已实现并以真实 Program Files 只读基线、SDDL/硬链接负例验证；真实安装资产加载、签名、持续 handle 防替换仍未完成。
+- `mo-settings` 已建立普通用户设置的强类型 v1 合同：固定 Known Folder 相对路径、16 KiB 上限、精确枚举/布尔/候选范围、确定性编码、未来版本与未知/缺失/重复字段 fail-closed；仅文件不存在时采用默认值。同目录临时文件在 flush 后用 Windows replace/write-through 原子替换，14 项测试覆盖首次保存、覆盖、碰撞和损坏恢复边界。它尚未接入 Broker/librime 或图形前端，不声称设置已经影响输入，见 ADR 0041。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
 - Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
 - x64/Win32 fake 与真实 rime-ice 客户端均同时保持 16 路连接，第 17 路在设置的总时限内失败，释放中间槽后新会话成功接入；原连接分别以自己的候选页 revision 提交自己的词，不被其他连接推进全局 revision 干扰。Rust 测试另行验证静默首帧客户端不会阻塞另一槽、重复 live accept 被拒绝、断开期间名称/DACL 不变、次槽冲突导致整池绑定回滚，以及并发生成的 1024 个 generation 非零且无重复。就绪信号在引擎初始化及工作线程创建后发出；真实 smoke 的错误分支已改为终止 owned 子进程并有界读取日志。
@@ -82,7 +83,7 @@
 未通过：
 
 - 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
-- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布签名、持续防替换、设置生成/迁移与 AppContainer/WinUI 仍未完成。
+- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布签名、持续防替换、设置 runtime plan/UI/迁移与 AppContainer/WinUI 仍未完成。
 - 实际崩溃回归目前只覆盖上述受控文本存储。engine commit 后/TSF 写入前、部分文档写入后的歧义故障及普通宿主矩阵仍未注入；不声称跨崩溃 exactly-once 或未提交输入不丢失。
 - 机器冷启动和更广宿主/候选生命周期矩阵仍未通过。历史高频词库的首个 N 超时主要位于引擎转换；Emoji 延迟加载/weak owner 重复卸载有源码与独立消融证据。仅保活+预编译时，完整 x64 命令第 82/100 轮出现 Actor 55,959 µs、排队 3,469 µs 超时，未进入该命令 Win32 压力段，更早失败也保留。此前 x64 第 24/100、3/100 轮候选未显示（按键未超时），状态变化全部来源尚未确认。ADR 0024 prepared 自构建产物的双架构各 100 轮样本现已通过，但不据此宣称旧候选消失问题全部根因已确定。未放宽 deadline、禁用 Emoji 或自动重发；历史负向证据见 ADR 0022/0023。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
@@ -118,4 +119,4 @@
 
 ## 下一检查点
 
-Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap、完整 payload/机器 profile 回滚，以及 current-user/Bundle 持久回滚作者层已分别闭环，见 ADR 0025–0031；受控 WiX 工具链、真实 linked 结构和 fail-closed VM lifecycle kit 也已闭环，见 ADR 0032。开发故障矩阵见 ADR 0033；production-shape 隔离见 ADR 0034；逐文件 SPDX/通知草案与来源锁定见 ADR 0035；来源材料和签名顺序见 ADR 0036；安装树安全审计与 Broker 运行时门见 ADR 0037/0038；机器-only Lua/prebuilt 边界见 ADR 0039；离线 stage 与最新 VM 基线见 ADR 0040。下一步把 clean 与 matrix kit 放入干净 Windows 11 x64 快照，取得 install/repair/uninstall、两层强制 rollback、marker 缺失 repair 和升级的首份真实证据；这之前不在开发主机运行它。右键提升/UAC 关闭和多用户边界仍使用独立快照。并行的系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。librime 组合审查、实际签名、持续竞态防替换、多用户卸载策略、跨会话互斥与资源内容认证仍是发行门。
+Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap、完整 payload/机器 profile 回滚，以及 current-user/Bundle 持久回滚作者层已分别闭环，见 ADR 0025–0031；受控 WiX 工具链、真实 linked 结构和 fail-closed VM lifecycle kit 也已闭环，见 ADR 0032。开发故障矩阵见 ADR 0033；production-shape 隔离见 ADR 0034；逐文件 SPDX/通知草案与来源锁定见 ADR 0035；来源材料和签名顺序见 ADR 0036；安装树安全审计与 Broker 运行时门见 ADR 0037/0038；机器-only Lua/prebuilt 边界见 ADR 0039；离线 stage 与最新 VM 基线见 ADR 0040；强类型用户设置存储见 ADR 0041。下一步在可销毁 Windows 11 x64 快照运行 clean/matrix kit；无 VM 时并行实现设置 runtime plan、图形前端与跨进程刷新，但不把未验收 schema/option 接入真实引擎。系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。librime 组合审查、实际签名、持续竞态防替换、多用户卸载策略、跨会话互斥与资源内容认证仍是发行门。

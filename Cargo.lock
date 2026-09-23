@@ -44,6 +44,13 @@ name = "mo-rime-sys"
 version = "0.1.0"
 
 [[package]]
+name = "mo-settings"
+version = "0.1.0"
+dependencies = [
+ "windows-sys",
+]
+
+[[package]]
 name = "mo-windows-pipe"
 version = "0.1.0"
 dependencies = [

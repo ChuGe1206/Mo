@@ -128,7 +128,7 @@ Rime 高级用户不是默认界面的目标人群。Mo 可以提供显式导入
 - 词库与更新；
 - 隐私、本地学习和数据导入导出。
 
-模糊音细项、最终 schema、Lua、部署日志和数据 generation 放入二次开启的开发者模式。普通设置写入强类型 Mo 配置，再由生成器产生 patch；界面不直接编辑 YAML。
+模糊音细项、最终 schema、Lua、部署日志和数据 generation 放入二次开启的开发者模式。普通设置写入强类型 Mo 配置；可直接映射的已验收选项形成 runtime plan，需要生成 schema 的设置进入受签名/哈希约束的机器数据槽。界面不直接编辑 YAML，用户目录也不产生 deployed patch，见 ADR 0041。
 
 ### 2.4 失败体验
 
@@ -434,13 +434,15 @@ Program Files/Mo/.../builtin/      安装包内只读兜底
 LocalAppData/Mo/managed/slots/A/   官方数据槽 A
 LocalAppData/Mo/managed/slots/B/   官方数据槽 B
 LocalAppData/Mo/managed/current.json
-LocalAppData/Mo/profile/settings/
-LocalAppData/Mo/profile/userdb/
-LocalAppData/Mo/profile/phrases/
-LocalAppData/Mo/profile/blacklist/
+LocalAppData/Mo/Profile/settings-v1.mo
+LocalAppData/Mo/Profile/settings/
+LocalAppData/Mo/Profile/userdb/
+LocalAppData/Mo/Profile/phrases/
+LocalAppData/Mo/Profile/blacklist/
 ```
 
-`builtin` 与 `managed` 可替换；`profile` 归用户所有，更新器永不覆盖。
+`builtin` 与 `managed` 可替换；`profile` 归用户所有，更新器永不覆盖。当前 v1
+强类型设置文件固定为 `Profile/settings-v1.mo`；上面的细分目录是后续数据管理目标。
 `profile` 不存放 deployed schema、Lua 或 native module；安装态可执行数据只从
 经过机器安装树审计的只读槽读取，见 ADR 0039。
 
