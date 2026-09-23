@@ -33,6 +33,21 @@ try {
     foreach ($name in @('../escape', 'a/../escape', '/root', 'a\b', 'a:b', 'a//b', 'a.', 'CON', 'nul.txt', 'COM1.db', 'LPT9', 'a/file ', ('a' * 241))) {
         Reject "relative path $name" { Assert-MoRelativeName $name } 'relative path'
     }
+    $pinnedArchive = Join-Path $fixture 'pinned-source.tar'
+    [IO.File]::WriteAllBytes($pinnedArchive, [byte[]](1, 2, 3, 4))
+    $pinnedHash = (Get-FileHash -LiteralPath $pinnedArchive -Algorithm SHA256).Hash
+    Pass 'pinned source archive input' {
+        $input = Resolve-MoPinnedSourceInput '' $pinnedArchive $pinnedHash
+        if ($input.Kind -cne 'Archive' -or $input.Path -cne $pinnedArchive) { throw 'Wrong archive input result.' }
+    }
+    Pass 'pinned source checkout input' {
+        $input = Resolve-MoPinnedSourceInput $fixture '' $pinnedHash
+        if ($input.Kind -cne 'Checkout' -or $input.Path -cne $fixture) { throw 'Wrong checkout input result.' }
+    }
+    Reject 'missing pinned source input' { Resolve-MoPinnedSourceInput '' '' $pinnedHash } 'exactly one'
+    Reject 'ambiguous pinned source input' { Resolve-MoPinnedSourceInput $fixture $pinnedArchive $pinnedHash } 'exactly one'
+    Reject 'mismatched pinned source archive' { Resolve-MoPinnedSourceInput '' $pinnedArchive ('0' * 64) } 'archive mismatch'
+    Reject 'invalid pinned source hash' { Resolve-MoPinnedSourceInput '' $pinnedArchive 'bad' } 'hash is invalid'
     Reject 'build root output' { Assert-MoNewBuildOutput (Join-Path $repo 'build') $repo } 'new child'
     Reject 'workspace output' { Assert-MoNewBuildOutput $repo $repo } 'new child'
     Reject 'prefix sibling output' { Assert-MoNewBuildOutput (Join-Path $repo 'build-escape/new') $repo } 'new child'

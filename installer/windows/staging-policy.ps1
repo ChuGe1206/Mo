@@ -38,6 +38,34 @@ function Assert-MoNewBuildOutput([string]$Path, [string]$Repository) {
     return $full
 }
 
+function Resolve-MoPinnedSourceInput(
+    [string]$SourceDirectory,
+    [string]$ArchivePath,
+    [string]$ExpectedArchiveSha256
+) {
+    if ($ExpectedArchiveSha256 -cnotmatch '^[A-Fa-f0-9]{64}$') {
+        throw 'Pinned source archive hash is invalid.'
+    }
+    $hasSource = -not [string]::IsNullOrWhiteSpace($SourceDirectory)
+    $hasArchive = -not [string]::IsNullOrWhiteSpace($ArchivePath)
+    if ($hasSource -eq $hasArchive) {
+        throw 'Specify exactly one pinned source checkout or source archive.'
+    }
+    if ($hasSource) {
+        $source = Assert-MoPlainPath $SourceDirectory
+        if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw 'Pinned source checkout is not a directory.'
+        }
+        return [pscustomobject]@{ Kind = 'Checkout'; Path = $source }
+    }
+    $archive = Assert-MoPlainPath $ArchivePath
+    if (-not (Test-Path -LiteralPath $archive -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ine $ExpectedArchiveSha256) {
+        throw 'Pinned source archive mismatch.'
+    }
+    return [pscustomobject]@{ Kind = 'Archive'; Path = $archive }
+}
+
 function Get-MoStageFiles([string]$Directory) {
     $root = Assert-MoPlainPath $Directory
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Expected a staging directory.' }

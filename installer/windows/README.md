@@ -9,7 +9,7 @@ installer. Use PowerShell 7.4+ as an ordinary user with the existing local Rust
 ```powershell
 ./installer/windows/prepare-stage.ps1 `
   -RuntimeBuildDirectory "$PWD/build/mo-runtime-relocatable-verified" `
-  -RimeIceSourceDir "$env:TEMP/mo-rime-ice-6810e89" `
+  -RimeIceArchivePath "$PWD/build/locked-rime-ice-source.tar" `
   -OutputDirectory "$PWD/build/mo-windows-stage-new" -RustToolchain stable
 ./installer/windows/verify-stage.ps1 -StageDirectory "$PWD/build/mo-windows-stage-new/stage"
 ./installer/windows/test-staging.ps1 -StageDirectory "$PWD/build/mo-windows-stage-new/stage"
@@ -30,9 +30,10 @@ The builder:
 
 - Checks the v2 core+Lua runtime's six source archive pins, twelve Mo source
   snapshots, public ABI header, DLL and all 33 adjacent OpenCC resources.
-- Archives the locked rime-ice Git object, verifies its archive hash and extracts
-  fresh inputs. Mutable checkout files, ignored `build/`, upstream platform
-  skins and installer recipes are not consumed.
+- Requires exactly one locked rime-ice Git checkout or the already archived source.
+  Checkout mode verifies the commit and creates the tar; offline archive mode
+  verifies the same fixed SHA-256 before copying and extracting it. Mutable checkout
+  files, ignored `build/`, upstream platform skins and installer recipes are not consumed.
 - Copies 64 selected source resources without modifying upstream configuration
   or Lua, then compiles all 29 required schema/dictionary outputs with a small
   `/W4 /WX` build-only deploy helper and the verified DLL. Deployment happens

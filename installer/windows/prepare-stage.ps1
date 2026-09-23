@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$RuntimeBuildDirectory,
-    [Parameter(Mandatory)][string]$RimeIceSourceDir,
+    [string]$RimeIceSourceDir,
+    [string]$RimeIceArchivePath,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidatePattern('^[A-Za-z0-9._-]+$')][string]$RustToolchain = 'stable',
     [switch]$DevelopmentFaultInjection
@@ -15,13 +16,21 @@ $output = Assert-MoNewBuildOutput $OutputDirectory $repo
 # expansion occurs even inside quotes, and a developer shell may enable delayed
 # expansion. Refuse such path characters rather than interpolate them into cmd.
 if ($output -match '[%!\"]') { throw 'Native compiler path contains unsupported shell expansion characters.' }
-$source = Assert-MoPlainPath $RimeIceSourceDir
 $runtimeRoot = Assert-MoPlainPath $RuntimeBuildDirectory
 $runtime = Assert-MoStageRuntime $runtimeRoot $repo
 $iceCommit = '6810e8916d160498620a16fef2135956fecbd485'
 $iceArchiveHash = 'CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3'
-$head = & git -c "safe.directory=$source" -C $source rev-parse HEAD
-if ($LASTEXITCODE -ne 0 -or $head -cne $iceCommit) { throw 'Rime Ice source commit mismatch.' }
+$iceInput = Resolve-MoPinnedSourceInput $RimeIceSourceDir $RimeIceArchivePath $iceArchiveHash
+$hasIceSource = $iceInput.Kind -ceq 'Checkout'
+$source = $null
+$sourceArchive = $null
+if ($hasIceSource) {
+    $source = $iceInput.Path
+    $head = & git -c "safe.directory=$source" -C $source rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or $head -cne $iceCommit) { throw 'Rime Ice source commit mismatch.' }
+} else {
+    $sourceArchive = $iceInput.Path
+}
 # Reject compiler/profile injection in the build environment. Tool installations,
 # Cargo home and OS remain trusted build-host prerequisites, not a hermetic sandbox.
 foreach ($variable in Get-ChildItem Env:) {
@@ -93,9 +102,14 @@ foreach ($name in @('prepare-stage.ps1', 'staging-policy.ps1', 'deploy-data.cpp'
     Copy-StageFile (Join-Path $PSScriptRoot $name) (Join-Path $moSource "installer/windows/$name")
 }
 $moSourceInventory = Get-MoStageInventory $moSource
-Checked 'git' @('-c', "safe.directory=$source", '-C', $source, 'archive', '--format=tar', $iceCommit, '-o', (Join-Path $evidence 'rime-ice-source.tar'))
-if ((Get-FileHash -LiteralPath (Join-Path $evidence 'rime-ice-source.tar')).Hash -ine $iceArchiveHash) { throw 'Rime Ice source archive mismatch.' }
-Checked 'tar' @('-xf', (Join-Path $evidence 'rime-ice-source.tar'), '-C', $iceSource)
+$stageIceArchive = Join-Path $evidence 'rime-ice-source.tar'
+if ($hasIceSource) {
+    Checked 'git' @('-c', "safe.directory=$source", '-C', $source, 'archive', '--format=tar', $iceCommit, '-o', $stageIceArchive)
+} else {
+    Copy-StageFile $sourceArchive $stageIceArchive
+}
+if ((Get-FileHash -LiteralPath $stageIceArchive).Hash -ine $iceArchiveHash) { throw 'Rime Ice source archive mismatch.' }
+Checked 'tar' @('-xf', $stageIceArchive, '-C', $iceSource)
 # Do not consume ignored build/, mutable working files, upstream platform skins,
 # updater recipes, .git files or user dictionaries. All selected data is from tar.
 $shared = Join-Path $payload 'data/rime-ice'
