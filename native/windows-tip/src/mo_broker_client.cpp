@@ -135,6 +135,7 @@ constexpr std::uint32_t kResponseFlag = 1U;
 constexpr std::uint32_t kErrorFlag = 2U;
 constexpr std::uint64_t kKeyEventsFeature = 1ULL;
 constexpr std::uint64_t kCandidateActionsFeature = 2ULL;
+constexpr std::uint64_t kSettingsSnapshotFeature = 4ULL;
 constexpr DWORD kClientPipeAccess = 0x0012019bUL;
 constexpr std::size_t kMaximumWindowsPathLength = 32768;
 
@@ -166,6 +167,8 @@ enum class MessageKind : std::uint16_t {
     CloseSession = 7,
     CloseSessionAck = 8,
     CandidateAction = 12,
+    GetSettings = 13,
+    SettingsSnapshot = 14,
 };
 
 struct Frame final {
@@ -707,6 +710,39 @@ bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapsho
     return true;
 }
 
+bool DecodeSettings(const Frame& frame, mo::windows_tip::BrokerSettings* settings) noexcept {
+    if (settings == nullptr || frame.payload.size() != 18) { return false; }
+    const Byte* bytes = frame.payload.data();
+    const std::uint64_t revision = GetU64(bytes);
+    const Byte origin = bytes[8];
+    const Byte scheme = bytes[9];
+    const Byte character_set = bytes[10];
+    const Byte page_size = bytes[11];
+    const Byte theme = bytes[12];
+    for (std::size_t index = 13; index < 18; ++index) {
+        if (bytes[index] > 1) { return false; }
+    }
+    const bool local_learning = bytes[15] != 0;
+    const bool privacy_mode = bytes[16] != 0;
+    if (revision == 0 || origin > 1 || scheme > 4 || character_set > 1
+        || page_size < 3 || page_size > 9 || theme > 2
+        || (bytes[17] != 0) != (local_learning && !privacy_mode)) {
+        return false;
+    }
+    settings->revision = revision;
+    settings->stored = origin != 0;
+    settings->input_scheme = static_cast<mo::windows_tip::InputScheme>(scheme);
+    settings->character_set = static_cast<mo::windows_tip::CharacterSet>(character_set);
+    settings->candidate_page_size = page_size;
+    settings->theme = static_cast<mo::windows_tip::CandidateTheme>(theme);
+    settings->show_comments = bytes[13] != 0;
+    settings->emoji = bytes[14] != 0;
+    settings->local_learning = local_learning;
+    settings->privacy_mode = privacy_mode;
+    settings->effective_learning = bytes[17] != 0;
+    return true;
+}
+
 }  // namespace
 
 namespace mo::windows_tip {
@@ -742,7 +778,8 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         AppendU16(&hello.payload, kProtocolMinor);
         AppendU16(&hello.payload, kProtocolMajor);
         AppendU16(&hello.payload, kProtocolMinor);
-        AppendU64(&hello.payload, kKeyEventsFeature | kCandidateActionsFeature);
+        AppendU64(&hello.payload,
+            kKeyEventsFeature | kCandidateActionsFeature | kSettingsSnapshotFeature);
         AppendU32(&hello.payload, static_cast<std::uint32_t>(kMaximumPayloadLength));
 
         Frame hello_ack;
@@ -762,6 +799,26 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         generation_ = hello_ack.generation;
         candidate_actions_supported_ =
             (GetU64(hello_ack.payload.data() + 4) & kCandidateActionsFeature) != 0;
+        settings_supported_ =
+            (GetU64(hello_ack.payload.data() + 4) & kSettingsSnapshotFeature) != 0;
+
+        if (settings_supported_) {
+            Frame request;
+            request.kind = MessageKind::GetSettings;
+            request.generation = generation_;
+            request.request_id = next_request_id_++;
+            Frame response;
+            BrokerSettings decoded;
+            if (!Exchange(pipe_, request, MessageKind::SettingsSnapshot, &response, deadline)
+                || response.generation != generation_
+                || response.session_token != 0
+                || !DecodeSettings(response, &decoded)) {
+                last_connect_error_ = ERROR_INVALID_DATA;
+                Reset();
+                return false;
+            }
+            settings_ = decoded;
+        }
 
         Frame open;
         open.kind = MessageKind::OpenSession;
@@ -888,6 +945,33 @@ bool BrokerClient::SendCandidateAction(
     }
 }
 
+bool BrokerClient::RefreshSettings(DWORD timeout_ms) noexcept {
+    if (!connected() || !settings_supported_) { return false; }
+    try {
+        const Deadline deadline = DeadlineFromNow(timeout_ms);
+        Frame request;
+        request.kind = MessageKind::GetSettings;
+        request.generation = generation_;
+        request.request_id = next_request_id_++;
+        Frame response;
+        BrokerSettings decoded;
+        if (!Exchange(pipe_, request, MessageKind::SettingsSnapshot, &response, deadline)
+            || response.generation != generation_
+            || response.session_token != 0
+            || !DecodeSettings(response, &decoded)) {
+            TraceFailure(ERROR_INVALID_DATA);
+            Reset();
+            return false;
+        }
+        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
+        settings_ = decoded;
+        return true;
+    } catch (...) {
+        Reset();
+        return false;
+    }
+}
+
 void BrokerClient::Close(DWORD timeout_ms) noexcept {
     if (!connected()) {
         Reset();
@@ -919,6 +1003,8 @@ void BrokerClient::Reset() noexcept {
     session_token_ = 0;
     next_request_id_ = 1;
     candidate_actions_supported_ = false;
+    settings_supported_ = false;
+    settings_ = BrokerSettings{};
 }
 
 }  // namespace mo::windows_tip

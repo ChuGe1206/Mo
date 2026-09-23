@@ -7,12 +7,13 @@ use mo_domain::{
 use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
     CURRENT_VERSION, CandidateAction, CandidateActionKind, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
-    FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck,
-    KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, ProtocolVersion,
-    Snapshot, VersionRange, negotiate_version,
+    FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError,
+    Hello, HelloAck, KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec,
+    ProtocolVersion, Snapshot, VersionRange, negotiate_version,
 };
 
 use crate::engine_service::EngineClient;
+use crate::settings_service::SettingsService;
 
 pub const ERROR_BAD_REQUEST: u32 = 1;
 pub const ERROR_BAD_HANDSHAKE: u32 = 2;
@@ -22,6 +23,7 @@ pub const ERROR_NO_SUCH_SESSION: u32 = 5;
 pub const ERROR_SESSION_LIMIT: u32 = 6;
 pub const ERROR_ENGINE_FAILURE: u32 = 7;
 pub const ERROR_STALE_CANDIDATES: u32 = 8;
+pub const ERROR_SETTINGS_UNAVAILABLE: u32 = 9;
 
 const MAX_SESSIONS_PER_CONNECTION: usize = 64;
 
@@ -44,6 +46,7 @@ where
     next_session_token: u64,
     sessions: BTreeMap<u64, WireSession>,
     engine: EngineOwner<B>,
+    settings: SettingsService,
 }
 
 struct WireSession {
@@ -126,10 +129,15 @@ where
             next_session_token: 1,
             sessions: BTreeMap::new(),
             engine: EngineOwner::Local(EngineActor::new(backend)),
+            settings: SettingsService::defaults(),
         }
     }
 
-    pub(crate) fn with_engine_client(connection_generation: u64, engine: EngineClient) -> Self {
+    pub(crate) fn with_engine_client(
+        connection_generation: u64,
+        engine: EngineClient,
+        settings: SettingsService,
+    ) -> Self {
         Self {
             connection_generation: connection_generation.max(1),
             negotiated: None,
@@ -138,6 +146,7 @@ where
             next_session_token: 1,
             sessions: BTreeMap::new(),
             engine: EngineOwner::Shared(engine),
+            settings,
         }
     }
 
@@ -191,6 +200,7 @@ where
             MessageKind::OpenSession => self.open_session(request),
             MessageKind::KeyEvent => self.key_event(request),
             MessageKind::CandidateAction => self.candidate_action(request),
+            MessageKind::GetSettings => self.get_settings(request),
             MessageKind::CloseSession => self.close_session(request),
             MessageKind::Ping => self.pong(request),
             _ => self.error(
@@ -229,8 +239,8 @@ where
             );
         };
         self.negotiated = Some(selected);
-        self.negotiated_features =
-            hello.features & (FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_ACTIONS);
+        self.negotiated_features = hello.features
+            & (FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_ACTIONS | FEATURE_SETTINGS_SNAPSHOT);
 
         let ack = HelloAck {
             selected,
@@ -472,6 +482,40 @@ where
             0,
             request.header.request_id,
             Vec::new(),
+        )
+    }
+
+    fn get_settings(&self, request: Frame) -> Result<Frame, BrokerError> {
+        if self.negotiated_features & FEATURE_SETTINGS_SNAPSHOT == 0 {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "settings snapshots were not negotiated",
+            );
+        }
+        if request.header.session_token != 0 || !request.payload.is_empty() {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "GetSettings requires an empty payload and zero session token",
+            );
+        }
+        let snapshot = match self.settings.snapshot() {
+            Ok(snapshot) => snapshot,
+            Err(_) => {
+                return self.error(
+                    &request,
+                    ERROR_SETTINGS_UNAVAILABLE,
+                    "settings are unavailable; the last valid runtime plan was preserved",
+                );
+            }
+        };
+        self.response(
+            self.selected_version(),
+            MessageKind::SettingsSnapshot,
+            0,
+            request.header.request_id,
+            snapshot.encode_payload()?,
         )
     }
 

@@ -230,3 +230,41 @@ fn candidate_actions_are_fixed_bounded_and_canonical() {
     payload[..8].fill(0);
     assert!(CandidateAction::decode_payload(&payload).is_err());
 }
+
+#[test]
+fn settings_snapshot_is_fixed_bounded_and_policy_consistent() {
+    use mo_ipc::{CharacterSet, InputScheme, SettingsOrigin, SettingsSnapshot, Theme};
+
+    let value = SettingsSnapshot {
+        revision: 9,
+        origin: SettingsOrigin::Stored,
+        input_scheme: InputScheme::DoublePinyinFlypy,
+        character_set: CharacterSet::Traditional,
+        candidate_page_size: 7,
+        theme: Theme::Dark,
+        show_comments: false,
+        emoji: true,
+        local_learning: true,
+        privacy_mode: true,
+        effective_learning: false,
+    };
+    let payload = value.encode_payload().unwrap();
+    assert_eq!(payload.len(), 18);
+    assert_eq!(SettingsSnapshot::decode_payload(&payload).unwrap(), value);
+    for length in 0..payload.len() {
+        assert!(SettingsSnapshot::decode_payload(&payload[..length]).is_err());
+    }
+    let mut extra = payload.clone();
+    extra.push(0);
+    assert!(SettingsSnapshot::decode_payload(&extra).is_err());
+
+    let mut invalid = payload;
+    invalid[0..8].fill(0);
+    assert!(SettingsSnapshot::decode_payload(&invalid).is_err());
+    invalid = value.encode_payload().unwrap();
+    invalid[11] = 10;
+    assert!(SettingsSnapshot::decode_payload(&invalid).is_err());
+    invalid = value.encode_payload().unwrap();
+    invalid[17] = 1;
+    assert!(SettingsSnapshot::decode_payload(&invalid).is_err());
+}

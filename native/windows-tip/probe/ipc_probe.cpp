@@ -319,6 +319,20 @@ int wmain(int argc, wchar_t** argv) {
         std::wcerr << L"Broker handshake returned zero correlation values\n";
         return 1;
     }
+    const auto settings_revision = broker.settings().revision;
+    if (settings_revision == 0 || broker.settings().stored
+        || broker.settings().input_scheme != mo::windows_tip::InputScheme::FullPinyin
+        || broker.settings().character_set != mo::windows_tip::CharacterSet::Simplified
+        || broker.settings().candidate_page_size != 5
+        || broker.settings().theme != mo::windows_tip::CandidateTheme::System
+        || !broker.settings().show_comments || !broker.settings().emoji
+        || !broker.settings().local_learning || broker.settings().privacy_mode
+        || !broker.settings().effective_learning
+        || !broker.RefreshSettings(500)
+        || broker.settings().revision != settings_revision) {
+        std::wcerr << L"Broker settings snapshot or explicit refresh is invalid\n";
+        return 1;
+    }
 
     if (!(rime_ice ? ProbeRimeIce(&broker) : ProbeFake(&broker))) {
         return 1;

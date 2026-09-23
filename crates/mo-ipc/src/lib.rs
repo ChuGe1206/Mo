@@ -15,9 +15,10 @@ pub use frame::{
     MAX_PAYLOAD_LEN, MessageKind, read_frame, write_frame,
 };
 pub use message::{
-    CandidateAction, CandidateActionKind, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
-    FEATURE_KEY_EVENTS, Hello, HelloAck, KeyEvent, MAX_CANDIDATE_BYTES, MAX_CANDIDATES,
-    MAX_COMMIT_BYTES, MAX_COMPOSITION_BYTES, MAX_ERROR_MESSAGE_BYTES, MIN_NEGOTIATED_PAYLOAD_LEN,
-    Snapshot,
+    CandidateAction, CandidateActionKind, CharacterSet, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
+    FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT, Hello, HelloAck, InputScheme, KeyEvent,
+    MAX_CANDIDATE_BYTES, MAX_CANDIDATES, MAX_COMMIT_BYTES, MAX_COMPOSITION_BYTES,
+    MAX_ERROR_MESSAGE_BYTES, MIN_NEGOTIATED_PAYLOAD_LEN, SettingsOrigin, SettingsSnapshot,
+    Snapshot, Theme,
 };
 pub use version::{CURRENT_VERSION, ProtocolVersion, VersionRange, negotiate_version};

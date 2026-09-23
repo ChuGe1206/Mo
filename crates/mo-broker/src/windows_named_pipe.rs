@@ -19,6 +19,7 @@ use mo_windows_pipe::{
 
 use crate::BrokerConnection;
 use crate::engine_service::{EngineClient, EngineService};
+use crate::settings_service::SettingsService;
 
 pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
 pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
@@ -50,15 +51,65 @@ where
     B: EngineBackend + 'static,
     E: fmt::Display,
 {
-    serve_pool_with_shutdown(pool, factory, PipeCancellation::new()?, per_slot_limit)
+    serve_pool_with_shutdown_and_settings(
+        pool,
+        factory,
+        PipeCancellation::new()?,
+        per_slot_limit,
+        SettingsService::defaults(),
+    )
+}
+
+/// Installed startup opens the fixed Known Folder settings path before any
+/// connection is served. A malformed existing file fails startup.
+pub fn serve_pool_with_backend_factory_and_settings<F, B, E>(
+    pool: PipePool,
+    factory: F,
+    settings_path: std::path::PathBuf,
+    per_slot_limit: Option<usize>,
+) -> io::Result<()>
+where
+    F: FnOnce() -> Result<B, E> + Send + 'static,
+    B: EngineBackend + 'static,
+    E: fmt::Display,
+{
+    let settings = SettingsService::open(settings_path)?;
+    serve_pool_with_shutdown_and_settings(
+        pool,
+        factory,
+        PipeCancellation::new()?,
+        per_slot_limit,
+        settings,
+    )
 }
 
 /// Coordinator-owned, process-local stop signal; never driven by an IPC peer.
 pub fn serve_pool_with_shutdown<F, B, E>(
+    pool: PipePool,
+    factory: F,
+    shutdown: PipeCancellation,
+    per_slot_limit: Option<usize>,
+) -> io::Result<()>
+where
+    F: FnOnce() -> Result<B, E> + Send + 'static,
+    B: EngineBackend + 'static,
+    E: fmt::Display,
+{
+    serve_pool_with_shutdown_and_settings(
+        pool,
+        factory,
+        shutdown,
+        per_slot_limit,
+        SettingsService::defaults(),
+    )
+}
+
+fn serve_pool_with_shutdown_and_settings<F, B, E>(
     mut pool: PipePool,
     factory: F,
     shutdown: PipeCancellation,
     per_slot_limit: Option<usize>,
+    settings: SettingsService,
 ) -> io::Result<()>
 where
     F: FnOnce() -> Result<B, E> + Send + 'static,
@@ -85,6 +136,7 @@ where
         let mut workers: Vec<thread::ScopedJoinHandle<'_, io::Result<()>>> = Vec::new();
         for (slot, mut listener) in pool.into_listeners().into_iter().enumerate() {
             let client = engine.client();
+            let settings = settings.clone();
             let stop = shutdown.clone();
             let (gate, start) = mpsc::sync_channel::<()>(1);
             match thread::Builder::new()
@@ -105,6 +157,7 @@ where
                                         &mut stream,
                                         hello,
                                         client.clone(),
+                                        settings.clone(),
                                     );
                                     drop(stream);
                                     if stop.is_cancelled() {
@@ -274,8 +327,12 @@ where
         };
         accepted += 1;
         let engine_client = engine.client();
-        let connection_result =
-            serve_authenticated_with_engine(&mut stream, first_frame, engine_client);
+        let connection_result = serve_authenticated_with_engine(
+            &mut stream,
+            first_frame,
+            engine_client,
+            SettingsService::defaults(),
+        );
         drop(stream);
         if let Err(error) = listener.rearm() {
             break Err(error);
@@ -314,8 +371,10 @@ fn serve_authenticated_with_engine(
     stream: &mut AuthenticatedPipe,
     first_frame: Frame,
     engine: EngineClient,
+    settings: SettingsService,
 ) -> io::Result<()> {
-    let mut broker = BrokerConnection::<FakeBackend>::with_engine_client(next_generation(), engine);
+    let mut broker =
+        BrokerConnection::<FakeBackend>::with_engine_client(next_generation(), engine, settings);
     serve_connection(stream, first_frame, &mut broker)
 }
 
@@ -681,7 +740,12 @@ mod tests {
                 let (mut stream, hello) = listener
                     .accept_reusable_first_frame(FIRST_FRAME_TIMEOUT)
                     .unwrap();
-                let result = serve_authenticated_with_engine(&mut stream, hello, engine.client());
+                let result = serve_authenticated_with_engine(
+                    &mut stream,
+                    hello,
+                    engine.client(),
+                    SettingsService::defaults(),
+                );
                 assert_eq!(result.err().map(|error| error.kind()), expected);
                 drop(stream);
                 assert!(listener.has_expected_dacl().unwrap());

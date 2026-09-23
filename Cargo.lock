@@ -10,6 +10,7 @@ dependencies = [
  "mo-engine",
  "mo-ipc",
  "mo-rime",
+ "mo-settings",
  "mo-windows-pipe",
  "mo-windows-platform",
 ]

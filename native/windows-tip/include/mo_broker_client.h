@@ -17,6 +17,31 @@ enum class CandidateAction : std::uint8_t {
     NextPage = 2,
 };
 
+enum class InputScheme : std::uint8_t {
+    FullPinyin = 0,
+    DoublePinyinNatural = 1,
+    DoublePinyinFlypy = 2,
+    DoublePinyinMicrosoft = 3,
+    DoublePinyinSogou = 4,
+};
+
+enum class CharacterSet : std::uint8_t { Simplified = 0, Traditional = 1 };
+enum class CandidateTheme : std::uint8_t { System = 0, Light = 1, Dark = 2 };
+
+struct BrokerSettings final {
+    std::uint64_t revision = 1;
+    bool stored = false;
+    InputScheme input_scheme = InputScheme::FullPinyin;
+    CharacterSet character_set = CharacterSet::Simplified;
+    std::uint8_t candidate_page_size = 5;
+    CandidateTheme theme = CandidateTheme::System;
+    bool show_comments = true;
+    bool emoji = true;
+    bool local_learning = true;
+    bool privacy_mode = false;
+    bool effective_learning = true;
+};
+
 struct BrokerSnapshot final {
     std::uint64_t revision = 0;
     bool handled = false;
@@ -59,6 +84,8 @@ public:
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
+    bool RefreshSettings(DWORD timeout_ms) noexcept;
+    const BrokerSettings& settings() const noexcept { return settings_; }
 
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }
     DWORD last_connect_error() const noexcept { return last_connect_error_; }
@@ -77,6 +104,8 @@ private:
     std::uint64_t session_token_ = 0;
     std::uint64_t next_request_id_ = 1;
     bool candidate_actions_supported_ = false;
+    bool settings_supported_ = false;
+    BrokerSettings settings_;
     DWORD last_connect_error_ = ERROR_SUCCESS;
 #ifdef MO_LATENCY_TRACE
     BrokerTiming last_timing_;

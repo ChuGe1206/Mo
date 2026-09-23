@@ -103,6 +103,55 @@ pub enum Theme {
     Dark,
 }
 
+/// Settings that a native frontend may apply without changing engine state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PresentationPlan {
+    pub show_comments: bool,
+    pub theme: Theme,
+}
+
+/// Desired engine behavior. This is deliberately data, not a set of librime
+/// option names: translating it into native operations requires a separately
+/// validated adapter.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EnginePreferences {
+    pub input_scheme: InputScheme,
+    pub character_set: CharacterSet,
+    pub candidate_page_size: u8,
+    pub emoji: bool,
+    pub local_learning: bool,
+    pub privacy_mode: bool,
+    pub effective_learning: bool,
+}
+
+/// Validated settings split by the component that will eventually apply them.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RuntimePlan {
+    pub presentation: PresentationPlan,
+    pub engine: EnginePreferences,
+}
+
+impl RuntimePlan {
+    #[must_use]
+    pub fn from_settings(settings: &Settings) -> Self {
+        Self {
+            presentation: PresentationPlan {
+                show_comments: settings.show_comments,
+                theme: settings.theme,
+            },
+            engine: EnginePreferences {
+                input_scheme: settings.input_scheme,
+                character_set: settings.character_set,
+                candidate_page_size: settings.candidate_page_size,
+                emoji: settings.emoji,
+                local_learning: settings.local_learning,
+                privacy_mode: settings.privacy_mode,
+                effective_learning: settings.effective_learning(),
+            },
+        }
+    }
+}
+
 impl Theme {
     fn as_str(self) -> &'static str {
         match self {
@@ -342,6 +391,111 @@ impl From<SettingsError> for StoreError {
 pub enum LoadedSettings {
     Defaults(Settings),
     Stored(Settings),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SettingsOrigin {
+    Defaults,
+    Stored,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RuntimeSnapshot {
+    pub revision: u64,
+    pub origin: SettingsOrigin,
+    pub settings: Settings,
+    pub plan: RuntimePlan,
+}
+
+/// Owns the last successfully decoded settings and advances its revision only
+/// when the semantic document or its default/stored origin changes. A failed
+/// refresh never discards the last known-good snapshot.
+#[derive(Debug)]
+pub struct SettingsRuntime {
+    path: PathBuf,
+    snapshot: RuntimeSnapshot,
+}
+
+impl SettingsRuntime {
+    pub fn open(path: impl Into<PathBuf>) -> Result<Self, RuntimeError> {
+        let path = path.into();
+        let (origin, settings) = loaded_parts(load(&path)?);
+        let plan = RuntimePlan::from_settings(&settings);
+        Ok(Self {
+            path,
+            snapshot: RuntimeSnapshot {
+                revision: 1,
+                origin,
+                settings,
+                plan,
+            },
+        })
+    }
+
+    #[must_use]
+    pub fn snapshot(&self) -> &RuntimeSnapshot {
+        &self.snapshot
+    }
+
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn refresh(&mut self) -> Result<&RuntimeSnapshot, RuntimeError> {
+        let (origin, settings) = loaded_parts(load(&self.path)?);
+        if origin != self.snapshot.origin || settings != self.snapshot.settings {
+            let revision = self
+                .snapshot
+                .revision
+                .checked_add(1)
+                .ok_or(RuntimeError::RevisionExhausted)?;
+            self.snapshot = RuntimeSnapshot {
+                revision,
+                plan: RuntimePlan::from_settings(&settings),
+                origin,
+                settings,
+            };
+        }
+        Ok(&self.snapshot)
+    }
+}
+
+fn loaded_parts(loaded: LoadedSettings) -> (SettingsOrigin, Settings) {
+    match loaded {
+        LoadedSettings::Defaults(settings) => (SettingsOrigin::Defaults, settings),
+        LoadedSettings::Stored(settings) => (SettingsOrigin::Stored, settings),
+    }
+}
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    Store(StoreError),
+    RevisionExhausted,
+}
+
+impl fmt::Display for RuntimeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Store(error) => write!(formatter, "could not refresh settings: {error}"),
+            Self::RevisionExhausted => formatter.write_str("settings revision space is exhausted"),
+        }
+    }
+}
+
+impl std::error::Error for RuntimeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Store(error) => Some(error),
+            Self::RevisionExhausted => None,
+        }
+    }
+}
+
+impl From<StoreError> for RuntimeError {
+    fn from(error: StoreError) -> Self {
+        Self::Store(error)
+    }
 }
 
 impl LoadedSettings {
@@ -603,6 +757,35 @@ mod tests {
     }
 
     #[test]
+    fn runtime_plan_separates_presentation_from_unapplied_engine_preferences() {
+        let settings = Settings {
+            input_scheme: InputScheme::DoublePinyinNatural,
+            character_set: CharacterSet::Traditional,
+            candidate_page_size: 7,
+            show_comments: false,
+            emoji: false,
+            local_learning: true,
+            privacy_mode: true,
+            theme: Theme::Dark,
+        };
+        let plan = RuntimePlan::from_settings(&settings);
+        assert_eq!(
+            plan.presentation,
+            PresentationPlan {
+                show_comments: false,
+                theme: Theme::Dark,
+            }
+        );
+        assert_eq!(plan.engine.input_scheme, InputScheme::DoublePinyinNatural);
+        assert_eq!(plan.engine.character_set, CharacterSet::Traditional);
+        assert_eq!(plan.engine.candidate_page_size, 7);
+        assert!(!plan.engine.emoji);
+        assert!(plan.engine.local_learning);
+        assert!(plan.engine.privacy_mode);
+        assert!(!plan.engine.effective_learning);
+    }
+
+    #[test]
     fn candidate_page_size_is_bounded() {
         for invalid in [0, 2, 10, u8::MAX] {
             let settings = Settings {
@@ -727,6 +910,61 @@ mod tests {
         save_atomic(&path, &changed).unwrap();
         assert_eq!(load(&path).unwrap(), LoadedSettings::Stored(changed));
         assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn runtime_refresh_advances_only_for_semantic_or_origin_changes() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let mut runtime = SettingsRuntime::open(&path).unwrap();
+        assert_eq!(runtime.path(), path);
+        assert_eq!(runtime.snapshot().revision, 1);
+        assert_eq!(runtime.snapshot().origin, SettingsOrigin::Defaults);
+
+        runtime.refresh().unwrap();
+        assert_eq!(runtime.snapshot().revision, 1);
+        save_atomic(&path, &Settings::default()).unwrap();
+        runtime.refresh().unwrap();
+        assert_eq!(runtime.snapshot().revision, 2);
+        assert_eq!(runtime.snapshot().origin, SettingsOrigin::Stored);
+
+        runtime.refresh().unwrap();
+        assert_eq!(runtime.snapshot().revision, 2);
+        let changed = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        save_atomic(&path, &changed).unwrap();
+        runtime.refresh().unwrap();
+        assert_eq!(runtime.snapshot().revision, 3);
+        assert_eq!(runtime.snapshot().plan.presentation.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn failed_runtime_refresh_preserves_last_known_good_snapshot() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let changed = Settings {
+            theme: Theme::Light,
+            ..Settings::default()
+        };
+        save_atomic(&path, &changed).unwrap();
+        let mut runtime = SettingsRuntime::open(&path).unwrap();
+        let accepted = runtime.snapshot().clone();
+
+        fs::write(&path, b"broken").unwrap();
+        assert!(matches!(
+            runtime.refresh(),
+            Err(RuntimeError::Store(StoreError::InvalidDocument(
+                SettingsError::InvalidHeader
+            )))
+        ));
+        assert_eq!(runtime.snapshot(), &accepted);
+
+        save_atomic(&path, &Settings::default()).unwrap();
+        runtime.refresh().unwrap();
+        assert_eq!(runtime.snapshot().revision, accepted.revision + 1);
+        assert_eq!(runtime.snapshot().settings, Settings::default());
     }
 
     #[test]

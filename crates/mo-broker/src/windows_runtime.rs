@@ -33,6 +33,7 @@ pub struct RimeStartup {
     pub dll_path: PathBuf,
     pub engine_config: EngineConfig,
     pub require_prepared_resources: bool,
+    pub settings_path: Option<PathBuf>,
 }
 
 /// Release builds only use OS Known Folders and the fixed installed layout.
@@ -58,6 +59,7 @@ pub fn parse_startup(arguments: Vec<OsString>) -> io::Result<StartupMode> {
             Ok(StartupMode::Rime(Box::new(RimeStartup {
                 dll_path: PathBuf::from(dll),
                 require_prepared_resources: flag == "--rime-prepared",
+                settings_path: None,
                 engine_config: EngineConfig::new(
                     librime_path(&shared, "shared data directory")?,
                     librime_path(&user, "user data directory")?,
@@ -186,6 +188,9 @@ fn prepare_installed_startup(image: &Path, layout: &InstalledLayout) -> io::Resu
         dll_path: dll,
         engine_config: config,
         require_prepared_resources: true,
+        settings_path: Some(mo_settings::installed_settings_path(
+            &layout.local_app_data_root,
+        )),
     })))
 }
 
@@ -529,6 +534,10 @@ mod tests {
             std::fs::canonicalize(&layout.dll_path).unwrap()
         );
         assert!(startup.require_prepared_resources);
+        assert_eq!(
+            startup.settings_path,
+            Some(layout.local_app_data_root.join("Mo/Profile/settings-v1.mo"))
+        );
         assert_eq!(
             startup.engine_config.prebuilt_data_dir,
             Some(

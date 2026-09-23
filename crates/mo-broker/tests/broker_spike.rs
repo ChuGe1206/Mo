@@ -5,8 +5,9 @@ use mo_broker::{
 use mo_domain::{EngineCommand, EngineOutput, SessionOptions};
 use mo_engine::{EngineBackend, FakeEvent};
 use mo_ipc::{
-    CURRENT_VERSION, ErrorMessage, FEATURE_KEY_EVENTS, FLAG_ERROR, FLAG_RESPONSE, Frame, Hello,
-    HelloAck, KeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, Snapshot, VersionRange,
+    CURRENT_VERSION, ErrorMessage, FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT, FLAG_ERROR,
+    FLAG_RESPONSE, Frame, Hello, HelloAck, KeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec,
+    SettingsOrigin, SettingsSnapshot, Snapshot, Theme, VersionRange,
 };
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use std::thread;
@@ -94,6 +95,71 @@ fn hello_negotiates_bounded_features_and_assigns_generation() {
     let ack = HelloAck::decode_payload(&response.payload).unwrap();
     assert_eq!(ack.selected, CURRENT_VERSION);
     assert_eq!(ack.features, FEATURE_KEY_EVENTS);
+}
+
+#[test]
+fn negotiated_settings_snapshot_returns_valid_product_defaults() {
+    let mut connection = BrokerConnection::new(73);
+    let payload = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features: FEATURE_KEY_EVENTS | FEATURE_SETTINGS_SNAPSHOT,
+        max_payload_len: MAX_PAYLOAD_LEN as u32,
+    }
+    .encode_payload()
+    .unwrap();
+    let ack = connection
+        .handle(frame(MessageKind::Hello, 0, 0, 1, payload))
+        .unwrap();
+    assert_eq!(
+        HelloAck::decode_payload(&ack.payload).unwrap().features,
+        FEATURE_KEY_EVENTS | FEATURE_SETTINGS_SNAPSHOT
+    );
+
+    let response = connection
+        .handle(frame(MessageKind::GetSettings, 73, 0, 2, Vec::new()))
+        .unwrap();
+    assert_eq!(response.header.kind, MessageKind::SettingsSnapshot);
+    assert_eq!(response.header.session_token, 0);
+    let snapshot = SettingsSnapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(snapshot.revision, 1);
+    assert_eq!(snapshot.origin, SettingsOrigin::Defaults);
+    assert_eq!(snapshot.theme, Theme::System);
+    assert_eq!(snapshot.candidate_page_size, 5);
+    assert!(snapshot.effective_learning);
+}
+
+#[test]
+fn settings_query_requires_negotiation_and_connection_scope() {
+    let mut connection = BrokerConnection::new(74);
+    hello(&mut connection, 1);
+    let response = connection
+        .handle(frame(MessageKind::GetSettings, 74, 0, 2, Vec::new()))
+        .unwrap();
+    assert_eq!(error_code(response), mo_broker::ERROR_BAD_REQUEST);
+
+    let mut negotiated = BrokerConnection::new(75);
+    let payload = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features: FEATURE_SETTINGS_SNAPSHOT,
+        max_payload_len: MAX_PAYLOAD_LEN as u32,
+    }
+    .encode_payload()
+    .unwrap();
+    negotiated
+        .handle(frame(MessageKind::Hello, 0, 0, 1, payload))
+        .unwrap();
+    for (index, (token, body)) in [(1, Vec::new()), (0, vec![1])].into_iter().enumerate() {
+        let response = negotiated
+            .handle(frame(
+                MessageKind::GetSettings,
+                75,
+                token,
+                2 + index as u64,
+                body,
+            ))
+            .unwrap();
+        assert_eq!(error_code(response), mo_broker::ERROR_BAD_REQUEST);
+    }
 }
 
 #[test]

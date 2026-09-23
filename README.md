@@ -15,7 +15,8 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 - 候选定位增加宿主重入后的 context/range/epoch 身份保护，确定性回归证明并修复“布局已失效却重显旧位置”；按键重连和发送共用一份绝对 50 ms 传输预算，不重复续期。它不替代普通宿主或首次转换尾延迟验收，见 ADR 0023。
 - 新增锁定来源的 core + Lua 自构建开发运行时与无输入资源准备扩展，将实际 OpenCC owner 初始化移至 Broker ready 前。v2 固定读取 DLL 旁的 `opencc` 目录，不搜索 cwd/构建 prefix，也不接受用户/共享目录转换资源覆盖；安装模式缺导出/缺资源或只有 v1 均拒绝。签名、安装权限和发行 SBOM 仍待验收，见 ADR 0024/0025。
 - 安装态 deployed schema 与 Lua 已收口到 Program Files 机器素材：staging 与 prebuilt 使用同一只读目录，Lua 只搜索机器 shared 路径、禁用 native module，并拒绝用户 `rime.lua`/`lua`。用户词典与学习状态仍写入 LocalAppData；这不是 Lua 沙箱，机器脚本仍须签名和审查，见 ADR 0039。
-- 新增 `mo-settings` 强类型设置核心：普通设置写入独立的版本化、非执行配置，不接触 Rime YAML/Lua；16 KiB 上限、精确字段、未来版本拒绝、仅文件缺失使用默认值，并以同目录 flush + Windows 原子替换保存。当前只完成模型和存储，尚未接入设置 UI 或真实引擎选项，见 ADR 0041。
+- 新增 `mo-settings` 强类型设置核心：普通设置写入独立的版本化、非执行配置，不接触 Rime YAML/Lua；16 KiB 上限、精确字段、未来版本拒绝、仅文件缺失使用默认值，并以同目录 flush + Windows 原子替换保存。图形设置 UI 与真实引擎选项仍未完成，见 ADR 0041。
+- 设置运行时计划已通过可选、固定 18 字节的 IPC 快照进入 x64/Win32 TIP：Broker 保留 revision 化的最后有效设置，损坏刷新不降级覆盖；客户端只在连接或显式刷新时查询，不增加逐键 I/O。候选窗已应用 System/Light/Dark 主题，其余引擎偏好仍明确未激活，见 ADR 0042。
 - librime 1.17.0 最小 C ABI 声明、安全 RAII 封装与 `EngineBackend` 适配器；Broker 以受控绝对路径加载 DLL，不依赖 PATH 或当前目录，失败时不会回退伪引擎。C/Rust ABI probe 覆盖 51 项布局断言，原生输出在进入 Actor 前全部转为 owned 领域快照。Actor 的当前页候选选择和前后翻页已用真实 rime-ice 验证。
 - 默认 release Broker 只接受无参数的固定安装布局；`--fake`/调用者指定运行时仅在启用 debug assertions 的开发构建可用。TIP 的 x64 路径来自 Known Folder，x86 使用只读 64 位机器注册表回退，不读取环境变量；搬迁素材只允许连接、不允许自动启动。Broker 在创建用户目录、绑定 Pipe 或加载 `rime.dll` 前重新审计 Program Files、完整安装树 owner/DACL、reparse 和文件硬链接数；签名资源、持续防替换、AppContainer 和真实首次启动组合仍未验收，见 ADR 0038。
 - 锁定 rime-ice 2026.06.30，并已用真实 librime 验证 `nihao -> 你好`。

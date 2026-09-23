@@ -16,7 +16,8 @@ public:
     CandidateWindow& operator=(const CandidateWindow&) = delete;
 
     bool Update(HINSTANCE module, HWND owner, const RECT& anchor,
-        const BrokerSnapshot& snapshot, ActionCallback callback, void* context) noexcept;
+        const BrokerSnapshot& snapshot, CandidateTheme theme,
+        ActionCallback callback, void* context) noexcept;
     void Hide() noexcept;
     void Destroy() noexcept;
 
@@ -42,6 +43,7 @@ private:
     int first_row_ = 0;
     int pressed_item_ = -1;
     std::uint64_t pressed_revision_ = 0;
+    CandidateTheme theme_ = CandidateTheme::System;
 };
 
 }  // namespace mo::windows_tip

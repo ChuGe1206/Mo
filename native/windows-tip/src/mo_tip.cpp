@@ -905,7 +905,8 @@ private:
         }
         const auto identity = CaptureCandidateIdentity(snapshot.revision);
         if (!CheckCandidateIdentity(identity)) { return; }
-        const bool shown = candidate_window_.Update(g_module, candidate_owner_, candidate_anchor_, snapshot,
+        const bool shown = candidate_window_.Update(
+            g_module, candidate_owner_, candidate_anchor_, snapshot, broker_.settings().theme,
             CandidateActionCallback, this);
         // Win32 show/owner/capture calls may synchronously reenter the host.
         if (!CheckCandidateIdentity(identity)) { return; }

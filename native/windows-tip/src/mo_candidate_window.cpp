@@ -46,6 +46,31 @@ void Draw(HDC dc, const wchar_t* text, RECT rectangle, COLORREF color) noexcept 
     DrawTextW(dc, text, -1, &rectangle,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 }
+
+struct Palette final {
+    COLORREF background;
+    COLORREF preedit;
+    COLORREF text;
+    COLORREF pressed;
+    COLORREF pressed_text;
+    COLORREF footer;
+    COLORREF footer_text;
+};
+
+Palette ResolvePalette(mo::windows_tip::CandidateTheme theme) noexcept {
+    if (theme == mo::windows_tip::CandidateTheme::Dark) {
+        return {RGB(32, 32, 34), RGB(190, 190, 194), RGB(245, 245, 247),
+            RGB(54, 72, 92), RGB(245, 245, 247), RGB(43, 43, 46), RGB(214, 214, 218)};
+    }
+    if (theme == mo::windows_tip::CandidateTheme::Light) {
+        return {RGB(250, 250, 248), RGB(80, 80, 80), RGB(25, 25, 25),
+            RGB(220, 232, 245), RGB(25, 25, 25), RGB(238, 238, 235), RGB(70, 70, 70)};
+    }
+    return {GetSysColor(COLOR_WINDOW), GetSysColor(COLOR_GRAYTEXT),
+        GetSysColor(COLOR_WINDOWTEXT), GetSysColor(COLOR_HIGHLIGHT),
+        GetSysColor(COLOR_HIGHLIGHTTEXT), GetSysColor(COLOR_BTNFACE),
+        GetSysColor(COLOR_BTNTEXT)};
+}
 }  // namespace
 
 namespace mo::windows_tip {
@@ -53,7 +78,8 @@ namespace mo::windows_tip {
 CandidateWindow::~CandidateWindow() noexcept { Destroy(); }
 
 bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
-    const BrokerSnapshot& snapshot, ActionCallback callback, void* context) noexcept {
+    const BrokerSnapshot& snapshot, CandidateTheme theme,
+    ActionCallback callback, void* context) noexcept {
     try {
         Hide();
         if (snapshot.composition.empty() || snapshot.candidates.empty()
@@ -126,6 +152,7 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
         first_row_ = 0;
         callback_ = callback;
         context_ = context;
+        theme_ = theme;
         if (!SetWindowPos(window_, HWND_TOPMOST, x, y, width, height,
                 SWP_NOACTIVATE | SWP_SHOWWINDOW)) { Hide(); return false; }
         InvalidateRect(window_, nullptr, FALSE);
@@ -173,25 +200,27 @@ void CandidateWindow::Paint() noexcept {
     if (dc == nullptr) { return; }
     RECT client{};
     GetClientRect(window_, &client);
-    Fill(dc, client, RGB(250, 250, 248));
+    const Palette palette = ResolvePalette(theme_);
+    Fill(dc, client, palette.background);
     const HGDIOBJ previous_font = SelectObject(dc,
         font_ != nullptr ? font_ : GetStockObject(DEFAULT_GUI_FONT));
     SetBkMode(dc, TRANSPARENT);
-    Draw(dc, preedit_, {padding_, 0, client.right - padding_, header_height_}, RGB(80, 80, 80));
+    Draw(dc, preedit_, {padding_, 0, client.right - padding_, header_height_}, palette.preedit);
     for (int index = 0; index < visible_rows_; ++index) {
         const int row = first_row_ + index;
         RECT rectangle{0, header_height_ + index * row_height_, client.right,
             header_height_ + (index + 1) * row_height_};
-        if (row == pressed_item_) { Fill(dc, rectangle, RGB(220, 232, 245)); }
+        if (row == pressed_item_) { Fill(dc, rectangle, palette.pressed); }
         rectangle.left = padding_;
         rectangle.right -= padding_;
-        Draw(dc, rows_[static_cast<std::size_t>(row)], rectangle, RGB(25, 25, 25));
+        Draw(dc, rows_[static_cast<std::size_t>(row)], rectangle,
+            row == pressed_item_ ? palette.pressed_text : palette.text);
     }
     const int footer_top = header_height_ + visible_rows_ * row_height_;
-    Fill(dc, {0, footer_top, client.right, client.bottom}, RGB(238, 238, 235));
-    Draw(dc, L"‹ 上一页", {padding_, footer_top, client.right / 2, client.bottom}, RGB(70, 70, 70));
+    Fill(dc, {0, footer_top, client.right, client.bottom}, palette.footer);
+    Draw(dc, L"‹ 上一页", {padding_, footer_top, client.right / 2, client.bottom}, palette.footer_text);
     Draw(dc, L"下一页 ›", {client.right / 2 + padding_, footer_top,
-        client.right - padding_, client.bottom}, RGB(70, 70, 70));
+        client.right - padding_, client.bottom}, palette.footer_text);
     SelectObject(dc, previous_font);
     EndPaint(window_, &paint);
 }

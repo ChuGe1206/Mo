@@ -13,6 +13,9 @@ Writes use a new file in the same directory, flush it, then atomically replace
 the destination (`MoveFileExW` with replace/write-through on Windows). The future
 settings frontend owns parent-directory creation and user-facing error recovery.
 
-This crate currently establishes storage and validation only. Applying schema or
-Rime options, generating a signed machine data slot, and the graphical settings
-frontend remain separate acceptance stages.
+`SettingsRuntime` also keeps a revisioned last-known-good snapshot and separates
+presentation settings from unapplied engine preferences. The Broker exposes that
+plan through an optional fixed-size IPC snapshot; the native frontend currently
+applies only the candidate theme. Applying schema or Rime options, generating a
+signed machine data slot, automatic refresh notification, and the graphical
+settings frontend remain separate acceptance stages.

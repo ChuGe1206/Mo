@@ -14,18 +14,26 @@ fn main() -> std::io::Result<()> {
             None,
         ),
         StartupMode::Rime(startup) => {
-            mo_broker::windows_named_pipe::serve_pool_with_backend_factory(
-                pool,
-                move || {
-                    let engine = mo_rime::Engine::load(startup.engine_config, startup.dll_path)?;
-                    if startup.require_prepared_resources {
-                        mo_rime::RimeBackend::with_prepared_resources(engine)
-                    } else {
-                        mo_rime::RimeBackend::with_resource_anchor(engine)
-                    }
-                },
-                None,
-            )
+            let startup = *startup;
+            let settings_path = startup.settings_path;
+            let factory = move || {
+                let engine = mo_rime::Engine::load(startup.engine_config, startup.dll_path)?;
+                if startup.require_prepared_resources {
+                    mo_rime::RimeBackend::with_prepared_resources(engine)
+                } else {
+                    mo_rime::RimeBackend::with_resource_anchor(engine)
+                }
+            };
+            if let Some(settings_path) = settings_path {
+                mo_broker::windows_named_pipe::serve_pool_with_backend_factory_and_settings(
+                    pool,
+                    factory,
+                    settings_path,
+                    None,
+                )
+            } else {
+                mo_broker::windows_named_pipe::serve_pool_with_backend_factory(pool, factory, None)
+            }
         }
     }
 }

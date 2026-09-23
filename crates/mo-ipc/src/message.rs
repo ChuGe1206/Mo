@@ -4,6 +4,148 @@ use crate::{
 
 pub const FEATURE_KEY_EVENTS: u64 = 1 << 0;
 pub const FEATURE_CANDIDATE_ACTIONS: u64 = 1 << 1;
+pub const FEATURE_SETTINGS_SNAPSHOT: u64 = 1 << 2;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SettingsOrigin {
+    Defaults,
+    Stored,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InputScheme {
+    FullPinyin,
+    DoublePinyinNatural,
+    DoublePinyinFlypy,
+    DoublePinyinMicrosoft,
+    DoublePinyinSogou,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CharacterSet {
+    Simplified,
+    Traditional,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Theme {
+    System,
+    Light,
+    Dark,
+}
+
+/// Fixed, bounded projection of Mo settings. Engine preferences are included
+/// as desired state; this payload does not claim that librime applied them.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SettingsSnapshot {
+    pub revision: u64,
+    pub origin: SettingsOrigin,
+    pub input_scheme: InputScheme,
+    pub character_set: CharacterSet,
+    pub candidate_page_size: u8,
+    pub theme: Theme,
+    pub show_comments: bool,
+    pub emoji: bool,
+    pub local_learning: bool,
+    pub privacy_mode: bool,
+    pub effective_learning: bool,
+}
+
+impl PayloadCodec for SettingsSnapshot {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.validate()?;
+        let mut encoder = Encoder::new();
+        encoder.put_u64(self.revision);
+        encoder.put_u8(match self.origin {
+            SettingsOrigin::Defaults => 0,
+            SettingsOrigin::Stored => 1,
+        });
+        encoder.put_u8(match self.input_scheme {
+            InputScheme::FullPinyin => 0,
+            InputScheme::DoublePinyinNatural => 1,
+            InputScheme::DoublePinyinFlypy => 2,
+            InputScheme::DoublePinyinMicrosoft => 3,
+            InputScheme::DoublePinyinSogou => 4,
+        });
+        encoder.put_u8(match self.character_set {
+            CharacterSet::Simplified => 0,
+            CharacterSet::Traditional => 1,
+        });
+        encoder.put_u8(self.candidate_page_size);
+        encoder.put_u8(match self.theme {
+            Theme::System => 0,
+            Theme::Light => 1,
+            Theme::Dark => 2,
+        });
+        encoder.put_bool(self.show_comments);
+        encoder.put_bool(self.emoji);
+        encoder.put_bool(self.local_learning);
+        encoder.put_bool(self.privacy_mode);
+        encoder.put_bool(self.effective_learning);
+        Ok(encoder.finish())
+    }
+
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let mut decoder = Decoder::new(payload);
+        let value = Self {
+            revision: decoder.get_u64()?,
+            origin: match decoder.get_u8()? {
+                0 => SettingsOrigin::Defaults,
+                1 => SettingsOrigin::Stored,
+                _ => return Err(CodecError::InvalidValue("unknown settings origin")),
+            },
+            input_scheme: match decoder.get_u8()? {
+                0 => InputScheme::FullPinyin,
+                1 => InputScheme::DoublePinyinNatural,
+                2 => InputScheme::DoublePinyinFlypy,
+                3 => InputScheme::DoublePinyinMicrosoft,
+                4 => InputScheme::DoublePinyinSogou,
+                _ => return Err(CodecError::InvalidValue("unknown input scheme")),
+            },
+            character_set: match decoder.get_u8()? {
+                0 => CharacterSet::Simplified,
+                1 => CharacterSet::Traditional,
+                _ => return Err(CodecError::InvalidValue("unknown character set")),
+            },
+            candidate_page_size: decoder.get_u8()?,
+            theme: match decoder.get_u8()? {
+                0 => Theme::System,
+                1 => Theme::Light,
+                2 => Theme::Dark,
+                _ => return Err(CodecError::InvalidValue("unknown settings theme")),
+            },
+            show_comments: decoder.get_bool()?,
+            emoji: decoder.get_bool()?,
+            local_learning: decoder.get_bool()?,
+            privacy_mode: decoder.get_bool()?,
+            effective_learning: decoder.get_bool()?,
+        };
+        decoder.finish()?;
+        value.validate()?;
+        Ok(value)
+    }
+}
+
+impl SettingsSnapshot {
+    fn validate(&self) -> Result<(), CodecError> {
+        if self.revision == 0 {
+            return Err(CodecError::InvalidValue(
+                "settings revision must be non-zero",
+            ));
+        }
+        if !(3..=9).contains(&self.candidate_page_size) {
+            return Err(CodecError::InvalidValue(
+                "candidate page size is outside the product range",
+            ));
+        }
+        if self.effective_learning != (self.local_learning && !self.privacy_mode) {
+            return Err(CodecError::InvalidValue(
+                "effective learning does not match the privacy policy",
+            ));
+        }
+        Ok(())
+    }
+}
 
 /// A UI action against exactly the candidate page displayed by the caller.
 /// Existing Snapshot encoding is unchanged; this additive message requires

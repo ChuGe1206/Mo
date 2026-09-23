@@ -12,6 +12,7 @@ latency-trace = []
 mo-domain = { path = "../mo-domain" }
 mo-engine = { path = "../mo-engine" }
 mo-ipc = { path = "../mo-ipc" }
+mo-settings = { path = "../mo-settings" }
 
 [target.'cfg(windows)'.dependencies]
 mo-rime = { path = "../mo-rime" }
