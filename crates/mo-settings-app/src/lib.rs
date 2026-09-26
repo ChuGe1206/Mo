@@ -4,8 +4,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use mo_settings::{
-    LoadedSettings, Settings, StoreError, Theme, ensure_installed_settings_directory,
-    installed_settings_path, load, save_atomic,
+    CharacterSet, InputScheme, LoadedSettings, Settings, StoreError, Theme,
+    ensure_installed_settings_directory, installed_settings_path, load, save_atomic,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -78,13 +78,30 @@ impl SettingsController {
         matches!(self.health, DocumentHealth::Ready)
     }
 
-    /// Saves the only setting currently applied by the native frontend.
-    /// Other preferences are preserved byte-for-byte at the typed model level.
+    /// Saves the presentation theme without changing engine preferences.
     pub fn save_theme(&mut self, theme: Theme) -> Result<(), ControllerError> {
         if !self.can_save_changes() {
             return Err(ControllerError::RecoveryRequired);
         }
         let mut changed = self.settings.clone();
+        changed.theme = theme;
+        self.persist(changed)
+    }
+
+    /// Saves the implemented engine preferences and theme as one atomic document.
+    /// Remaining planned preferences are preserved unchanged.
+    pub fn save_primary_preferences(
+        &mut self,
+        input_scheme: InputScheme,
+        character_set: CharacterSet,
+        theme: Theme,
+    ) -> Result<(), ControllerError> {
+        if !self.can_save_changes() {
+            return Err(ControllerError::RecoveryRequired);
+        }
+        let mut changed = self.settings.clone();
+        changed.input_scheme = input_scheme;
+        changed.character_set = character_set;
         changed.theme = theme;
         self.persist(changed)
     }
@@ -209,6 +226,37 @@ mod tests {
         assert_eq!(saved.candidate_page_size, 8);
         assert!(!saved.emoji);
         assert_eq!(saved.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn saving_primary_preferences_is_atomic_and_preserves_unimplemented_fields() {
+        let fixture = Fixture::new();
+        let path = installed_settings_path(&fixture.0);
+        ensure_installed_settings_directory(&fixture.0).unwrap();
+        let original = Settings {
+            candidate_page_size: 8,
+            emoji: false,
+            local_learning: false,
+            ..Settings::default()
+        };
+        save_atomic(&path, &original).unwrap();
+        let mut controller = SettingsController::open(&fixture.0);
+        controller
+            .save_primary_preferences(
+                InputScheme::DoublePinyinFlypy,
+                CharacterSet::Traditional,
+                Theme::Dark,
+            )
+            .unwrap();
+        let LoadedSettings::Stored(saved) = load(&path).unwrap() else {
+            panic!("stored")
+        };
+        assert_eq!(saved.input_scheme, InputScheme::DoublePinyinFlypy);
+        assert_eq!(saved.character_set, CharacterSet::Traditional);
+        assert_eq!(saved.theme, Theme::Dark);
+        assert_eq!(saved.candidate_page_size, 8);
+        assert!(!saved.emoji);
+        assert!(!saved.local_learning);
     }
 
     #[test]

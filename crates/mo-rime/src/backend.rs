@@ -38,8 +38,8 @@ impl RimeBackend {
     /// Keeping an owner avoids unloading/reloading them when all frontend sessions
     /// disappear. This session is never dispatched, committed, cleared, exposed,
     /// or recycled as a frontend session. It does not warm the first translation.
-    /// Currently only the fixed default schema is supported; schema selection
-    /// requires revisiting this resource policy.
+    /// The anchor remains on `rime_ice`; selected double-pinyin sessions use
+    /// the same pinned rime-ice dictionary pack and their own schema state.
     pub fn with_resource_anchor(engine: Engine) -> Result<Self, Error> {
         let id = engine.create_session_id()?;
         Ok(Self {
@@ -90,7 +90,7 @@ pub struct RimeBackendSession {
 pub enum RimeBackendError {
     /// The safe librime boundary rejected a native operation.
     Native(Error),
-    /// Session options require API functions outside the committed Phase 0 ABI prefix.
+    /// Only the pinned rime-ice schemas and traditionalization option are allowed.
     UnsupportedSessionOptions,
     /// The current minimal librime API prefix cannot represent this command.
     UnsupportedCommand(&'static str),
@@ -121,7 +121,7 @@ impl fmt::Display for RimeBackendError {
         match self {
             Self::Native(error) => write!(formatter, "librime operation failed: {error}"),
             Self::UnsupportedSessionOptions => formatter.write_str(
-                "schema and option selection require librime API slots not enabled in Phase 0",
+                "session requests a schema or option outside Mo's pinned rime-ice allowlist",
             ),
             Self::UnsupportedCommand(command) => {
                 write!(
@@ -182,12 +182,37 @@ impl EngineBackend for RimeBackend {
     type Error = RimeBackendError;
 
     fn create_session(&mut self, options: SessionOptions) -> Result<Self::Session, Self::Error> {
-        if options.schema_id.is_some() || !options.options.is_empty() {
+        if options.schema_id.as_deref().is_some_and(|schema| {
+            !matches!(
+                schema,
+                "rime_ice"
+                    | "double_pinyin"
+                    | "double_pinyin_flypy"
+                    | "double_pinyin_mspy"
+                    | "double_pinyin_sogou"
+            )
+        }) || options
+            .options
+            .keys()
+            .any(|name| name != "traditionalization")
+        {
             return Err(RimeBackendError::UnsupportedSessionOptions);
         }
-        Ok(RimeBackendSession {
-            id: self.engine.create_session_id()?,
-        })
+        let id = self.engine.create_session_id()?;
+        let configured = (|| -> Result<(), Error> {
+            if let Some(schema) = options.schema_id.as_deref() {
+                self.engine.select_schema_id(id, schema)?;
+            }
+            for (name, value) in &options.options {
+                self.engine.set_option_id(id, name, *value)?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = configured {
+            let _ = self.engine.destroy_session_id(id);
+            return Err(error.into());
+        }
+        Ok(RimeBackendSession { id })
     }
 
     fn apply(

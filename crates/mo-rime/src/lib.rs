@@ -254,6 +254,9 @@ struct Functions {
     free_context: unsafe extern "C" fn(*mut sys::RimeContext) -> sys::RimeBool,
     get_status: unsafe extern "C" fn(sys::RimeSessionId, *mut sys::RimeStatus) -> sys::RimeBool,
     free_status: unsafe extern "C" fn(*mut sys::RimeStatus) -> sys::RimeBool,
+    set_option: sys::SetOptionFn,
+    get_option: sys::GetOptionFn,
+    select_schema: sys::SelectSchemaFn,
     select_candidate_on_current_page: sys::SelectCandidateOnCurrentPageFn,
     change_page: sys::ChangePageFn,
 }
@@ -302,6 +305,9 @@ impl Functions {
             free_context: required!(free_context),
             get_status: required!(get_status),
             free_status: required!(free_status),
+            set_option: unsafe { Self::load_set_option(raw_api, advertised) },
+            get_option: unsafe { Self::load_get_option(raw_api, advertised) },
+            select_schema: unsafe { Self::load_select_schema(raw_api, advertised) },
             // SAFETY: the caller supplies a live table; the helper checks each
             // complete field range before reading optional tail members.
             select_candidate_on_current_page: unsafe {
@@ -330,6 +336,48 @@ impl Functions {
                 (*api.cast::<sys::RimeApiCandidateExtension>()).select_candidate_on_current_page
             )
             .read()
+        }
+    }
+
+    unsafe fn load_set_option(api: *const sys::RimeApi, advertised: c_int) -> sys::SetOptionFn {
+        if !sys::advertised_range_available(
+            advertised,
+            sys::RIME_API_SET_OPTION_OFFSET,
+            size_of::<sys::SetOptionFn>(),
+        ) {
+            return None;
+        }
+        unsafe {
+            std::ptr::addr_of!((*api.cast::<sys::RimeApiCandidateExtension>()).set_option).read()
+        }
+    }
+
+    unsafe fn load_get_option(api: *const sys::RimeApi, advertised: c_int) -> sys::GetOptionFn {
+        if !sys::advertised_range_available(
+            advertised,
+            sys::RIME_API_GET_OPTION_OFFSET,
+            size_of::<sys::GetOptionFn>(),
+        ) {
+            return None;
+        }
+        unsafe {
+            std::ptr::addr_of!((*api.cast::<sys::RimeApiCandidateExtension>()).get_option).read()
+        }
+    }
+
+    unsafe fn load_select_schema(
+        api: *const sys::RimeApi,
+        advertised: c_int,
+    ) -> sys::SelectSchemaFn {
+        if !sys::advertised_range_available(
+            advertised,
+            sys::RIME_API_SELECT_SCHEMA_OFFSET,
+            size_of::<sys::SelectSchemaFn>(),
+        ) {
+            return None;
+        }
+        unsafe {
+            std::ptr::addr_of!((*api.cast::<sys::RimeApiCandidateExtension>()).select_schema).read()
         }
     }
 
@@ -461,6 +509,37 @@ impl Engine {
             Ok(())
         } else {
             Err(Error::NativeCallFailed("destroy_session"))
+        }
+    }
+
+    fn select_schema_id(&self, id: sys::RimeSessionId, schema: &str) -> Result<(), Error> {
+        let select = self
+            .functions
+            .select_schema
+            .ok_or(Error::MissingFunction("select_schema"))?;
+        let schema = c_string("schema_id", schema.to_owned())?;
+        if sys::from_rime_bool(unsafe { select(id, schema.as_ptr()) }) {
+            Ok(())
+        } else {
+            Err(Error::NativeCallFailed("select_schema"))
+        }
+    }
+
+    fn set_option_id(&self, id: sys::RimeSessionId, name: &str, value: bool) -> Result<(), Error> {
+        let set = self
+            .functions
+            .set_option
+            .ok_or(Error::MissingFunction("set_option"))?;
+        let get = self
+            .functions
+            .get_option
+            .ok_or(Error::MissingFunction("get_option"))?;
+        let name = c_string("option_name", name.to_owned())?;
+        unsafe { set(id, name.as_ptr(), sys::to_rime_bool(value)) };
+        if sys::from_rime_bool(unsafe { get(id, name.as_ptr()) }) == value {
+            Ok(())
+        } else {
+            Err(Error::NativeCallFailed("set_option"))
         }
     }
 
@@ -637,6 +716,16 @@ impl Session<'_> {
 
     pub fn id(&self) -> sys::RimeSessionId {
         self.id
+    }
+
+    /// Selects a deployed schema for this live session.
+    pub fn select_schema(&mut self, schema: &str) -> Result<(), Error> {
+        self.engine.select_schema_id(self.id, schema)
+    }
+
+    /// Sets a native boolean switch and verifies its observable value.
+    pub fn set_option(&mut self, name: &str, value: bool) -> Result<(), Error> {
+        self.engine.set_option_id(self.id, name, value)
     }
 
     pub fn process_key(&mut self, keycode: c_int, modifiers: c_int) -> bool {
@@ -873,6 +962,8 @@ unsafe fn copy_optional_string(pointer: *const c_char) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mo_domain::SessionOptions;
+    use mo_engine::EngineBackend;
     use std::ptr;
 
     static TEST_SERIAL: Mutex<()> = Mutex::new(());
@@ -887,6 +978,7 @@ mod tests {
         last_key: Option<(c_int, c_int)>,
         last_candidate: Option<usize>,
         last_page_backward: Option<bool>,
+        last_option: Option<bool>,
     }
 
     impl FakeState {
@@ -899,6 +991,7 @@ mod tests {
                 last_key: None,
                 last_candidate: None,
                 last_page_backward: None,
+                last_option: None,
             }
         }
 
@@ -910,6 +1003,7 @@ mod tests {
             self.last_key = None;
             self.last_candidate = None;
             self.last_page_backward = None;
+            self.last_option = None;
         }
     }
 
@@ -997,6 +1091,30 @@ mod tests {
         state.calls.push("change_page");
         state.last_page_backward = Some(sys::from_rime_bool(backward));
         sys::to_rime_bool(!sys::from_rime_bool(backward))
+    }
+
+    unsafe extern "C" fn fake_select_schema(
+        _: sys::RimeSessionId,
+        _: *const c_char,
+    ) -> sys::RimeBool {
+        record("select_schema");
+        sys::RIME_TRUE
+    }
+
+    unsafe extern "C" fn fake_set_option(
+        _: sys::RimeSessionId,
+        _: *const c_char,
+        value: sys::RimeBool,
+    ) {
+        let mut state = FAKE.lock().unwrap();
+        state.calls.push("set_option");
+        state.last_option = Some(sys::from_rime_bool(value));
+    }
+
+    unsafe extern "C" fn fake_get_option(_: sys::RimeSessionId, _: *const c_char) -> sys::RimeBool {
+        let mut state = FAKE.lock().unwrap();
+        state.calls.push("get_option");
+        sys::to_rime_bool(state.last_option.unwrap_or(false))
     }
 
     unsafe extern "C" fn fake_get_commit(
@@ -1205,6 +1323,9 @@ mod tests {
             },
             select_candidate_on_current_page: Some(fake_select_candidate),
             change_page: Some(fake_change_page),
+            select_schema: Some(fake_select_schema),
+            set_option: Some(fake_set_option),
+            get_option: Some(fake_get_option),
             ..sys::RimeApiCandidateExtension::default()
         }
     }
@@ -1243,6 +1364,75 @@ mod tests {
                 .unwrap()
                 .change_page
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn schema_and_option_slots_are_checked_independently() {
+        let mut api = fake_candidate_api();
+        api.prefix.data_size = sys::RIME_API_SET_OPTION_OFFSET as c_int
+            + size_of::<sys::SetOptionFn>() as c_int
+            - size_of::<c_int>() as c_int
+            - 1;
+        let loaded = unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }.unwrap();
+        assert!(loaded.set_option.is_none());
+        assert!(loaded.get_option.is_none());
+        assert!(loaded.select_schema.is_none());
+        api.prefix.data_size += 1;
+        let loaded = unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }.unwrap();
+        assert!(loaded.set_option.is_some());
+        assert!(loaded.get_option.is_none());
+        api.prefix.data_size = sys::RIME_API_CANDIDATE_DATA_SIZE;
+        let loaded = unsafe { Functions::load(std::ptr::addr_of_mut!(api).cast()) }.unwrap();
+        assert!(loaded.get_option.is_some());
+        assert!(loaded.select_schema.is_some());
+    }
+
+    #[test]
+    fn backend_configures_session_and_reclaims_failed_configuration() {
+        let _serial = TEST_SERIAL.lock().unwrap();
+        FAKE.lock().unwrap().reset();
+        let mut api = fake_candidate_api();
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api.prefix) }
+                .unwrap();
+        let mut backend = RimeBackend::new(engine);
+        let options = SessionOptions::new()
+            .with_schema("double_pinyin_flypy")
+            .with_option("traditionalization", true);
+        let session = backend.create_session(options).unwrap();
+        backend.destroy_session(session).unwrap();
+        assert_eq!(FAKE.lock().unwrap().last_option, Some(true));
+        assert_eq!(
+            &FAKE.lock().unwrap().calls[2..7],
+            &[
+                "create_session",
+                "select_schema",
+                "set_option",
+                "get_option",
+                "destroy_session"
+            ]
+        );
+        assert!(matches!(
+            backend.create_session(SessionOptions::new().with_schema("unknown")),
+            Err(RimeBackendError::UnsupportedSessionOptions)
+        ));
+        drop(backend);
+
+        FAKE.lock().unwrap().reset();
+        let mut old = fake_api();
+        let engine =
+            unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut old) }.unwrap();
+        let mut backend = RimeBackend::new(engine);
+        assert!(matches!(
+            backend.create_session(SessionOptions::new().with_schema("rime_ice")),
+            Err(RimeBackendError::Native(Error::MissingFunction(
+                "select_schema"
+            )))
+        ));
+        assert_eq!(
+            &FAKE.lock().unwrap().calls[2..4],
+            &["create_session", "destroy_session"]
         );
     }
 

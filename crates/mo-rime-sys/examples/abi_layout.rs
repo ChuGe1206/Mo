@@ -65,6 +65,26 @@ fn main() {
     field_offset!(
         "RimeApi.candidate_extension",
         RimeApiCandidateExtension,
+        set_option
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        get_option
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        reserved_before_schema
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
+        select_schema
+    );
+    field_offset!(
+        "RimeApi.candidate_extension",
+        RimeApiCandidateExtension,
         reserved_before_select
     );
     field_offset!(

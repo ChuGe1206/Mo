@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-26
+- 快照日期：2026-09-27
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通，项目仍不可安装或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -9,7 +9,7 @@
 - Cargo workspace 包含 `mo-domain`、`mo-engine`、`mo-ipc`、`mo-windows-pipe`、`mo-windows-platform`、`mo-broker`、`mo-rime-sys`、`mo-rime`。
 - `cargo +stable fmt --all -- --check`：通过。
 - `cargo +stable clippy --workspace --all-targets -- -D warnings`：通过。
-- `cargo +stable test --workspace`：通过，共 144 个运行时测试和 1 个 compile-fail 契约测试；新增设置中心控制器覆盖首次无落盘、字段保留、显式损坏恢复与外部原子替换。显式 `mo-broker/latency-trace` 仍保留独立分支；构建高负载时曾有启动 watchdog fixture marker 未到达的历史负向结果，保留于 ADR 0024。
+- `cargo +stable test --workspace`：通过；新增设置会话映射、FFI 尾槽/失败回收及设置中心原子保存测试。显式 `mo-broker/latency-trace` 仍保留独立分支；构建高负载时曾有启动 watchdog fixture marker 未到达的历史负向结果，保留于 ADR 0024。
 - 默认 release 的 workspace/all-targets Clippy 与 Broker 启动负向 smoke：通过；CI 已新增独立约束关闭 debug assertions 的安装模式分支。
 - `cargo +stable doc --workspace --no-deps`：通过。
 - 默认/诊断 feature 的 debug/release 四种 workspace/all-targets Clippy 均通过；默认及 release feature 的计时 envelope 以编译期断言保证零大小，默认不启动 logger。TIP 的 CMake 路径本机未运行，其证据来自 MSBuild；core + Lua runtime 已用锁定 CMake 3.31.10/VS2022 完成全新目录构建。
@@ -20,13 +20,14 @@
 
 - 上游：librime 1.17.0，commit `33e78140250125871856cdc5b42ddc6a5fcd3cd4`。
 - 官方 x64 验证资产 SHA-256：`7478c7caa4ff6b37de86daba1f7ce4a994a4f5ba24872a820fb2b3a9b01fed15`。
-- `tools/abi-probe/compare.ps1`：官方 C header 与 Rust 声明的 51 项 size/alignment/offset/data_size 断言一致，包含可选当前页选择/翻页 API 尾部；本机 FFI 布局验证目标为 x64 Broker。
+- `tools/abi-probe/compare.ps1`：官方 C header 与 Rust 声明的 55 项 size/alignment/offset/data_size 断言一致，包含可选 schema/option、当前页选择/翻页 API 尾部；本机 FFI 布局验证目标为 x64 Broker。i686 Rust target 未安装，本次 x86 Rust ABI 对照未运行。
 - 安全封装确保 Engine/Session 单线程、Session 借用 Engine、所有 commit/context/status native 输出严格配对 `free_*`，并将返回值复制为 owned Rust snapshot。
-- `RimeBackend` 已实现 Engine Actor 后端契约：私有 native session id 不越过适配层，key/commit/clear、修饰位映射、composition UTF-8 byte offset 校验、候选注释/标签与状态投影均有确定性伪 API 测试。当前页零基索引选择与前后翻页已通过安全可选 API 接入 Actor，旧表/截断字段/空函数指针明确报告缺失，不破坏基本按键输入；schema/options 仍显式返回 unsupported。
+- `RimeBackend` 已实现 Engine Actor 后端契约：私有 native session id 不越过适配层，key/commit/clear、修饰位映射、composition UTF-8 byte offset 校验、候选注释/标签与状态投影均有确定性伪 API 测试。当前页零基索引选择与前后翻页已通过安全可选 API 接入 Actor；五种锁定 schema 与 `traditionalization` 已按会话配置，未知值、旧表/截断字段/空槽均明确失败并回收未完成会话，见 ADR 0045。
 - `candidate_smoke` 已对真实 librime/rime-ice 验证 `ni` 前后翻页恢复原页、选择当前页第二候选及准确 commit；该直接 API 检查已纳入完整真实引擎 smoke，并只使用可回收的独立用户目录。
 - Broker 后端新增一个私有、无输入的 native 资源保活会话，永不承载用户 key/commit/clear、没有 wire token，用户会话仍各自创建/销毁。两个伪 API 测试验证隔离/销毁顺序与创建失败回收；保活+预编译的直接 API 对照中，首次转换约 27 ms，后续新会话首键约 0.7–1.7 ms，不是压力或机器冷启动通过。
 - `Engine::load` 已用绝对 canonical DLL 路径和受限 `LoadLibraryExW` 搜索目录实现运行时加载；不读取 PATH/当前目录，解析 `rime_get_api` 及同一 DLL 的可选版本化 Mo 准备导出，并保证 finalize 后才卸载 DLL。当前只解析 v2、不回退 v1；相对路径、错误文件名和缺失文件均 fail-closed，要求准备的模式不允许缺导出回退。
 - 官方 librime + 锁定 rime-ice 完成真实部署和 `nihao -> 你好` 候选及提交验证。
+- 锁定 runtime 的 `settings_smoke` 已用独立用户目录验证五种方案 × 两种简繁模式全部创建、首键和销毁；全拼 `zhongguo` 实际候选在简/繁分别有“中国”/“中國”。
 - 正式发行不得复用该官方预构建 DLL；原因见 G4。
 
 ## G2：TSF 与 IPC——部分通过
@@ -49,9 +50,9 @@
 - ADR 0029 补齐安装态 Broker bootstrap：只有精确 `Program Files\Mo\tip\<arch>\mo-tip.dll` 获得固定相邻 Broker 的进程创建权限，搬迁/仓库布局保持 connect-only。无 shell/参数/继承 handle/控制台启动，Broker image reparse 拒绝；x86 对不可用的 ProgramFilesX64 Known Folder 只读 HKLM 64 位视图回退。端点缺失才启动，2 秒进程节流与 16 槽 first-instance 绑定保证唯一存活 Broker；并发宿主仍可能短暂创建多个 contender。连接后的 SID/PID/文件身份校验不变。
 - release Broker 在完整验证机器资产后只逐级创建精确的 `LocalAppData\Mo\Rime`，拒绝路径逃逸、文件占位、每一级 reparse point 以及已有用户 `rime.lua`/`lua`；不再创建用户 `build`。staging 与 prebuilt 都固定到 Program Files 机器目录，用户目录只承载词典和学习状态。debug/release 安装布局测试、双架构 launcher 探针、fake 3 轮/架构故障矩阵均通过，见 ADR 0039。
 - 安装模式将 DLL/shared/prebuilt/staging/相邻 OpenCC 固定在机器安装根，只把 user 固定在当前用户根；缺少目录、default/schema 标记或六份必要转换文件时在 Pipe 创建前退出，不自动部署或回退。完整布局 fixture 已验证字段隔离及每份转换文件缺失拒绝；release 子进程已证明诊断参数和仓库映像被拒绝。运行时 ACL/reparse/硬链接门已实现并以真实 Program Files 只读基线、SDDL/硬链接负例验证；真实安装资产加载、签名、持续 handle 防替换仍未完成。
-- `mo-settings` 已建立普通用户设置的强类型 v1 合同：固定 Known Folder 相对路径、16 KiB 上限、精确枚举/布尔/候选范围、确定性编码、未来版本与未知/缺失/重复字段 fail-closed；仅文件不存在时采用默认值。同目录临时文件在 flush 后用 Windows replace/write-through 原子替换，基础测试覆盖首次保存、覆盖、碰撞和损坏恢复边界。图形前端已在 ADR 0043 接入，librime 引擎选项仍未接入，见 ADR 0041。
-- 设置运行时计划现已拆分 presentation 与未应用的 engine preferences；Broker 维护 revision 化最后有效快照，并以协商式 `GetSettings`/固定 18 字节 payload 提供给同用户 TIP。运行中损坏返回稳定错误且不覆盖旧计划，debug Broker 不读取真实用户设置。x64/Win32 客户端在连接及显式刷新时双重校验快照，查询不进入逐键热路径；候选窗实际应用 System/Light/Dark 主题。138 项 Rust 测试、双架构 `/W4 /WX` 编译及 IPC/连接池/Edit Session/两次崩溃恢复探针通过，见 ADR 0042。
-- 首版独立 Windows 图形设置中心已由 Rust + 原生 Win32 实现。当前只开放已由运行时验证的候选窗主题；输入方案、简繁、候选数、注释、Emoji、学习与隐私选项只读显示并标注仍在接入。首次打开不创建文件，保存逐级验证/创建固定 LocalAppData 目录并原子替换；损坏或未来版本文件禁用普通保存，只有用户明确“恢复默认设置”才覆盖。GUI 未在开发主机启动，未创建真实用户设置，见 ADR 0043。
+- `mo-settings` 已建立普通用户设置的强类型 v1 合同：固定 Known Folder 相对路径、16 KiB 上限、精确枚举/布尔/候选范围、确定性编码、未来版本与未知/缺失/重复字段 fail-closed；仅文件不存在时采用默认值。同目录临时文件在 flush 后用 Windows replace/write-through 原子替换，基础测试覆盖首次保存、覆盖、碰撞和损坏恢复边界。图形前端已在 ADR 0043 接入；方案和简繁的会话初始配置见 ADR 0045，其余引擎选项仍未接入。
+- 设置运行时计划拆分 presentation 与 engine preferences；其中方案/简繁现已在新建会话应用，其余引擎偏好仍未接入。Broker 维护 revision 化最后有效快照，并以协商式 `GetSettings`/固定 18 字节 payload 提供给同用户 TIP。运行中损坏返回稳定错误且不覆盖旧计划，debug Broker 不读取真实用户设置。x64/Win32 客户端在连接及显式刷新时双重校验快照，查询不进入逐键热路径；候选窗实际应用 System/Light/Dark 主题。协议与会话映射见 ADR 0042/0045。
+- 首版独立 Windows 图形设置中心已由 Rust + 原生 Win32 实现。现在开放候选窗主题、五种输入方案和简繁模式，三个选项一次原子保存；后两项在新建 Broker 会话时生效，不迁移当前预编辑。候选数、注释、Emoji、学习与隐私仍未接入/只读。首次打开不创建文件，保存逐级验证/创建固定 LocalAppData 目录并原子替换；损坏或未来版本文件禁用普通保存，只有用户明确“恢复默认设置”才覆盖。GUI 未在开发主机启动，未创建真实用户设置，见 ADR 0043/0045。
 - 设置保存成功后会向当前桌面的已激活 TIP 发出无数据的注册消息，TIP 在非按键消息路径向已认证 Broker 查询最新设置。主题 revision 变化时重绘当前候选窗；旧 Broker 未协商设置 feature 或运行时文档损坏时保留会话与最后有效主题，传输歧义才断开并清除未提交预编辑。x64/Win32 多接收器广播与生命周期探针通过；真实安装宿主的即时效果待 VM 验收，见 ADR 0044。
 - Broker 已移除连接内的诊断 ASCII echo 状态：wire session token 映射到 Engine Actor 的 generation-safe token，创建、按键和销毁全部经过可替换后端的 Actor；跨 session snapshot 使用同一全局 revision 顺序，断开时回收仍存活的引擎会话。真实启动使用 `RimeBackend`，确定性的 `FakeBackend` 只保留为显式测试模式。
 - Engine Actor 位于进程级专用线程，thread-affine librime backend 在线程内创建和销毁。生产 Broker 改为 16 个独立命名、单实例的受保护管道槽，每槽一个有界工作线程，共享 Actor；全部槽绑定及全部工作线程创建成功后才开始处理。原始 server handle 保留至槽结束，accepted stream 使用同一内核对象的副本，断开客户端后可复用而不重建名称。仍不授予客户端 `FILE_CREATE_PIPE_INSTANCE`，旧串行接口仅用于兼容测试，见 ADR 0019。
@@ -85,15 +86,15 @@
 
 未通过：
 
-- 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
-- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布签名、持续防替换、设置迁移、通知在真实桌面宿主的验收、引擎偏好应用与 AppContainer/WinUI 仍未完成。
+- 注册后的真实 TSF 宿主 key sink 激活，以及 Notepad/WinUI 中的正式 composition/candidate UI；当前候选窗与 Edit Session 证据来自不注册系统 TIP 的受控文本存储探针。混合 DPI/多屏人工矩阵、双拼真实宿主输入习惯、真实 schema 的选择标签/高亮/注释/页边界投影仍待完成。
+- 连接池真实多应用宿主/满载恢复矩阵、已认证连接空闲租约、严格输入延迟指标；当前 overlapped I/O 仍在固定连接线程内等待，不是 IOCP 全异步调度。watchdog 约束进程健康，不声称原生操作可被安全取消。协调停机的生产服务控制/托盘/更新接入和自动重启仍未实现；极端内核/驱动不完成取消尚未注入。发布签名、持续防替换、设置迁移、通知在真实桌面宿主的验收、引擎偏好的活动会话迁移及其余偏好、AppContainer/WinUI 仍未完成。
 - 实际崩溃回归目前只覆盖上述受控文本存储。engine commit 后/TSF 写入前、部分文档写入后的歧义故障及普通宿主矩阵仍未注入；不声称跨崩溃 exactly-once 或未提交输入不丢失。
 - 机器冷启动和更广宿主/候选生命周期矩阵仍未通过。历史高频词库的首个 N 超时主要位于引擎转换；Emoji 延迟加载/weak owner 重复卸载有源码与独立消融证据。仅保活+预编译时，完整 x64 命令第 82/100 轮出现 Actor 55,959 µs、排队 3,469 µs 超时，未进入该命令 Win32 压力段，更早失败也保留。此前 x64 第 24/100、3/100 轮候选未显示（按键未超时），状态变化全部来源尚未确认。ADR 0024 prepared 自构建产物的双架构各 100 轮样本现已通过，但不据此宣称旧候选消失问题全部根因已确定。未放宽 deadline、禁用 Emoji 或自动重发；历史负向证据见 ADR 0022/0023。
 - Windows 11 x64 真实桌面宿主矩阵；本次仅在 Windows 10 22H2 验证编译和 COM 加载。
 
 ## G3：安装——未通过
 
-- WiX v4 作者层现覆盖完整 132-file payload：确定性生成器为设置中心、Broker/registrar、x64/x86 TIP、librime/OpenCC 与 rime-ice 源数据/预编译数据逐文件生成稳定 component/GUID，并从 XML 反向重建安装路径，锁定 Program Files 根、设置中心开始菜单快捷方式、bitness、key path、双 COM 视图且排除 evidence。最新离线重建的 84-source/139-file ProductionShape stage manifest SHA-256 为 `61D2F7FC486B4792D5A2E6D90FF58C03C427D269918D5AE6EE4608DAFBE32960`，88 项 staging、20 项完整作者层/篡改拒绝、7 组机器数据 golden 及双架构各 10 轮故障恢复/共 40 次明确 Broker 退出通过。仓库局部、精确哈希锁定的 WiX 4.0.6 已链接并反向核验未执行的 `0.0.7.0` ProductionShape：MSI SHA-256 `F972112FB5E7FAED379583B8C059F54EBF8EA689B08126ACF0436DE4EC30AAA6`，Bundle SHA-256 `2A99FA30577E10B1DAC0323AA1050CA15EBBA84C57F706A3F2A84D6BE50C6699`；MSI ICE 尚未运行。
+- WiX v4 作者层现覆盖完整 132-file payload：确定性生成器为设置中心、Broker/registrar、x64/x86 TIP、librime/OpenCC 与 rime-ice 源数据/预编译数据逐文件生成稳定 component/GUID，并从 XML 反向重建安装路径，锁定 Program Files 根、设置中心开始菜单快捷方式、bitness、key path、双 COM 视图且排除 evidence。最终离线重建的 85-source/139-file ProductionShape stage manifest SHA-256 为 `605017E0465896FDEFD78A8DD13036A4B50FAADB2609EA3B1569A14BA2751725`，88 项 staging、20 项完整作者层/篡改拒绝、7 组机器数据 golden；最终 stage 双架构各 10 轮故障恢复共 40 次明确 Broker 退出通过，同时保留此前 v1 并行运行 x64 第 9 轮首键 78 ms 超时的负向样本。仓库局部、精确哈希锁定的 WiX 4.0.6 已链接并反向核验未执行的 `0.0.8.0` ProductionShape：MSI SHA-256 `6B1FA032E2DD6DE094C0E4322E47BDE713D84B24B9DDDAE34FBC0975C00F88DD`，Bundle SHA-256 `93BB9186E06D05E14AF87E58B210009C33D4401CD2EAC747816091F1C60A1D29`；12 项合规、8 项来源材料、7 项签名顺序检查通过。MSI ICE 尚未运行。
 - 机器级 TSF profile/category 已有 MSI 事务协议：install/repair/remove 延迟动作在变更前把 profile/category 两个 presence bit 写入 Program Files 固定标记，rollback 恢复原状态，commit 删除标记；全新安装遇到任一既有 Mo profile/category 会在变更前拒绝，repair/major upgrade 才可刷新，且旧包升级移除不先拆共享 profile。MSI 禁止关闭 rollback。动作使用内嵌 x64 registrar、无用户输入路径、以 non-impersonated 系统上下文执行。x64/x86 新鲜构建与 staged x64 registrar 的 8 组标记状态/重复创建/无残留自测通过，但尚未在 VM 注入真实 MSI 失败，也未以提升权限调用 TSF 变更 API。
 - 开发态 registrar 已补齐当前用户 COM activation：以显式 WOW64 视图分别注册 x64/x86 `InprocServer32`，拒绝相对/缺失文件与冲突路径；`status` 可读回 COM/profile 启用状态。隔离测试 CLSID 已连续两次完成双视图写入、读回和无残留清理，未注册或启用 Mo profile。
 - 已实现注册宿主 smoke 的权限拆分：提升脚本只管理机器级 TSF profile/category，普通权限脚本临时管理 HKCU 双视图 COM 与当前用户启用，并通过系统 `ITfKeystrokeMgr` 驱动 x64/Win32 探针后在 `finally` 中回滚用户状态。当前非提升开发会话只验证了双架构编译、权限门和干净状态，尚未执行需要人工提升准备的真实注册路由，因此 G2 不据此升级为通过。

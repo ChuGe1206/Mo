@@ -6,10 +6,11 @@ use mo_domain::{
 };
 use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
-    CURRENT_VERSION, CandidateAction, CandidateActionKind, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
-    FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError,
-    Hello, HelloAck, KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec,
-    ProtocolVersion, Snapshot, VersionRange, negotiate_version,
+    CURRENT_VERSION, CandidateAction, CandidateActionKind, CharacterSet as WireCharacterSet,
+    ErrorMessage, FEATURE_CANDIDATE_ACTIONS, FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT,
+    FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck, InputScheme as WireInputScheme,
+    KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, ProtocolVersion,
+    SettingsSnapshot as WireSettingsSnapshot, Snapshot, VersionRange, negotiate_version,
 };
 
 use crate::engine_service::EngineClient;
@@ -274,7 +275,22 @@ where
             );
         }
 
-        let engine_token = match self.engine.create_session(SessionOptions::new()) {
+        let options = if matches!(self.engine, EngineOwner::Shared(_)) {
+            let settings = match self.settings.snapshot() {
+                Ok(snapshot) => snapshot,
+                Err(_) => {
+                    return self.error(
+                        &request,
+                        ERROR_SETTINGS_UNAVAILABLE,
+                        "settings document is unavailable",
+                    );
+                }
+            };
+            session_options_from_settings(settings)
+        } else {
+            SessionOptions::new()
+        };
+        let engine_token = match self.engine.create_session(options) {
             Ok(token) => token,
             Err(_) => {
                 return self.error(
@@ -572,6 +588,54 @@ where
             request.header.request_id,
             payload,
         )?)
+    }
+}
+
+fn session_options_from_settings(settings: WireSettingsSnapshot) -> SessionOptions {
+    let schema = match settings.input_scheme {
+        WireInputScheme::FullPinyin => "rime_ice",
+        WireInputScheme::DoublePinyinNatural => "double_pinyin",
+        WireInputScheme::DoublePinyinFlypy => "double_pinyin_flypy",
+        WireInputScheme::DoublePinyinMicrosoft => "double_pinyin_mspy",
+        WireInputScheme::DoublePinyinSogou => "double_pinyin_sogou",
+    };
+    SessionOptions::new().with_schema(schema).with_option(
+        "traditionalization",
+        settings.character_set == WireCharacterSet::Traditional,
+    )
+}
+
+#[cfg(test)]
+mod session_settings_tests {
+    use super::*;
+
+    #[test]
+    fn pinned_schemes_and_character_modes_map_to_librime_session_options() {
+        let defaults = SettingsService::defaults().snapshot().unwrap();
+        for (scheme, schema) in [
+            (WireInputScheme::FullPinyin, "rime_ice"),
+            (WireInputScheme::DoublePinyinNatural, "double_pinyin"),
+            (WireInputScheme::DoublePinyinFlypy, "double_pinyin_flypy"),
+            (WireInputScheme::DoublePinyinMicrosoft, "double_pinyin_mspy"),
+            (WireInputScheme::DoublePinyinSogou, "double_pinyin_sogou"),
+        ] {
+            for (character_set, traditional) in [
+                (WireCharacterSet::Simplified, false),
+                (WireCharacterSet::Traditional, true),
+            ] {
+                let options = session_options_from_settings(WireSettingsSnapshot {
+                    input_scheme: scheme,
+                    character_set,
+                    ..defaults
+                });
+                assert_eq!(options.schema_id.as_deref(), Some(schema));
+                assert_eq!(options.options.len(), 1);
+                assert_eq!(
+                    options.options.get("traditionalization"),
+                    Some(&traditional)
+                );
+            }
+        }
     }
 }
 

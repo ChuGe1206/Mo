@@ -19,10 +19,14 @@ const ID_THEME: usize = 100;
 const ID_SAVE: usize = 101;
 const ID_RESTORE: usize = 102;
 const ID_RELOAD: usize = 103;
+const ID_SCHEME: usize = 104;
+const ID_CHARACTER_SET: usize = 105;
 
 struct AppState {
     controller: SettingsController,
     summary: HWND,
+    scheme: HWND,
+    character_set: HWND,
     theme: HWND,
     save: HWND,
     status: HWND,
@@ -33,6 +37,8 @@ impl AppState {
         Self {
             controller,
             summary: null_mut(),
+            scheme: null_mut(),
+            character_set: null_mut(),
             theme: null_mut(),
             save: null_mut(),
             status: null_mut(),
@@ -66,7 +72,7 @@ impl AppState {
             create_control(
                 window,
                 "STATIC",
-                "当前输入配置",
+                "其他配置（暂未接入引擎）",
                 WS_CHILD | WS_VISIBLE,
                 28,
                 104,
@@ -82,27 +88,74 @@ impl AppState {
                 30,
                 134,
                 540,
-                116,
+                78,
                 0,
             )?;
             create_control(
                 window,
                 "STATIC",
-                "以上引擎选项正在接入，当前版本只读显示。",
+                "输入方案",
                 WS_CHILD | WS_VISIBLE,
-                30,
-                252,
-                540,
+                28,
+                238,
+                150,
                 24,
                 0,
             )?;
+            self.scheme = create_control(
+                window,
+                "COMBOBOX",
+                "",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST as u32 | WS_VSCROLL,
+                178,
+                234,
+                250,
+                180,
+                ID_SCHEME,
+            )?;
+            for label in ["全拼", "自然码双拼", "小鹤双拼", "微软双拼", "搜狗双拼"]
+            {
+                let label = wide(label);
+                SendMessageW(self.scheme, CB_ADDSTRING, 0, label.as_ptr() as LPARAM);
+            }
+            create_control(
+                window,
+                "STATIC",
+                "字符模式",
+                WS_CHILD | WS_VISIBLE,
+                28,
+                294,
+                150,
+                24,
+                0,
+            )?;
+            self.character_set = create_control(
+                window,
+                "COMBOBOX",
+                "",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST as u32 | WS_VSCROLL,
+                178,
+                290,
+                220,
+                100,
+                ID_CHARACTER_SET,
+            )?;
+            for label in ["简体", "繁体"] {
+                let label = wide(label);
+                SendMessageW(
+                    self.character_set,
+                    CB_ADDSTRING,
+                    0,
+                    label.as_ptr() as LPARAM,
+                );
+            }
             create_control(
                 window,
                 "STATIC",
                 "候选窗主题",
                 WS_CHILD | WS_VISIBLE,
                 28,
-                298,
+                350,
                 150,
                 24,
                 0,
@@ -113,7 +166,7 @@ impl AppState {
                 "",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST as u32 | WS_VSCROLL,
                 178,
-                294,
+                346,
                 220,
                 160,
                 ID_THEME,
@@ -125,10 +178,10 @@ impl AppState {
             create_control(
                 window,
                 "STATIC",
-                "保存后会通知正在运行的输入法；未运行的实例会在下次连接时加载。",
+                "主题立即刷新；方案和简繁在输入法新建会话时生效。",
                 WS_CHILD | WS_VISIBLE,
                 30,
-                336,
+                394,
                 540,
                 24,
                 0,
@@ -139,7 +192,7 @@ impl AppState {
                 "",
                 WS_CHILD | WS_VISIBLE,
                 30,
-                382,
+                438,
                 540,
                 48,
                 0,
@@ -147,10 +200,10 @@ impl AppState {
             self.save = create_control(
                 window,
                 "BUTTON",
-                "保存主题",
+                "保存设置",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
                 28,
-                452,
+                510,
                 142,
                 38,
                 ID_SAVE,
@@ -161,7 +214,7 @@ impl AppState {
                 "重新读取",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON as u32,
                 188,
-                452,
+                510,
                 142,
                 38,
                 ID_RELOAD,
@@ -172,7 +225,7 @@ impl AppState {
                 "恢复默认设置",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON as u32,
                 348,
-                452,
+                510,
                 180,
                 38,
                 ID_RESTORE,
@@ -185,9 +238,7 @@ impl AppState {
     unsafe fn render(&self) {
         let settings = self.controller.settings();
         let summary = format!(
-            "输入方案：{}\r\n字符模式：{}\r\n候选数量：{}\r\n注释：{}    Emoji：{}\r\n本地学习：{}    隐私模式：{}",
-            scheme_label(settings.input_scheme),
-            character_label(settings.character_set),
+            "候选数量：{}\r\n注释：{}    Emoji：{}\r\n本地学习：{}    隐私模式：{}",
             settings.candidate_page_size,
             on_off(settings.show_comments),
             on_off(settings.emoji),
@@ -196,6 +247,18 @@ impl AppState {
         );
         unsafe {
             set_text(self.summary, &summary);
+            SendMessageW(
+                self.scheme,
+                CB_SETCURSEL,
+                scheme_index(settings.input_scheme),
+                0,
+            );
+            SendMessageW(
+                self.character_set,
+                CB_SETCURSEL,
+                character_index(settings.character_set),
+                0,
+            );
             SendMessageW(self.theme, CB_SETCURSEL, theme_index(settings.theme), 0);
             EnableWindow(self.save, i32::from(self.controller.can_save_changes()));
             match self.controller.health() {
@@ -223,7 +286,26 @@ impl AppState {
         }
     }
 
-    unsafe fn save_theme(&mut self) {
+    unsafe fn save_preferences(&mut self) {
+        let scheme = match unsafe { SendMessageW(self.scheme, CB_GETCURSEL, 0, 0) } {
+            0 => InputScheme::FullPinyin,
+            1 => InputScheme::DoublePinyinNatural,
+            2 => InputScheme::DoublePinyinFlypy,
+            3 => InputScheme::DoublePinyinMicrosoft,
+            4 => InputScheme::DoublePinyinSogou,
+            _ => {
+                unsafe { set_text(self.status, "请选择有效的输入方案。") };
+                return;
+            }
+        };
+        let character_set = match unsafe { SendMessageW(self.character_set, CB_GETCURSEL, 0, 0) } {
+            0 => CharacterSet::Simplified,
+            1 => CharacterSet::Traditional,
+            _ => {
+                unsafe { set_text(self.status, "请选择有效的字符模式。") };
+                return;
+            }
+        };
         let index = unsafe { SendMessageW(self.theme, CB_GETCURSEL, 0, 0) };
         let theme = match index {
             0 => Theme::System,
@@ -234,15 +316,21 @@ impl AppState {
                 return;
             }
         };
-        match self.controller.save_theme(theme) {
+        match self
+            .controller
+            .save_primary_preferences(scheme, character_set, theme)
+        {
             Ok(()) => unsafe {
                 self.render();
                 if notify_settings_changed() {
-                    set_text(self.status, "主题已安全保存，刷新通知已发出。");
+                    set_text(
+                        self.status,
+                        "设置已安全保存；主题刷新通知已发出。方案和简繁在新会话生效。",
+                    );
                 } else {
                     set_text(
                         self.status,
-                        "主题已安全保存；通知失败，将在下次连接时生效。",
+                        "设置已安全保存；通知失败，主题将在下次连接时生效。",
                     );
                 }
             },
@@ -255,7 +343,10 @@ impl AppState {
             Ok(()) => unsafe {
                 self.render();
                 if notify_settings_changed() {
-                    set_text(self.status, "已恢复并安全保存默认设置，刷新通知已发出。");
+                    set_text(
+                        self.status,
+                        "已恢复默认设置；主题刷新通知已发出，方案和简繁在新会话生效。",
+                    );
                 } else {
                     set_text(
                         self.status,
@@ -317,7 +408,7 @@ pub fn run() -> io::Result<()> {
             CW_USEDEFAULT,
             CW_USEDEFAULT,
             620,
-            560,
+            620,
             null_mut(),
             null_mut(),
             instance,
@@ -389,7 +480,7 @@ unsafe fn window_proc_inner(window: HWND, message: u32, wparam: WPARAM, lparam: 
         }
         WM_COMMAND if !state.is_null() => {
             match wparam & 0xffff {
-                ID_SAVE => unsafe { (*state).save_theme() },
+                ID_SAVE => unsafe { (*state).save_preferences() },
                 ID_RESTORE => unsafe { (*state).restore_defaults() },
                 ID_RELOAD => unsafe { (*state).reload() },
                 _ => {}
@@ -466,19 +557,19 @@ fn on_off(value: bool) -> &'static str {
     if value { "开" } else { "关" }
 }
 
-fn character_label(value: CharacterSet) -> &'static str {
+fn character_index(value: CharacterSet) -> usize {
     match value {
-        CharacterSet::Simplified => "简体",
-        CharacterSet::Traditional => "繁体",
+        CharacterSet::Simplified => 0,
+        CharacterSet::Traditional => 1,
     }
 }
 
-fn scheme_label(value: InputScheme) -> &'static str {
+fn scheme_index(value: InputScheme) -> usize {
     match value {
-        InputScheme::FullPinyin => "全拼",
-        InputScheme::DoublePinyinNatural => "自然码双拼",
-        InputScheme::DoublePinyinFlypy => "小鹤双拼",
-        InputScheme::DoublePinyinMicrosoft => "微软双拼",
-        InputScheme::DoublePinyinSogou => "搜狗双拼",
+        InputScheme::FullPinyin => 0,
+        InputScheme::DoublePinyinNatural => 1,
+        InputScheme::DoublePinyinFlypy => 2,
+        InputScheme::DoublePinyinMicrosoft => 3,
+        InputScheme::DoublePinyinSogou => 4,
     }
 }

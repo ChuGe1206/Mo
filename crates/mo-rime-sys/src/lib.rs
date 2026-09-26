@@ -337,18 +337,25 @@ pub type ChangePageFn = Option<unsafe extern "C" fn(RimeSessionId, RimeBool) -> 
 /// called: their signatures are intentionally outside Mo's allowlist. C ABI
 /// probes verify the reserved spans and both typed slots on each target.
 pub type OpaqueApiFn = Option<unsafe extern "C" fn()>;
+pub type SetOptionFn = Option<unsafe extern "C" fn(RimeSessionId, *const c_char, RimeBool)>;
+pub type GetOptionFn = Option<unsafe extern "C" fn(RimeSessionId, *const c_char) -> RimeBool>;
+pub type SelectSchemaFn = Option<unsafe extern "C" fn(RimeSessionId, *const c_char) -> RimeBool>;
 
 /// Optional tail of the pinned `RimeApi` through `change_page`.
 ///
-/// The 47 slots run from set_option through set_caret_pos; the 22 slots run
-/// from candidate_list_begin through highlight_candidate_on_current_page.
+/// The first eight slots cover option access and schema selection; the next
+/// 39 end at set_caret_pos. The final 22 precede change_page.
 /// The base ABI requirement is unchanged. Callers must range-check each
 /// optional typed slot before reading it, without forming a reference to this
 /// entire extension when an older native table only supplies the base prefix.
 #[repr(C)]
 pub struct RimeApiCandidateExtension {
     pub prefix: RimeApi,
-    pub reserved_before_select: [OpaqueApiFn; 47],
+    pub set_option: SetOptionFn,
+    pub get_option: GetOptionFn,
+    pub reserved_before_schema: [OpaqueApiFn; 5],
+    pub select_schema: SelectSchemaFn,
+    pub reserved_before_select: [OpaqueApiFn; 39],
     pub select_candidate_on_current_page: SelectCandidateOnCurrentPageFn,
     pub reserved_after_select: [OpaqueApiFn; 22],
     pub change_page: ChangePageFn,
@@ -361,7 +368,11 @@ impl Default for RimeApiCandidateExtension {
                 data_size: RIME_API_CANDIDATE_DATA_SIZE,
                 ..RimeApi::default()
             },
-            reserved_before_select: [None; 47],
+            set_option: None,
+            get_option: None,
+            reserved_before_schema: [None; 5],
+            select_schema: None,
+            reserved_before_select: [None; 39],
             select_candidate_on_current_page: None,
             reserved_after_select: [None; 22],
             change_page: None,
@@ -373,6 +384,12 @@ pub const RIME_API_CANDIDATE_DATA_SIZE: c_int =
     rime_struct_data_size::<RimeApiCandidateExtension>();
 pub const RIME_API_SELECT_CURRENT_PAGE_OFFSET: usize =
     std::mem::offset_of!(RimeApiCandidateExtension, select_candidate_on_current_page);
+pub const RIME_API_SET_OPTION_OFFSET: usize =
+    std::mem::offset_of!(RimeApiCandidateExtension, set_option);
+pub const RIME_API_GET_OPTION_OFFSET: usize =
+    std::mem::offset_of!(RimeApiCandidateExtension, get_option);
+pub const RIME_API_SELECT_SCHEMA_OFFSET: usize =
+    std::mem::offset_of!(RimeApiCandidateExtension, select_schema);
 pub const RIME_API_CHANGE_PAGE_OFFSET: usize =
     std::mem::offset_of!(RimeApiCandidateExtension, change_page);
 
@@ -390,8 +407,16 @@ mod tests {
     fn candidate_extension_preserves_base_and_full_slot_boundaries() {
         assert_eq!(offset_of!(RimeApiCandidateExtension, prefix), 0);
         assert_eq!(
-            offset_of!(RimeApiCandidateExtension, reserved_before_select),
+            offset_of!(RimeApiCandidateExtension, set_option),
             size_of::<RimeApi>()
+        );
+        assert_eq!(
+            RIME_API_GET_OPTION_OFFSET,
+            RIME_API_SET_OPTION_OFFSET + size_of::<SetOptionFn>()
+        );
+        assert_eq!(
+            RIME_API_SELECT_SCHEMA_OFFSET,
+            RIME_API_SET_OPTION_OFFSET + 7 * size_of::<OpaqueApiFn>()
         );
         assert!(advertised_range_available(
             RIME_API_CANDIDATE_DATA_SIZE,
