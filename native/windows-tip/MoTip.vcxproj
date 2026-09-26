@@ -48,6 +48,7 @@
     <ClCompile Include="src\mo_broker_client.cpp" />
     <ClCompile Include="src\mo_broker_launcher.cpp" />
     <ClCompile Include="src\mo_candidate_window.cpp" />
+    <ClCompile Include="src\mo_settings_change_window.cpp" />
     <ClCompile Include="src\mo_tip.cpp" />
   </ItemGroup>
   <ItemGroup><None Include="src\mo_tip.def" /></ItemGroup>
@@ -55,6 +56,7 @@
     <ClInclude Include="include\mo_broker_client.h" />
     <ClInclude Include="include\mo_broker_launcher.h" />
     <ClInclude Include="include\mo_candidate_window.h" />
+    <ClInclude Include="include\mo_settings_change_window.h" />
     <ClInclude Include="include\mo_tip_ids.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

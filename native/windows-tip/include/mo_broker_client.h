@@ -42,6 +42,13 @@ struct BrokerSettings final {
     bool effective_learning = true;
 };
 
+enum class SettingsRefreshResult : std::uint8_t {
+    Updated,
+    Unavailable,
+    Unsupported,
+    Disconnected,
+};
+
 struct BrokerSnapshot final {
     std::uint64_t revision = 0;
     bool handled = false;
@@ -84,7 +91,7 @@ public:
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
-    bool RefreshSettings(DWORD timeout_ms) noexcept;
+    SettingsRefreshResult RefreshSettings(DWORD timeout_ms) noexcept;
     const BrokerSettings& settings() const noexcept { return settings_; }
 
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }

@@ -14,6 +14,7 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::EnableWindow;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 const CLASS_NAME: &str = "Mo.Settings.Window.v1";
+const SETTINGS_CHANGED_MESSAGE: &str = "Mo.Settings.Changed.v1";
 const ID_THEME: usize = 100;
 const ID_SAVE: usize = 101;
 const ID_RESTORE: usize = 102;
@@ -124,7 +125,7 @@ impl AppState {
             create_control(
                 window,
                 "STATIC",
-                "主题在 TIP 下次连接或显式刷新后生效。",
+                "保存后会通知正在运行的输入法；未运行的实例会在下次连接时加载。",
                 WS_CHILD | WS_VISIBLE,
                 30,
                 336,
@@ -236,7 +237,14 @@ impl AppState {
         match self.controller.save_theme(theme) {
             Ok(()) => unsafe {
                 self.render();
-                set_text(self.status, "主题已安全保存；下次连接候选窗时生效。");
+                if notify_settings_changed() {
+                    set_text(self.status, "主题已安全保存，刷新通知已发出。");
+                } else {
+                    set_text(
+                        self.status,
+                        "主题已安全保存；通知失败，将在下次连接时生效。",
+                    );
+                }
             },
             Err(error) => unsafe { set_text(self.status, &error.to_string()) },
         }
@@ -246,7 +254,14 @@ impl AppState {
         match self.controller.restore_defaults() {
             Ok(()) => unsafe {
                 self.render();
-                set_text(self.status, "已恢复并安全保存产品默认设置。");
+                if notify_settings_changed() {
+                    set_text(self.status, "已恢复并安全保存默认设置，刷新通知已发出。");
+                } else {
+                    set_text(
+                        self.status,
+                        "已恢复并安全保存默认设置；通知失败，将在下次连接时生效。",
+                    );
+                }
             },
             Err(error) => unsafe { set_text(self.status, &error.to_string()) },
         }
@@ -255,6 +270,15 @@ impl AppState {
     unsafe fn reload(&mut self) {
         self.controller.reload();
         unsafe { self.render() };
+    }
+}
+
+fn notify_settings_changed() -> bool {
+    let name = wide(SETTINGS_CHANGED_MESSAGE);
+    unsafe {
+        let message = RegisterWindowMessageW(name.as_ptr());
+        let broadcast = 0xffffusize as HWND;
+        message != 0 && PostMessageW(broadcast, message, 0, 0) != 0
     }
 }
 

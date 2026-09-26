@@ -328,7 +328,7 @@ int wmain(int argc, wchar_t** argv) {
         || !broker.settings().show_comments || !broker.settings().emoji
         || !broker.settings().local_learning || broker.settings().privacy_mode
         || !broker.settings().effective_learning
-        || !broker.RefreshSettings(500)
+        || broker.RefreshSettings(500) != mo::windows_tip::SettingsRefreshResult::Updated
         || broker.settings().revision != settings_revision) {
         std::wcerr << L"Broker settings snapshot or explicit refresh is invalid\n";
         return 1;

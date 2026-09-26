@@ -17,7 +17,7 @@ function(mo_apply_compile_policy target)
     target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 endfunction()
 
-add_library(mo_tip SHARED src/mo_broker_client.cpp src/mo_broker_launcher.cpp src/mo_candidate_window.cpp src/mo_tip.cpp src/mo_tip.def)
+add_library(mo_tip SHARED src/mo_broker_client.cpp src/mo_broker_launcher.cpp src/mo_candidate_window.cpp src/mo_settings_change_window.cpp src/mo_tip.cpp src/mo_tip.def)
 mo_apply_compile_policy(mo_tip)
 target_link_libraries(mo_tip PRIVATE advapi32 gdi32 ole32 shell32 uuid)
 set_target_properties(mo_tip PROPERTIES OUTPUT_NAME "mo_tip")
@@ -29,7 +29,7 @@ if(MO_DEVELOPMENT_FAULT_INJECTION)
 endif()
 target_link_libraries(mo_tip_registrar PRIVATE advapi32 ole32 shell32 uuid)
 
-add_executable(mo_tip_abi_probe probe/abi_probe.cpp src/mo_broker_launcher.cpp)
+add_executable(mo_tip_abi_probe probe/abi_probe.cpp src/mo_broker_launcher.cpp src/mo_settings_change_window.cpp)
 mo_apply_compile_policy(mo_tip_abi_probe)
 target_link_libraries(mo_tip_abi_probe PRIVATE advapi32 ole32 shell32 uuid)
 

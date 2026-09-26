@@ -166,6 +166,7 @@ enum class MessageKind : std::uint16_t {
     Snapshot = 6,
     CloseSession = 7,
     CloseSessionAck = 8,
+    Error = 9,
     CandidateAction = 12,
     GetSettings = 13,
     SettingsSnapshot = 14,
@@ -945,8 +946,9 @@ bool BrokerClient::SendCandidateAction(
     }
 }
 
-bool BrokerClient::RefreshSettings(DWORD timeout_ms) noexcept {
-    if (!connected() || !settings_supported_) { return false; }
+SettingsRefreshResult BrokerClient::RefreshSettings(DWORD timeout_ms) noexcept {
+    if (!connected()) { return SettingsRefreshResult::Disconnected; }
+    if (!settings_supported_) { return SettingsRefreshResult::Unsupported; }
     try {
         const Deadline deadline = DeadlineFromNow(timeout_ms);
         Frame request;
@@ -955,20 +957,40 @@ bool BrokerClient::RefreshSettings(DWORD timeout_ms) noexcept {
         request.request_id = next_request_id_++;
         Frame response;
         BrokerSettings decoded;
-        if (!Exchange(pipe_, request, MessageKind::SettingsSnapshot, &response, deadline)
+        TraceRequest(request.request_id);
+        if (!WriteFrame(pipe_, request, deadline)
+            || !ReadFrame(pipe_, &response, deadline)
+            || response.request_id != request.request_id
             || response.generation != generation_
             || response.session_token != 0
+            || DeadlineExpired(deadline)) {
+            TraceFailure(ERROR_INVALID_DATA);
+            Reset();
+            return SettingsRefreshResult::Disconnected;
+        }
+        if (response.kind == MessageKind::Error
+            && response.flags == (kResponseFlag | kErrorFlag)
+            && response.payload.size() >= 8
+            && response.payload.size() <= 520
+            && GetU32(response.payload.data()) == 9
+            && GetU32(response.payload.data() + 4) == response.payload.size() - 8) {
+            // A malformed or future-version user document leaves the Broker's
+            // last valid plan intact. Keep this engine session and the cached
+            // presentation settings while the user repairs the document.
+            return SettingsRefreshResult::Unavailable;
+        }
+        if (response.kind != MessageKind::SettingsSnapshot
+            || response.flags != kResponseFlag
             || !DecodeSettings(response, &decoded)) {
             TraceFailure(ERROR_INVALID_DATA);
             Reset();
-            return false;
+            return SettingsRefreshResult::Disconnected;
         }
-        if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
         settings_ = decoded;
-        return true;
+        return SettingsRefreshResult::Updated;
     } catch (...) {
         Reset();
-        return false;
+        return SettingsRefreshResult::Disconnected;
     }
 }
 

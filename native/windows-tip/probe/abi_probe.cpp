@@ -20,6 +20,7 @@
 #include "mo_broker_launcher.h"
 #include "mo_latency_diagnostics.h"
 #include "mo_deadline.h"
+#include "mo_settings_change_window.h"
 
 namespace {
 
@@ -51,6 +52,52 @@ bool ProbeDeadlineArithmetic() {
         && RemainingMillisecondsAt(deadline, deadline) == 0
         && RemainingMillisecondsAt(deadline, deadline + std::chrono::nanoseconds(1)) == 0
         && RemainingMillisecondsAt(now + std::chrono::milliseconds(MAXDWORD), now) == MAXDWORD - 1;
+}
+
+void CountSettingsNotification(void* context) noexcept {
+    auto* count = static_cast<unsigned int*>(context);
+    ++*count;
+}
+
+bool ProbeSettingsChangeWindow() {
+    unsigned int first_count = 0;
+    unsigned int second_count = 0;
+    mo::windows_tip::SettingsChangeWindow first;
+    mo::windows_tip::SettingsChangeWindow second;
+    if (!first.Start(GetModuleHandleW(nullptr), CountSettingsNotification, &first_count)
+        || !second.Start(GetModuleHandleW(nullptr), CountSettingsNotification, &second_count)
+        || !first.active() || !second.active()
+        || !mo::windows_tip::BroadcastSettingsChanged()) {
+        first.Stop();
+        second.Stop();
+        return false;
+    }
+    const ULONGLONG deadline = GetTickCount64() + 1000;
+    while ((first_count == 0 || second_count == 0) && GetTickCount64() < deadline) {
+        MsgWaitForMultipleObjectsEx(0, nullptr, 25, QS_POSTMESSAGE, MWMO_INPUTAVAILABLE);
+        MSG message{};
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+    first.Stop();
+    if (first_count != 1 || second_count != 1 || first.active() || !second.active()
+        || !mo::windows_tip::BroadcastSettingsChanged()) {
+        second.Stop();
+        return false;
+    }
+    const ULONGLONG second_deadline = GetTickCount64() + 1000;
+    while (second_count == 1 && GetTickCount64() < second_deadline) {
+        MsgWaitForMultipleObjectsEx(0, nullptr, 25, QS_POSTMESSAGE, MWMO_INPUTAVAILABLE);
+        MSG message{};
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+    second.Stop();
+    return first_count == 1 && second_count == 2 && !second.active();
 }
 
 bool ProbeBrokerLauncher() {
@@ -937,11 +984,14 @@ HRESULT ReadContextText(
     return FAILED(request_result) ? request_result : session_result;
 }
 
+void PumpProbeMessages() noexcept;
+
 bool SendTestedKey(
     ITfKeyEventSink* key_sink,
     ITfContext* context,
     EditTextStore* text_store,
-    WPARAM virtual_key) {
+    WPARAM virtual_key,
+    bool notify_between_callbacks = false) {
     const UINT scan_code = MapVirtualKeyW(static_cast<UINT>(virtual_key), MAPVK_VK_TO_VSC);
     const LPARAM key_data = 1 | (static_cast<LPARAM>(scan_code) << 16);
     BOOL tested_eaten = FALSE;
@@ -973,6 +1023,13 @@ bool SendTestedKey(
                        << GetTickCount64() - tested_started << L" ms)\n";
         }
         return false;
+    }
+    if (notify_between_callbacks) {
+        if (!mo::windows_tip::BroadcastSettingsChanged()) {
+            std::wcerr << L"Settings broadcast failed between TSF key callbacks\n";
+            return false;
+        }
+        PumpProbeMessages();
     }
     BOOL handled_eaten = FALSE;
     result = key_sink->OnKeyDown(context, virtual_key, key_data, &handled_eaten);
@@ -1514,7 +1571,8 @@ int probe_broker_input(
                         direct_key_sink.Get(),
                         context.Get(),
                         edit_store,
-                        static_cast<WPARAM>(key));
+                        static_cast<WPARAM>(key),
+                        composition_index == 0 && key == input.front());
                 if (!key_succeeded) {
                     keys_succeeded = false;
                     break;
@@ -2034,6 +2092,9 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
     if (!ProbeBrokerLauncher()) {
         service->Release(); FreeLibrary(module); return fail(L"Broker launcher policy", E_FAIL);
+    }
+    if (!ProbeSettingsChangeWindow()) {
+        service->Release(); FreeLibrary(module); return fail(L"Settings change notification window", E_FAIL);
     }
     {
         const IID retired_iids[] = {

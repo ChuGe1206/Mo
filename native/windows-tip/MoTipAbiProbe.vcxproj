@@ -29,7 +29,7 @@
     </ClCompile>
     <Link><SubSystem>Console</SubSystem><AdditionalDependencies>advapi32.lib;ole32.lib;shell32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies><ControlFlowGuard>Guard</ControlFlowGuard></Link>
   </ItemDefinitionGroup>
-  <ItemGroup><ClCompile Include="probe\abi_probe.cpp" /><ClCompile Include="src\mo_broker_launcher.cpp" /></ItemGroup>
-  <ItemGroup><ClInclude Include="include\mo_broker_launcher.h" /><ClInclude Include="include\mo_tip_ids.h" /></ItemGroup>
+  <ItemGroup><ClCompile Include="probe\abi_probe.cpp" /><ClCompile Include="src\mo_broker_launcher.cpp" /><ClCompile Include="src\mo_settings_change_window.cpp" /></ItemGroup>
+  <ItemGroup><ClInclude Include="include\mo_broker_launcher.h" /><ClInclude Include="include\mo_settings_change_window.h" /><ClInclude Include="include\mo_tip_ids.h" /></ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -15,6 +15,7 @@
 #include "mo_broker_client.h"
 #include "mo_broker_launcher.h"
 #include "mo_candidate_window.h"
+#include "mo_settings_change_window.h"
 #include "mo_tip_ids.h"
 
 namespace {
@@ -269,6 +270,10 @@ public:
         keystroke_manager_ = keystroke_manager;
         client_id_ = client_id;
         activation_flags_ = flags;
+        // This is deliberately best-effort. If class/window creation is not
+        // available, activation and typing continue and the next connection
+        // still loads the current settings snapshot.
+        settings_change_window_.Start(g_module, SettingsChangeCallback, this);
         // Broker absence must never prevent TSF activation. The first bounded
         // connection attempt is best-effort; key callbacks remain fail-open.
         EnsureBrokerConnected(kBrokerActivationTimeoutMs);
@@ -276,6 +281,7 @@ public:
     }
 
     STDMETHODIMP Deactivate() noexcept override {
+        settings_change_window_.Stop();
         has_focus_ = false;
         cached_key_.valid = false;
         candidate_window_.Destroy();
@@ -708,6 +714,48 @@ private:
         pending_layout_request_ = 0;
         broker_.Close(timeout_ms);
         next_reconnect_tick_ = GetTickCount64() + kBrokerReconnectBackoffMs;
+    }
+
+    static void SettingsChangeCallback(void* context) noexcept {
+        auto* owner = static_cast<TextService*>(context);
+        owner->AddRef();
+        owner->RefreshSettingsFromNotification();
+        owner->Release();
+    }
+
+    void RefreshSettingsFromNotification() noexcept {
+        // Registered messages are untrusted invalidation hints. Never accept
+        // settings in the message itself and never connect/start a Broker in
+        // response to a broadcast from another process.
+        if (thread_manager_ == nullptr || handling_termination_ || !broker_.connected()) {
+            return;
+        }
+        const std::uint64_t previous_revision = broker_.settings().revision;
+        const auto refresh = broker_.RefreshSettings(kBrokerActivationTimeoutMs);
+        if (refresh == mo::windows_tip::SettingsRefreshResult::Disconnected) {
+            // An invalid response or transport ambiguity invalidates the
+            // engine session. Drop our owned preedit rather than combining it
+            // with a newly-created backend session on a later reconnect.
+            cached_key_.valid = false;
+            DisconnectBroker(0);
+            CancelActiveComposition();
+            return;
+        }
+        if (refresh != mo::windows_tip::SettingsRefreshResult::Updated) {
+            return;
+        }
+        // Presentation settings do not invalidate the TestKey/Key decision.
+        // A broadcast may arrive between those TSF callbacks; discarding the
+        // cached snapshot here would send the same key to the engine twice.
+        if (broker_.settings().revision != previous_revision
+            && display_snapshot_.has_value() && has_candidate_anchor_) {
+            try {
+                const auto snapshot = display_snapshot_.value();
+                ShowCandidateWindow(snapshot);
+            } catch (...) {
+                candidate_window_.Hide();
+            }
+        }
     }
 
     bool CachedKeyMatches(
@@ -1223,6 +1271,7 @@ private:
     bool broker_auto_start_ = false;
     mo::windows_tip::BrokerClient broker_;
     mo::windows_tip::CandidateWindow candidate_window_;
+    mo::windows_tip::SettingsChangeWindow settings_change_window_;
 #ifdef MO_LATENCY_TRACE
     DWORD candidate_trace_stage_ = 0;
     HRESULT candidate_trace_result_ = S_OK;
