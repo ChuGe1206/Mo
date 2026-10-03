@@ -108,11 +108,11 @@ function Invoke-MoBrokerFaultProbe(
         if ($LatencyTrace) {
             # The probe's entire output is drained asynchronously above. Keep
             # successful repeated runs readable; failures retain full metadata.
-            $firstKeys = [regex]::Matches($stdout.Result, 'MO_CLIENT request=3 kind=5 phase=\d+ error=0 total_us=(\d+)')
-            $keyTimes = @($firstKeys | ForEach-Object { [long]$_.Groups[1].Value })
-            if ($keyTimes.Count -eq 0) { throw 'Trace-enabled probe returned no first-key timings.' }
+            $keys = [regex]::Matches($stdout.Result, 'MO_CLIENT request=\d+ kind=5 phase=\d+ error=0 total_us=(\d+)')
+            $keyTimes = @($keys | ForEach-Object { [long]$_.Groups[1].Value })
+            if ($keyTimes.Count -eq 0) { throw 'Trace-enabled probe returned no key timings.' }
             $stats = $keyTimes | Measure-Object -Minimum -Maximum
-            Write-Host "MO_FIRST_KEYS count=$($keyTimes.Count) min_us=$($stats.Minimum) max_us=$($stats.Maximum)"
+            Write-Host "MO_KEY_TIMES count=$($keyTimes.Count) min_us=$($stats.Minimum) max_us=$($stats.Maximum)"
             Write-Host (($stdout.Result -split '\r?\n' | Where-Object { $_ -and -not $_.StartsWith('MO_CLIENT ') -and -not $_.StartsWith('MO_DISPATCH ') }) -join "`n")
         } else { Write-Host $stdout.Result.Trim() }
         # Successful trace probes include bounded owner-termination baselines.

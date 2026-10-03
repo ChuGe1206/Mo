@@ -177,8 +177,9 @@ function New-MoWixPayloadFragment([string]$StageDirectory, [string]$OutputPath) 
         $writer.WriteEndElement()
 
         # A 32-bit component cannot use ProgramFiles64Folder (ICE80), even when
-        # its only payload is registry data. ProgramFilesFolder is the canonical
-        # 32-bit directory; the value references the separately installed file.
+        # its only payload is registry data. The x86 DLL stays in the 64-bit
+        # install tree; use its directory property instead of a cross-component
+        # [#file] reference (ICE69, including repair when the file is unchanged).
         $writer.WriteStartElement('StandardDirectory')
         $writer.WriteAttributeString('Id', 'ProgramFilesFolder')
         $writer.WriteStartElement('Component')
@@ -190,7 +191,7 @@ function New-MoWixPayloadFragment([string]$StageDirectory, [string]$OutputPath) 
         $writer.WriteAttributeString('Key', 'Software\Classes\CLSID\{B4911146-2A27-47AA-9D12-109B6AE10A70}\InprocServer32')
         $writer.WriteStartElement('RegistryValue')
         $writer.WriteAttributeString('Type', 'string')
-        $writer.WriteAttributeString('Value', '[#TipX86File]')
+        $writer.WriteAttributeString('Value', '[INSTALLFOLDER]tip\x86\mo-tip.dll')
         $writer.WriteAttributeString('KeyPath', 'yes')
         $writer.WriteEndElement()
         $writer.WriteStartElement('RegistryValue')
@@ -328,7 +329,7 @@ function Assert-MoWixPayloadFragment([string]$StageDirectory, [string]$FragmentP
     $x86Values = if ($x86Keys.Count -eq 1) { @($x86Keys[0].SelectNodes('w:RegistryValue', $namespace)) } else { @() }
     if ($x86Keys.Count -ne 1 -or $x86Keys[0].GetAttribute('Root') -cne 'HKLM' -or
         $x86Keys[0].GetAttribute('Key') -cne 'Software\Classes\CLSID\{B4911146-2A27-47AA-9D12-109B6AE10A70}\InprocServer32' -or
-        $x86Values.Count -ne 2 -or $x86Values[0].GetAttribute('Value') -cne '[#TipX86File]' -or
+        $x86Values.Count -ne 2 -or $x86Values[0].GetAttribute('Value') -cne '[INSTALLFOLDER]tip\x86\mo-tip.dll' -or
         $x86Values[0].GetAttribute('KeyPath') -cne 'yes' -or
         $x86Values[1].GetAttribute('Name') -cne 'ThreadingModel' -or
         $x86Values[1].GetAttribute('Value') -cne 'Apartment') {

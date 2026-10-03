@@ -182,6 +182,14 @@ try {
         # Recompute ONLY the outer inventory to demonstrate intrinsic contract
         # checks are independent of that inventory. This is not authentication.
         $brokerBytes = [IO.File]::ReadAllBytes($broker)
+        $vcFixture = Join-Path $fixture 'dynamic-vc.exe'
+        $vcBytes = [byte[]]$brokerBytes.Clone()
+        $vcNameOffset = [Text.Encoding]::ASCII.GetString($vcBytes).IndexOf(
+            'kernel32.dll', [StringComparison]::OrdinalIgnoreCase)
+        if ($vcNameOffset -lt 0) { throw 'Broker PE lacks the expected import fixture name.' }
+        [Array]::Copy([Text.Encoding]::ASCII.GetBytes('MSVCP140.dll'), 0, $vcBytes, $vcNameOffset, 12)
+        [IO.File]::WriteAllBytes($vcFixture, $vcBytes)
+        Reject 'dynamic VC runtime import' { Assert-MoNoDynamicVCRuntime $vcFixture } 'Visual C\+\+ redistributable'
         [IO.File]::WriteAllBytes($broker, [IO.File]::ReadAllBytes((Join-Path $copy 'payload/Mo/tip/x86/mo-tip.dll')))
         $changedMeta = Read-MoStageJson $manifest
         $changedMeta['files'] = Get-MoStageInventory $copy @('mo-stage.json')
@@ -209,18 +217,23 @@ try {
         [IO.File]::WriteAllBytes($manifest, $originalManifest)
         $runtimePath = Join-Path $copy 'evidence/runtime-provenance.json'
         $originalRuntime = [IO.File]::ReadAllBytes($runtimePath)
-        foreach ($mutation in @('policy', 'patch-binding', 'own-source')) {
+        foreach ($mutation in @('policy', 'patch-binding', 'own-source',
+            'learning-policy', 'learning-patch-binding', 'lua-learning-patch-binding', 'learning-own-source')) {
             $badRuntime = Read-MoStageJson $runtimePath
             switch ($mutation) {
                 'policy' { $badRuntime['lua_data_policy'] = 'user-first' }
                 'patch-binding' { $badRuntime['lua_data_policy_patch_sha256'] = '0' * 64 }
                 'own-source' { [void]$badRuntime['mo_inputs'].Remove('native/librime/preparation/lua-machine-data-only.patch') }
+                'learning-policy' { $badRuntime['learning_policy'] = 'disabled' }
+                'learning-patch-binding' { $badRuntime['learning_policy_patch_sha256'] = '0' * 64 }
+                'lua-learning-patch-binding' { $badRuntime['lua_learning_policy_patch_sha256'] = '0' * 64 }
+                'learning-own-source' { [void]$badRuntime['mo_inputs'].Remove('native/librime/preparation/mo-learning-option.patch') }
             }
             Write-FixtureJson $runtimePath $badRuntime
             $changedMeta = Read-MoStageJson $manifest
             $changedMeta['files'] = Get-MoStageInventory $copy @('mo-stage.json')
             Write-FixtureJson $manifest $changedMeta
-            Reject "resealed runtime Lua $mutation" { Assert-MoPreparedStage $copy } 'runtime.*(contract|own-source|patch)'
+            Reject "resealed runtime policy $mutation" { Assert-MoPreparedStage $copy } 'runtime.*(contract|own-source|patch)'
             [IO.File]::WriteAllBytes($runtimePath, $originalRuntime)
             [IO.File]::WriteAllBytes($manifest, $originalManifest)
         }

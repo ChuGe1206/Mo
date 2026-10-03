@@ -131,9 +131,9 @@ function Invoke-BundlePhase(
     [bool]$ExpectFailure
 ) {
     $log = Join-Path $EvidenceDirectory ("bundle-{0}.log" -f $Label)
-    $arguments = @($ExtraArguments) + @(("/{0}" -f $Action), '/quiet', '/norestart', '/log', $log)
-    & $Bundle @arguments
-    $exitCode = $LASTEXITCODE
+    $arguments = @($ExtraArguments) + @(("/{0}" -f $Action), '/quiet', '/norestart', '/log', ('"{0}"' -f $log))
+    $process = Start-Process -FilePath $Bundle -ArgumentList $arguments -Wait -PassThru
+    $exitCode = $process.ExitCode
     $results.Add([pscustomobject]@{
         label = $Label
         action = $Action

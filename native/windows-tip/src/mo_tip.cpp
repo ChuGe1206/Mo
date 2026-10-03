@@ -284,6 +284,7 @@ public:
         settings_change_window_.Stop();
         has_focus_ = false;
         cached_key_.valid = false;
+        pending_engine_settings_ = false;
         candidate_window_.Destroy();
         latest_revision_ = 0;
         CancelActiveComposition();
@@ -312,6 +313,7 @@ public:
         has_focus_ = foreground != FALSE;
         cached_key_.valid = false;
         if (!has_focus_) {
+            pending_engine_settings_ = false;
             candidate_window_.Hide();
             latest_revision_ = 0;
             CancelActiveComposition();
@@ -676,6 +678,11 @@ private:
         if (broker_.ConnectAndOpenUntil(deadline, broker_was_connected_ && !broker_auto_start_)) {
             broker_was_connected_ = true;
             next_reconnect_tick_ = 0;
+            active_input_scheme_ = broker_.settings().input_scheme;
+            active_character_set_ = broker_.settings().character_set;
+            active_emoji_ = broker_.settings().emoji;
+            active_effective_learning_ = broker_.settings().effective_learning;
+            pending_engine_settings_ = false;
             return true;
         }
         if (broker_auto_start_
@@ -684,6 +691,11 @@ private:
             && broker_.ConnectAndOpenUntil(deadline, true)) {
             broker_was_connected_ = true;
             next_reconnect_tick_ = 0;
+            active_input_scheme_ = broker_.settings().input_scheme;
+            active_character_set_ = broker_.settings().character_set;
+            active_emoji_ = broker_.settings().emoji;
+            active_effective_learning_ = broker_.settings().effective_learning;
+            pending_engine_settings_ = false;
             return true;
         }
         next_reconnect_tick_ = now + kBrokerReconnectBackoffMs;
@@ -706,6 +718,7 @@ private:
     }
 
     void DisconnectBroker(DWORD timeout_ms, CandidateReset cause = CandidateReset::Transport) noexcept {
+        pending_engine_settings_ = false;
         InvalidateCandidateIdentity();
         TraceReset(cause);
         candidate_window_.Hide();
@@ -742,8 +755,16 @@ private:
             return;
         }
         if (refresh != mo::windows_tip::SettingsRefreshResult::Updated) {
+            // A locally posted follow-up is an invalidation hint too. Even if
+            // the revision is unchanged, an earlier update may still be
+            // waiting for the current preedit or TSF key pair to finish.
+            ApplyPendingEngineSettings(kBrokerActivationTimeoutMs);
             return;
         }
+        pending_engine_settings_ = broker_.settings().input_scheme != active_input_scheme_
+            || broker_.settings().character_set != active_character_set_
+            || broker_.settings().emoji != active_emoji_
+            || broker_.settings().effective_learning != active_effective_learning_;
         // Presentation settings do not invalidate the TestKey/Key decision.
         // A broadcast may arrive between those TSF callbacks; discarding the
         // cached snapshot here would send the same key to the engine twice.
@@ -756,6 +777,34 @@ private:
                 candidate_window_.Hide();
             }
         }
+        ApplyPendingEngineSettings(kBrokerActivationTimeoutMs);
+    }
+
+    void ApplyPendingEngineSettings(DWORD timeout_ms) noexcept {
+        // Never replace a session while a TSF key pair or owned preedit still
+        // refers to it. A follow-up callback runs after the edit session,
+        // outside the latency-sensitive key dispatch path.
+        if (!pending_engine_settings_ || cached_key_.valid || active_range_ != nullptr
+            || handling_termination_ || !broker_.connected()) { return; }
+        const auto result = broker_.ReplaceSession(timeout_ms);
+        pending_engine_settings_ = false;
+        if (result == mo::windows_tip::SessionReplaceResult::RejectedKeepOld) {
+            return;
+        }
+        if (result == mo::windows_tip::SessionReplaceResult::Disconnected) {
+            DisconnectBroker(0);
+            return;
+        }
+        InvalidateCandidateIdentity();
+        candidate_window_.Hide();
+        latest_revision_ = 0;
+        display_snapshot_.reset();
+        has_candidate_anchor_ = false;
+        pending_layout_request_ = 0;
+        active_input_scheme_ = broker_.settings().input_scheme;
+        active_character_set_ = broker_.settings().character_set;
+        active_emoji_ = broker_.settings().emoji;
+        active_effective_learning_ = broker_.settings().effective_learning;
     }
 
     bool CachedKeyMatches(
@@ -766,7 +815,10 @@ private:
         return cached_key_.valid
             && cached_key_.context == context
             && cached_key_.virtual_key == virtual_key
-            && cached_key_.key_data == key_data
+            // Win10 legacy hosts may rewrite the low-word repeat count between
+            // test and key callbacks. Broker semantics use the scan/flag bits,
+            // including bit 30 for actual auto-repeat, not that count.
+            && ((cached_key_.key_data ^ key_data) & ~static_cast<LPARAM>(0xffff)) == 0
             && cached_key_.key_down == key_down;
     }
 
@@ -873,6 +925,9 @@ private:
         }
         if (!cached_key_.snapshot.handled) {
             cached_key_.valid = false;
+            if (pending_engine_settings_ && active_range_ == nullptr) {
+                settings_change_window_.ScheduleRefresh();
+            }
             return S_OK;
         }
 
@@ -896,6 +951,9 @@ private:
 #endif
         edit_session->Release();
         cached_key_.valid = false;
+        if (pending_engine_settings_ && active_range_ == nullptr) {
+            settings_change_window_.ScheduleRefresh();
+        }
         if (applied) {
             *eaten = TRUE;
         }
@@ -955,7 +1013,7 @@ private:
         if (!CheckCandidateIdentity(identity)) { return; }
         const bool shown = candidate_window_.Update(
             g_module, candidate_owner_, candidate_anchor_, snapshot, broker_.settings().theme,
-            CandidateActionCallback, this);
+            broker_.settings().show_comments, CandidateActionCallback, this);
         // Win32 show/owner/capture calls may synchronously reenter the host.
         if (!CheckCandidateIdentity(identity)) { return; }
         TraceCandidate(shown ? 11 : 10, shown ? S_OK : E_FAIL);
@@ -1109,6 +1167,9 @@ private:
         bool applied = false;
         const HRESULT result = ApplySnapshot(context, cookie, snapshot, &applied);
         if (FAILED(result)) { DisconnectBroker(kBrokerKeyTimeoutMs, CandidateReset::MouseEditFailure); }
+        else if (pending_engine_settings_ && active_range_ == nullptr) {
+            settings_change_window_.ScheduleRefresh();
+        }
         return result;
     }
 
@@ -1265,6 +1326,11 @@ private:
     bool has_focus_ = false;
     bool handling_termination_ = false;
     bool broker_was_connected_ = false;
+    bool pending_engine_settings_ = false;
+    mo::windows_tip::InputScheme active_input_scheme_ = mo::windows_tip::InputScheme::FullPinyin;
+    mo::windows_tip::CharacterSet active_character_set_ = mo::windows_tip::CharacterSet::Simplified;
+    bool active_emoji_ = true;
+    bool active_effective_learning_ = true;
     ULONGLONG next_reconnect_tick_ = 0;
     ULONGLONG next_broker_start_tick_ = 0;
     std::wstring broker_path_;

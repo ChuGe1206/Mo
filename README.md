@@ -4,6 +4,10 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 
 项目已经进入 Phase 0 风险验证，**目前还不是可日常使用的输入法**。
 
+## 分支约定
+
+日常开发与 Win10 验证在 `develop` 分支进行；`main` 留作后续正式版打板分支。阶段性开发成果推送到 `develop`，正式版验收后再更新 `main`。
+
 ## 已落地的基线
 
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。

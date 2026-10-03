@@ -46,8 +46,10 @@ function Read-RegistrarState {
 
 function Invoke-BundlePhase([string]$Action) {
     $log = Join-Path $EvidenceDirectory ("bundle-{0}.log" -f $Action.ToLowerInvariant())
-    & $bundle ("/$Action") '/quiet' '/norestart' '/log' $log
-    $exitCode = $LASTEXITCODE
+    # Burn is a GUI-subsystem process. Direct invocation can return before UAC completes.
+    $arguments = @(("/$Action"), '/quiet', '/norestart', '/log', ('"{0}"' -f $log))
+    $process = Start-Process -FilePath $bundle -ArgumentList $arguments -Wait -PassThru
+    $exitCode = $process.ExitCode
     $results.Add([pscustomobject]@{
         action = $Action
         exit_code = $exitCode

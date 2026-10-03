@@ -14,6 +14,16 @@ pub enum DocumentHealth {
     RecoveryRequired(String),
 }
 
+pub struct PrimaryPreferences {
+    pub input_scheme: InputScheme,
+    pub character_set: CharacterSet,
+    pub theme: Theme,
+    pub show_comments: bool,
+    pub emoji: bool,
+    pub local_learning: bool,
+    pub privacy_mode: bool,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SettingsController {
     local_app_data_root: PathBuf,
@@ -88,21 +98,23 @@ impl SettingsController {
         self.persist(changed)
     }
 
-    /// Saves the implemented engine preferences and theme as one atomic document.
-    /// Remaining planned preferences are preserved unchanged.
+    /// Saves implemented engine and presentation preferences as one atomic document.
+    /// The planned candidate page size is preserved unchanged.
     pub fn save_primary_preferences(
         &mut self,
-        input_scheme: InputScheme,
-        character_set: CharacterSet,
-        theme: Theme,
+        preferences: PrimaryPreferences,
     ) -> Result<(), ControllerError> {
         if !self.can_save_changes() {
             return Err(ControllerError::RecoveryRequired);
         }
         let mut changed = self.settings.clone();
-        changed.input_scheme = input_scheme;
-        changed.character_set = character_set;
-        changed.theme = theme;
+        changed.input_scheme = preferences.input_scheme;
+        changed.character_set = preferences.character_set;
+        changed.theme = preferences.theme;
+        changed.show_comments = preferences.show_comments;
+        changed.emoji = preferences.emoji;
+        changed.local_learning = preferences.local_learning;
+        changed.privacy_mode = preferences.privacy_mode;
         self.persist(changed)
     }
 
@@ -242,11 +254,15 @@ mod tests {
         save_atomic(&path, &original).unwrap();
         let mut controller = SettingsController::open(&fixture.0);
         controller
-            .save_primary_preferences(
-                InputScheme::DoublePinyinFlypy,
-                CharacterSet::Traditional,
-                Theme::Dark,
-            )
+            .save_primary_preferences(PrimaryPreferences {
+                input_scheme: InputScheme::DoublePinyinFlypy,
+                character_set: CharacterSet::Traditional,
+                theme: Theme::Dark,
+                show_comments: false,
+                emoji: true,
+                local_learning: true,
+                privacy_mode: true,
+            })
             .unwrap();
         let LoadedSettings::Stored(saved) = load(&path).unwrap() else {
             panic!("stored")
@@ -254,9 +270,12 @@ mod tests {
         assert_eq!(saved.input_scheme, InputScheme::DoublePinyinFlypy);
         assert_eq!(saved.character_set, CharacterSet::Traditional);
         assert_eq!(saved.theme, Theme::Dark);
+        assert!(!saved.show_comments);
         assert_eq!(saved.candidate_page_size, 8);
-        assert!(!saved.emoji);
-        assert!(!saved.local_learning);
+        assert!(saved.emoji);
+        assert!(saved.local_learning);
+        assert!(saved.privacy_mode);
+        assert!(!saved.effective_learning());
     }
 
     #[test]

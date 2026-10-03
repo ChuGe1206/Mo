@@ -49,12 +49,20 @@ enum class SettingsRefreshResult : std::uint8_t {
     Disconnected,
 };
 
+enum class SessionReplaceResult : std::uint8_t {
+    Replaced,
+    RejectedKeepOld,
+    Disconnected,
+};
+
 struct BrokerSnapshot final {
     std::uint64_t revision = 0;
     bool handled = false;
     std::string composition;
     std::optional<std::string> commit;
     std::vector<std::string> candidates;
+    std::vector<std::optional<std::string>> candidate_comments;
+    std::vector<std::optional<std::string>> candidate_labels;
 };
 
 // Thread-affine client for the versioned Mo broker protocol. Every public
@@ -92,6 +100,10 @@ public:
         DWORD timeout_ms) noexcept;
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
     SettingsRefreshResult RefreshSettings(DWORD timeout_ms) noexcept;
+    // Open the next configured session before retiring the old one. A stable
+    // Broker rejection keeps the old session alive; ambiguous transport drops
+    // the whole connection so no token can be replayed.
+    SessionReplaceResult ReplaceSession(DWORD timeout_ms) noexcept;
     const BrokerSettings& settings() const noexcept { return settings_; }
 
     bool connected() const noexcept { return pipe_ != INVALID_HANDLE_VALUE; }
@@ -111,7 +123,9 @@ private:
     std::uint64_t session_token_ = 0;
     std::uint64_t next_request_id_ = 1;
     bool candidate_actions_supported_ = false;
+    bool candidate_details_supported_ = false;
     bool settings_supported_ = false;
+    bool session_settings_ack_supported_ = false;
     BrokerSettings settings_;
     DWORD last_connect_error_ = ERROR_SUCCESS;
 #ifdef MO_LATENCY_TRACE

@@ -162,3 +162,13 @@ only module categories and RVAs; `MoStackSymbolResolver.vcxproj` is an offline
 DIA helper for explicitly matched public PDBs and is never staged or invoked by
 normal builds. None of this weakens product host-termination cleanup or changes
 the 50 ms transport budget.
+
+
+Win10 2026-10-03 follow-up: an installed x64 Notepad experiment found that
+legacy TSF test/key callbacks rewrite the low-word repeat count. Decision-cache
+matching now excludes only that word; scan/flag bits, including true auto-repeat,
+remain strict. The probe repeats count-variant queries and changes the count
+between test/key calls. See ADR 0054 and `docs/phase-0/WIN10-DESKTOP-EVIDENCE.md`
+for finite Notepad/settings evidence, old-DLL rejection, preserved real-Rime
+response timeouts, and the requirement to repackage this source fix. This does
+not close the remaining real-host matrix above.

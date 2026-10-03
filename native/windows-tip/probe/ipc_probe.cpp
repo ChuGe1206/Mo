@@ -174,7 +174,12 @@ bool ProbeFake(mo::windows_tip::BrokerClient* broker) {
         || snapshot.commit.has_value()
         || snapshot.candidates.size() != 2
         || snapshot.candidates[0] != "m"
-        || snapshot.candidates[1] != "M") {
+        || snapshot.candidates[1] != "M"
+        || snapshot.candidate_labels.size() != 2
+        || snapshot.candidate_labels[0] != std::optional<std::string>("1")
+        || snapshot.candidate_labels[1] != std::optional<std::string>("2")
+        || snapshot.candidate_comments.size() != 2
+        || snapshot.candidate_comments[0].has_value()) {
         std::wcerr << L"Unexpected diagnostic Broker snapshot\n";
         return false;
     }
@@ -331,6 +336,16 @@ int wmain(int argc, wchar_t** argv) {
         || broker.RefreshSettings(500) != mo::windows_tip::SettingsRefreshResult::Updated
         || broker.settings().revision != settings_revision) {
         std::wcerr << L"Broker settings snapshot or explicit refresh is invalid\n";
+        return 1;
+    }
+
+    const auto old_generation = broker.generation();
+    const auto old_token = broker.session_token();
+    if (broker.ReplaceSession(2000) != mo::windows_tip::SessionReplaceResult::Replaced
+        || !broker.connected() || broker.generation() != old_generation
+        || broker.session_token() == 0 || broker.session_token() == old_token
+        || broker.settings().revision != settings_revision) {
+        std::wcerr << L"Broker session replacement did not preserve the authenticated connection\n";
         return 1;
     }
 

@@ -21,6 +21,8 @@ public:
     bool Start(HINSTANCE module, Callback callback, void* context) noexcept;
     void Stop() noexcept;
     bool active() const noexcept { return window_ != nullptr; }
+    // Queue another callback after an asynchronous TSF edit session returns.
+    bool ScheduleRefresh() noexcept;
 
 private:
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM) noexcept;

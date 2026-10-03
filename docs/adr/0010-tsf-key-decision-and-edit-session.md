@@ -9,7 +9,7 @@ TSF 会先调用 `OnTestKeyDown/OnTestKeyUp` 判断按键是否由输入法处�
 
 ## Decision
 
-- TIP 按 `(ITfContext*, virtual key, LPARAM, key direction)` 缓存最近一次 Broker snapshot。test 回调负责首次有界派发，匹配的 key 回调只消费缓存；不匹配时允许 key 回调自行派发，以兼容不先调用 test 的宿主。
+- TIP 按 `(ITfContext*, virtual key, LPARAM 除低 16 位 repeat count 外的全部位, key direction)` 缓存最近一次 Broker snapshot（Win10 实测正规化见 ADR 0054）。test 回调负责首次有界派发，匹配的 key 回调只消费缓存；不匹配时允许 key 回调自行派发，以兼容不先调用 test 的宿主。
 - handled snapshot 使用 `TF_ES_SYNC | TF_ES_READWRITE` 请求同步 Edit Session。Windows 文档明确允许 key event handler 请求同步读写会话；所有宿主修改只发生在 `DoEditSession` 内。
 - Broker 的 UTF-8 commit/composition 使用 `MB_ERR_INVALID_CHARS` 严格转为 UTF-16。预编辑首次通过 `ITfInsertAtSelection::InsertTextAtSelection` 建立 Range，再尝试 `ITfContextComposition::StartComposition`；后续更新在同一 Range 上执行 `ITfRange::SetText`。
 - 正式 Composition 成功时，提交或清除后调用 `ITfComposition::EndComposition`。若受限或旧宿主拒绝创建 Composition，TIP 保留同一活动 Range 作为降级路径，使预编辑仍可更新、提交和撤销。

@@ -121,6 +121,15 @@ try {
             }
         }
     }
+    Pass 'guest drivers wait for Burn completion' {
+        foreach ($name in @('run-vm-installer-lifecycle.ps1', 'run-vm-installer-matrix.ps1')) {
+            $text = Get-Content -LiteralPath (Join-Path $PSScriptRoot $name) -Raw
+            if ($text -notmatch 'Start-Process[^\r\n]*-Wait[^\r\n]*-PassThru' -or
+                -not $text.Contains('$exitCode = $process.ExitCode')) {
+                throw "Guest driver can inspect state before Burn finishes: $name"
+            }
+        }
+    }
     Pass 'installed tree walk never uses recursive enumeration' {
         $policyText = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'vm-test-policy.ps1') -Raw
         if ($policyText -match 'Get-ChildItem[^\r\n]*-Recurse') {
@@ -206,6 +215,25 @@ try {
     }
     $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
     Pass 'exact VM matrix test kit inventory' { $null = Assert-MoVmMatrixTestKit $matrixRoot }
+    Pass 'MSI first-three-field upgrade allowed' {
+        Assert-MoMsiMajorUpgradeVersions '0.0.9.11' '0.0.10.0'
+    }
+    Reject 'MSI revision-only upgrade' {
+        Assert-MoMsiMajorUpgradeVersions '0.0.9.11' '0.0.9.12'
+    } 'first three version fields'
+    Reject 'MSI downgrade despite higher revision' {
+        Assert-MoMsiMajorUpgradeVersions '0.1.0.0' '0.0.9.99'
+    } 'first three version fields'
+    Reject 'MSI out-of-range version' {
+        Assert-MoMsiMajorUpgradeVersions '0.0.9.11' '0.0.65536.0'
+    } 'Windows Installer limits'
+    $matrixManifest.upgrade_version = '0.0.1.1'
+    $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
+    Reject 'VM matrix revision-only upgrade' {
+        Assert-MoVmMatrixTestKit $matrixRoot
+    } 'first three version fields'
+    $matrixManifest.upgrade_version = '0.0.2.0'
+    $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
     $matrixManifest.upgrade_product_code = $matrixManifest.base_product_code
     $matrixManifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $matrixManifestPath -Encoding utf8NoBOM
     Reject 'duplicate VM matrix product code' {

@@ -78,7 +78,7 @@ namespace mo::windows_tip {
 CandidateWindow::~CandidateWindow() noexcept { Destroy(); }
 
 bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
-    const BrokerSnapshot& snapshot, CandidateTheme theme,
+    const BrokerSnapshot& snapshot, CandidateTheme theme, bool show_comments,
     ActionCallback callback, void* context) noexcept {
     try {
         Hide();
@@ -93,7 +93,20 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
             std::wstring text;
             if (snapshot.candidates[index].size() > 512
                 || !DisplayText(snapshot.candidates[index], &text)) { return false; }
-            rows.push_back(std::to_wstring(index + 1) + L".  " + text);
+            std::wstring label = std::to_wstring(index + 1) + L".";
+            if (index < snapshot.candidate_labels.size()
+                && snapshot.candidate_labels[index].has_value()
+                && !snapshot.candidate_labels[index]->empty()
+                && !DisplayText(*snapshot.candidate_labels[index], &label)) { return false; }
+            std::wstring row = label + L"  " + text;
+            if (show_comments && index < snapshot.candidate_comments.size()
+                && snapshot.candidate_comments[index].has_value()
+                && !snapshot.candidate_comments[index]->empty()) {
+                std::wstring comment;
+                if (!DisplayText(*snapshot.candidate_comments[index], &comment)) { return false; }
+                row += L"  ·  " + comment;
+            }
+            rows.push_back(std::move(row));
         }
         if (window_ == nullptr) {
             WNDCLASSEXW definition{};

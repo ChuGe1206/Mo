@@ -16,7 +16,7 @@ public:
     CandidateWindow& operator=(const CandidateWindow&) = delete;
 
     bool Update(HINSTANCE module, HWND owner, const RECT& anchor,
-        const BrokerSnapshot& snapshot, CandidateTheme theme,
+        const BrokerSnapshot& snapshot, CandidateTheme theme, bool show_comments,
         ActionCallback callback, void* context) noexcept;
     void Hide() noexcept;
     void Destroy() noexcept;

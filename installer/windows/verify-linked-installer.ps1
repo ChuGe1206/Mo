@@ -60,6 +60,20 @@ if ($null -eq $settingsShortcut -or
     $settingsShortcut.GetAttribute('Advertise') -cne 'yes') {
     throw 'Linked MSI settings shortcut contract mismatch.'
 }
+$x86Com = $package.SelectSingleNode(
+    '//w:StandardDirectory[@Id="ProgramFilesFolder"]/w:Component[@Id="TipX86ComRegistryComponent"]',
+    $packageNamespace)
+$x86ComValue = if ($null -ne $x86Com) {
+    $x86Com.SelectSingleNode('w:RegistryValue[not(@Name)]', $packageNamespace)
+} else { $null }
+if ($null -eq $x86Com -or $x86Com.GetAttribute('Bitness') -cne 'always32' -or
+    $null -eq $x86ComValue -or
+    $x86ComValue.GetAttribute('Root') -cne 'HKLM' -or
+    $x86ComValue.GetAttribute('Key') -cne 'Software\Classes\CLSID\{B4911146-2A27-47AA-9D12-109B6AE10A70}\InprocServer32' -or
+    $x86ComValue.GetAttribute('Value') -cne '[INSTALLFOLDER]tip\x86\mo-tip.dll' -or
+    $x86ComValue.GetAttribute('KeyPath') -cne 'yes') {
+    throw 'Linked MSI x86 COM path must use the installed directory without a cross-component file reference.'
+}
 $failureProperty = $package.SelectSingleNode('//w:Property[@Id="MO_TEST_FAIL_AFTER_MACHINE_PROFILE"]', $packageNamespace)
 $failureAction = $package.SelectSingleNode('//w:CustomAction[@Id="DevelopmentFailAfterMachineProfile"]', $packageNamespace)
 $failureSequence = $package.SelectSingleNode(
@@ -249,8 +263,13 @@ if ((Get-FileHash -Algorithm SHA256 -LiteralPath $extractedMsi).Hash -cne
 
 $iceValidated = $false
 if ($ValidateMsi) {
-    & $wix msi validate $msi
-    if ($LASTEXITCODE -ne 0) { throw 'MSI ICE validation failed.' }
+    $iceMessages = @(& $wix msi validate $msi 2>&1)
+    $iceExitCode = $LASTEXITCODE
+    foreach ($message in $iceMessages) { Write-Host $message }
+    if ($iceExitCode -ne 0 -or
+        @($iceMessages | Where-Object { "$_" -match '(?i)\b(?:warning|error)\b' }).Count -ne 0) {
+        throw 'MSI ICE validation failed or reported a warning.'
+    }
     $iceValidated = $true
 }
 $evidence = [ordered]@{

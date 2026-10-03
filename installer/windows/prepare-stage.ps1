@@ -159,6 +159,7 @@ Push-Location $moSource
 try {
     Checked 'cargo' @("+$RustToolchain", 'build', '--locked', '--offline', '--release', '--no-default-features',
         '--target', 'x86_64-pc-windows-msvc', '--target-dir', (Join-Path $working 'rust-target'),
+        '--config', 'build.rustflags=["-C","target-feature=+crt-static"]',
         '--config', 'profile.release.debug-assertions=false',
         '-p', 'mo-broker', '--bin', 'mo-broker',
         '-p', 'mo-settings-app', '--bin', 'mo-settings')

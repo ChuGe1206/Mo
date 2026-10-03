@@ -1,0 +1,35 @@
+diff --git a/src/types.cc b/src/types.cc
+--- a/src/types.cc
++++ b/src/types.cc
+@@ -1959,5 +1959,7 @@ namespace MemoryReg {
+   }
+ 
+   bool LuaMemory::Memorize(const CommitEntry& commit_entry) {
++    if (!LearningEnabled())
++      return false;
+     if (!memorize_callback)
+       return false;
+@@ -2001,5 +2003,7 @@ namespace MemoryReg {
+ 
+   bool LuaMemory::update_userdict(const DictEntry& entry, const int commits,
+       const string& new_entry_prefix) {
++    if (!LearningEnabled())
++      return false;
+     if (user_dict_ && user_dict_->loaded())
+       return user_dict_->UpdateEntry(entry, commits, new_entry_prefix);
+@@ -2009,5 +2013,7 @@ namespace MemoryReg {
+   bool LuaMemory::update_entry(const DictEntry& entry, const int commits,
+       const string& new_entry_prefix, const string& lang_name)
+   {
++    if (!LearningEnabled())
++      return false;
+     if (user_dict_ && user_dict_->loaded() && lang_name == language_->name())
+       return user_dict_->UpdateEntry(entry, commits, new_entry_prefix);
+@@ -2017,5 +2023,7 @@ namespace MemoryReg {
+   }
+ 
+   bool LuaMemory::update_candidate(const an<Candidate> cand, const int commits) {
++    if (!LearningEnabled())
++      return false;
+     if (!user_dict_ || !user_dict_->loaded())
+       return false;

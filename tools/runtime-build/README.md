@@ -3,7 +3,7 @@
 This Windows x64 builder uses only exact Git objects from the locked librime,
 four dependency submodules and Lua plugin. It exports fresh archives, checks
 every source archive hash, extracts into a new repository `build/` child and
-applies the tracked resource and Lua build/data-boundary patches. Mutable checkouts, old headers/libs and other
+applies the tracked resource, Lua build/data-boundary and learning-policy patches. Mutable checkouts, old headers/libs and other
 plugins are not build inputs. No downloads or overwrites occur in the builder.
 Run the scripts with PowerShell 7 (`pwsh`). Mo sources/patches and the validated
 Emoji pack are snapshotted under the new output's `inputs/` before compilation.
@@ -46,6 +46,11 @@ The machine-data patch replaces Lua's search path with only shared `lua/?.lua`
 and `lua/?/init.lua`, clears the native-module path and loads only shared
 `rime.lua`. A source-policy parser rejects user/default search paths and ambiguous
 entry points; provenance binds the policy version and patch hash.
+The tracked learning patches gate core Memory and merged Lua Memory user-dictionary
+writes on the session option `mo_disable_learning`. Run
+`tools/test-learning-option.ps1` against a fresh build and prepared shared data;
+it exports one disposable user dictionary after private, normal and private
+sessions and checks entry count and frequency (0, 1, 1).
 OpenCC uses the same pinned Marisa 0.3.1 as librime, via explicit include/library
 paths. The builder verifies OpenCC did not replace that library with its bundled
 0.2.6 copy. This is separate from the existing standalone dictionary compiler's

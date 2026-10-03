@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'staging-policy.ps1')
+. (Join-Path $PSScriptRoot 'vm-test-policy.ps1')
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $basePath = Assert-MoPlainPath $BaseEvidencePath
 $upgradePath = Assert-MoPlainPath $UpgradeEvidencePath
@@ -52,6 +53,7 @@ function Read-LinkedEvidence([string]$Path) {
 
 $base = Read-LinkedEvidence $basePath
 $upgrade = Read-LinkedEvidence $upgradePath
+Assert-MoMsiMajorUpgradeVersions $base['product_version'] $upgrade['product_version']
 $baseVersion = [version]$base['product_version']
 $upgradeVersion = [version]$upgrade['product_version']
 if ($baseVersion -ge $upgradeVersion -or

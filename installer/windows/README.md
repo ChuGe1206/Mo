@@ -72,7 +72,7 @@ authentication**. Do not run untrusted stages just because verification passes.
 The trusted build host/toolchain/Cargo home are not hermetically isolated; path
 checks are not a handle-based concurrency/ACL proof and do not reject every
 possible hard link. The bundle has not closed typed settings generation/migration,
-VC prerequisites, signatures, full per-file notices/SBOM, corresponding-source
+signatures, full per-file notices/SBOM, corresponding-source
 review or legal approval. All manifests explicitly remain development-only,
 non-redistributable and non-installable. This is not G3 or daily-use acceptance.
 
@@ -137,12 +137,19 @@ extracts the Burn attached container and rejects mismatched component/action
 counts, scopes, command routing, provider identity or embedded bytes.
 
 The packages remain deliberately non-deployable. The standard BA is temporary
-and both outputs are unsigned; VC prerequisites, loaded-TIP upgrade handling,
+and both outputs are unsigned; loaded-TIP upgrade handling,
 multi-user uninstall policy, complete notices/SBOM, ACL inspection and release
 authorization remain open. A fresh local build linked the MSI and Bundle and
 passed structural verification without executing either package or changing
-real current-user input state. MSI ICE validation could not run on this host
-because the Windows Installer service is unavailable and remains a VM gate.
+real current-user input state. On 2026-09-28, the current host ran MSI ICE on
+the `0.0.9.1` ProductionShape package with no warnings or errors after the x86
+COM path fix (ADR 0047). This static result does not replace VM installation,
+repair, upgrade or rollback tests.
+The subsequent `0.0.9.2` ProductionShape stage builds Mo's Rust and C++ PE
+with static MSVC CRT linkage. Stage verification rejects direct or delayed
+Visual C++ redistributable DLL imports, and an independent `dumpbin` check
+found none in all six staged PE files. The new MSI/Bundle passed linked checks
+and warning-free ICE; clean-VM startup remains unverified (ADR 0048).
 The mixed-scope chain also produces WIX1140: a per-user Bundle does not register
 a dependency on its per-machine MSI. The build suppresses that understood link
 warning only after the verifier confirms the intended split; upgrade and
@@ -171,7 +178,8 @@ The build pipeline has four safety gates:
 3. The stage must pass development consistency validation; generated authoring
    is then independently verified before WiX is invoked.
 4. A build is successful only after the linked MSI and Bundle are decompiled or
-   extracted and their actual manifests and embedded payload hashes pass.
+   extracted and their actual manifests and embedded payload hashes pass. Pass
+   `-ValidateMsi` to also require warning-free MSI ICE validation during build.
 
 For an offline, non-installing local build from already downloaded packages:
 
@@ -183,7 +191,7 @@ For an offline, non-installing local build from already downloaded packages:
   -StageDirectory "$PWD/build/mo-windows-stage-new/stage" `
   -WixToolchainDirectory "$PWD/build/mo-wix-toolchain-new" `
   -OutputDirectory "$PWD/build/mo-linked-installer-new" `
-  -AllowDevelopmentBuild
+  -AllowDevelopmentBuild -ValidateMsi
 ```
 
 To prove the fault-free linked shape without producing a distributable package,
@@ -211,6 +219,12 @@ also audits Program Files/install-tree owners and DACLs, rejects write-like ACEs
 for untrusted SIDs, walks without following reparse points and requires one hard
 link per file. It is not run automatically. See
 `docs/phase-0/VM-INSTALLER-TEST.md` and ADR 0032/0037.
+
+MSI major upgrades must strictly increase the first three product-version fields;
+Windows Installer ignores the fourth field. A revision-only pair such as
+`0.0.9.11 -> 0.0.9.12` is rejected by the host verifier, kit generator and guest
+kit policy. Use `0.0.9.11 -> 0.0.10.0` or another increase in the first three
+fields (ADR 0053).
 
 `verify-linked-upgrade-pair.ps1` and `prepare-vm-matrix-test-kit.ps1` additionally
 bind two versions into a hash-locked rollback/repair/Major Upgrade matrix. Its

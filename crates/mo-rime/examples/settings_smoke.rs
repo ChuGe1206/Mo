@@ -35,7 +35,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for traditional in [false, true] {
             let options = SessionOptions::new()
                 .with_schema(schema)
-                .with_option("traditionalization", traditional);
+                .with_option("traditionalization", traditional)
+                .with_option("mo_disable_learning", true);
             let token = actor.create_session(options)?;
             let snapshot = actor.dispatch(token, EngineCommand::Key(KeyEvent::text('n')))?;
             assert_eq!(snapshot.status.schema_id, schema);
@@ -45,6 +46,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             actor.destroy_session(token)?;
         }
+    }
+    for emoji in [false, true] {
+        let token = actor.create_session(
+            SessionOptions::new()
+                .with_schema("rime_ice")
+                .with_option("emoji", emoji),
+        )?;
+        let mut snapshot = None;
+        for key in "nihao".chars() {
+            snapshot = Some(actor.dispatch(token, EngineCommand::Key(KeyEvent::text(key)))?);
+        }
+        let has_emoji = snapshot
+            .ok_or("missing emoji candidate snapshot")?
+            .candidates
+            .iter()
+            .any(|candidate| candidate.text == "👋");
+        assert_eq!(
+            has_emoji, emoji,
+            "emoji option must control the visible candidate"
+        );
+        actor.destroy_session(token)?;
     }
     drop(actor);
     let engine = Engine::load(config, dll)?;
@@ -66,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         session.close()?;
     }
-    println!("Five schemas x two modes compose; 中国/中國 conversion verified.");
+    println!("Five schemas x two modes compose; 中国/中國 and Emoji on/off verified.");
     Ok(())
 }
 

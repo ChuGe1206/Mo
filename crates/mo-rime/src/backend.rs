@@ -90,7 +90,7 @@ pub struct RimeBackendSession {
 pub enum RimeBackendError {
     /// The safe librime boundary rejected a native operation.
     Native(Error),
-    /// Only the pinned rime-ice schemas and traditionalization option are allowed.
+    /// Only the pinned rime-ice schemas and supported per-session options are allowed.
     UnsupportedSessionOptions,
     /// The current minimal librime API prefix cannot represent this command.
     UnsupportedCommand(&'static str),
@@ -191,11 +191,9 @@ impl EngineBackend for RimeBackend {
                     | "double_pinyin_mspy"
                     | "double_pinyin_sogou"
             )
-        }) || options
-            .options
-            .keys()
-            .any(|name| name != "traditionalization")
-        {
+        }) || options.options.keys().any(|name| {
+            name != "traditionalization" && name != "emoji" && name != "mo_disable_learning"
+        }) {
             return Err(RimeBackendError::UnsupportedSessionOptions);
         }
         let id = self.engine.create_session_id()?;

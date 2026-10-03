@@ -129,6 +129,7 @@ constexpr std::size_t kMaximumPayloadLength = 64 * 1024;
 // Maximum encoded Snapshot size from mo-ipc. A smaller negotiated limit could
 // make a protocol-valid response impossible to deliver.
 constexpr std::uint32_t kMinimumNegotiatedPayloadLength = 24724;
+constexpr std::uint32_t kMinimumDetailedSnapshotPayloadLength = 34260;
 constexpr std::uint16_t kProtocolMajor = 1;
 constexpr std::uint16_t kProtocolMinor = 0;
 constexpr std::uint32_t kResponseFlag = 1U;
@@ -136,6 +137,8 @@ constexpr std::uint32_t kErrorFlag = 2U;
 constexpr std::uint64_t kKeyEventsFeature = 1ULL;
 constexpr std::uint64_t kCandidateActionsFeature = 2ULL;
 constexpr std::uint64_t kSettingsSnapshotFeature = 4ULL;
+constexpr std::uint64_t kSessionSettingsAckFeature = 8ULL;
+constexpr std::uint64_t kCandidateDetailsFeature = 16ULL;
 constexpr DWORD kClientPipeAccess = 0x0012019bUL;
 constexpr std::size_t kMaximumWindowsPathLength = 32768;
 
@@ -170,6 +173,7 @@ enum class MessageKind : std::uint16_t {
     CandidateAction = 12,
     GetSettings = 13,
     SettingsSnapshot = 14,
+    DetailedSnapshot = 15,
 };
 
 struct Frame final {
@@ -653,6 +657,15 @@ public:
         offset_ += length;
         return true;
     }
+    bool OptionalString(std::size_t maximum, std::optional<std::string>* value) {
+        Byte present = 0;
+        if (!U8(&present) || present > 1) { return false; }
+        if (present == 0) { value->reset(); return true; }
+        std::string text;
+        if (!String(maximum, &text)) { return false; }
+        *value = std::move(text);
+        return true;
+    }
     bool finished() const noexcept { return offset_ == bytes_.size(); }
 
 private:
@@ -671,6 +684,8 @@ private:
 };
 
 bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapshot) {
+    const bool detailed = frame.kind == MessageKind::DetailedSnapshot;
+    if (!detailed && frame.kind != MessageKind::Snapshot) { return false; }
     PayloadReader reader(frame.payload);
     std::uint64_t revision = 0;
     Byte handled = 0;
@@ -690,13 +705,23 @@ bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapsho
         return false;
     }
     std::vector<std::string> candidates;
+    std::vector<std::optional<std::string>> comments;
+    std::vector<std::optional<std::string>> labels;
     candidates.reserve(candidate_count);
+    comments.reserve(candidate_count);
+    labels.reserve(candidate_count);
     for (std::uint16_t index = 0; index < candidate_count; ++index) {
         std::string candidate;
         if (!reader.String(512, &candidate)) {
             return false;
         }
         candidates.push_back(std::move(candidate));
+        std::optional<std::string> comment;
+        std::optional<std::string> label;
+        if (detailed && (!reader.OptionalString(256, &comment)
+            || !reader.OptionalString(32, &label))) { return false; }
+        comments.push_back(std::move(comment));
+        labels.push_back(std::move(label));
     }
     if (!reader.finished()) {
         return false;
@@ -708,6 +733,8 @@ bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapsho
         ? std::optional<std::string>(std::move(commit))
         : std::nullopt;
     snapshot->candidates = std::move(candidates);
+    snapshot->candidate_comments = std::move(comments);
+    snapshot->candidate_labels = std::move(labels);
     return true;
 }
 
@@ -780,7 +807,8 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         AppendU16(&hello.payload, kProtocolMajor);
         AppendU16(&hello.payload, kProtocolMinor);
         AppendU64(&hello.payload,
-            kKeyEventsFeature | kCandidateActionsFeature | kSettingsSnapshotFeature);
+            kKeyEventsFeature | kCandidateActionsFeature | kSettingsSnapshotFeature
+            | kSessionSettingsAckFeature | kCandidateDetailsFeature);
         AppendU32(&hello.payload, static_cast<std::uint32_t>(kMaximumPayloadLength));
 
         Frame hello_ack;
@@ -792,7 +820,9 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             || GetU16(hello_ack.payload.data() + 2) != kProtocolMinor
             || (GetU64(hello_ack.payload.data() + 4) & kKeyEventsFeature) == 0
             || GetU32(hello_ack.payload.data() + 12) < kMinimumNegotiatedPayloadLength
-            || GetU32(hello_ack.payload.data() + 12) > kMaximumPayloadLength) {
+            || GetU32(hello_ack.payload.data() + 12) > kMaximumPayloadLength
+            || ((GetU64(hello_ack.payload.data() + 4) & kCandidateDetailsFeature) != 0
+                && GetU32(hello_ack.payload.data() + 12) < kMinimumDetailedSnapshotPayloadLength)) {
             last_connect_error_ = ERROR_INVALID_DATA;
             Reset();
             return false;
@@ -800,8 +830,12 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         generation_ = hello_ack.generation;
         candidate_actions_supported_ =
             (GetU64(hello_ack.payload.data() + 4) & kCandidateActionsFeature) != 0;
+        candidate_details_supported_ =
+            (GetU64(hello_ack.payload.data() + 4) & kCandidateDetailsFeature) != 0;
         settings_supported_ =
             (GetU64(hello_ack.payload.data() + 4) & kSettingsSnapshotFeature) != 0;
+        session_settings_ack_supported_ =
+            (GetU64(hello_ack.payload.data() + 4) & kSessionSettingsAckFeature) != 0;
 
         if (settings_supported_) {
             Frame request;
@@ -826,15 +860,19 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         open.generation = generation_;
         open.request_id = next_request_id_++;
         Frame opened;
+        BrokerSettings applied_settings;
         if (!Exchange(pipe_, open, MessageKind::OpenSessionAck, &opened, deadline)
             || opened.generation != generation_
             || opened.session_token == 0
-            || !opened.payload.empty()) {
+            || (session_settings_ack_supported_
+                ? !DecodeSettings(opened, &applied_settings)
+                : !opened.payload.empty())) {
             last_connect_error_ = ERROR_INVALID_DATA;
             Reset();
             return false;
         }
         session_token_ = opened.session_token;
+        if (session_settings_ack_supported_) { settings_ = applied_settings; }
         if (DeadlineExpired(deadline)) {
             last_connect_error_ = ERROR_TIMEOUT; TraceFailure(ERROR_TIMEOUT); Reset(); return false;
         }
@@ -884,7 +922,8 @@ bool BrokerClient::SendKeyUntil(
 
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, deadline)
+        if (!Exchange(pipe_, request, candidate_details_supported_
+                ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
             || !DecodeSnapshot(response, &decoded)) {
@@ -928,7 +967,8 @@ bool BrokerClient::SendCandidateAction(
         AppendU32(&request.payload, index);
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, MessageKind::Snapshot, &response, deadline)
+        if (!Exchange(pipe_, request, candidate_details_supported_
+                ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
             || !DecodeSnapshot(response, &decoded)
@@ -994,6 +1034,75 @@ SettingsRefreshResult BrokerClient::RefreshSettings(DWORD timeout_ms) noexcept {
     }
 }
 
+SessionReplaceResult BrokerClient::ReplaceSession(DWORD timeout_ms) noexcept {
+    if (!connected() || generation_ == 0 || session_token_ == 0) {
+        return SessionReplaceResult::Disconnected;
+    }
+    try {
+        const Deadline deadline = DeadlineFromNow(timeout_ms);
+        Frame open;
+        open.kind = MessageKind::OpenSession;
+        open.generation = generation_;
+        open.request_id = next_request_id_++;
+        Frame opened;
+        BrokerSettings applied_settings;
+        TraceRequest(open.request_id);
+        if (!WriteFrame(pipe_, open, deadline)
+            || !ReadFrame(pipe_, &opened, deadline)
+            || opened.request_id != open.request_id
+            || opened.generation != generation_
+            || DeadlineExpired(deadline)) {
+            Reset();
+            return SessionReplaceResult::Disconnected;
+        }
+        if (opened.kind == MessageKind::Error
+            && opened.flags == (kResponseFlag | kErrorFlag)
+            && opened.session_token == 0
+            && opened.payload.size() >= 8
+            && opened.payload.size() <= 520
+            && GetU32(opened.payload.data() + 4) == opened.payload.size() - 8
+            && IsValidUtf8(opened.payload.data() + 8,
+                static_cast<int>(opened.payload.size() - 8))
+            && (GetU32(opened.payload.data()) == 7 || GetU32(opened.payload.data()) == 9)) {
+            // The old session is still valid: an invalid settings document or
+            // rejected engine configuration must not discard its preedit.
+            return SessionReplaceResult::RejectedKeepOld;
+        }
+        if (opened.kind != MessageKind::OpenSessionAck
+            || opened.flags != kResponseFlag
+            || opened.session_token == 0
+            || opened.session_token == session_token_
+            || (session_settings_ack_supported_
+                ? !DecodeSettings(opened, &applied_settings)
+                : !opened.payload.empty())) {
+            Reset();
+            return SessionReplaceResult::Disconnected;
+        }
+        const std::uint64_t new_token = opened.session_token;
+        Frame close;
+        close.kind = MessageKind::CloseSession;
+        close.generation = generation_;
+        close.session_token = session_token_;
+        close.request_id = next_request_id_++;
+        Frame closed;
+        if (!Exchange(pipe_, close, MessageKind::CloseSessionAck, &closed, deadline)
+            || closed.generation != generation_
+            || closed.session_token != session_token_
+            || !closed.payload.empty()) {
+            // Both owned sessions are reclaimed when the pipe closes; do not
+            // guess which one survived an ambiguous close response.
+            Reset();
+            return SessionReplaceResult::Disconnected;
+        }
+        session_token_ = new_token;
+        if (session_settings_ack_supported_) { settings_ = applied_settings; }
+        return SessionReplaceResult::Replaced;
+    } catch (...) {
+        Reset();
+        return SessionReplaceResult::Disconnected;
+    }
+}
+
 void BrokerClient::Close(DWORD timeout_ms) noexcept {
     if (!connected()) {
         Reset();
@@ -1025,7 +1134,9 @@ void BrokerClient::Reset() noexcept {
     session_token_ = 0;
     next_request_id_ = 1;
     candidate_actions_supported_ = false;
+    candidate_details_supported_ = false;
     settings_supported_ = false;
+    session_settings_ack_supported_ = false;
     settings_ = BrokerSettings{};
 }
 

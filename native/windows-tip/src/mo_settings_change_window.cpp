@@ -99,6 +99,11 @@ void SettingsChangeWindow::Stop() noexcept {
     }
 }
 
+bool SettingsChangeWindow::ScheduleRefresh() noexcept {
+    return window_ != nullptr && message_ != 0
+        && PostMessageW(window_, message_, 0, 0) != FALSE;
+}
+
 LRESULT CALLBACK SettingsChangeWindow::WindowProc(
     HWND window, UINT message, WPARAM word, LPARAM parameter) noexcept {
     auto* self = reinterpret_cast<SettingsChangeWindow*>(

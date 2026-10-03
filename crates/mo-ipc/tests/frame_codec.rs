@@ -268,3 +268,41 @@ fn settings_snapshot_is_fixed_bounded_and_policy_consistent() {
     invalid[17] = 1;
     assert!(SettingsSnapshot::decode_payload(&invalid).is_err());
 }
+
+#[test]
+fn detailed_candidate_snapshot_preserves_annotations_without_changing_legacy_codec() {
+    use mo_ipc::{DetailedCandidate, DetailedSnapshot};
+
+    let rich = DetailedSnapshot {
+        revision: 42,
+        handled: true,
+        composition: "nihao".into(),
+        commit: None,
+        candidates: vec![DetailedCandidate {
+            text: "你好".into(),
+            comment: Some("常用词".into()),
+            label: Some("a".into()),
+        }],
+    };
+    let payload = rich.encode_payload().unwrap();
+    assert_eq!(DetailedSnapshot::decode_payload(&payload).unwrap(), rich);
+    assert!(Snapshot::decode_payload(&payload).is_err());
+    for length in 0..payload.len() {
+        assert!(DetailedSnapshot::decode_payload(&payload[..length]).is_err());
+    }
+    let mut extra = payload.clone();
+    extra.push(0);
+    assert!(DetailedSnapshot::decode_payload(&extra).is_err());
+
+    let legacy = Snapshot {
+        revision: rich.revision,
+        handled: rich.handled,
+        composition: rich.composition,
+        commit: rich.commit,
+        candidates: vec!["你好".into()],
+    };
+    assert_eq!(
+        Snapshot::decode_payload(&legacy.encode_payload().unwrap()).unwrap(),
+        legacy
+    );
+}

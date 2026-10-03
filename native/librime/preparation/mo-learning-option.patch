@@ -1,0 +1,77 @@
+diff --git a/src/rime/gear/memory.h b/src/rime/gear/memory.h
+--- a/src/rime/gear/memory.h
++++ b/src/rime/gear/memory.h
+@@ -43,6 +43,7 @@ class Memory {
+   bool StartSession();
+   bool FinishSession();
+   bool DiscardSession();
++  bool LearningEnabled() const;
+ 
+   Dictionary* dict() const { return dict_.get(); }
+   UserDictionary* user_dict() const { return user_dict_.get(); }
+@@ -57,6 +58,7 @@ class Memory {
+   the<Dictionary> dict_;
+   the<UserDictionary> user_dict_;
+   the<Language> language_;
++  Context* context_ = nullptr;
+ 
+  private:
+   connection commit_connection_;
+diff --git a/src/rime/gear/memory.cc b/src/rime/gear/memory.cc
+--- a/src/rime/gear/memory.cc
++++ b/src/rime/gear/memory.cc
+@@ -82,5 +82,6 @@ Memory::Memory(const Ticket& ticket) {
+                  : nullptr);
+ 
+   Context* ctx = ticket.engine->context();
++  context_ = ctx;
+   commit_connection_ =
+       ctx->commit_notifier().connect([this](Context* ctx) { OnCommit(ctx); });
+@@ -95,14 +96,18 @@ Memory::~Memory() {
+   unhandled_key_connection_.disconnect();
+ }
+ 
++bool Memory::LearningEnabled() const {
++  return context_ && !context_->get_option("mo_disable_learning");
++}
++
+ bool Memory::StartSession() {
+-  return user_dict_ && user_dict_->NewTransaction();
++  return LearningEnabled() && user_dict_ && user_dict_->NewTransaction();
+ }
+ 
+ bool Memory::FinishSession() {
+-  return user_dict_ && user_dict_->CommitPendingTransaction();
++  return LearningEnabled() && user_dict_ && user_dict_->CommitPendingTransaction();
+ }
+ 
+ bool Memory::DiscardSession() {
+-  return user_dict_ && user_dict_->RevertRecentTransaction();
++  return LearningEnabled() && user_dict_ && user_dict_->RevertRecentTransaction();
+ }
+@@ -126,7 +131,7 @@ bool Memory::ProcessSegmentOnCommit(CommitEntry& commit_entry,
+ }
+ 
+ void Memory::OnCommit(Context* ctx) {
+-  if (!user_dict_ || user_dict_->readonly())
++  if (!LearningEnabled() || !user_dict_ || user_dict_->readonly())
+     return;
+   StartSession();
+   CommitEntry commit_entry(this);
+@@ -136,6 +141,7 @@ void Memory::OnCommit(Context* ctx) {
+ }
+ 
+ void Memory::OnDeleteEntry(Context* ctx) {
+-  if (!user_dict_ || user_dict_->readonly() || !ctx || !ctx->HasMenu())
++  if (!LearningEnabled() || !user_dict_ || user_dict_->readonly() || !ctx ||
++      !ctx->HasMenu())
+     return;
+   auto phrase =
+@@ -149,6 +155,6 @@ void Memory::OnDeleteEntry(Context* ctx) {
+ }
+ 
+ void Memory::OnUnhandledKey(Context* ctx, const KeyEvent& key) {
+-  if (!user_dict_ || user_dict_->readonly())
++  if (!LearningEnabled() || !user_dict_ || user_dict_->readonly())
+     return;
+   if ((key.modifier() & ~kShiftMask) == 0) {

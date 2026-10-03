@@ -29,6 +29,7 @@ pub enum MessageKind {
     CandidateAction = 12,
     GetSettings = 13,
     SettingsSnapshot = 14,
+    DetailedSnapshot = 15,
 }
 
 impl TryFrom<u16> for MessageKind {
@@ -50,6 +51,7 @@ impl TryFrom<u16> for MessageKind {
             12 => Ok(Self::CandidateAction),
             13 => Ok(Self::GetSettings),
             14 => Ok(Self::SettingsSnapshot),
+            15 => Ok(Self::DetailedSnapshot),
             other => Err(FrameError::UnknownMessageKind(other)),
         }
     }

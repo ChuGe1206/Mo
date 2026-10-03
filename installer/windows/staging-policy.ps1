@@ -181,6 +181,92 @@ function Assert-MoPeArchitecture([string]$Path, [ValidateSet('x64', 'x86')][stri
     } finally { $reader.Dispose() }
 }
 
+function Get-MoPeRvaOffset([byte[]]$Bytes, [int]$SectionOffset, [int]$SectionCount,
+        [uint32]$Rva, [int]$Length) {
+    for ($index = 0; $index -lt $SectionCount; $index++) {
+        $section = $SectionOffset + 40 * $index
+        $virtualSize = [BitConverter]::ToUInt32($Bytes, $section + 8)
+        $virtualAddress = [BitConverter]::ToUInt32($Bytes, $section + 12)
+        $rawSize = [BitConverter]::ToUInt32($Bytes, $section + 16)
+        $rawOffset = [BitConverter]::ToUInt32($Bytes, $section + 20)
+        $span = [Math]::Max($virtualSize, $rawSize)
+        if ([uint64]$Rva -ge $virtualAddress -and [uint64]$Rva -lt [uint64]$virtualAddress + $span) {
+            $within = [uint64]$Rva - $virtualAddress
+            if ($within + $Length -gt $rawSize -or [uint64]$rawOffset + $within + $Length -gt $Bytes.Length) {
+                throw 'PE import points outside section bytes.'
+            }
+            return [int]($rawOffset + $within)
+        }
+    }
+    throw 'PE import RVA does not map to a section.'
+}
+
+function Get-MoPeImportedDlls([string]$Path) {
+    $bytes = [IO.File]::ReadAllBytes((Assert-MoPlainPath $Path))
+    if ($bytes.Length -lt 256 -or [BitConverter]::ToUInt16($bytes, 0) -ne 0x5a4d) { throw 'Not a PE image.' }
+    $pe = [BitConverter]::ToUInt32($bytes, 0x3c)
+    if ($pe -lt 64 -or [uint64]$pe + 24 -gt $bytes.Length -or
+        [BitConverter]::ToUInt32($bytes, [int]$pe) -ne 0x4550) { throw 'Invalid PE header.' }
+    $sections = [BitConverter]::ToUInt16($bytes, [int]$pe + 6)
+    $optionalSize = [BitConverter]::ToUInt16($bytes, [int]$pe + 20)
+    $optional = [int]$pe + 24
+    $sectionOffset = $optional + $optionalSize
+    if ($sections -lt 1 -or $sections -gt 96 -or $sectionOffset + 40 * $sections -gt $bytes.Length) {
+        throw 'Invalid PE sections.'
+    }
+    $magic = [BitConverter]::ToUInt16($bytes, $optional)
+    $directoryOffset = switch ($magic) { 0x10b { 96 } 0x20b { 112 } default { throw 'Invalid PE optional header.' } }
+    if ($optionalSize -lt $directoryOffset + 16 * 2) { throw 'Missing PE import directory.' }
+    $directoryCount = [BitConverter]::ToUInt32($bytes, $optional + $directoryOffset - 4)
+    if ($directoryCount -lt 2) { throw 'Missing PE import directory.' }
+    $names = [Collections.Generic.List[string]]::new()
+    foreach ($kind in @(@(1, 20, 12), @(13, 32, 4))) {
+        $index, $recordSize, $nameField = $kind
+        if ($directoryCount -le $index) { continue }
+        if ($optionalSize -lt $directoryOffset + 8 * ($index + 1)) { throw 'Truncated PE data directories.' }
+        $directory = $optional + $directoryOffset + 8 * $index
+        $rva = [BitConverter]::ToUInt32($bytes, $directory)
+        $size = [BitConverter]::ToUInt32($bytes, $directory + 4)
+        if (($rva -eq 0) -ne ($size -eq 0)) { throw 'Incomplete PE import directory.' }
+        if ($rva -eq 0) { continue }
+        if ($size -lt $recordSize -or $size -gt 1MB) { throw 'Invalid PE import directory size.' }
+        $terminated = $false
+        for ($position = 0; $position + $recordSize -le $size; $position += $recordSize) {
+            $entry = Get-MoPeRvaOffset $bytes $sectionOffset $sections ([uint32]($rva + $position)) $recordSize
+            $empty = $true
+            for ($byte = 0; $byte -lt $recordSize; $byte++) {
+                if ($bytes[$entry + $byte] -ne 0) { $empty = $false; break }
+            }
+            if ($empty) { $terminated = $true; break }
+            if ($index -eq 13 -and ([BitConverter]::ToUInt32($bytes, $entry) -band 1) -eq 0) {
+                throw 'Unsupported VA-based PE delay import.'
+            }
+            $nameRva = [BitConverter]::ToUInt32($bytes, $entry + $nameField)
+            $nameOffset = Get-MoPeRvaOffset $bytes $sectionOffset $sections $nameRva 1
+            $end = $nameOffset
+            while ($end -lt $bytes.Length -and $end -lt $nameOffset + 256 -and $bytes[$end] -ne 0) { $end++ }
+            if ($end -eq $nameOffset -or $end -eq $bytes.Length -or $end -eq $nameOffset + 256) {
+                throw 'Invalid PE import name.'
+            }
+            $null = Get-MoPeRvaOffset $bytes $sectionOffset $sections $nameRva ($end - $nameOffset + 1)
+            $name = [Text.Encoding]::ASCII.GetString($bytes, $nameOffset, $end - $nameOffset)
+            if ($name -cnotmatch '^[A-Za-z0-9_.-]+\.dll$') { throw 'Invalid PE import DLL name.' }
+            $names.Add($name)
+        }
+        if (-not $terminated) { throw 'Unterminated PE import directory.' }
+    }
+    return $names.ToArray()
+}
+
+function Assert-MoNoDynamicVCRuntime([string]$Path) {
+    $imports = @(Get-MoPeImportedDlls $Path)
+    foreach ($name in $imports) {
+        if ($name -match '^(?i:(?:(?:vcruntime|msvcp|msvcr|concrt|vcomp)\d+(?:_\d+)?d?|mfc\d+\w*))\.dll$') {
+            throw "Staged PE depends on a Visual C++ redistributable DLL: $name"
+        }
+    }
+}
+
 function Get-MoRuntimePins {
     return [ordered]@{
         '' = @('33e78140250125871856cdc5b42ddc6a5fcd3cd4', 'B22594E1FCF55DF5BBF60E76DC49200671410E98540BE265F68465D03678C722')
@@ -205,6 +291,7 @@ function Get-MoRuntimeOwnSourceNames {
     return @('tools/runtime-build/build.ps1', 'tools/runtime-build/source-policy.ps1', 'tools/opencc-data.ps1',
         'native/librime/preparation/resources-v2.patch', 'native/librime/preparation/opencc-directory.patch',
         'native/librime/preparation/lua-signed-stack.patch', 'native/librime/preparation/lua-machine-data-only.patch',
+        'native/librime/preparation/mo-learning-option.patch', 'native/librime/preparation/mo-lua-learning-option.patch',
         'native/librime/preparation/mo_preparation.cc', 'native/librime/preparation/mo_project.cmake',
         'native/librime/preparation/mo_resource_directory.cpp', 'native/librime/preparation/mo_resource_file.h',
         'native/librime/preparation/mo_resource_file.cpp')
@@ -217,6 +304,7 @@ function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
     Assert-MoDevelopmentMetadata $metadata 2
     if ($metadata['preparation_abi'] -ne 2 -or $metadata['resource_directory'] -cne 'lib/opencc' -or
         $metadata['lua_data_policy'] -cne 'machine-shared-only-v1' -or
+        $metadata['learning_policy'] -cne 'session-option-v1' -or
         @($metadata['plugins']).Count -ne 1 -or $metadata['plugins'][0] -cne 'lua') { throw 'Runtime ABI/plugin policy mismatch.' }
     $pins = Get-MoRuntimePins
     if ($metadata['inputs'].Count -ne $pins.Count) { throw 'Runtime source pin count mismatch.' }
@@ -237,6 +325,13 @@ function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
     }
     if ($metadata['lua_data_policy_patch_sha256'] -ine $metadata['mo_inputs']['native/librime/preparation/lua-machine-data-only.patch']) {
         throw 'Runtime Lua data-policy patch binding mismatch.'
+    }
+    foreach ($binding in @(
+        @('learning_policy_patch_sha256', 'native/librime/preparation/mo-learning-option.patch'),
+        @('lua_learning_policy_patch_sha256', 'native/librime/preparation/mo-lua-learning-option.patch'))) {
+        if ($metadata[$binding[0]] -ine $metadata['mo_inputs'][$binding[1]]) {
+            throw 'Runtime learning-policy patch binding mismatch.'
+        }
     }
     $names = Get-MoRuntimeResourceNames
     $resources = Join-Path $dist 'lib/opencc'
@@ -317,6 +412,7 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
         @('bin/mo-tip-registrar.exe', 'x64', $false),
         @('tip/x64/mo-tip.dll', 'x64', $true), @('tip/x86/mo-tip.dll', 'x86', $true), @('runtime/librime/rime.dll', 'x64', $true))) {
         Assert-MoPeArchitecture (Join-Path $payload $image[0]) $image[1] $image[2]
+        Assert-MoNoDynamicVCRuntime (Join-Path $payload $image[0])
     }
     $archive = Join-Path $root 'evidence/rime-ice-source.tar'
     if ((Get-FileHash -LiteralPath $archive).Hash -ine $metadata['rime_ice_archive_sha256']) { throw 'Staged rime-ice source archive mismatch.' }
@@ -324,6 +420,7 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
     Assert-MoDevelopmentMetadata $runtime 2
     if ($runtime['preparation_abi'] -ne 2 -or $runtime['resource_directory'] -cne 'lib/opencc' -or
         $runtime['lua_data_policy'] -cne 'machine-shared-only-v1' -or
+        $runtime['learning_policy'] -cne 'session-option-v1' -or
         @($runtime['plugins']).Count -ne 1 -or $runtime['plugins'][0] -cne 'lua' -or
         (Get-FileHash -LiteralPath (Join-Path $payload 'runtime/librime/rime.dll')).Hash -ine $runtime['dll_sha256']) { throw 'Staged runtime contract mismatch.' }
     $pins = Get-MoRuntimePins
@@ -343,6 +440,13 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
     }
     if ($runtime['lua_data_policy_patch_sha256'] -ine $runtime['mo_inputs']['native/librime/preparation/lua-machine-data-only.patch']) {
         throw 'Staged runtime Lua data-policy patch binding mismatch.'
+    }
+    foreach ($binding in @(
+        @('learning_policy_patch_sha256', 'native/librime/preparation/mo-learning-option.patch'),
+        @('lua_learning_policy_patch_sha256', 'native/librime/preparation/mo-lua-learning-option.patch'))) {
+        if ($runtime[$binding[0]] -ine $runtime['mo_inputs'][$binding[1]]) {
+            throw 'Staged runtime learning-policy patch binding mismatch.'
+        }
     }
     $resources = Get-MoRuntimeResourceNames
     if ($runtime['resources'].Count -ne $resources.Count) { throw 'Staged runtime resource count mismatch.' }

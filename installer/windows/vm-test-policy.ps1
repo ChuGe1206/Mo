@@ -1,5 +1,23 @@
 Set-StrictMode -Version Latest
 
+# Windows Installer ignores the fourth ProductVersion field for major upgrades.
+function Get-MoMsiUpgradeVersion([string]$Version) {
+    if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+        throw 'Invalid four-field MSI product version.'
+    }
+    $parsed = [version]$Version
+    if ($parsed.Major -gt 255 -or $parsed.Minor -gt 255 -or $parsed.Build -gt 65535) {
+        throw 'MSI product version fields exceed Windows Installer limits.'
+    }
+    return [version]::new($parsed.Major, $parsed.Minor, $parsed.Build)
+}
+
+function Assert-MoMsiMajorUpgradeVersions([string]$BaseVersion, [string]$UpgradeVersion) {
+    if ((Get-MoMsiUpgradeVersion $BaseVersion) -ge (Get-MoMsiUpgradeVersion $UpgradeVersion)) {
+        throw 'MSI major upgrade must increase the first three version fields.'
+    }
+}
+
 function Test-MoVmAbsoluteDosPath([string]$Path) {
     return $Path -match '^[A-Za-z]:\\' -and $Path.IndexOf([char]0) -lt 0
 }
@@ -532,6 +550,7 @@ function Assert-MoVmMatrixTestKit([string]$KitRoot) {
         [version]$kit.base_version -ge [version]$kit.upgrade_version) {
         throw 'Invalid VM matrix test kit manifest.'
     }
+    Assert-MoMsiMajorUpgradeVersions $kit.base_version $kit.upgrade_version
     foreach ($name in @('base_bundle_sha256', 'upgrade_bundle_sha256', 'stage_manifest_sha256')) {
         if ($kit.$name -notmatch '^[A-F0-9]{64}$') { throw "Invalid VM matrix hash: $name" }
     }

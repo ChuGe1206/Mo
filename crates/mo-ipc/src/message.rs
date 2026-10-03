@@ -5,6 +5,8 @@ use crate::{
 pub const FEATURE_KEY_EVENTS: u64 = 1 << 0;
 pub const FEATURE_CANDIDATE_ACTIONS: u64 = 1 << 1;
 pub const FEATURE_SETTINGS_SNAPSHOT: u64 = 1 << 2;
+pub const FEATURE_SESSION_SETTINGS_ACK: u64 = 1 << 3;
+pub const FEATURE_CANDIDATE_DETAILS: u64 = 1 << 4;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SettingsOrigin {
@@ -223,6 +225,8 @@ pub const MAX_COMPOSITION_BYTES: usize = 4 * 1024;
 pub const MAX_COMMIT_BYTES: usize = 4 * 1024;
 pub const MAX_CANDIDATES: usize = 32;
 pub const MAX_CANDIDATE_BYTES: usize = 512;
+pub const MAX_CANDIDATE_COMMENT_BYTES: usize = 256;
+pub const MAX_CANDIDATE_LABEL_BYTES: usize = 32;
 pub const MAX_ERROR_MESSAGE_BYTES: usize = 512;
 
 // Largest valid Snapshot payload:
@@ -235,6 +239,10 @@ pub const MIN_NEGOTIATED_PAYLOAD_LEN: usize = 8
     + (1 + 4 + MAX_COMMIT_BYTES)
     + 2
     + MAX_CANDIDATES * (4 + MAX_CANDIDATE_BYTES);
+
+pub const MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN: usize = MIN_NEGOTIATED_PAYLOAD_LEN
+    + MAX_CANDIDATES
+        * ((1 + 4 + MAX_CANDIDATE_COMMENT_BYTES) + (1 + 4 + MAX_CANDIDATE_LABEL_BYTES));
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Hello {
@@ -382,6 +390,79 @@ impl PayloadCodec for Snapshot {
         let mut candidates = Vec::with_capacity(candidate_count);
         for _ in 0..candidate_count {
             candidates.push(decoder.get_string(MAX_CANDIDATE_BYTES)?);
+        }
+        decoder.finish()?;
+        Ok(Self {
+            revision,
+            handled,
+            composition,
+            commit,
+            candidates,
+        })
+    }
+}
+
+/// Rich candidate page, sent only when FEATURE_CANDIDATE_DETAILS was negotiated.
+/// The legacy Snapshot kind and payload remain byte-for-byte unchanged.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DetailedCandidate {
+    pub text: String,
+    pub comment: Option<String>,
+    pub label: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DetailedSnapshot {
+    pub revision: u64,
+    pub handled: bool,
+    pub composition: String,
+    pub commit: Option<String>,
+    pub candidates: Vec<DetailedCandidate>,
+}
+
+impl PayloadCodec for DetailedSnapshot {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        if self.candidates.len() > MAX_CANDIDATES {
+            return Err(CodecError::TooManyItems {
+                declared: self.candidates.len(),
+                maximum: MAX_CANDIDATES,
+            });
+        }
+        let mut encoder = Encoder::new();
+        encoder.put_u64(self.revision);
+        encoder.put_bool(self.handled);
+        encoder.put_string(&self.composition, MAX_COMPOSITION_BYTES)?;
+        encoder.put_optional_string(self.commit.as_deref(), MAX_COMMIT_BYTES)?;
+        encoder.put_u16(self.candidates.len() as u16);
+        for candidate in &self.candidates {
+            encoder.put_string(&candidate.text, MAX_CANDIDATE_BYTES)?;
+            encoder
+                .put_optional_string(candidate.comment.as_deref(), MAX_CANDIDATE_COMMENT_BYTES)?;
+            encoder.put_optional_string(candidate.label.as_deref(), MAX_CANDIDATE_LABEL_BYTES)?;
+        }
+        Ok(encoder.finish())
+    }
+
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let mut decoder = Decoder::new(payload);
+        let revision = decoder.get_u64()?;
+        let handled = decoder.get_bool()?;
+        let composition = decoder.get_string(MAX_COMPOSITION_BYTES)?;
+        let commit = decoder.get_optional_string(MAX_COMMIT_BYTES)?;
+        let count = usize::from(decoder.get_u16()?);
+        if count > MAX_CANDIDATES {
+            return Err(CodecError::TooManyItems {
+                declared: count,
+                maximum: MAX_CANDIDATES,
+            });
+        }
+        let mut candidates = Vec::with_capacity(count);
+        for _ in 0..count {
+            candidates.push(DetailedCandidate {
+                text: decoder.get_string(MAX_CANDIDATE_BYTES)?,
+                comment: decoder.get_optional_string(MAX_CANDIDATE_COMMENT_BYTES)?,
+                label: decoder.get_optional_string(MAX_CANDIDATE_LABEL_BYTES)?,
+            });
         }
         decoder.finish()?;
         Ok(Self {

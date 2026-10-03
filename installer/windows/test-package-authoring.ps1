@@ -288,7 +288,8 @@ try {
             'FailureInjectorExe=',
             "Join-Path `$payload 'bin/mo-tip-registrar.exe'",
             'mo-development-failure-injection.exe',
-            "Join-Path `$PSScriptRoot 'verify-linked-installer.ps1'"
+            "Join-Path `$PSScriptRoot 'verify-linked-installer.ps1'",
+            '-ValidateMsi:$ValidateMsi'
         )) {
             if (-not $buildSource.Contains($contract, [StringComparison]::Ordinal)) {
                 throw "Bundle build input contract is missing: $contract"
@@ -366,6 +367,18 @@ try {
             }
         }
         Pass 'full payload one-to-one verification' { Assert-MoWixPayloadFragment $stage $first }
+        $crossComponentCom = Join-Path $fixture 'Payload.cross-component-com.wxs'
+        Copy-Item -LiteralPath $first -Destination $crossComponentCom
+        $bad = Read-MoWixDocument $crossComponentCom
+        $badNamespace = [Xml.XmlNamespaceManager]::new($bad.NameTable)
+        $badNamespace.AddNamespace('w', 'http://wixtoolset.org/schemas/v4/wxs')
+        $bad.SelectSingleNode(
+            '//w:Component[@Id="TipX86ComRegistryComponent"]/w:RegistryKey/w:RegistryValue[not(@Name)]',
+            $badNamespace).SetAttribute('Value', '[#TipX86File]')
+        $bad.Save($crossComponentCom)
+        Reject 'x86 COM cross-component file reference' {
+            Assert-MoWixPayloadFragment $stage $crossComponentCom
+        } 'x86 COM value contract mismatch'
         Pass 'settings Start-menu shortcut is advertised and file-owned' {
             $document = Read-MoWixDocument $first
             $ns = [Xml.XmlNamespaceManager]::new($document.NameTable)

@@ -96,8 +96,22 @@ bool ProbeSettingsChangeWindow() {
             DispatchMessageW(&message);
         }
     }
+    if (first_count != 1 || second_count != 2 || !second.ScheduleRefresh()) {
+        second.Stop();
+        return false;
+    }
+    const ULONGLONG deferred_deadline = GetTickCount64() + 1000;
+    while (second_count == 2 && GetTickCount64() < deferred_deadline) {
+        MsgWaitForMultipleObjectsEx(0, nullptr, 25, QS_POSTMESSAGE, MWMO_INPUTAVAILABLE);
+        MSG message{};
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
     second.Stop();
-    return first_count == 1 && second_count == 2 && !second.active();
+    return first_count == 1 && second_count == 3
+        && !second.active() && !second.ScheduleRefresh();
 }
 
 bool ProbeBrokerLauncher() {
@@ -993,7 +1007,8 @@ bool SendTestedKey(
     WPARAM virtual_key,
     bool notify_between_callbacks = false) {
     const UINT scan_code = MapVirtualKeyW(static_cast<UINT>(virtual_key), MAPVK_VK_TO_VSC);
-    const LPARAM key_data = 1 | (static_cast<LPARAM>(scan_code) << 16);
+    const LPARAM key_flags = static_cast<LPARAM>(scan_code) << 16;
+    const LPARAM key_data = key_flags | (notify_between_callbacks ? 0 : 1);
     BOOL tested_eaten = FALSE;
     const ULONGLONG tested_started = GetTickCount64();
     HRESULT result = key_sink->OnTestKeyDown(context, virtual_key, key_data, &tested_eaten);
@@ -1024,6 +1039,18 @@ bool SendTestedKey(
         }
         return false;
     }
+    // A real Win10 Notepad host changes the low-word count across TSF
+    // callbacks. Repeated queries must not advance the engine, and either
+    // count direction must still reuse the single pending decision.
+    for (const LPARAM repeat_count : {LPARAM{0}, LPARAM{1}, LPARAM{2}}) {
+        BOOL repeated_eaten = FALSE;
+        const HRESULT repeated_result = key_sink->OnTestKeyDown(
+            context, virtual_key, key_flags | repeat_count, &repeated_eaten);
+        if (FAILED(repeated_result) || repeated_eaten != tested_eaten) {
+            std::wcerr << L"TSF repeated query changed its pending key decision\n";
+            return false;
+        }
+    }
     if (notify_between_callbacks) {
         if (!mo::windows_tip::BroadcastSettingsChanged()) {
             std::wcerr << L"Settings broadcast failed between TSF key callbacks\n";
@@ -1032,7 +1059,8 @@ bool SendTestedKey(
         PumpProbeMessages();
     }
     BOOL handled_eaten = FALSE;
-    result = key_sink->OnKeyDown(context, virtual_key, key_data, &handled_eaten);
+    result = key_sink->OnKeyDown(context, virtual_key,
+        key_flags | (notify_between_callbacks ? 1 : 0), &handled_eaten);
     if (FAILED(result) || handled_eaten != tested_eaten) {
         if (FAILED(result)) {
             fail(L"ITfKeyEventSink::OnKeyDown", result);

@@ -56,6 +56,7 @@ fn open<B: EngineBackend>(connection: &mut BrokerConnection<B>, request_id: u64)
         ))
         .unwrap();
     assert_eq!(response.header.kind, MessageKind::OpenSessionAck);
+    assert!(response.payload.is_empty());
     response.header.session_token
 }
 
@@ -906,4 +907,116 @@ fn a_silent_client_in_one_slot_does_not_block_another_slot_handshake() {
     let recovered = handshake(&base);
     drop(recovered);
     server.join().unwrap().unwrap();
+}
+
+#[test]
+fn negotiated_candidate_details_preserve_labels_and_comments_with_legacy_fallback() {
+    use mo_engine::FakeBackend;
+    use mo_ipc::{DetailedSnapshot, FEATURE_CANDIDATE_DETAILS, MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN};
+
+    struct Annotated(FakeBackend);
+    impl EngineBackend for Annotated {
+        type Session = <FakeBackend as EngineBackend>::Session;
+        type Error = <FakeBackend as EngineBackend>::Error;
+
+        fn create_session(
+            &mut self,
+            options: SessionOptions,
+        ) -> Result<Self::Session, Self::Error> {
+            self.0.create_session(options)
+        }
+        fn apply(
+            &mut self,
+            session: &mut Self::Session,
+            command: &EngineCommand,
+        ) -> Result<EngineOutput, Self::Error> {
+            let mut output = self.0.apply(session, command)?;
+            if let Some(first) = output.candidates.first_mut() {
+                first.comment = Some("常用词".into());
+                first.label = Some("a".into());
+            }
+            Ok(output)
+        }
+        fn destroy_session(&mut self, session: Self::Session) -> Result<(), Self::Error> {
+            self.0.destroy_session(session)
+        }
+    }
+
+    fn negotiate(connection: &mut BrokerConnection<Annotated>, features: u64, limit: u32) -> u64 {
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features,
+            max_payload_len: limit,
+        };
+        let ack = connection
+            .handle(frame(
+                MessageKind::Hello,
+                0,
+                0,
+                1,
+                hello.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        HelloAck::decode_payload(&ack.payload).unwrap().features
+    }
+    fn first_key(connection: &mut BrokerConnection<Annotated>) -> Frame {
+        let token = open(connection, 2);
+        let key = KeyEvent {
+            virtual_key: u32::from(b'M'),
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        connection
+            .handle(frame(
+                MessageKind::KeyEvent,
+                connection.connection_generation(),
+                token,
+                3,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap()
+    }
+
+    let mut rich = BrokerConnection::with_backend(201, Annotated(FakeBackend::new()));
+    assert_eq!(
+        negotiate(
+            &mut rich,
+            FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_DETAILS,
+            MAX_PAYLOAD_LEN as u32
+        ),
+        FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_DETAILS
+    );
+    let response = first_key(&mut rich);
+    assert_eq!(response.header.kind, MessageKind::DetailedSnapshot);
+    let page = DetailedSnapshot::decode_payload(&response.payload).unwrap();
+    assert_eq!(page.candidates[0].text, "m");
+    assert_eq!(page.candidates[0].comment.as_deref(), Some("常用词"));
+    assert_eq!(page.candidates[0].label.as_deref(), Some("a"));
+
+    let mut legacy = BrokerConnection::with_backend(202, Annotated(FakeBackend::new()));
+    assert_eq!(
+        negotiate(&mut legacy, FEATURE_KEY_EVENTS, MAX_PAYLOAD_LEN as u32),
+        FEATURE_KEY_EVENTS
+    );
+    let response = first_key(&mut legacy);
+    assert_eq!(response.header.kind, MessageKind::Snapshot);
+    assert_eq!(
+        Snapshot::decode_payload(&response.payload)
+            .unwrap()
+            .candidates[0],
+        "m"
+    );
+
+    let mut small = BrokerConnection::with_backend(203, Annotated(FakeBackend::new()));
+    assert_eq!(
+        negotiate(
+            &mut small,
+            FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_DETAILS,
+            (MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN - 1) as u32
+        ),
+        FEATURE_KEY_EVENTS
+    );
+    assert_eq!(first_key(&mut small).header.kind, MessageKind::Snapshot);
 }

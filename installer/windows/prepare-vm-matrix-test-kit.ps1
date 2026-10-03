@@ -11,6 +11,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'staging-policy.ps1')
+. (Join-Path $PSScriptRoot 'vm-test-policy.ps1')
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $output = Assert-MoNewBuildOutput $OutputDirectory $repo
 $baseBundle = Assert-MoPlainPath $BaseBundlePath
@@ -44,6 +45,7 @@ if ($pair.Count -ne $required.Count -or
     [version]$pair['base_version'] -ge [version]$pair['upgrade_version']) {
     throw 'Invalid linked upgrade-pair evidence.'
 }
+Assert-MoMsiMajorUpgradeVersions $pair['base_version'] $pair['upgrade_version']
 if ((Get-FileHash -LiteralPath $baseBundle -Algorithm SHA256).Hash -cne $pair['base_bundle_sha256'] -or
     (Get-FileHash -LiteralPath $upgradeBundle -Algorithm SHA256).Hash -cne $pair['upgrade_bundle_sha256'] -or
     (Get-FileHash -LiteralPath $stageManifest -Algorithm SHA256).Hash -cne $pair['stage_manifest_sha256'] -or

@@ -12,7 +12,8 @@ param(
     [ValidateSet('DevelopmentTest', 'ProductionShape')]
     [string]$BuildFlavor = 'DevelopmentTest',
     [switch]$AllowDevelopmentBuild,
-    [switch]$AllowProductionShapeBuild
+    [switch]$AllowProductionShapeBuild,
+    [switch]$ValidateMsi
 )
 
 $ErrorActionPreference = 'Stop'
@@ -102,7 +103,9 @@ Invoke-Wix $bundleArguments
     -BundlePath $bundle `
     -ProductVersion $ProductVersion `
     -BuildFlavor $BuildFlavor `
-    -OutputDirectory (Join-Path $outputDirectory 'verification')
+    -OutputDirectory (Join-Path $outputDirectory 'verification') `
+    -ValidateMsi:$ValidateMsi
 if ($LASTEXITCODE -ne 0) { throw 'Linked installer verification failed.' }
 
-Write-Warning "Built and structurally verified an unsigned, non-deployable $BuildFlavor package. WIX1140 is intentionally suppressed for the mixed-scope chain; MSI ICE, signatures and execution remain release gates. Do not distribute."
+$iceStatus = if ($ValidateMsi) { 'MSI ICE passed;' } else { 'MSI ICE was not run;' }
+Write-Warning "Built and structurally verified an unsigned, non-deployable $BuildFlavor package. WIX1140 is intentionally suppressed for the mixed-scope chain; $iceStatus signatures and execution remain release gates. Do not distribute."

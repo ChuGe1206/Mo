@@ -4,7 +4,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr::{null, null_mut};
 
 use mo_settings::{CharacterSet, InputScheme, Theme};
-use mo_settings_app::{DocumentHealth, SettingsController};
+use mo_settings_app::{DocumentHealth, PrimaryPreferences, SettingsController};
 use windows_sys::Win32::Foundation::{ERROR_CLASS_ALREADY_EXISTS, HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     COLOR_WINDOW, DEFAULT_GUI_FONT, GetStockObject, HBRUSH, UpdateWindow,
@@ -21,6 +21,11 @@ const ID_RESTORE: usize = 102;
 const ID_RELOAD: usize = 103;
 const ID_SCHEME: usize = 104;
 const ID_CHARACTER_SET: usize = 105;
+const ID_SHOW_COMMENTS: usize = 106;
+const ID_EMOJI: usize = 107;
+const ID_LOCAL_LEARNING: usize = 108;
+const ID_PRIVACY_MODE: usize = 109;
+const BUTTON_CHECKED: usize = 1;
 
 struct AppState {
     controller: SettingsController,
@@ -28,6 +33,10 @@ struct AppState {
     scheme: HWND,
     character_set: HWND,
     theme: HWND,
+    show_comments: HWND,
+    emoji: HWND,
+    local_learning: HWND,
+    privacy_mode: HWND,
     save: HWND,
     status: HWND,
 }
@@ -40,6 +49,10 @@ impl AppState {
             scheme: null_mut(),
             character_set: null_mut(),
             theme: null_mut(),
+            show_comments: null_mut(),
+            emoji: null_mut(),
+            local_learning: null_mut(),
+            privacy_mode: null_mut(),
             save: null_mut(),
             status: null_mut(),
         }
@@ -175,13 +188,57 @@ impl AppState {
                 let label = wide(label);
                 SendMessageW(self.theme, CB_ADDSTRING, 0, label.as_ptr() as LPARAM);
             }
+            self.show_comments = create_control(
+                window,
+                "BUTTON",
+                "显示候选注释",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+                178,
+                388,
+                220,
+                28,
+                ID_SHOW_COMMENTS,
+            )?;
+            self.emoji = create_control(
+                window,
+                "BUTTON",
+                "启用 Emoji",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+                400,
+                388,
+                145,
+                28,
+                ID_EMOJI,
+            )?;
+            self.local_learning = create_control(
+                window,
+                "BUTTON",
+                "启用本地学习",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+                178,
+                420,
+                220,
+                28,
+                ID_LOCAL_LEARNING,
+            )?;
+            self.privacy_mode = create_control(
+                window,
+                "BUTTON",
+                "隐私模式（暂停学习）",
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX as u32,
+                400,
+                420,
+                200,
+                28,
+                ID_PRIVACY_MODE,
+            )?;
             create_control(
                 window,
                 "STATIC",
-                "主题立即刷新；方案和简繁在输入法新建会话时生效。",
+                "主题和注释立即刷新；输入方案、简繁、Emoji 和学习策略在当前输入完成后切换。",
                 WS_CHILD | WS_VISIBLE,
                 30,
-                394,
+                466,
                 540,
                 24,
                 0,
@@ -192,7 +249,7 @@ impl AppState {
                 "",
                 WS_CHILD | WS_VISIBLE,
                 30,
-                438,
+                503,
                 540,
                 48,
                 0,
@@ -203,7 +260,7 @@ impl AppState {
                 "保存设置",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
                 28,
-                510,
+                576,
                 142,
                 38,
                 ID_SAVE,
@@ -214,7 +271,7 @@ impl AppState {
                 "重新读取",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON as u32,
                 188,
-                510,
+                576,
                 142,
                 38,
                 ID_RELOAD,
@@ -225,7 +282,7 @@ impl AppState {
                 "恢复默认设置",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON as u32,
                 348,
-                510,
+                576,
                 180,
                 38,
                 ID_RESTORE,
@@ -237,14 +294,7 @@ impl AppState {
 
     unsafe fn render(&self) {
         let settings = self.controller.settings();
-        let summary = format!(
-            "候选数量：{}\r\n注释：{}    Emoji：{}\r\n本地学习：{}    隐私模式：{}",
-            settings.candidate_page_size,
-            on_off(settings.show_comments),
-            on_off(settings.emoji),
-            on_off(settings.local_learning),
-            on_off(settings.privacy_mode),
-        );
+        let summary = format!("候选数量：{}", settings.candidate_page_size,);
         unsafe {
             set_text(self.summary, &summary);
             SendMessageW(
@@ -260,6 +310,42 @@ impl AppState {
                 0,
             );
             SendMessageW(self.theme, CB_SETCURSEL, theme_index(settings.theme), 0);
+            SendMessageW(
+                self.show_comments,
+                BM_SETCHECK,
+                if settings.show_comments {
+                    BUTTON_CHECKED
+                } else {
+                    0
+                },
+                0,
+            );
+            SendMessageW(
+                self.emoji,
+                BM_SETCHECK,
+                if settings.emoji { BUTTON_CHECKED } else { 0 },
+                0,
+            );
+            SendMessageW(
+                self.local_learning,
+                BM_SETCHECK,
+                if settings.local_learning {
+                    BUTTON_CHECKED
+                } else {
+                    0
+                },
+                0,
+            );
+            SendMessageW(
+                self.privacy_mode,
+                BM_SETCHECK,
+                if settings.privacy_mode {
+                    BUTTON_CHECKED
+                } else {
+                    0
+                },
+                0,
+            );
             EnableWindow(self.save, i32::from(self.controller.can_save_changes()));
             match self.controller.health() {
                 DocumentHealth::Ready if self.controller.stored() => {
@@ -316,21 +402,36 @@ impl AppState {
                 return;
             }
         };
+        let show_comments = unsafe { SendMessageW(self.show_comments, BM_GETCHECK, 0, 0) }
+            == BUTTON_CHECKED as isize;
+        let emoji =
+            unsafe { SendMessageW(self.emoji, BM_GETCHECK, 0, 0) } == BUTTON_CHECKED as isize;
+        let local_learning = unsafe { SendMessageW(self.local_learning, BM_GETCHECK, 0, 0) }
+            == BUTTON_CHECKED as isize;
+        let privacy_mode = unsafe { SendMessageW(self.privacy_mode, BM_GETCHECK, 0, 0) }
+            == BUTTON_CHECKED as isize;
         match self
             .controller
-            .save_primary_preferences(scheme, character_set, theme)
-        {
+            .save_primary_preferences(PrimaryPreferences {
+                input_scheme: scheme,
+                character_set,
+                theme,
+                show_comments,
+                emoji,
+                local_learning,
+                privacy_mode,
+            }) {
             Ok(()) => unsafe {
                 self.render();
                 if notify_settings_changed() {
                     set_text(
                         self.status,
-                        "设置已安全保存；主题刷新通知已发出。方案和简繁在新会话生效。",
+                        "设置已安全保存；输入方案、简繁、Emoji 和学习策略将在当前输入完成后切换。",
                     );
                 } else {
                     set_text(
                         self.status,
-                        "设置已安全保存；通知失败，主题将在下次连接时生效。",
+                        "设置已安全保存；通知失败，主题和注释将在下次连接时生效。",
                     );
                 }
             },
@@ -345,7 +446,7 @@ impl AppState {
                 if notify_settings_changed() {
                     set_text(
                         self.status,
-                        "已恢复默认设置；主题刷新通知已发出，方案和简繁在新会话生效。",
+                        "已恢复默认设置；输入方案、简繁、Emoji 和学习策略将在当前输入完成后切换。",
                     );
                 } else {
                     set_text(
@@ -407,8 +508,8 @@ pub fn run() -> io::Result<()> {
             WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            620,
-            620,
+            650,
+            690,
             null_mut(),
             null_mut(),
             instance,
@@ -551,10 +652,6 @@ fn theme_index(theme: Theme) -> usize {
         Theme::Light => 1,
         Theme::Dark => 2,
     }
-}
-
-fn on_off(value: bool) -> &'static str {
-    if value { "开" } else { "关" }
 }
 
 fn character_index(value: CharacterSet) -> usize {

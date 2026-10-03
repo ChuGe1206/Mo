@@ -7,10 +7,13 @@ use mo_domain::{
 use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
     CURRENT_VERSION, CandidateAction, CandidateActionKind, CharacterSet as WireCharacterSet,
-    ErrorMessage, FEATURE_CANDIDATE_ACTIONS, FEATURE_KEY_EVENTS, FEATURE_SETTINGS_SNAPSHOT,
-    FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck, InputScheme as WireInputScheme,
-    KeyEvent as WireKeyEvent, MAX_PAYLOAD_LEN, MessageKind, PayloadCodec, ProtocolVersion,
-    SettingsSnapshot as WireSettingsSnapshot, Snapshot, VersionRange, negotiate_version,
+    DetailedCandidate, DetailedSnapshot, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
+    FEATURE_CANDIDATE_DETAILS, FEATURE_KEY_EVENTS, FEATURE_SESSION_SETTINGS_ACK,
+    FEATURE_SETTINGS_SNAPSHOT, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck,
+    InputScheme as WireInputScheme, KeyEvent as WireKeyEvent, MAX_CANDIDATE_COMMENT_BYTES,
+    MAX_CANDIDATE_LABEL_BYTES, MAX_PAYLOAD_LEN, MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN, MessageKind,
+    PayloadCodec, ProtocolVersion, SettingsSnapshot as WireSettingsSnapshot, Snapshot,
+    VersionRange, negotiate_version,
 };
 
 use crate::engine_service::EngineClient;
@@ -241,7 +244,14 @@ where
         };
         self.negotiated = Some(selected);
         self.negotiated_features = hello.features
-            & (FEATURE_KEY_EVENTS | FEATURE_CANDIDATE_ACTIONS | FEATURE_SETTINGS_SNAPSHOT);
+            & (FEATURE_KEY_EVENTS
+                | FEATURE_CANDIDATE_ACTIONS
+                | FEATURE_CANDIDATE_DETAILS
+                | FEATURE_SETTINGS_SNAPSHOT
+                | FEATURE_SESSION_SETTINGS_ACK);
+        if hello.max_payload_len < MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN as u32 {
+            self.negotiated_features &= !FEATURE_CANDIDATE_DETAILS;
+        }
 
         let ack = HelloAck {
             selected,
@@ -275,7 +285,9 @@ where
             );
         }
 
-        let options = if matches!(self.engine, EngineOwner::Shared(_)) {
+        let needs_settings = matches!(self.engine, EngineOwner::Shared(_))
+            || self.negotiated_features & FEATURE_SESSION_SETTINGS_ACK != 0;
+        let settings_snapshot = if needs_settings {
             let settings = match self.settings.snapshot() {
                 Ok(snapshot) => snapshot,
                 Err(_) => {
@@ -286,9 +298,21 @@ where
                     );
                 }
             };
-            session_options_from_settings(settings)
+            Some(settings)
+        } else {
+            None
+        };
+        let options = if matches!(self.engine, EngineOwner::Shared(_)) {
+            session_options_from_settings(settings_snapshot.expect("shared engine reads settings"))
         } else {
             SessionOptions::new()
+        };
+        let payload = if self.negotiated_features & FEATURE_SESSION_SETTINGS_ACK != 0 {
+            settings_snapshot
+                .expect("negotiated session settings were read")
+                .encode_payload()?
+        } else {
+            Vec::new()
         };
         let engine_token = match self.engine.create_session(options) {
             Ok(token) => token,
@@ -313,7 +337,7 @@ where
             MessageKind::OpenSessionAck,
             token,
             request.header.request_id,
-            Vec::new(),
+            payload,
         )
     }
 
@@ -422,30 +446,59 @@ where
                 );
             }
         };
-        let snapshot = Snapshot {
-            revision: engine_snapshot.revision.get(),
-            handled: engine_snapshot.handled,
-            composition: engine_snapshot
-                .composition
-                .map(|composition| composition.preedit().to_owned())
-                .unwrap_or_default(),
-            commit: engine_snapshot.commit,
-            candidates: engine_snapshot
-                .candidates
-                .into_iter()
-                .map(|candidate| candidate.text)
-                .collect(),
+        let revision = engine_snapshot.revision.get();
+        let handled = engine_snapshot.handled;
+        let composition = engine_snapshot
+            .composition
+            .map(|composition| composition.preedit().to_owned())
+            .unwrap_or_default();
+        let has_composition = !composition.is_empty();
+        let commit = engine_snapshot.commit;
+        let candidate_count = engine_snapshot.candidates.len();
+        let (kind, payload) = if self.negotiated_features & FEATURE_CANDIDATE_DETAILS != 0 {
+            let detailed = DetailedSnapshot {
+                revision,
+                handled,
+                composition,
+                commit,
+                candidates: engine_snapshot
+                    .candidates
+                    .into_iter()
+                    .map(|candidate| DetailedCandidate {
+                        text: candidate.text,
+                        comment: candidate
+                            .comment
+                            .filter(|value| value.len() <= MAX_CANDIDATE_COMMENT_BYTES),
+                        label: candidate
+                            .label
+                            .filter(|value| value.len() <= MAX_CANDIDATE_LABEL_BYTES),
+                    })
+                    .collect(),
+            };
+            (MessageKind::DetailedSnapshot, detailed.encode_payload()?)
+        } else {
+            let legacy = Snapshot {
+                revision,
+                handled,
+                composition,
+                commit,
+                candidates: engine_snapshot
+                    .candidates
+                    .into_iter()
+                    .map(|candidate| candidate.text)
+                    .collect(),
+            };
+            (MessageKind::Snapshot, legacy.encode_payload()?)
         };
-        let payload = snapshot.encode_payload()?;
-        if !snapshot.composition.is_empty() && !snapshot.candidates.is_empty() {
+        if has_composition && candidate_count != 0 {
             self.sessions
                 .get_mut(&token)
                 .expect("validated session")
-                .page = Some((snapshot.revision, snapshot.candidates.len()));
+                .page = Some((revision, candidate_count));
         }
         self.response(
             self.selected_version(),
-            MessageKind::Snapshot,
+            kind,
             token,
             request.header.request_id,
             payload,
@@ -599,18 +652,67 @@ fn session_options_from_settings(settings: WireSettingsSnapshot) -> SessionOptio
         WireInputScheme::DoublePinyinMicrosoft => "double_pinyin_mspy",
         WireInputScheme::DoublePinyinSogou => "double_pinyin_sogou",
     };
-    SessionOptions::new().with_schema(schema).with_option(
-        "traditionalization",
-        settings.character_set == WireCharacterSet::Traditional,
-    )
+    SessionOptions::new()
+        .with_schema(schema)
+        .with_option(
+            "traditionalization",
+            settings.character_set == WireCharacterSet::Traditional,
+        )
+        .with_option("emoji", settings.emoji)
+        .with_option("mo_disable_learning", !settings.effective_learning)
 }
 
 #[cfg(test)]
 mod session_settings_tests {
+    use std::fs;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use mo_domain::{EngineOutput, SessionOptions};
+    use mo_ipc::{ErrorMessage, KeyEvent, PayloadCodec};
+    use mo_settings::{CharacterSet, InputScheme, Settings, save_atomic};
+
+    use crate::engine_service::EngineService;
+
     use super::*;
 
+    struct RecordingBackend {
+        inner: FakeBackend,
+        options: Arc<Mutex<Vec<SessionOptions>>>,
+        reject_next_create: Arc<AtomicBool>,
+    }
+
+    impl EngineBackend for RecordingBackend {
+        type Session = <FakeBackend as EngineBackend>::Session;
+        type Error = <FakeBackend as EngineBackend>::Error;
+
+        fn create_session(
+            &mut self,
+            options: SessionOptions,
+        ) -> Result<Self::Session, Self::Error> {
+            if self.reject_next_create.swap(false, Ordering::SeqCst) {
+                return Err(mo_engine::FakeError::SessionIdExhausted);
+            }
+            self.options.lock().unwrap().push(options.clone());
+            self.inner.create_session(options)
+        }
+
+        fn apply(
+            &mut self,
+            session: &mut Self::Session,
+            command: &EngineCommand,
+        ) -> Result<EngineOutput, Self::Error> {
+            self.inner.apply(session, command)
+        }
+
+        fn destroy_session(&mut self, session: Self::Session) -> Result<(), Self::Error> {
+            self.inner.destroy_session(session)
+        }
+    }
+
     #[test]
-    fn pinned_schemes_and_character_modes_map_to_librime_session_options() {
+    fn pinned_settings_map_to_librime_session_options() {
         let defaults = SettingsService::defaults().snapshot().unwrap();
         for (scheme, schema) in [
             (WireInputScheme::FullPinyin, "rime_ice"),
@@ -623,19 +725,233 @@ mod session_settings_tests {
                 (WireCharacterSet::Simplified, false),
                 (WireCharacterSet::Traditional, true),
             ] {
-                let options = session_options_from_settings(WireSettingsSnapshot {
-                    input_scheme: scheme,
-                    character_set,
-                    ..defaults
-                });
-                assert_eq!(options.schema_id.as_deref(), Some(schema));
-                assert_eq!(options.options.len(), 1);
-                assert_eq!(
-                    options.options.get("traditionalization"),
-                    Some(&traditional)
-                );
+                for emoji in [false, true] {
+                    for effective_learning in [false, true] {
+                        let options = session_options_from_settings(WireSettingsSnapshot {
+                            input_scheme: scheme,
+                            character_set,
+                            emoji,
+                            local_learning: effective_learning,
+                            privacy_mode: false,
+                            effective_learning,
+                            ..defaults
+                        });
+                        assert_eq!(options.schema_id.as_deref(), Some(schema));
+                        assert_eq!(options.options.len(), 3);
+                        assert_eq!(
+                            options.options.get("traditionalization"),
+                            Some(&traditional)
+                        );
+                        assert_eq!(options.options.get("emoji"), Some(&emoji));
+                        assert_eq!(
+                            options.options.get("mo_disable_learning"),
+                            Some(&!effective_learning)
+                        );
+                    }
+                }
             }
         }
+    }
+
+    #[test]
+    fn learning_preference_and_privacy_mode_both_disable_session_learning() {
+        let defaults = SettingsService::defaults().snapshot().unwrap();
+        for (local_learning, privacy_mode, expected_disable) in [
+            (true, false, false),
+            (false, false, true),
+            (true, true, true),
+            (false, true, true),
+        ] {
+            let options = session_options_from_settings(WireSettingsSnapshot {
+                local_learning,
+                privacy_mode,
+                effective_learning: local_learning && !privacy_mode,
+                ..defaults
+            });
+            assert_eq!(
+                options.options.get("mo_disable_learning"),
+                Some(&expected_disable)
+            );
+        }
+    }
+
+    #[test]
+    fn opens_new_settings_session_before_retiring_old_and_rejection_preserves_old() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory =
+            std::env::temp_dir().join(format!("mo-session-replace-{}-{nonce}", std::process::id()));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join("settings.mo");
+        let options = Arc::new(Mutex::new(Vec::new()));
+        let observed = Arc::clone(&options);
+        let reject_next_create = Arc::new(AtomicBool::new(false));
+        let reject_in_engine = Arc::clone(&reject_next_create);
+        let engine = EngineService::start(move || {
+            Ok::<_, &'static str>(RecordingBackend {
+                inner: FakeBackend::new(),
+                options: observed,
+                reject_next_create: reject_in_engine,
+            })
+        })
+        .unwrap();
+        let mut connection = BrokerConnection::<FakeBackend>::with_engine_client(
+            42,
+            engine.client(),
+            SettingsService::open(path.clone()).unwrap(),
+        );
+        let request = |kind, token, id, payload| {
+            Frame::new(
+                CURRENT_VERSION,
+                kind,
+                0,
+                if kind == MessageKind::Hello { 0 } else { 42 },
+                token,
+                id,
+                payload,
+            )
+            .unwrap()
+        };
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features: FEATURE_KEY_EVENTS | FEATURE_SETTINGS_SNAPSHOT | FEATURE_SESSION_SETTINGS_ACK,
+            max_payload_len: MAX_PAYLOAD_LEN as u32,
+        };
+        connection
+            .handle(request(
+                MessageKind::Hello,
+                0,
+                1,
+                hello.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let old = connection
+            .handle(request(MessageKind::OpenSession, 0, 2, Vec::new()))
+            .unwrap();
+        assert_eq!(old.header.kind, MessageKind::OpenSessionAck);
+        let old_settings = WireSettingsSnapshot::decode_payload(&old.payload).unwrap();
+        assert_eq!(old_settings.input_scheme, WireInputScheme::FullPinyin);
+        assert_eq!(old_settings.character_set, WireCharacterSet::Simplified);
+        let old_token = old.header.session_token;
+
+        fs::write(&path, b"broken").unwrap();
+        let rejected = connection
+            .handle(request(MessageKind::OpenSession, 0, 3, Vec::new()))
+            .unwrap();
+        assert_eq!(
+            ErrorMessage::decode_payload(&rejected.payload)
+                .unwrap()
+                .code,
+            ERROR_SETTINGS_UNAVAILABLE
+        );
+        let key = KeyEvent {
+            virtual_key: 0x4e,
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        let old_key = connection
+            .handle(request(
+                MessageKind::KeyEvent,
+                old_token,
+                4,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(old_key.header.kind, MessageKind::Snapshot);
+        assert_eq!(
+            Snapshot::decode_payload(&old_key.payload)
+                .unwrap()
+                .composition,
+            "n"
+        );
+
+        save_atomic(
+            &path,
+            &Settings {
+                input_scheme: InputScheme::DoublePinyinFlypy,
+                character_set: CharacterSet::Traditional,
+                emoji: false,
+                ..Settings::default()
+            },
+        )
+        .unwrap();
+        reject_next_create.store(true, Ordering::SeqCst);
+        let rejected = connection
+            .handle(request(MessageKind::OpenSession, 0, 5, Vec::new()))
+            .unwrap();
+        assert_eq!(
+            ErrorMessage::decode_payload(&rejected.payload)
+                .unwrap()
+                .code,
+            ERROR_ENGINE_FAILURE
+        );
+        let old_key = connection
+            .handle(request(
+                MessageKind::KeyEvent,
+                old_token,
+                6,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(
+            Snapshot::decode_payload(&old_key.payload)
+                .unwrap()
+                .composition,
+            "nn"
+        );
+        let new = connection
+            .handle(request(MessageKind::OpenSession, 0, 7, Vec::new()))
+            .unwrap();
+        assert_eq!(new.header.kind, MessageKind::OpenSessionAck);
+        let applied_settings = WireSettingsSnapshot::decode_payload(&new.payload).unwrap();
+        assert!(applied_settings.revision > old_settings.revision);
+        assert_eq!(
+            applied_settings.input_scheme,
+            WireInputScheme::DoublePinyinFlypy
+        );
+        assert_eq!(
+            applied_settings.character_set,
+            WireCharacterSet::Traditional
+        );
+        assert!(!applied_settings.emoji);
+        assert_ne!(new.header.session_token, old_token);
+        let closed = connection
+            .handle(request(MessageKind::CloseSession, old_token, 8, Vec::new()))
+            .unwrap();
+        assert_eq!(closed.header.kind, MessageKind::CloseSessionAck);
+        let new_key = connection
+            .handle(request(
+                MessageKind::KeyEvent,
+                new.header.session_token,
+                9,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(new_key.header.kind, MessageKind::Snapshot);
+        assert_eq!(
+            Snapshot::decode_payload(&new_key.payload)
+                .unwrap()
+                .composition,
+            "n"
+        );
+        let captured = options.lock().unwrap();
+        assert_eq!(captured.len(), 2);
+        assert_eq!(captured[0].schema_id.as_deref(), Some("rime_ice"));
+        assert_eq!(
+            captured[1].schema_id.as_deref(),
+            Some("double_pinyin_flypy")
+        );
+        assert_eq!(captured[1].options.get("traditionalization"), Some(&true));
+        assert_eq!(captured[0].options.get("emoji"), Some(&true));
+        assert_eq!(captured[1].options.get("emoji"), Some(&false));
+        drop(captured);
+        drop(connection);
+        engine.shutdown().unwrap();
+        fs::remove_dir_all(directory).unwrap();
     }
 }
 

@@ -60,11 +60,29 @@ function Invoke-BrokerProbe(
     if (-not (Test-Path -LiteralPath $Probe -PathType Leaf)) {
         throw "Missing ${Label}: $Probe"
     }
-    $process = Start-Process -FilePath $broker -ArgumentList '--fake' -PassThru -WindowStyle Hidden
+    $readyLog = Join-Path $repoRoot ('build/mo-broker-ready-' + [Guid]::NewGuid().ToString('N') + '.log')
+    $process = Start-Process -FilePath $broker -ArgumentList '--fake' -PassThru `
+        -WindowStyle Hidden -RedirectStandardError $readyLog
     try {
-        # TIP activation intentionally has a small fail-open deadline. Allow a
-        # freshly spawned Broker to create the pipe before loading the TIP.
-        Start-Sleep -Milliseconds 250
+        # Wait for every protected slot to bind, rather than racing a fixed
+        # sleep against cold engine startup. This is test setup, not TIP latency.
+        $deadline = [Diagnostics.Stopwatch]::StartNew()
+        $ready = $false
+        while ($deadline.ElapsedMilliseconds -lt 5000) {
+            if ($process.HasExited) { throw "Owned fake Broker exited before readiness: $($process.ExitCode)" }
+            if (Test-Path -LiteralPath $readyLog) {
+                try {
+                    $output = [string](Get-Content -LiteralPath $readyLog -Raw -ErrorAction Stop)
+                    if ($null -ne $output -and $output.Contains('Mo broker listening on 16 protected pipe slots',
+                            [StringComparison]::Ordinal)) {
+                        $ready = $true
+                        break
+                    }
+                } catch [IO.IOException] { }
+            }
+            Start-Sleep -Milliseconds 20
+        }
+        if (-not $ready) { throw 'Owned fake Broker did not bind all protected slots in 5 seconds.' }
         & $Probe @ProbeArguments
         if ($LASTEXITCODE -ne 0) { throw "$Platform $Label failed: $LASTEXITCODE" }
         if ($process.HasExited -and $process.ExitCode -ne 0) {
@@ -74,7 +92,10 @@ function Invoke-BrokerProbe(
         try {
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
             if (-not $process.WaitForExit(3000)) { throw 'Owned fake Broker did not exit before the next probe.' }
-        } finally { $process.Dispose() }
+        } finally {
+            $process.Dispose()
+            Remove-Item -LiteralPath $readyLog -ErrorAction SilentlyContinue
+        }
     }
 }
 

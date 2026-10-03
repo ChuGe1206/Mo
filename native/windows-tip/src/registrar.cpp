@@ -22,6 +22,12 @@ namespace {
 
 constexpr LANGID kLanguage = MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED);
 constexpr DWORD kIlotUninstall = 0x00000001;
+constexpr wchar_t kMachineProfileKey[] =
+    L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\LanguageProfile\\0x00000804\\{595A4275-4C0B-4D4F-80C3-7DD322BC6F74}";
+constexpr wchar_t kMachineCategoryByCategoryKey[] =
+    L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Category\\{34745C63-B2F0-4784-8B67-5E12C8701A31}\\{B4911146-2A27-47AA-9D12-109B6AE10A70}";
+constexpr wchar_t kMachineCategoryByItemKey[] =
+    L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Item\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\{34745C63-B2F0-4784-8B67-5E12C8701A31}";
 constexpr wchar_t kComKey[] =
     L"Software\\Classes\\CLSID\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\InprocServer32";
 constexpr wchar_t kComClsidPath[] =
@@ -293,39 +299,36 @@ HRESULT query_profile_exists(
     }
 }
 
-HRESULT query_category_exists(ITfCategoryMgr* manager, bool& exists) noexcept {
-    exists = false;
-    ComPtr<IEnumGUID> enumerator;
-    HRESULT result = manager->EnumItemsInCategory(GUID_TFCAT_TIP_KEYBOARD, enumerator.put());
-    if (FAILED(result)) {
-        return result;
-    }
-    for (;;) {
-        GUID item{};
-        ULONG fetched = 0;
-        result = enumerator->Next(1, &item, &fetched);
-        if (result == S_FALSE || fetched == 0) {
-            return S_OK;
-        }
-        if (FAILED(result)) {
-            return result;
-        }
-        if (IsEqualGUID(item, mo::windows_tip::kTextServiceClsid)) {
-            exists = true;
-            return S_OK;
-        }
-    }
-}
+HRESULT query_registry_key_exists_at(
+    HKEY root, const wchar_t* key_path, REGSAM view, bool& exists) noexcept;
 
-HRESULT query_machine_profile_state(
-    ITfInputProcessorProfileMgr* profiles,
-    ITfCategoryMgr* categories,
-    MachineProfileState& state) noexcept {
-    HRESULT result = query_profile_exists(profiles, state.profile);
+HRESULT query_machine_profile_state(MachineProfileState& state) noexcept {
+    // TSF category enumeration is scoped to the caller's context. In an MSI
+    // deferred action running as SYSTEM it can omit a category that the same
+    // TSF manager just registered under HKLM. Read the machine registration
+    // that the transaction actually owns, in the native registry view.
+    HRESULT result = query_registry_key_exists_at(
+        HKEY_LOCAL_MACHINE, kMachineProfileKey, KEY_WOW64_64KEY, state.profile);
     if (FAILED(result)) {
         return result;
     }
-    return query_category_exists(categories, state.category);
+    bool by_category = false;
+    result = query_registry_key_exists_at(
+        HKEY_LOCAL_MACHINE, kMachineCategoryByCategoryKey, KEY_WOW64_64KEY, by_category);
+    if (FAILED(result)) {
+        return result;
+    }
+    bool by_item = false;
+    result = query_registry_key_exists_at(
+        HKEY_LOCAL_MACHINE, kMachineCategoryByItemKey, KEY_WOW64_64KEY, by_item);
+    if (FAILED(result)) {
+        return result;
+    }
+    if (by_category != by_item) {
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    }
+    state.category = by_category;
+    return S_OK;
 }
 
 HRESULT register_profile(
@@ -354,7 +357,7 @@ HRESULT apply_machine_profile_state(
     const std::wstring& icon_path,
     const MachineProfileState& target) noexcept {
     MachineProfileState current{};
-    HRESULT result = query_machine_profile_state(profiles, categories, current);
+    HRESULT result = query_machine_profile_state(current);
     if (FAILED(result)) {
         return result;
     }
@@ -397,13 +400,18 @@ HRESULT apply_machine_profile_state(
         return first_failure;
     }
     MachineProfileState final_state{};
-    result = query_machine_profile_state(profiles, categories, final_state);
+    result = query_machine_profile_state(final_state);
     if (FAILED(result)) {
         return result;
     }
-    return final_state.profile == target.profile && final_state.category == target.category
-        ? S_OK
-        : E_UNEXPECTED;
+    if (final_state.profile != target.profile || final_state.category != target.category) {
+        std::wcerr << L"Machine profile readback mismatch: profile=" << final_state.profile
+                   << L", category=" << final_state.category
+                   << L", target.profile=" << target.profile
+                   << L", target.category=" << target.category << L'\n';
+        return E_UNEXPECTED;
+    }
+    return S_OK;
 }
 
 HRESULT get_program_files_x64(std::wstring& path) noexcept {
@@ -996,7 +1004,7 @@ HRESULT verify_machine_installation_for_user_finalizer() noexcept {
         return result;
     }
     MachineProfileState state{};
-    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), state);
+    result = query_machine_profile_state(state);
     if (FAILED(result)) {
         return result;
     }
@@ -1158,7 +1166,7 @@ HRESULT change_machine_profile_without_marker(
         return result;
     }
     MachineProfileState previous{};
-    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), previous);
+    result = query_machine_profile_state(previous);
     if (FAILED(result)) {
         return result;
     }
@@ -1214,7 +1222,7 @@ HRESULT begin_machine_profile_transaction(
         return result;
     }
     MachineProfileState previous{};
-    result = query_machine_profile_state(profiles.operator->(), categories.operator->(), previous);
+    result = query_machine_profile_state(previous);
     if (FAILED(result)) {
         return result;
     }
@@ -1272,6 +1280,25 @@ HRESULT commit_machine_profile_transaction(
     return delete_transaction_marker(marker_path, kind, false);
 }
 
+HRESULT remove_empty_directory(const std::wstring& path) noexcept {
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        const DWORD error = GetLastError();
+        return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND
+            ? S_OK : HRESULT_FROM_WIN32(error);
+    }
+    if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0
+        || (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0) {
+        return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+    }
+    if (RemoveDirectoryW(path.c_str()) != FALSE) {
+        return S_OK;
+    }
+    const DWORD error = GetLastError();
+    // Preserve unknown files. This cleanup never enumerates or deletes children.
+    return error == ERROR_DIR_NOT_EMPTY ? S_FALSE : HRESULT_FROM_WIN32(error);
+}
+
 HRESULT fixed_machine_profile_operation(std::wstring_view command) noexcept {
     std::wstring icon_path;
     std::wstring install_marker;
@@ -1304,7 +1331,24 @@ HRESULT fixed_machine_profile_operation(std::wstring_view command) noexcept {
             TransactionKind::remove, icon_path, remove_marker);
     }
     if (command == L"commit-remove-machine-profile-fixed") {
-        return commit_machine_profile_transaction(TransactionKind::remove, remove_marker);
+        result = commit_machine_profile_transaction(TransactionKind::remove, remove_marker);
+        if (FAILED(result)) {
+            return result;
+        }
+        // RemoveFolders ran while the rollback receipt still occupied the root.
+        // Once the removal is committed, remove only that now-empty fixed root.
+        // A cleanup error must not initiate rollback after deleting the receipt.
+        try {
+            const std::wstring root = remove_marker.substr(0, remove_marker.find_last_of(L"\\/"));
+            const HRESULT cleanup = remove_empty_directory(root);
+            if (FAILED(cleanup)) {
+                std::wcerr << L"Committed uninstall empty-root cleanup failed: 0x"
+                           << std::hex << cleanup << L'\n';
+            }
+        } catch (...) {
+            std::wcerr << L"Committed uninstall empty-root cleanup allocation failed.\n";
+        }
+        return S_OK;
     }
     return E_INVALIDARG;
 }
@@ -1348,7 +1392,31 @@ HRESULT self_test_machine_transaction(const std::wstring& marker_path) noexcept 
     MachineProfileState state{};
     const HRESULT missing = read_transaction_marker(
         marker_path, TransactionKind::install, exists, state);
-    return SUCCEEDED(missing) && !exists ? S_OK : E_UNEXPECTED;
+    if (FAILED(missing) || exists) {
+        return E_UNEXPECTED;
+    }
+    const std::wstring directory = marker_path + L".empty-root";
+    if (CreateDirectoryW(directory.c_str(), nullptr) == FALSE) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    const std::wstring child = directory + L"\\preserved-marker";
+    HRESULT result = create_transaction_marker(child, TransactionKind::remove, {false, false});
+    if (SUCCEEDED(result)) {
+        if (remove_empty_directory(directory) != S_FALSE
+            || GetFileAttributesW(child.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            result = E_UNEXPECTED;
+        }
+        const HRESULT cleanup = delete_transaction_marker(child, TransactionKind::remove, false);
+        if (SUCCEEDED(result)) {
+            result = cleanup;
+        }
+    }
+    const HRESULT cleanup = remove_empty_directory(directory);
+    if (FAILED(result)) {
+        return result;
+    }
+    return cleanup == S_OK && remove_empty_directory(directory) == S_OK
+        ? S_OK : E_UNEXPECTED;
 }
 
 std::wstring guid_string(REFGUID guid) {
@@ -1386,43 +1454,83 @@ HRESULT set_enabled_for_current_user(bool enabled) {
     return last_error == ERROR_SUCCESS ? E_FAIL : HRESULT_FROM_WIN32(last_error);
 }
 
-HRESULT query_current_user_enabled(
-    ITfInputProcessorProfileMgr* profiles,
-    bool& enabled) noexcept {
-    enabled = false;
-    bool profile_exists = false;
-    HRESULT result = query_profile_exists(profiles, profile_exists);
-    if (FAILED(result) || !profile_exists) {
-        return result;
-    }
-    TF_INPUTPROCESSORPROFILE profile{};
-    result = profiles->GetProfile(
-        TF_PROFILETYPE_INPUTPROCESSOR,
-        kLanguage,
-        mo::windows_tip::kTextServiceClsid,
-        mo::windows_tip::kSimplifiedChineseProfileGuid,
-        nullptr,
-        &profile);
-    if (FAILED(result)) {
-        return result;
-    }
-    enabled = (profile.dwFlags & TF_IPP_FLAG_ENABLED) != 0;
-    return S_OK;
+// ABI published for EnumEnabledLayoutOrTip; it has no Windows SDK header.
+struct LayoutOrTipProfile final {
+    DWORD profile_type;
+    LANGID language;
+    CLSID clsid;
+    GUID profile;
+    GUID category;
+    DWORD substitute_layout;
+    DWORD flags;
+    WCHAR id[MAX_PATH];
+};
+constexpr DWORD kLayoutOrTipInputProcessor = 1;
+constexpr DWORD kLayoutOrTipDisabled = 0x0002;
+
+bool is_enabled_mo_profile(const LayoutOrTipProfile& profile) noexcept {
+    return profile.profile_type == kLayoutOrTipInputProcessor
+        && profile.language == kLanguage
+        && IsEqualCLSID(profile.clsid, mo::windows_tip::kTextServiceClsid)
+        && IsEqualGUID(profile.profile, mo::windows_tip::kSimplifiedChineseProfileGuid)
+        && (profile.flags & kLayoutOrTipDisabled) == 0;
 }
 
-HRESULT set_current_user_enabled_verified(
-    ITfInputProcessorProfileMgr* profiles,
-    bool enabled) noexcept {
+HRESULT query_current_user_enabled(bool& enabled) noexcept {
+    enabled = false;
+    using EnumEnabledLayoutOrTipFunction = UINT(WINAPI*)(
+        LPCWSTR, LPCWSTR, LPCWSTR, LayoutOrTipProfile*, UINT);
+    HMODULE input = LoadLibraryExW(L"input.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (input == nullptr) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+    const auto function = reinterpret_cast<EnumEnabledLayoutOrTipFunction>(
+        GetProcAddress(input, "EnumEnabledLayoutOrTip"));
+    if (function == nullptr) {
+        const HRESULT error = HRESULT_FROM_WIN32(GetLastError());
+        FreeLibrary(input);
+        return error;
+    }
+    // Read user settings rather than the process-wide TSF profile cache. Include
+    // spare capacity for concurrent additions, and reject truncated snapshots.
+    HRESULT result = HRESULT_FROM_WIN32(ERROR_RETRY);
+    for (int attempt = 0; attempt != 3; ++attempt) {
+        const UINT count = function(nullptr, nullptr, nullptr, nullptr, 0);
+        if (count > 4096) {
+            result = HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+            break;
+        }
+        const UINT capacity = count + 16;
+        std::vector<LayoutOrTipProfile> items(capacity);
+        const UINT copied = function(nullptr, nullptr, nullptr, items.data(), capacity);
+        const UINT after = function(nullptr, nullptr, nullptr, nullptr, 0);
+        if (copied > capacity || after > capacity || copied != after) {
+            continue;
+        }
+        enabled = std::any_of(items.begin(), items.begin() + copied, is_enabled_mo_profile);
+        result = S_OK;
+        break;
+    }
+    FreeLibrary(input);
+    return result;
+}
+
+HRESULT set_current_user_enabled_verified(bool enabled) noexcept {
     HRESULT result = set_enabled_for_current_user(enabled);
     if (FAILED(result)) {
         return result;
     }
     bool actual = false;
-    result = query_current_user_enabled(profiles, actual);
+    result = query_current_user_enabled(actual);
     if (FAILED(result)) {
         return result;
     }
-    return actual == enabled ? S_OK : E_UNEXPECTED;
+    if (actual != enabled) {
+        std::wcerr << L"Current-user profile readback mismatch: enabled=" << actual
+                   << L", target=" << enabled << L'\n';
+        return E_UNEXPECTED;
+    }
+    return S_OK;
 }
 
 void report_user_state_rollback_failure(HRESULT result) noexcept {
@@ -1504,7 +1612,7 @@ HRESULT install_or_repair_current_user_fixed(bool repair) noexcept {
         return result;
     }
     bool enabled = false;
-    result = query_current_user_enabled(profiles.operator->(), enabled);
+    result = query_current_user_enabled(enabled);
     if (FAILED(result)) {
         return result;
     }
@@ -1532,11 +1640,10 @@ HRESULT install_or_repair_current_user_fixed(bool repair) noexcept {
     if (FAILED(result)) {
         return result;
     }
-    result = set_current_user_enabled_verified(profiles.operator->(), true);
+    result = set_current_user_enabled_verified(true);
     if (FAILED(result)) {
         report_user_state_rollback_failure(
-            set_current_user_enabled_verified(
-                profiles.operator->(), transaction.previous_enabled));
+            set_current_user_enabled_verified(transaction.previous_enabled));
         return result;
     }
     if (!repair) {
@@ -1545,8 +1652,7 @@ HRESULT install_or_repair_current_user_fixed(bool repair) noexcept {
         if (FAILED(result)) {
             if (!marker_written) {
                 report_user_state_rollback_failure(
-                    set_current_user_enabled_verified(
-                        profiles.operator->(), transaction.previous_enabled));
+                    set_current_user_enabled_verified(transaction.previous_enabled));
             }
             return result;
         }
@@ -1587,7 +1693,7 @@ HRESULT remove_current_user_fixed() noexcept {
     }
     bool previous_enabled = false;
     if (profile_exists) {
-        result = query_current_user_enabled(profiles.operator->(), previous_enabled);
+        result = query_current_user_enabled(previous_enabled);
         if (FAILED(result)) {
             return result;
         }
@@ -1610,11 +1716,10 @@ HRESULT remove_current_user_fixed() noexcept {
         return result;
     }
     if (profile_exists) {
-        result = set_current_user_enabled_verified(profiles.operator->(), false);
+        result = set_current_user_enabled_verified(false);
         if (FAILED(result)) {
             report_user_state_rollback_failure(
-                set_current_user_enabled_verified(
-                    profiles.operator->(), transaction.previous_enabled));
+                set_current_user_enabled_verified(transaction.previous_enabled));
             return result;
         }
     }
@@ -1633,8 +1738,7 @@ HRESULT remove_current_user_fixed() noexcept {
         }
         if (profile_exists) {
             report_user_state_rollback_failure(
-                set_current_user_enabled_verified(
-                    profiles.operator->(), transaction.previous_enabled));
+                set_current_user_enabled_verified(transaction.previous_enabled));
         }
         return result;
     }
@@ -1680,8 +1784,7 @@ HRESULT rollback_install_current_user_fixed() noexcept {
         return result;
     }
     if (profile_exists) {
-        result = set_current_user_enabled_verified(
-            profiles.operator->(), transaction.previous_enabled);
+        result = set_current_user_enabled_verified(transaction.previous_enabled);
         if (FAILED(result)) {
             return result;
         }
@@ -1733,8 +1836,7 @@ HRESULT rollback_remove_current_user_fixed() noexcept {
     if (FAILED(result)) {
         return result;
     }
-    result = set_current_user_enabled_verified(
-        profiles.operator->(), transaction.previous_enabled);
+    result = set_current_user_enabled_verified(transaction.previous_enabled);
     if (FAILED(result)) {
         return result;
     }
@@ -1845,6 +1947,34 @@ HRESULT self_test_user_finalizer_marker() noexcept {
 }
 
 HRESULT self_test_user_finalizer_policy() noexcept {
+    LayoutOrTipProfile sample{};
+    sample.profile_type = kLayoutOrTipInputProcessor;
+    sample.language = kLanguage;
+    sample.clsid = mo::windows_tip::kTextServiceClsid;
+    sample.profile = mo::windows_tip::kSimplifiedChineseProfileGuid;
+    if (!is_enabled_mo_profile(sample)) {
+        return E_UNEXPECTED;
+    }
+    sample.flags = kLayoutOrTipDisabled;
+    if (is_enabled_mo_profile(sample)) {
+        return E_UNEXPECTED;
+    }
+    sample.flags = 1; // Default is still enabled.
+    if (!is_enabled_mo_profile(sample)) {
+        return E_UNEXPECTED;
+    }
+    for (int field = 0; field != 4; ++field) {
+        LayoutOrTipProfile foreign = sample;
+        switch (field) {
+        case 0: foreign.profile_type = 2; break;
+        case 1: foreign.language = 0; break;
+        case 2: foreign.clsid = GUID_NULL; break;
+        case 3: foreign.profile = GUID_NULL; break;
+        }
+        if (is_enabled_mo_profile(foreign)) {
+            return E_UNEXPECTED;
+        }
+    }
     const auto transactions = std::array{
         UserFinalizerTransaction{},
         UserFinalizerTransaction{UserFinalizerTransactionKind::install, false},
@@ -1941,9 +2071,14 @@ HRESULT print_status() noexcept {
     if (FAILED(result)) {
         std::wcout << L"profile.registered=false\nprofile.enabled=false\nprofile.active=false\n";
     } else {
+        bool enabled = false;
+        result = query_current_user_enabled(enabled);
+        if (FAILED(result)) {
+            return result;
+        }
         std::wcout
             << L"profile.registered=true\n"
-            << L"profile.enabled=" << ((profile.dwFlags & TF_IPP_FLAG_ENABLED) != 0 ? L"true" : L"false") << L'\n'
+            << L"profile.enabled=" << (enabled ? L"true" : L"false") << L'\n'
             << L"profile.active=" << ((profile.dwFlags & TF_IPP_FLAG_ACTIVE) != 0 ? L"true" : L"false") << L'\n';
     }
     bool marker_exists = false;
