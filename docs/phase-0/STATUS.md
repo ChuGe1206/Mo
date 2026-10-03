@@ -1,6 +1,6 @@
 # Phase 0 状态
 
-- 快照日期：2026-09-28
+- 快照日期：2026-10-04
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
@@ -150,7 +150,7 @@
 
 ## 下一检查点
 
- Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap、完整 payload/机器 profile 回滚，以及 current-user/Bundle 持久回滚作者层已分别闭环，见 ADR 0025–0031；受控 WiX 工具链、真实 linked 结构和 fail-closed VM lifecycle kit 也已闭环，见 ADR 0032。开发故障矩阵见 ADR 0033；production-shape 隔离见 ADR 0034；逐文件 SPDX/通知草案与来源锁定见 ADR 0035；来源材料和签名顺序见 ADR 0036；安装树安全审计与 Broker 运行时门见 ADR 0037/0038；机器-only Lua/prebuilt 边界见 ADR 0039；离线 stage 与最新 VM 基线见 ADR 0040；设置存储、运行时快照、原生 GUI/安装入口及实时提示见 ADR 0041–0044；协商式候选注释/标签见 ADR 0049，Emoji 开关见 ADR 0050。下一步验收其余真实引擎偏好，并在可销毁 Windows 11 x64 快照运行包含 132-file 合同的新 clean/matrix kit。系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、设置入口、保存后的即时重绘、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。librime 组合审查、实际签名、持续竞态防替换、多用户卸载策略、跨会话互斥与资源内容认证仍是发行门。
+ Mo 转换资源搬迁、开发素材/预编译 pack、宿主终止/探针隔离、固定安装态 Broker bootstrap、完整 payload/机器 profile 回滚，以及 current-user/Bundle 持久回滚作者层已分别闭环，见 ADR 0025–0031；受控 WiX 工具链、真实 linked 结构和 fail-closed VM lifecycle kit 也已闭环，见 ADR 0032。开发故障矩阵见 ADR 0033；production-shape 隔离见 ADR 0034；逐文件 SPDX/通知草案与来源锁定见 ADR 0035；来源材料和签名顺序见 ADR 0036；安装树安全审计与 Broker 运行时门见 ADR 0037/0038；机器-only Lua/prebuilt 边界见 ADR 0039；离线 stage 与最新 VM 基线见 ADR 0040；设置存储、运行时快照、原生 GUI/安装入口及实时提示见 ADR 0041–0044；协商式候选注释/标签见 ADR 0049，Emoji 开关见 ADR 0050。下一步优先在当前 Windows 10 x64 VM 的 0.0.11.0 基线上继续延迟及桌面宿主验收，补齐 loaded-TIP、登录/重启和其余真实引擎偏好；Windows 11 矩阵后续再做。系统路由验收仍需管理员明确准备，在 Notepad 验证 composition、候选窗、设置入口、保存后的即时重绘、自动拉起、首次目录和 Broker 故障恢复，再覆盖 WinUI/AppContainer/混合 DPI；步骤见 `REGISTERED-TEST.md`，不自动启动 UAC 或改默认输入法。librime 组合审查、实际签名、持续竞态防替换、多用户卸载策略、跨会话互斥与资源内容认证仍是发行门。
 
 ## 2026-10-03 Win10 native 延迟组件续查
 
@@ -159,3 +159,11 @@
 ## 2026-10-03 Win10 映射页/Actor 续查
 
 [隔离映射页试验](WIN10-MAPPED-PAGE-EVIDENCE.md) 的直接 API 某样本首键降至 1.5 ms，但完整 TIP 首次仍超时；Broker 就绪 7.1 秒，Actor 仍有 741 ms 样本。未修改产品，50 ms/G2/G3 验收结论不变。新增只使用合成数据的 Actor 计时探针，build、rustfmt、Clippy 均通过。
+
+## 2026-10-03 Win10 代码页及启动分项续查
+
+[代码页/映射页组合试验](WIN10-IMAGE-PAGE-EVIDENCE.md) 已保存可复现的隔离诊断补丁。完整 TIP 的 Lua filters 消融四次首轮均失败；单独代码页准备仍有 135 ms 失败。组合准备在第一版 DLL 上四次首轮完整通过，含默认 x64/Win32，但 Broker ready 1.866–2.431 秒。补启动计时后的新 DLL 双架构完整首轮/第二轮通过，复用目录就绪仍为 495/1,702 ms；没有满足 400 ms activation 或首次切换目标。
+
+新目录 Actor prepare 1.53–5.42 秒、复用目录 334–352 ms，长区间主要细分到词库加载及用户词典打开，尚未拆开缓存/目录状态和具体 I/O 原因。生产 DLL、0.0.11.0 载荷及 deadline 未改，VM 没有新增输入验收证据，G2/G3 状态不变。18 组完整 probe 与四组 Actor 日志由 `ImagePages-v1` 清单绑定；日常工作继续在 develop，main 保留正式版基线。
+
+2026-10-04 收尾 workspace fmt、Clippy -D warnings、tests 通过；开发态 Broker 的测试重建与历史探针身份分开记录，详见上方证据。

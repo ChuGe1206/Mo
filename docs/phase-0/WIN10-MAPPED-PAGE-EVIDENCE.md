@@ -40,3 +40,7 @@
 [原始结果](../../build/win10-evidence-clean-v1/MappedPages-v1/results.json)和[54 项文件清单](../../build/win10-evidence-clean-v1/MappedPages-v1/host-evidence-manifest.json)绑定日志、两轮 TIP 探针、源码差异、诊断 DLL 和脚本。诊断 DLL SHA-256 为 `2C1476BF8BD803DF1940E79B3C12C776D9CE0813A2CFAB4484C6653D046AD055`；生产 DLL 仍为 `94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1`。新增 Rust 探针已通过 build、rustfmt 与 Clippy `-D warnings`；本轮仅新增探针源码，没有发布或替换生产 DLL。
 
 下一步需在拥有测试进程内继续细分候选懒加载、用户词典读取与代码页等待，并测量首次启动和加载 TIP 的完整路径。任何准备方案都要同时满足无输入、session 隔离、Broker 就绪时限和首次键 50 ms。浏览器/WinUI、真实鼠标、忙预编辑设置切换以及 loaded-TIP 升级/登录矩阵仍待 Win10 VM 验证。
+
+## 后续：代码页与启动分项
+
+后续[组合诊断](WIN10-IMAGE-PAGE-EVIDENCE.md) 保存了独立两版 DLL 和可复现源码补丁。mapped+image 的有限首轮完整通过不能抹去本页映射-only 的失败；新目录与复用目录都仍有超预算 Broker 就绪样本，未加入产品。本页 `2C1476…` 是历史隔离 DLL，新版本使用各自路径和 SHA-256，不能混用。

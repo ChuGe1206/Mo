@@ -1,0 +1,230 @@
+{
+  "format": 1,
+  "kind": "mo-win10-image-and-mapped-pages",
+  "date": "2026-10-03",
+  "source_head": "8f43f33d1d72dbdf6f857cb8d654009e0064dbd3",
+  "production_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "vm_changed": false,
+  "key_deadline_ms": 50,
+  "activation_budget_ms": 400,
+  "first_switch_target_ms": 500,
+  "startup": [
+    {
+      "case": "fresh-a",
+      "load_us": 111615,
+      "prepare_us": 5415057,
+      "Session": 5135793,
+      "Dictionary::Load": 4052876,
+      "UserDictionary::Load": 421307,
+      "PrepareResources": 269473
+    },
+    {
+      "case": "existing-a",
+      "load_us": 7273,
+      "prepare_us": 352222,
+      "Session": 250242,
+      "Dictionary::Load": 24041,
+      "UserDictionary::Load": 183226,
+      "PrepareResources": 101952
+    },
+    {
+      "case": "fresh-b",
+      "load_us": 6334,
+      "prepare_us": 1529506,
+      "Session": 1449575,
+      "Dictionary::Load": 835621,
+      "UserDictionary::Load": 401554,
+      "PrepareResources": 79900
+    },
+    {
+      "case": "existing-b",
+      "load_us": 6000,
+      "prepare_us": 333905,
+      "Session": 253945,
+      "Dictionary::Load": 21420,
+      "UserDictionary::Load": 193865,
+      "PrepareResources": 79902
+    }
+  ],
+  "full_tip": [
+    {
+      "group": "filters",
+      "case": "baseline-a",
+      "ready_ms": 1712,
+      "first_exit": 1,
+      "second_exit": 0,
+      "first_actor_us": 144982,
+      "first_native_process_key_us": null
+    },
+    {
+      "group": "filters",
+      "case": "no-lua-filters-a",
+      "ready_ms": 2612,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": 97640,
+      "first_native_process_key_us": null
+    },
+    {
+      "group": "filters",
+      "case": "no-lua-filters-b",
+      "ready_ms": 1530,
+      "first_exit": 1,
+      "second_exit": 0,
+      "first_actor_us": 171115,
+      "first_native_process_key_us": null
+    },
+    {
+      "group": "filters",
+      "case": "baseline-b",
+      "ready_ms": 1801,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": 107623,
+      "first_native_process_key_us": null
+    },
+    {
+      "group": "image",
+      "case": "baseline-a",
+      "ready_ms": 3340,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": 55875,
+      "first_native_process_key_us": 51718
+    },
+    {
+      "group": "image",
+      "case": "image-a",
+      "ready_ms": 1875,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": 5364,
+      "first_native_process_key_us": 3339
+    },
+    {
+      "group": "image",
+      "case": "image-b",
+      "ready_ms": 1864,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": 44744,
+      "first_native_process_key_us": 42826
+    },
+    {
+      "group": "image",
+      "case": "baseline-b",
+      "ready_ms": 1895,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": 131775,
+      "first_native_process_key_us": 129823
+    },
+    {
+      "group": "combined",
+      "case": "image-only-a",
+      "ready_ms": 1629,
+      "first_exit": 1,
+      "second_exit": 0,
+      "first_actor_us": 135496,
+      "first_native_process_key_us": 133531
+    },
+    {
+      "group": "combined",
+      "case": "combined-a",
+      "ready_ms": 2018,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": 4110,
+      "first_native_process_key_us": 1908
+    },
+    {
+      "group": "combined",
+      "case": "combined-b",
+      "ready_ms": 2299,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": 3842,
+      "first_native_process_key_us": 1729
+    },
+    {
+      "group": "combined",
+      "case": "image-only-b",
+      "ready_ms": 1667,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": 31067,
+      "first_native_process_key_us": 28973
+    },
+    {
+      "group": "default_clients",
+      "case": "x64-off",
+      "ready_ms": 1480,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": null,
+      "first_native_process_key_us": 446348
+    },
+    {
+      "group": "default_clients",
+      "case": "x64-combined",
+      "ready_ms": 2431,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": null,
+      "first_native_process_key_us": 1460
+    },
+    {
+      "group": "default_clients",
+      "case": "Win32-off",
+      "ready_ms": 1508,
+      "first_exit": 1,
+      "second_exit": 1,
+      "first_actor_us": null,
+      "first_native_process_key_us": 78769
+    },
+    {
+      "group": "default_clients",
+      "case": "Win32-combined",
+      "ready_ms": 1866,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": null,
+      "first_native_process_key_us": 2985
+    },
+    {
+      "group": "startup_full_tip",
+      "case": "x64-combined",
+      "ready_ms": 1702,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": null,
+      "first_native_process_key_us": 1865
+    },
+    {
+      "group": "startup_full_tip",
+      "case": "Win32-combined",
+      "ready_ms": 495,
+      "first_exit": 0,
+      "second_exit": 0,
+      "first_actor_us": null,
+      "first_native_process_key_us": 2973
+    }
+  ],
+  "raw_archive_manifest_sha256": "2C18006854879DAE9A4C58900530E69AD078C824B3291D9416526735FB6E6AEF",
+  "raw_archive_file_count": 148,
+  "raw_external_input_count": 166,
+  "diagnostic_runtime_sha256": {
+    "image": "FD5229ACB1B51D18476D0174B64A77C22842AE82FDFA45D072D7D5D358E0192E",
+    "startup": "E6B85279359F11DD51F2D52ABF7121AB106C8972F16D31540DB854A4F484D08D"
+  },
+  "post_capture_workspace_verification": {
+    "date": "2026-10-04",
+    "rust_toolchain": "1.97.1",
+    "fmt_passed": true,
+    "clippy_workspace_all_targets_passed": true,
+    "workspace_tests_passed": true,
+    "original_default_broker_sha256": "65B3BA7FED94E50CBE5978E59D905711629222BDC125176016298EA4061BAA05",
+    "rebuilt_default_broker_sha256": "277CEE927571F5521E44ECBFF68CA6B54AD85801DB98C9D924AA8EC2803396C5",
+    "rebuilt_binary_not_used_for_recorded_probes": true
+  }
+}

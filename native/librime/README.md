@@ -44,3 +44,11 @@ and executes only the machine shared `rime.lua`; installed staging and prebuilt
 data are the same Program Files directory. This is a source boundary, not a Lua
 sandbox. Signatures, authenticated resource updates and final release review remain
 separate gates.
+
+## Local diagnostic experiments
+
+[diagnostics/README.md](diagnostics/README.md) preserves the isolated Win10
+component/startup and image/mapped-page experiment. Its patch and headers are
+not runtime-build, staging, or installer inputs. Keep diagnostic outputs separate
+from the accepted runtime and consult the linked acceptance evidence before
+changing a production preparation contract.

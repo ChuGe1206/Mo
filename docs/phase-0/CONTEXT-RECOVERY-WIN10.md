@@ -1,10 +1,10 @@
 # 会话恢复与 Win10 验证交接
 
-更新：2026-10-03。用户优先验证 Win10；其当前主机也是 Win10。虚拟机已准备，测试账户无密码。
+更新：2026-10-04。用户优先验证 Win10；其当前主机也是 Win10。虚拟机已准备，测试账户无密码。
 
 ## 恢复基线
 
-工作目录 `E:\ChuGe\CodeProject\101_ProjectCollection\Mo`，分支 main，恢复时 HEAD `9cc5d3b`。现有大量未提交修改是此前开发成果，不能重置。ADR 0046–0051 和代码共同说明已实现空闲会话设置替换、MSI x86 COM 路径、静态 MSVC runtime、候选注释/标签、Emoji 偏好、会话学习/隐私策略。已生成 132-file stage 与开发态故障注入安装包；生成产物位于忽略的 build 目录，不代表发行版本。
+工作目录 `E:\ChuGe\CodeProject\101_ProjectCollection\Mo`。恢复时位于 main，HEAD `9cc5d3b`；此前未提交成果已整理为 `8f43f33` 并推送 origin/develop。当前在 develop 开发，main 保留为后期正式版打板基线。后续已有远端推送授权，不能重置用户成果。ADR 0046–0051 和代码共同说明已实现空闲会话设置替换、MSI x86 COM 路径、静态 MSVC runtime、候选注释/标签、Emoji 偏好、会话学习/隐私策略。已生成 132-file stage 与开发态故障注入安装包；生成产物位于忽略的 build 目录，不代表发行版本。
 
 已有本机 Rust fmt/clippy/workspace 测试通过；G1 本机证据闭环，G2/G4 部分通过，G3 未通过。真实 librime process_key 偶发超过 50 ms 的历史负向证据仍有效；不能通过放宽 deadline 或有限成功样本取消该风险。真实桌面宿主、完整安装矩阵和发行签名仍需证据。
 
@@ -62,3 +62,15 @@ Win10 六阶段矩阵已完成，原始证据 `build/win10-evidence-clean-v1/Mat
 ## 2026-10-03 映射页/Actor 后续交接
 
 继续集中 Win10，详见 [映射页及 Actor 证据](WIN10-MAPPED-PAGE-EVIDENCE.md)。当前隔离 DLL 在 `build/runtime-component-trace-v1/dist/lib/rime.dll`，只是诊断 v4；生产 `build/mo-runtime-learning-v1/dist/lib/rime.dll` 未被覆盖。直接 API 的映射准备改善在完整 TIP 路径不成立，启动到 Broker 就绪 7.1 秒，首次真实 probe 仍失败。新增 `crates/mo-rime/examples/actor_latency_probe.rs` 用于有 marker 的合成对照，严禁把这个诊断 DLL 打入包。VM 沿用上一轮 0.0.11.0，本轮未操作。后续优先定位候选懒加载、用户词典和代码页等待，再测试严格 50 ms；Win10 VM 其余桌面验收项仍待做。
+
+## 2026-10-03 代码页/启动分项后续交接
+
+详见[代码页与映射页组合证据](WIN10-IMAGE-PAGE-EVIDENCE.md)。生产 runtime 与安装载荷未变，50 ms key/400 ms activation 未改。Lua filter 消融的四次完整 TIP 首轮均失败；单独准备代码页也保留 135 ms 首键失败。`FD5229…` 隔离 DLL 的 mapped+image 条件四次首轮完整通过（trace x64 两次、默认 x64/Win32 各一次），但 Broker ready 为 1.866–2.431 秒，不能作为产品修复。
+
+增加启动计时的 DLL 为 `build/win10-startup-components-v1/dist/lib/rime.dll`，SHA-256 `E6B85279359F11DD51F2D52ABF7121AB106C8972F16D31540DB854A4F484D08D`；先前 `build/win10-image-pages-v1/dist` 的 `FD5229…` 保持原样，旧 `runtime-component-trace-v1/dist` 仍是 v4。当前 `runtime-component-trace-v1/compile` 则生成了新启动诊断 DLL，继续时不可仅凭目录名判断版本，更不能用于 stage。
+
+新目录 Actor prepare 1.53/5.42 秒、复用目录 334/352 ms，主要长区间细分到 Dictionary::Load 与 UserDictionary::Load；运行顺序/缓存仍是混杂因素。新 DLL 在复用合成目录的默认 x64/Win32 完整探针首轮和第二轮均通过，但 Broker ready 又出现 1,702/495 ms，冷启动/首次拉起仍未闭环。保存的 `native/librime/diagnostics` 补丁已在独立副本上应用并核对，构建成功。若 MSBuild 报 PATH/Path 重复键，使用本轮成功的无节点复用命令，不改系统 PATH。
+
+原始日志/源码/两版 DLL/脚本在 `build/win10-evidence-clean-v1/ImagePages-v1`，由 manifest 锁定。本轮只读取过 VM 截图，未改变其安装或增加桌面输入验收；VM 仍为 0.0.11.0。owned 主机诊断进程均已退出。下一步集中 Win10，细分 Db::Open 和词库映射准备，测 fresh/existing profile 与首次拉起；随后补齐已注册宿主、loaded-TIP、登录矩阵。G2/G3 不升级为整体通过。
+
+2026-10-04 收尾：Rust fmt/Clippy/workspace tests 通过。Cargo 重建了开发态 `target/debug/mo-broker.exe`（当前 SHA `277CEE…`），原探针用的是 `65B3BA…`，两者身份见 Git 结果汇总；不得把新二进制计入历史探针。本机原始归档文件校验通过。
