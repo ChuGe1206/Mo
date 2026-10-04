@@ -229,3 +229,23 @@ Actor paging 通过。native 负向 policy 的 LASTEXITCODE 仅在全部断言�
 Git 汇总。VM 沿用 0.0.11.0/94D646…，本轮无安装或系统输入路由测试。下一步集中
 Win10，定位真实 TIP 首键失败，再推进安装态新 ABI、普通宿主、loaded-TIP 升级
 和登录/重启验收。继续在 develop 开发，main 留作正式版基线。
+
+## 2026-10-04 ABI v3 首键与查询内部续查
+
+详见 [ABI v3 首键证据](WIN10-ABI3-LATENCY-EVIDENCE.md)。新增可重复的双架构
+合成测量脚本、八项拒绝门与两份 timing-only 补丁；补丁 replay 后仍通过严格
+userdb startup 守卫，CI 已接线。24 次完整 probe 中 13 次失败、11 次通过。
+基线 fresh 首次 Actor dispatch 99/155 ms、排队 17–33 µs；复用目录首 N
+3–4 ms 但后续 H 仍失败。客户端约 50 ms 在响应头超时，deadline 未改。
+
+诊断第二版首键 220/125 ms；x64 词表候选 Sort 约 100 ms、缺页增量 24，
+Win32 用户词典/英文查询/Prism 也有长区间。未证明硬缺页、磁盘或调度原因；
+旧 Evaluate 82 ms 的 self 盲区失败保留。仅 local user/build debug 计划，
+没有安装态 shared-prebuilt 证据；376 ms 的单个 ready 成功不代表稳定激活。
+
+诊断 DLL 6DE2485D…/C4BF7113… 分别保留 dist/dist-v2，当前 source/compile
+是第二版；BE5E3E37… stage 与 VM 0.0.11.0 未改。fmt/Clippy/workspace、
+双架构 trace ABI、拒绝门/replay 均通过；原始 PE/源码/profile/log 在
+Abi3Latency-v1，由 Git JSON manifest 绑定。所有 owned 进程已退出。
+继续在 develop；下一步追踪 Sort/Peek 映射访问等待，验证后续键与 fresh 启动，
+随后安装态新 ABI、宿主及 loaded-TIP/登录矩阵。G2/G3 仍未完成。

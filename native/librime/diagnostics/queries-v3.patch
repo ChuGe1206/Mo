@@ -1,0 +1,54 @@
+diff --git a/src/rime/dict/dictionary.cc b/src/rime/dict/dictionary.cc
+--- a/src/rime/dict/dictionary.cc
++++ b/src/rime/dict/dictionary.cc
+@@ -134,6 +134,7 @@
+ }
+ 
+ void DictEntryIterator::Sort() {
++  mo_diagnostic::Scope trace("native_query", "DictEntryIterator::Sort");
+   auto& chunks = query_result_->chunks;
+   // partial-sort remaining chunks, move best match to chunk_index_
+   std::partial_sort(chunks.begin() + chunk_index_,
+@@ -152,6 +153,7 @@
+ }
+ 
+ an<DictEntry> DictEntryIterator::Peek() {
++  mo_diagnostic::Scope trace("native_query", "DictEntryIterator::Peek");
+   if (!entry_ && !exhausted()) {
+     // get next entry from current chunk
+     const auto& chunk = query_result_->chunks[chunk_index_];
+@@ -242,6 +244,7 @@
+                          size_t start_pos,
+                          bool predict_word,
+                          double initial_credibility) {
++  mo_diagnostic::Scope trace("native_query", "lookup_table");
+   TableQueryResult result;
+   if (!table->Query(syllable_graph, start_pos, &result)) {
+     return;
+diff --git a/src/rime/gear/script_translator.cc b/src/rime/gear/script_translator.cc
+--- a/src/rime/gear/script_translator.cc
++++ b/src/rime/gear/script_translator.cc
+@@ -445,6 +445,7 @@
+ 
+ template <class Ptr, class Iter>
+ static bool has_exact_match_phrase(Ptr ptr, Iter iter, size_t consumed) {
++  mo_diagnostic::Scope trace("native_query", "has_exact_match_phrase");
+   return ptr && iter->first == consumed && !iter->second.exhausted() &&
+          iter->second.Peek()->IsExactMatch();
+ }
+@@ -591,6 +592,7 @@
+ }
+ 
+ bool ScriptTranslation::PrepareCandidate() {
++  mo_diagnostic::Scope trace("native_query", "ScriptTranslation::PrepareCandidate");
+ iter_incremented:
+   if (exhausted()) {
+     candidate_source_ = kUninitialized;
+@@ -675,6 +677,7 @@
+ }
+ 
+ bool ScriptTranslation::CheckEmpty() {
++  mo_diagnostic::Scope trace("native_query", "ScriptTranslation::CheckEmpty");
+   set_exhausted((!phrase_ || phrase_iter_ == phrase_->rend()) &&
+                 (!user_phrase_ || user_phrase_iter_ == user_phrase_->rend()));
+   return exhausted();

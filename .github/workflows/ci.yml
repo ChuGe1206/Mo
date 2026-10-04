@@ -137,6 +137,7 @@ jobs:
           ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -OutputDirectory $runtime
           ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-userdb-policy.ps1 -RuntimeBuildDirectory $runtime
+          ./tools/test-abi3-diagnostic-patches.ps1 -RuntimeBuildDirectory $runtime
           ./tools/runtime-build/test-resource-file.ps1
           ./tools/runtime-build/test-relocation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -RustToolchain 1.97.1
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
@@ -171,6 +172,9 @@ jobs:
             fixture = (Get-FileHash -LiteralPath $paths.FixtureProbePath).Hash
           }
           ./tools/test-userdb-errors.ps1 @paths -ExpectedHashes $hashes -EvidenceName ci-userdb-errors
+      - name: Check TIP latency diagnostic refusal policy
+        shell: pwsh
+        run: ./tools/test-tip-latency-diagnostic.ps1
       - name: Check synthetic LevelDB crash and error recovery boundaries
         shell: pwsh
         run: |

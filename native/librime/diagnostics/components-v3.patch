@@ -1,0 +1,393 @@
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+index 9dcaa09..dc4a176 100644
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -5,6 +5,7 @@
+ // 2011-04-24 GONG Chen <chen.sst@gmail.com>
+ //
+ #include <cctype>
++#include <rime/mo_diagnostic.h>
+ #include <rime/common.h>
+ #include <rime/composition.h>
+ #include <rime/context.h>
+@@ -60,6 +62,7 @@ class ConcreteEngine : public Engine {
+ // implementations
+ 
+ bool ConcreteEngine::PrepareResources() {
++  mo_diagnostic::Scope trace("startup", "PrepareResources");
+   if (!schema_ || schema_->schema_id() != "rime_ice" || !context_
+       || !context_->input().empty() || context_->IsComposing()) {
+     return false;
+@@ -90,6 +93,7 @@ Engine::~Engine() {
+ }
+ 
+ ConcreteEngine::ConcreteEngine() {
++  mo_diagnostic::Scope trace("startup", "ConcreteEngine");
+   LOG(INFO) << "starting engine.";
+   // receive context notifications
+   context_->commit_notifier().connect([this](Context* ctx) { OnCommit(ctx); });
+@@ -118,9 +122,11 @@ ConcreteEngine::~ConcreteEngine() {
+ }
+ 
+ bool ConcreteEngine::ProcessKey(const KeyEvent& key_event) {
++  mo_diagnostic::Scope all("engine", "ProcessKey");
+   DLOG(INFO) << "process key: " << key_event;
+   ProcessResult ret = kNoop;
+   for (auto& processor : processors_) {
++    mo_diagnostic::Scope trace("processor", processor->name_space());
+     ret = processor->ProcessKeyEvent(key_event);
+     if (ret == kRejected)
+       break;
+@@ -173,6 +179,7 @@ void ConcreteEngine::OnPropertyUpdate(Context* ctx, const string& property) {
+ }
+ 
+ void ConcreteEngine::Compose(Context* ctx) {
++  mo_diagnostic::Scope trace("engine", "Compose");
+   if (!ctx)
+     return;
+   Composition& comp = ctx->composition();
+@@ -190,6 +197,7 @@ void ConcreteEngine::Compose(Context* ctx) {
+ }
+ 
+ void ConcreteEngine::CalculateSegmentation(Segmentation* segments) {
++  mo_diagnostic::Scope trace("engine", "Segmentation");
+   DLOG(INFO) << "CalculateSegmentation, segments: " << segments->size()
+              << ", finished? " << segments->HasFinishedSegmentation();
+   while (!segments->HasFinishedSegmentation()) {
+@@ -222,6 +230,7 @@ void ConcreteEngine::CalculateSegmentation(Segmentation* segments) {
+ }
+ 
+ void ConcreteEngine::TranslateSegments(Segmentation* segments) {
++  mo_diagnostic::Scope trace("engine", "TranslateSegments");
+   DLOG(INFO) << "TranslateSegments: " << *segments;
+   for (Segment& segment : *segments) {
+     DLOG(INFO) << "segment [" << segment.start << ", " << segment.end
+@@ -233,6 +242,7 @@ void ConcreteEngine::TranslateSegments(Segmentation* segments) {
+     DLOG(INFO) << "translating segment: [" << input << "]";
+     auto menu = New<Menu>();
+     for (auto& translator : translators_) {
++      mo_diagnostic::Scope trace("translator", translator->name_space());
+       auto translation = translator->Query(input, segment);
+       if (!translation)
+         continue;
+@@ -244,6 +254,7 @@ void ConcreteEngine::TranslateSegments(Segmentation* segments) {
+     }
+     for (auto& filter : filters_) {
+       if (filter->AppliesToSegment(&segment)) {
++        mo_diagnostic::Scope trace("filter", filter->name_space());
+         menu->AddFilter(filter.get());
+       }
+     }
+@@ -334,6 +345,7 @@ inline void CreateComponentsFromList(Engine* engine,
+                    << ticket.klass << "'";
+         continue;
+       }
++      mo_diagnostic::Scope trace("startup_component", ticket.klass + ":" + ticket.name_space);
+       auto component = c->Create(ticket);
+       if (!component) {
+         LOG(ERROR) << "error creating " << component_type << " from ticket: '"
+@@ -347,6 +359,7 @@ inline void CreateComponentsFromList(Engine* engine,
+ }
+ 
+ void ConcreteEngine::InitializeComponents() {
++  mo_diagnostic::Scope trace("startup", "InitializeComponents");
+   processors_.clear();
+   segmentors_.clear();
+   translators_.clear();
+diff --git a/src/rime/menu.cc b/src/rime/menu.cc
+index f5cef68..ed65dd9 100644
+--- a/src/rime/menu.cc
++++ b/src/rime/menu.cc
+@@ -5,6 +5,7 @@
+ // 2011-05-29 GONG Chen <chen.sst@gmail.com>
+ //
+ #include <algorithm>
++#include <rime/mo_diagnostic.h>
+ #include <iterator>
+ #include <rime/filter.h>
+ #include <rime/menu.h>
+@@ -24,6 +25,7 @@ void Menu::AddFilter(Filter* filter) {
+ }
+ 
+ size_t Menu::Prepare(size_t requested) {
++  mo_diagnostic::Scope trace("menu", "Prepare");
+   DLOG(INFO) << "preparing " << requested << " candidates.";
+   while (candidates_.size() < requested && !result_->exhausted()) {
+     if (auto cand = result_->Peek()) {
+diff --git a/src/rime/service.cc b/src/rime/service.cc
+index 9ce6417..af04794 100644
+--- a/src/rime/service.cc
++++ b/src/rime/service.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -15,6 +16,7 @@ using namespace std::placeholders;
+ namespace rime {
+ 
+ Session::Session() {
++  mo_diagnostic::Scope trace("startup", "Session");
+   engine_.reset(Engine::Create());
+   engine_->sink().connect([this](auto text) { OnCommit(text); });
+   SessionId session_id = reinterpret_cast<SessionId>(this);
+diff --git a/src/rime/algo/syllabifier.cc b/src/rime/algo/syllabifier.cc
+index b7ed6b7..ee57bf5 100644
+--- a/src/rime/algo/syllabifier.cc
++++ b/src/rime/algo/syllabifier.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -30,6 +31,7 @@ const double kCorrectionCredibility = -4.605170185988091;  // log(0.01)
+ int Syllabifier::BuildSyllableGraph(const string& input,
+                                     Prism& prism,
+                                     SyllableGraph* graph) {
++  mo_diagnostic::Scope trace("native_query", "Syllabifier::BuildSyllableGraph");
+   if (input.empty())
+     return 0;
+ 
+diff --git a/src/rime/dict/dictionary.cc b/src/rime/dict/dictionary.cc
+index 58f21a3..0c7e723 100644
+--- a/src/rime/dict/dictionary.cc
++++ b/src/rime/dict/dictionary.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -273,6 +274,7 @@ an<DictEntryCollector> Dictionary::Lookup(const SyllableGraph& syllable_graph,
+                                           const hash_set<string>* blacklist,
+                                           bool predict_word,
+                                           double initial_credibility) {
++  mo_diagnostic::Scope trace("native_query", "Dictionary::Lookup");
+   if (!loaded())
+     return nullptr;
+   auto collector = New<DictEntryCollector>();
+@@ -301,6 +303,7 @@ size_t Dictionary::LookupWords(DictEntryIterator* result,
+                                bool predictive,
+                                size_t expand_search_limit,
+                                const hash_set<string>* blacklist) {
++  mo_diagnostic::Scope trace("native_query", "Dictionary::LookupWords");
+   DLOG(INFO) << "lookup: " << str_code;
+   if (!loaded())
+     return 0;
+@@ -377,6 +380,7 @@ bool Dictionary::Remove() {
+ }
+ 
+ bool Dictionary::Load() {
++  mo_diagnostic::Scope trace("startup", "Dictionary::Load");
+   LOG(INFO) << "loading dictionary '" << name_ << "'.";
+   if (tables_.empty()) {
+     LOG(ERROR) << "Cannot load dictionary '" << name_
+diff --git a/src/rime/dict/prism.cc b/src/rime/dict/prism.cc
+index 6ea7d26..f78e168 100644
+--- a/src/rime/dict/prism.cc
++++ b/src/rime/dict/prism.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -270,6 +271,7 @@ bool Prism::GetValue(const string& key, int* value) const {
+ // Given a key, search all the keys in the tree that share
+ // a common prefix with that key.
+ void Prism::CommonPrefixSearch(const string& key, vector<Match>* result) {
++  mo_diagnostic::Scope trace("native_query", "Prism::CommonPrefixSearch");
+   if (!result || key.empty())
+     return;
+   size_t len = key.length();
+@@ -282,6 +284,7 @@ void Prism::CommonPrefixSearch(const string& key, vector<Match>* result) {
+ void Prism::ExpandSearch(const string& key,
+                          vector<Match>* result,
+                          size_t limit) {
++  mo_diagnostic::Scope trace("native_query", "Prism::ExpandSearch");
+   if (!result)
+     return;
+   result->clear();
+diff --git a/src/rime/dict/table.cc b/src/rime/dict/table.cc
+index af7e70b..52c1b77 100644
+--- a/src/rime/dict/table.cc
++++ b/src/rime/dict/table.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -548,6 +549,7 @@ string Table::GetSyllableById(SyllableId syllable_id) {
+ }
+ 
+ TableAccessor Table::QueryWords(SyllableId syllable_id) {
++  mo_diagnostic::Scope trace("native_query", "Table::QueryWords");
+   TableQuery query(index_);
+   return query.Access(syllable_id);
+ }
+@@ -571,6 +573,7 @@ const double kPenaltyForAmbiguousSyllable = -2.995732274;
+ bool Table::Query(const SyllableGraph& syll_graph,
+                   size_t start_pos,
+                   TableQueryResult* result) {
++  mo_diagnostic::Scope trace("native_query", "Table::Query");
+   if (!result || !index_ || start_pos >= syll_graph.interpreted_length)
+     return false;
+   result->clear();
+diff --git a/src/rime/dict/user_dictionary.cc b/src/rime/dict/user_dictionary.cc
+index 2944c2d..86b7374 100644
+--- a/src/rime/dict/user_dictionary.cc
++++ b/src/rime/dict/user_dictionary.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -167,6 +168,7 @@ void UserDictionary::Attach(const an<Table>& table, const an<Prism>& prism) {
+ }
+ 
+ bool UserDictionary::Load() {
++  mo_diagnostic::Scope trace("startup", "UserDictionary::Load");
+   if (!db_ || db_->disabled())
+     return false;
+   if (!db_->loaded() && !db_->Open()) {
+@@ -317,6 +319,7 @@ an<UserDictEntryCollector> UserDictionary::Lookup(
+     size_t depth_limit,
+     size_t predict_word_from_depth,
+     double initial_credibility) {
++  mo_diagnostic::Scope trace("native_query", "UserDictionary::Lookup");
+   if (!table_ || !prism_ || !loaded() ||
+       start_pos >= syll_graph.interpreted_length)
+     return nullptr;
+@@ -360,6 +363,7 @@ size_t UserDictionary::LookupWords(UserDictEntryIterator* result,
+                                    bool predictive,
+                                    size_t limit,
+                                    string* resume_key) {
++  mo_diagnostic::Scope trace("native_query", "UserDictionary::LookupWords");
+   TickCount present_tick = tick_ + 1;
+   size_t len = input.length();
+   size_t start = result->cache_size();
+diff --git a/src/rime/gear/memory.cc b/src/rime/gear/memory.cc
+index 64ed155..93859f7 100644
+--- a/src/rime/gear/memory.cc
++++ b/src/rime/gear/memory.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -56,6 +57,7 @@ int CommitEntry::Length() const {
+ }
+ 
+ Memory::Memory(const Ticket& ticket) {
++  mo_diagnostic::Scope trace("startup", "Memory");
+   if (!ticket.engine)
+     return;
+ 
+@@ -106,6 +108,7 @@ bool Memory::StartSession() {
+ }
+ 
+ bool Memory::FinishSession() {
++  mo_diagnostic::Scope trace("native_query", "Memory::FinishSession");
+   return LearningEnabled() && user_dict_ && user_dict_->CommitPendingTransaction();
+ }
+ 
+diff --git a/src/rime/gear/script_translator.cc b/src/rime/gear/script_translator.cc
+index aef6217..8fa057f 100644
+--- a/src/rime/gear/script_translator.cc
++++ b/src/rime/gear/script_translator.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -451,6 +452,7 @@ static bool has_exact_match_phrase(Ptr ptr, Iter iter, size_t consumed) {
+ // ScriptTranslation implementation
+ 
+ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
++  mo_diagnostic::Scope trace("native_query", "ScriptTranslation::Evaluate");
+   size_t consumed = syllabifier_->BuildSyllableGraph(*dict->prism());
+   const auto& syllable_graph = syllabifier_->syllable_graph();
+   bool predict_word = translator_->enable_word_completion() &&
+diff --git a/src/rime/gear/simplifier.cc b/src/rime/gear/simplifier.cc
+index d203b25..a979bfe 100644
+--- a/src/rime/gear/simplifier.cc
++++ b/src/rime/gear/simplifier.cc
+@@ -1,3 +1,4 @@
++#include <rime/mo_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -39,6 +40,7 @@ class Opencc {
+   void Initialize() {
+     if (initialized_)
+       return;
++    mo_diagnostic::Scope trace("startup", "Opencc::Initialize");
+     initialized_ = true;
+     opencc::Config config;
+     try {
+diff --git a/plugins/lua/src/lua_gears.cc b/plugins/lua/src/lua_gears.cc
+index b5a6bf5..03e4785 100644
+--- a/plugins/lua/src/lua_gears.cc
++++ b/plugins/lua/src/lua_gears.cc
+@@ -1,5 +1,6 @@
+ #include "lib/lua_templates.h"
+ #include "lua_gears.h"
++#include <rime/mo_diagnostic.h>
+ #include <atomic>
+ #include <vector>
+ #include <sstream>
+@@ -8,6 +9,7 @@ namespace rime {
+ 
+ //--- LuaTranslation
+ bool LuaTranslation::Next() {
++  mo_diagnostic::Scope trace("lua_resume", diagnostic_label_);
+   if (exhausted()) {
+     return false;
+   }
+@@ -70,6 +72,7 @@ static bool sub_module_init(lua_State *L, const Ticket &t,
+ //---
+ static void raw_init(lua_State *L, const Ticket &t,
+                      an<LuaObj> *env, an<LuaObj> *func, an<LuaObj> *fini, an<LuaObj> *tags_match= NULL) {
++  mo_diagnostic::Scope trace("startup_lua", t.klass);
+   lua_newtable(L);
+   Engine *e = t.engine;
+   LuaType<Engine *>::pushdata(L, e);
+@@ -155,7 +158,7 @@ an<Translation> LuaFilter::Apply(
+   an<Translation> translation, CandidateList* candidates) {
+   auto f = lua_->newthread<an<LuaObj>, an<Translation>,
+                            an<LuaObj>, CandidateList *>(func_, translation, env_, candidates);
+-  return New<LuaTranslation>(lua_, f);
++  return New<LuaTranslation>(lua_, f, name_space_);
+ }
+ 
+ LuaFilter::~LuaFilter() {
+@@ -178,7 +181,7 @@ an<Translation> LuaTranslator::Query(const string& input,
+                                      const Segment& segment) {
+   auto f = lua_->newthread<an<LuaObj>, const string &, const Segment &,
+                            an<LuaObj>>(func_, input, segment, env_);
+-  an<Translation> t = New<LuaTranslation>(lua_, f);
++  an<Translation> t = New<LuaTranslation>(lua_, f, name_space_);
+   if (t->exhausted())
+     return an<Translation>();
+   else
+diff --git a/plugins/lua/src/lua_gears.h b/plugins/lua/src/lua_gears.h
+index 8c44c6f..2a70292 100644
+--- a/plugins/lua/src/lua_gears.h
++++ b/plugins/lua/src/lua_gears.h
+@@ -13,8 +13,8 @@ namespace rime {
+ 
+ class LuaTranslation : public Translation {
+ public:
+-  LuaTranslation(Lua *lua, an<LuaObj> f)
+-    : lua_(lua), f_(f) {
++  LuaTranslation(Lua *lua, an<LuaObj> f, std::string diagnostic_label = "unlabelled")
++    : lua_(lua), f_(f), diagnostic_label_(std::move(diagnostic_label)) {
+     Next();
+   }
+ 
+@@ -30,6 +30,7 @@ private:
+   Lua *lua_;
+   an<Candidate> c_;
+   an<LuaObj> f_;
++  std::string diagnostic_label_;
+ };
+ 
+ class LuaFilter : public Filter, TagMatching {

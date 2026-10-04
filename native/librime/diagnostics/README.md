@@ -171,3 +171,34 @@ The negative probes exit 2. Sync-error records can also become visible after a
 failed write returns. See [Win10 recovery evidence](../../../docs/phase-0/WIN10-DB-RECOVERY-EVIDENCE.md)
 for the exact observations, default librime write policy, upstream automatic
 repair boundary and remaining power-loss/Actor/VM work.
+
+## Current ABI v3 timing-only measurements
+
+The historical `components.patch` includes page preparation and targets the old
+ABI v2 source. For the current accepted v3 source use `components-v3.patch`, then
+`queries-v3.patch`. They add timing only, retain the strict main-userdb startup
+policy, and do not read pages ahead, reuse logs, send keys, or change preparation.
+Copy only `mo_diagnostic.h` into the isolated source. Do not apply
+`db-open.patch` to this new pair. The builder and stage do not consume these files.
+
+Verify application to the actual builder source with
+`tools/test-abi3-diagnostic-patches.ps1 -RuntimeBuildDirectory <absolute-build>`.
+Use a new compile/dist with the fixed dependencies and strict wrapper properties;
+see [ABI v3 evidence](../../../docs/phase-0/WIN10-ABI3-LATENCY-EVIDENCE.md) for exact
+binaries, scope meanings and the retained negative results.
+
+After building a debug `mo-broker --features latency-trace` and the two native
+architectures with `build-probe.ps1 -Architecture All -Backend MSBuild -LatencyTrace`,
+run the bounded collector with absolute inputs:
+
+```powershell
+./tools/tip-latency-diagnostic.ps1 -LibrimeDistDir <isolated-dist> -SharedDataDir <trusted-shared-with-build> -BrokerPath <trace-broker.exe> -NativeOutputDirectory <native-out/msbuild> -EvidenceName my-fresh-evidence
+```
+
+It copies compiled machine fixtures into new local user profiles, preserves both
+probe exits and waits two seconds after the first probe to capture completion of
+a timed-out dispatch. It never terminates another existing Broker. Its zero exit
+means collection completed; inspect `results.json` and both logs for acceptance.
+This debug startup uses local user/build, not installed shared prebuilt data.
+The diagnostic emits fixed scope metadata on synthetic inputs only and can alter
+wall time. Never point it at a real user profile or package its DLL as a runtime.
