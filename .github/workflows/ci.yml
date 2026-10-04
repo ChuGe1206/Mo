@@ -141,6 +141,22 @@ jobs:
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-preparation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -OfficialDistDir (Join-Path $env:RUNNER_TEMP 'librime-dist/dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -RustToolchain 1.97.1 -BrokerPath (Join-Path $PWD 'target/debug/mo-broker.exe')
           ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+      - name: Check synthetic LevelDB crash and error recovery boundaries
+        shell: pwsh
+        run: |
+          $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
+          $include = Join-Path $PWD 'build/db-recovery-include'
+          New-Item -ItemType Directory -Path (Join-Path $include 'rime') | Out-Null
+          Copy-Item native/librime/diagnostics/mo_diagnostic.h (Join-Path $include 'rime/mo_diagnostic.h')
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $msbuild = & $vswhere -latest -products '*' -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          if (-not $msbuild) { throw 'MSBuild not found' }
+          $output = Join-Path $PWD 'build/db-recovery-probe'
+          & $msbuild native/librime/diagnostics/DbRecoveryProbe.vcxproj /nologo /m:1 /nodeReuse:false /p:Configuration=Release /p:Platform=x64 "/p:MoLevelDbIncludeDir=$runtime/prefix/include" "/p:MoLevelDbLibrary=$runtime/prefix/lib/leveldb.lib" "/p:MoDiagnosticIncludeDir=$include" "/p:MoDiagnosticOutDir=$output"
+          if ($LASTEXITCODE -ne 0) { throw 'Recovery probe build failed' }
+          $probe = Join-Path $output 'mo_db_recovery_probe.exe'
+          ./tools/test-db-recovery-policy.ps1 -ProbePath $probe
+          ./tools/test-db-recovery.ps1 -ProbePath $probe -ExpectedProbeSha256 (Get-FileHash -LiteralPath $probe).Hash -EvidenceName ci-db-recovery-matrix
       - name: Build and test non-installable development deployment assets
         shell: pwsh
         run: |

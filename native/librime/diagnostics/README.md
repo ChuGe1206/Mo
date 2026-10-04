@@ -140,3 +140,34 @@ without crash/error recovery and representative profile tests. Current findings
 and the startup-budget failures are recorded in the DB-open evidence document.
 
 Broker-side startup timings are available with a debug `mo-broker/latency-trace` build; they are buffered until listening and sent through the existing bounded logger. See [Win10 startup evidence](../../../docs/phase-0/WIN10-BROKER-STARTUP-EVIDENCE.md) for phase boundaries, artifacts and the remaining fresh-profile failure.
+
+## Synthetic crash/error recovery matrix
+
+`DbRecoveryProbe.vcxproj` uses the same explicit pinned input properties and
+strict build flags as `DbIoProbe.vcxproj`; its executable is
+`mo_db_recovery_probe.exe`. Build it in a separate output directory. The copied
+include layout used by CI needs `rime/mo_diagnostic.h`; the tracked
+`mo_db_diagnostic.h` is included from this diagnostics folder.
+
+```powershell
+$probe = (Resolve-Path build/my-db-recovery-bin/mo_db_recovery_probe.exe).Path
+./tools/test-db-recovery-policy.ps1 -ProbePath $probe
+./tools/test-db-recovery.ps1 -ProbePath $probe `
+  -ExpectedProbeSha256 (Get-FileHash -LiteralPath $probe).Hash `
+  -EvidenceName my-db-recovery-matrix
+```
+
+The matrix creates only a fresh repository build child and synthetic DBs. It
+terminates only the four children it started, after a synchronous write/readback
+handshake. Output is fixed metadata; DB files remain available as evidence.
+Ordinary children have a 60-second ceiling, durable-writer handshake 30 seconds.
+Do not run it against real profiles. The native probe requires an absolute
+fixture with `mo-db-recovery-fixture` and a fixed `synthetic-db` child.
+
+The 14-case matrix includes two EXPECTED NEGATIVE observations under LevelDB's
+default non-paranoid recovery policy. Matrix completion means the expected
+behavior was checked, including unsafe behavior; it is not a product safety pass.
+The negative probes exit 2. Sync-error records can also become visible after a
+failed write returns. See [Win10 recovery evidence](../../../docs/phase-0/WIN10-DB-RECOVERY-EVIDENCE.md)
+for the exact observations, default librime write policy, upstream automatic
+repair boundary and remaining power-loss/Actor/VM work.

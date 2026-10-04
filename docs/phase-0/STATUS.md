@@ -4,6 +4,12 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-04 Win10 用户词典恢复边界
+
+- [恢复证据](WIN10-DB-RECOVERY-EVIDENCE.md)：新增严格原生探针与 marker/SHA/全新目录守卫的 14 组矩阵；两套构建布局复验一致。四组同步写后强制终止、追加失败回退、同步错误传播及 32,768 条恢复 compaction 检查通过。
+- 每套保留两组负向结果：默认 paranoid 关闭时，日志读取失败后 DB::Open 成功却丢失 128 条合成记录；reuse 开/关均出现。严格 LevelDB 对照拒绝后可恢复，但实际 librime 有自动 repair/recreate 路径尚未注入。Sync 失败返回的记录重开后可见，不能据错误推断未写。日志复用继续禁止进入产品，未声明非同步学习或断电耐久性。
+- 两份 native `/W4 /WX /MT` 构建、五项 harness/五项 native/两项构建拒绝、fmt/Clippy 通过；workspace 首轮 worker-panic 三秒退出失败保留，单项与完整复跑通过，根因未定。新增 CI gate 尚无远端结果。归档绑定 386 文件/20 外部身份；生产 runtime/stage/VM/deadline 不变，G2/G3 不升级。
+
 ## 2026-10-04 Win10 Broker 启动分项
 
 - [启动分项证据](WIN10-BROKER-STARTUP-EVIDENCE.md)：新增仅 debug latency-trace 启用、就绪后有界输出的八阶段计时；默认/release 为零大小无计时器。五组双架构完整 TIP 各首轮/第二轮通过，三个无输入 fake 对照保存。

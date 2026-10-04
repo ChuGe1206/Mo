@@ -94,3 +94,13 @@ Win10 六阶段矩阵已完成，原始证据 `build/win10-evidence-clean-v1/Mat
 实测 trace Broker SHA `DD3DB30E7D7287A186A4419075579395246BDA1C6B8A458EA04A089680A33817`，沿用隔离 runtime `CC732CB…`。后续 Cargo 已重建 root Broker；实际三种 Broker、双架构 TIP、DLL、源码/日志/harness/checks 封存于 `build/win10-evidence-clean-v1/BrokerStartup-v1`，55 文件/157 外部身份，manifest SHA `C1A50611CC5CC3F81EFE6726D228E23D1F7F076E822F5F89D40D65EC76CAE8F8`。fmt、四种 Clippy、两套 workspace tests、默认诊断关闭、两种 release 各五拒绝门通过。
 
 VM 仍为 0.0.11.0；生产 runtime/stage 未变，owned Broker 均已退出。下一步验证 reuse_logs 合成崩溃/错误恢复与代表性词典，细分 fresh Session/文件打开/进程外启动，再考虑产品方案与安装态共享 prebuilt/注册宿主验收。G2/G3 与 50/400 ms 门槛不变。
+
+## 2026-10-04 DB 崩溃/错误恢复后续交接
+
+详见 [恢复边界证据](WIN10-DB-RECOVERY-EVIDENCE.md)。新增 DbRecoveryProbe 与两份 tools/test-db-recovery* 脚本，14 组直接 LevelDB API 矩阵在正常/复制诊断头 CI 布局分别运行；每套 12 正向、2 负向，合计 8 个完成同步写握手的 child 被父进程强制终止。同步更新/删除、append log/manifest 回退、Sync 错误传播和 32,768 条 recovery compaction 检查通过。
+
+关键负向：实际默认 paranoid=false 的 read-open I/O 错误被忽略，DB::Open OK 却缺失全部 128 合成记录，reuse 0/1 都出现；strict=true 的直接 API 对照拒绝，移除注入后记录完整。Sync 错误后记录重开仍存在，失败结果有歧义。librime 普通更新是默认非同步写，上游还有自动 userdb recovery task/RepairDB/rename/remove/recreate 路径；本轮没有实际 Rime/Actor 错误注入，不能只设 paranoid 就宣称产品已修复。
+
+接受 runtime `94D646…`、stage、VM 0.0.11.0 与预算未变。首/CI probe SHA `EF3D073A…` / `BF47CA22…`，源码/合成 DB/两套日志及首次 Rust 失败在 `build/win10-evidence-clean-v1/DbRecovery-v1`，386 文件/20 外部输入，manifest `F3F76F198F5BBEDCCC3DE1D3D76676C69BA5E98915D8E7CEE9C938380F9B61FF`。native strict builds、五 harness/五 native/两 build guards、fmt/Clippy 通过；workspace 首轮 worker-panic 子进程三秒未退出，单项 1.83 秒及完整复跑通过，未放宽断言、未定根因。CI 接线/AST 与本机布局验证通过，远端 Actions 未执行。
+
+下一步优先定义并实测 Mo 用户词典的无破坏错误策略、实际 Actor/Broker 准备拒绝和恢复；日志复用暂不接入产品。随后继续非同步学习/崩溃边界、fresh 启动及 Win10 安装态共享数据/注册宿主验收。owned recovery child 均退出，G2/G3 状态不变。

@@ -81,3 +81,5 @@ fresh 不同：native Session 达 1.54 秒，parse 115 ms；首个映射 FileOpe
 [Git 结果汇总](evidence/WIN10-BROKER-STARTUP-20261004.json)、[本机原始汇总](../../build/win10-evidence-clean-v1/BrokerStartup-v1/results.json)与[哈希清单](../../build/win10-evidence-clean-v1/BrokerStartup-v1/host-evidence-manifest.json)绑定 55 个归档文件和 157 个外部输入身份。清单 SHA-256 为 `C1A50611CC5CC3F81EFE6726D228E23D1F7F076E822F5F89D40D65EC76CAE8F8`。归档含实际三版 Broker、DLL、双架构 TIP/probe、五组完整日志、三个 fake 日志、源码、历史 harness 与检查日志；延用 native 编译源码由上一轮 DbOpen 清单绑定。大文件 build 归档保持本机，Git 汇总供远端恢复；不是 PE 字节可复现承诺。
 
 下一步继续 Win10：验证 experimental reuse_logs 的合成崩溃/错误恢复与代表性词典，再决定是否形成产品方案；同时细分 fresh Session、路径/映射打开与进程外启动成本。产品方案仍需保持无输入准备/会话隔离，满足原预算，再进入安装态共享数据、注册宿主、loaded-TIP 和登录矩阵。
+
+后续同步写后的进程终止、追加/读/Sync 故障与 large recovery 检查见 [恢复边界证据](WIN10-DB-RECOVERY-EVIDENCE.md)。默认读取错误存在负向证据，日志复用继续不进入产品。

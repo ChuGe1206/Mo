@@ -1,0 +1,523 @@
+{
+  "format": 1,
+  "kind": "mo-win10-db-recovery-evidence",
+  "date": "2026-10-04",
+  "source_head": "150934900d13183dfe194b819c73473438234eaa",
+  "leveldb_commit": "99b3c03b3284f5886f9ef9a4ef703d57373e61be",
+  "librime_commit": "33e78140250125871856cdc5b42ddc6a5fcd3cd4",
+  "probe_sha256": "EF3D073A9E4739974F848701902F2A0B5F268E3129F10E8A7F4CBD1D28C443C2",
+  "ci_probe_sha256": "BF47CA224B42A481D9C5936E57DE04FD19226298B631A94684E527B81F61BCCB",
+  "synthetic_only": true,
+  "power_loss_tested": false,
+  "actual_librime_error_path_tested": false,
+  "vm_changed": false,
+  "production_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "key_deadline_ms": 50,
+  "activation_budget_ms": 400,
+  "first_switch_target_ms": 500,
+  "matrix": [
+    {
+      "case": "crash-w0-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 0,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w0-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 0,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w1-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 1,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w1-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 1,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "append-log",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--append-log",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY append_fault_injected=1 fallback_preserved_records=1 continued_write=1 legacy_reopen=1"
+      }
+    },
+    {
+      "case": "append-manifest",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--append-manifest",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY append_fault_injected=1 fallback_preserved_records=1 continued_write=1 legacy_reopen=1"
+      }
+    },
+    {
+      "case": "sync-error-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--sync-error",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY sync_error_propagated=1 error_latched=1 earlier_sync_recovered=1 failed_write_present=1"
+      }
+    },
+    {
+      "case": "read-error-r0-strict0",
+      "negative_evidence": true,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 0,
+        "exit_code": 2,
+        "metadata": "MO_DB_RECOVERY negative_evidence=1 read_error_open_ok=1 missing_records=128"
+      }
+    },
+    {
+      "case": "read-error-r0-strict1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY strict_read_error_rejected=1 later_recovery_preserved_records=1"
+      }
+    },
+    {
+      "case": "large-r0",
+      "negative_evidence": false,
+      "verify": {
+        "mode": "--large",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY large_records=32768 recovery_compacted=1 log_reuse_skipped=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "sync-error-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--sync-error",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY sync_error_propagated=1 error_latched=1 earlier_sync_recovered=1 failed_write_present=1"
+      }
+    },
+    {
+      "case": "read-error-r1-strict0",
+      "negative_evidence": true,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 1,
+        "exit_code": 2,
+        "metadata": "MO_DB_RECOVERY negative_evidence=1 read_error_open_ok=1 missing_records=128"
+      }
+    },
+    {
+      "case": "read-error-r1-strict1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY strict_read_error_rejected=1 later_recovery_preserved_records=1"
+      }
+    },
+    {
+      "case": "large-r1",
+      "negative_evidence": false,
+      "verify": {
+        "mode": "--large",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY large_records=32768 recovery_compacted=1 log_reuse_skipped=1 opposite_reopen=1"
+      }
+    }
+  ],
+  "ci_matrix": [
+    {
+      "case": "crash-w0-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 0,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w0-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 0,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w1-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 1,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "crash-w1-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "crash": {
+        "mode": "--crash-writer",
+        "reuse_logs": 1,
+        "exit_code": -1,
+        "durable_handshake": true,
+        "parent_terminated": true
+      },
+      "verify": {
+        "mode": "--verify-crash",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY durable_update_delete_recovered=1 continued_write=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "append-log",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--append-log",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY append_fault_injected=1 fallback_preserved_records=1 continued_write=1 legacy_reopen=1"
+      }
+    },
+    {
+      "case": "append-manifest",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--append-manifest",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY append_fault_injected=1 fallback_preserved_records=1 continued_write=1 legacy_reopen=1"
+      }
+    },
+    {
+      "case": "sync-error-r0",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--sync-error",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY sync_error_propagated=1 error_latched=1 earlier_sync_recovered=1 failed_write_present=1"
+      }
+    },
+    {
+      "case": "read-error-r0-strict0",
+      "negative_evidence": true,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 0,
+        "exit_code": 2,
+        "metadata": "MO_DB_RECOVERY negative_evidence=1 read_error_open_ok=1 missing_records=128"
+      }
+    },
+    {
+      "case": "read-error-r0-strict1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY strict_read_error_rejected=1 later_recovery_preserved_records=1"
+      }
+    },
+    {
+      "case": "large-r0",
+      "negative_evidence": false,
+      "verify": {
+        "mode": "--large",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY large_records=32768 recovery_compacted=1 log_reuse_skipped=1 opposite_reopen=1"
+      }
+    },
+    {
+      "case": "sync-error-r1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--sync-error",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY sync_error_propagated=1 error_latched=1 earlier_sync_recovered=1 failed_write_present=1"
+      }
+    },
+    {
+      "case": "read-error-r1-strict0",
+      "negative_evidence": true,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 1,
+        "exit_code": 2,
+        "metadata": "MO_DB_RECOVERY negative_evidence=1 read_error_open_ok=1 missing_records=128"
+      }
+    },
+    {
+      "case": "read-error-r1-strict1",
+      "negative_evidence": false,
+      "seed": {
+        "mode": "--seed",
+        "reuse_logs": 0,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY seeded=1"
+      },
+      "verify": {
+        "mode": "--read-error",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY strict_read_error_rejected=1 later_recovery_preserved_records=1"
+      }
+    },
+    {
+      "case": "large-r1",
+      "negative_evidence": false,
+      "verify": {
+        "mode": "--large",
+        "reuse_logs": 1,
+        "exit_code": 0,
+        "metadata": "MO_DB_RECOVERY large_records=32768 recovery_compacted=1 log_reuse_skipped=1 opposite_reopen=1"
+      }
+    }
+  ],
+  "positive_cases_per_matrix": 12,
+  "negative_cases_per_matrix": 2,
+  "terminated_children_total": 8,
+  "checks": {
+    "native_w4_wx_mt_builds": 2,
+    "harness_guard_tests": 5,
+    "native_guard_tests": 5,
+    "missing_input_build_guards": 2,
+    "script_and_ci_ast": true,
+    "fmt": true,
+    "clippy_workspace_all_targets": true,
+    "workspace_first_pass": false,
+    "workspace_first_failure": "worker-panic fixture did not terminate within 3 seconds",
+    "worker_panic_targeted_rerun": true,
+    "workspace_full_rerun": true,
+    "remote_ci_executed": false
+  },
+  "product_reuse_option_allowed": false,
+  "archive_manifest_sha256": "F3F76F198F5BBEDCCC3DE1D3D76676C69BA5E98915D8E7CEE9C938380F9B61FF",
+  "archive_file_count": 386,
+  "external_input_count": 20
+}
