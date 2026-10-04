@@ -1,0 +1,109 @@
+diff --git a/src/rime/dict/level_db.cc b/src/rime/dict/level_db.cc
+index 9a2eb3d..334caf4 100644
+--- a/src/rime/dict/level_db.cc
++++ b/src/rime/dict/level_db.cc
+@@ -54,6 +54,8 @@ struct LevelDbWrapper {
+   leveldb::Status Open(const path& file_path, bool readonly) {
+     leveldb::Options options;
+     options.create_if_missing = !readonly;
++    // Mo: reject WAL/manifest recovery errors; preserve the original database.
++    options.paranoid_checks = true;
+     return leveldb::DB::Open(options, file_path.string(), &ptr);
+   }
+ 
+diff --git a/src/rime/dict/user_dictionary.cc b/src/rime/dict/user_dictionary.cc
+index 2944c2d..9a4d4fa 100644
+--- a/src/rime/dict/user_dictionary.cc
++++ b/src/rime/dict/user_dictionary.cc
+@@ -170,13 +170,8 @@ bool UserDictionary::Load() {
+   if (!db_ || db_->disabled())
+     return false;
+   if (!db_->loaded() && !db_->Open()) {
+-    // try to recover managed db in available work thread
+-    Deployer& deployer(Service::instance().deployer());
+-    auto task = DeploymentTask::Require("userdb_recovery_task");
+-    if (task && Is<Recoverable>(db_) && !deployer.IsWorking()) {
+-      deployer.ScheduleTask(an<DeploymentTask>(task->Create(db_)));
+-      deployer.StartWork();
+-    }
++    // Mo: do not schedule repair, rename, removal, or recreation on open failure.
++    // Preparation reports failure; recovery needs a separate explicit workflow.
+     return false;
+   }
+   return FetchTickCount() || Initialize();
+diff --git a/src/rime/gear/memory.h b/src/rime/gear/memory.h
+index 3b23a34..013be0e 100644
+--- a/src/rime/gear/memory.h
++++ b/src/rime/gear/memory.h
+@@ -45,6 +45,7 @@ class Memory {
+   bool FinishSession();
+   bool DiscardSession();
+   bool LearningEnabled() const;
++  bool UserDictionaryReady() const;
+ 
+   Dictionary* dict() const { return dict_.get(); }
+   UserDictionary* user_dict() const { return user_dict_.get(); }
+@@ -60,6 +61,7 @@ class Memory {
+   the<UserDictionary> user_dict_;
+   the<Language> language_;
+   Context* context_ = nullptr;
++  bool user_dict_ready_ = false;
+ 
+  private:
+   connection commit_connection_;
+diff --git a/src/rime/gear/memory.cc b/src/rime/gear/memory.cc
+index 64ed155..f88b3d1 100644
+--- a/src/rime/gear/memory.cc
++++ b/src/rime/gear/memory.cc
+@@ -68,7 +68,7 @@ Memory::Memory(const Ticket& ticket) {
+   if (auto user_dictionary = UserDictionary::Require("user_dictionary")) {
+     user_dict_.reset(user_dictionary->Create(ticket));
+     if (user_dict_) {
+-      user_dict_->Load();
++      user_dict_ready_ = user_dict_->Load();
+       if (dict_)
+         user_dict_->Attach(dict_->primary_table(), dict_->prism());
+     }
+@@ -97,6 +97,10 @@ Memory::~Memory() {
+   unhandled_key_connection_.disconnect();
+ }
+ 
++bool Memory::UserDictionaryReady() const {
++  return user_dict_ && user_dict_ready_ && user_dict_->loaded();
++}
++
+ bool Memory::LearningEnabled() const {
+   return context_ && !context_->get_option("mo_disable_learning");
+ }
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+index 9dcaa09..1ee1540 100644
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -12,6 +12,8 @@
+ #include <rime/filter.h>
+ #include <rime/formatter.h>
+ #include <rime/gear/simplifier.h>
++#include <rime/gear/memory.h>
++#include <rime/dict/user_dictionary.h>
+ #include <rime/key_event.h>
+ #include <rime/menu.h>
+ #include <rime/processor.h>
+@@ -64,6 +66,18 @@ bool ConcreteEngine::PrepareResources() {
+       || !context_->input().empty() || context_->IsComposing()) {
+     return false;
+   }
++  size_t main_user_dictionaries = 0;
++  for (const auto& translator : translators_) {
++    if (auto* memory = dynamic_cast<Memory*>(translator.get())) {
++      auto* user_dict = memory->user_dict();
++      if (user_dict && user_dict->name() == "rime_ice") {
++        if (!memory->UserDictionaryReady()) { return false; }
++        ++main_user_dictionaries;
++      }
++    }
++  }
++  // The locked schema requires exactly one healthy main user dictionary.
++  if (main_user_dictionaries != 1) { return false; }
+   size_t prepared = 0;
+   unsigned kinds = 0;
+   for (const auto& filter : filters_) {

@@ -1,0 +1,247 @@
+{
+  "format": 1,
+  "kind": "mo-win10-userdb-errors",
+  "date": "2026-10-04",
+  "synthetic_only": true,
+  "runtime_sha256": "E8D8C1FD3234053BEF98C69BF2A502F9E0CF46FF0971DE557799FD727CC5CE0B",
+  "actor_sha256": "701EAC4ACA3E6F221111D7A29C108383E828DB755C44DB63C3BF255BE51FE373",
+  "broker_sha256": "DD3DB30E7D7287A186A4419075579395246BDA1C6B8A458EA04A089680A33817",
+  "fixture_sha256": "74A82A4F4A2F5381914230EC380EA3A5C9678601E55D83D9B1CBC1D275901D8D",
+  "production_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "product_integrated": false,
+  "vm_changed": false,
+  "reuse_logs": false,
+  "failure_cases": [
+    {
+      "case": "read-sharing-error-actor-rejected",
+      "kind": "actor",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: NativeCallFailed(\"mo_rime_prepare_resources_v2\")"
+    },
+    {
+      "case": "read-sharing-error-broker-rejected",
+      "kind": "broker",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: Custom { kind: Other, error: \"librime call `mo_rime_prepare_resources_v2` failed\" }"
+    },
+    {
+      "case": "wal-checksum-error-actor-rejected",
+      "kind": "actor",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: NativeCallFailed(\"mo_rime_prepare_resources_v2\")"
+    },
+    {
+      "case": "wal-checksum-error-broker-rejected",
+      "kind": "broker",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: Custom { kind: Other, error: \"librime call `mo_rime_prepare_resources_v2` failed\" }"
+    }
+  ],
+  "records_per_case": 32,
+  "faults": [
+    "read-sharing-error",
+    "wal-checksum-error"
+  ],
+  "matrix_invocations": 12,
+  "guards_passed": 9,
+  "script_ast_checks": 2,
+  "full_tip": {
+    "format": 1,
+    "kind": "mo-win10-startup-full-tip-existing-synthetic-profile",
+    "case_order": [
+      "x64-combined",
+      "Win32-combined"
+    ],
+    "synthetic_input_only": true,
+    "key_deadline_changed": false,
+    "input_free_preparation": true,
+    "source_hashes": {
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\native\\windows-tip\\out\\msbuild\\x64\\Release\\mo_tip_abi_probe.exe": "100CBD328FBE8F402DE8E2E3ADDD69E8A129B72E41C587FE3432CFFDB2CE6977",
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\native\\windows-tip\\out\\msbuild\\x64\\Release\\mo_tip.dll": "7762663A3DFA9C6040A6F3AC31838D5208A3785162D6589CD5545E6F148DA08A",
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target\\debug\\mo-broker.exe": "DD3DB30E7D7287A186A4419075579395246BDA1C6B8A458EA04A089680A33817",
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-userdb-policy-v1\\dist\\lib\\rime.dll": "E8D8C1FD3234053BEF98C69BF2A502F9E0CF46FF0971DE557799FD727CC5CE0B",
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-user-keyroute-v1\\build\\rime_ice.schema.yaml": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\LatencyComponents-v1\\schemas\\no-lua-filters.yaml": "48A3D4FCD2C1D44A71D4081C7FEF34FD19ACA27883B222E02AE0767D6FA14075"
+    },
+    "cases": [
+      {
+        "case": "x64-combined",
+        "ready_ms": 2951,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+        "first_dispatch_queue_us": 10,
+        "first_dispatch_engine_us": 77382
+      },
+      {
+        "case": "Win32-combined",
+        "ready_ms": 1757,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+        "first_dispatch_queue_us": 42,
+        "first_dispatch_engine_us": 204044
+      }
+    ]
+  },
+  "rust": {
+    "targeted_startup_watchdog": "passed (2.13s)",
+    "clippy": "passed",
+    "fmt": "passed",
+    "workspace_serial": "failed: startup watchdog fixture",
+    "workspace_default": "failed: 4 watchdog fixtures",
+    "rime_all_targets": "passed",
+    "workspace_default_rerun": "failed: panic watchdog fixture",
+    "limits_changed": false
+  },
+  "limitations": [
+    "Finite owned synthetic WAL cases only; LOG/LOG.old/LOCK excluded from failure file comparison.",
+    "CRC restoration is an explicit fixture operation, not product repair.",
+    "No new ABI/provenance gate, runtime-build or installed package integration.",
+    "TIP latency and full workspace gates remain failing."
+  ],
+  "cases": [
+    {
+      "case": "seed-actor",
+      "kind": "actor",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_ACTOR_READY load_us=8857 prepare_us=1506041 input_free=true shared_prebuilt=false\nMO_ACTOR trial=0 broker_plan=true create_us=6465 dispatch_us=256287 candidate_count=5\nMO_ACTOR trial=1 broker_plan=true create_us=8847 dispatch_us=2050 candidate_count=5",
+      "stderr": ""
+    },
+    {
+      "case": "seed-records",
+      "kind": "fixture",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_USERDB_FIXTURE records_verified=32",
+      "stderr": ""
+    },
+    {
+      "case": "read-sharing-error-actor-rejected",
+      "kind": "actor",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: NativeCallFailed(\"mo_rime_prepare_resources_v2\")"
+    },
+    {
+      "case": "read-sharing-error-broker-rejected",
+      "kind": "broker",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: Custom { kind: Other, error: \"librime call `mo_rime_prepare_resources_v2` failed\" }"
+    },
+    {
+      "case": "read-sharing-error-actor-recovered",
+      "kind": "actor",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_ACTOR_READY load_us=6049 prepare_us=299616 input_free=true shared_prebuilt=false\nMO_ACTOR trial=0 broker_plan=true create_us=6298 dispatch_us=85100 candidate_count=5\nMO_ACTOR trial=1 broker_plan=true create_us=8315 dispatch_us=1848 candidate_count=5",
+      "stderr": ""
+    },
+    {
+      "case": "read-sharing-error-broker-recovered",
+      "kind": "broker",
+      "exit_code": -1,
+      "expected_failure": false,
+      "ready": true,
+      "parent_terminated_after_ready": true,
+      "stdout": "",
+      "stderr": "Mo broker listening on 16 protected pipe slots\nMO_STARTUP phase=parse elapsed_us=500 dropped=0\nMO_STARTUP phase=pipe_bind elapsed_us=1537 dropped=0\nMO_STARTUP phase=settings elapsed_us=8 dropped=0\nMO_STARTUP phase=engine_load elapsed_us=6153 dropped=0\nMO_STARTUP phase=backend_prepare elapsed_us=367257 dropped=0\nMO_STARTUP phase=engine_start elapsed_us=373734 dropped=0\nMO_STARTUP phase=workers_start elapsed_us=462 dropped=0\nMO_STARTUP phase=main_to_ready elapsed_us=376312 dropped=0"
+    },
+    {
+      "case": "read-sharing-error-records-preserved",
+      "kind": "fixture",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_USERDB_FIXTURE records_verified=32",
+      "stderr": ""
+    },
+    {
+      "case": "wal-checksum-error-actor-rejected",
+      "kind": "actor",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: NativeCallFailed(\"mo_rime_prepare_resources_v2\")"
+    },
+    {
+      "case": "wal-checksum-error-broker-rejected",
+      "kind": "broker",
+      "exit_code": 1,
+      "expected_failure": true,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "",
+      "stderr": "Error: Custom { kind: Other, error: \"librime call `mo_rime_prepare_resources_v2` failed\" }"
+    },
+    {
+      "case": "wal-checksum-error-actor-recovered",
+      "kind": "actor",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_ACTOR_READY load_us=6475 prepare_us=360512 input_free=true shared_prebuilt=false\nMO_ACTOR trial=0 broker_plan=true create_us=6663 dispatch_us=141290 candidate_count=5\nMO_ACTOR trial=1 broker_plan=true create_us=8042 dispatch_us=1956 candidate_count=5",
+      "stderr": ""
+    },
+    {
+      "case": "wal-checksum-error-broker-recovered",
+      "kind": "broker",
+      "exit_code": -1,
+      "expected_failure": false,
+      "ready": true,
+      "parent_terminated_after_ready": true,
+      "stdout": "",
+      "stderr": "Mo broker listening on 16 protected pipe slots\nMO_STARTUP phase=parse elapsed_us=470 dropped=0\nMO_STARTUP phase=pipe_bind elapsed_us=1416 dropped=0\nMO_STARTUP phase=settings elapsed_us=7 dropped=0\nMO_STARTUP phase=engine_load elapsed_us=6390 dropped=0\nMO_STARTUP phase=backend_prepare elapsed_us=502153 dropped=0\nMO_STARTUP phase=engine_start elapsed_us=508794 dropped=0\nMO_STARTUP phase=workers_start elapsed_us=528 dropped=0\nMO_STARTUP phase=main_to_ready elapsed_us=511277 dropped=0"
+    },
+    {
+      "case": "wal-checksum-error-records-preserved",
+      "kind": "fixture",
+      "exit_code": 0,
+      "expected_failure": false,
+      "ready": false,
+      "parent_terminated_after_ready": false,
+      "stdout": "MO_USERDB_FIXTURE records_verified=32",
+      "stderr": ""
+    }
+  ],
+  "evidence": {
+    "root": "build/win10-evidence-clean-v1/UserDbErrors-v1",
+    "manifest_sha256": "3856C97072B9A906470C0CEF6BBF953CB141FE016F498C5D1BD19367859230B6",
+    "file_count": 193,
+    "external_input_count": 132
+  }
+}

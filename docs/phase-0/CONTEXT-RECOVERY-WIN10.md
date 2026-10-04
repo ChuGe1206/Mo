@@ -104,3 +104,11 @@ VM 仍为 0.0.11.0；生产 runtime/stage 未变，owned Broker 均已退出。�
 接受 runtime `94D646…`、stage、VM 0.0.11.0 与预算未变。首/CI probe SHA `EF3D073A…` / `BF47CA22…`，源码/合成 DB/两套日志及首次 Rust 失败在 `build/win10-evidence-clean-v1/DbRecovery-v1`，386 文件/20 外部输入，manifest `F3F76F198F5BBEDCCC3DE1D3D76676C69BA5E98915D8E7CEE9C938380F9B61FF`。native strict builds、五 harness/五 native/两 build guards、fmt/Clippy 通过；workspace 首轮 worker-panic 子进程三秒未退出，单项 1.83 秒及完整复跑通过，未放宽断言、未定根因。CI 接线/AST 与本机布局验证通过，远端 Actions 未执行。
 
 下一步优先定义并实测 Mo 用户词典的无破坏错误策略、实际 Actor/Broker 准备拒绝和恢复；日志复用暂不接入产品。随后继续非同步学习/崩溃边界、fresh 启动及 Win10 安装态共享数据/注册宿主验收。owned recovery child 均退出，G2/G3 状态不变。
+
+## 2026-10-04 实际用户词典错误续查
+
+[用户词典错误证据](WIN10-USERDB-ERRORS-EVIDENCE.md) 与 Proposed ADR 0055：独立 patch 开启严格 LevelDB 恢复检查、移除普通 Load 失败的自动 recovery task，并在 input-free preparation 核验必需主用户词典的 Load/loaded 状态。真实 WAL sharing error 和 checksum 损坏均由实际 Actor/Broker 在就绪前拒绝；四次失败后数据文件哈希/集合一致（排除 LOG/LOG.old/LOCK）。解除测试故障后恢复，两个 fixture 的 32 条同步合成记录全部读回；九项拒绝门/两个 AST、fmt、Clippy、mo-rime all-targets 通过。
+
+完整 workspace 首轮四个三秒 watchdog 失败，默认复跑 panic 失败，串行复跑 startup 失败；单项 startup 随后 2.13 秒通过，未改时限/未定根因。正确映像位置的 TIP x64 首/第二轮及 Win32 首轮仍失败，Win32 第二轮通过，ready 2,951/1,757 ms；G2/G3、延迟预算不变。首版过度要求可缺省词典以及首轮 TIP Broker 路径配置错误的失败均归档。
+
+新 DLL `E8D8C1FD…` 和 helper `74A82A4F…` 只在隔离 build 使用；接受 runtime `94D646…` 和 VM 0.0.11.0 未变。补丁尚未接入 runtime-build/CI/stage/安装包，v2 导出尚不能识别该新策略；完整 workspace 问题、新 ABI/provenance 构建门与 privacy/learning/schema/安装态复验是接入前置检查。源码、实际 PE、合成 DB 和负向日志封存在 `build/win10-evidence-clean-v1/UserDbErrors-v1`，身份见 Git 汇总。本轮全部 owned child 已结束，日常开发继续 develop。

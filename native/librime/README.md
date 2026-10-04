@@ -52,3 +52,21 @@ component/startup and image/mapped-page experiment. Its patch and headers are
 not runtime-build, staging, or installer inputs. Keep diagnostic outputs separate
 from the accepted runtime and consult the linked acceptance evidence before
 changing a production preparation contract.
+
+## User dictionary error policy prototype
+
+`preparation/userdb-preserve.patch` is an isolated, proposed startup policy after
+resources-v2 and the learning patch. It enables strict LevelDB recovery, removes
+automatic recovery scheduling from failed UserDictionary::Load, and checks the
+required main dictionary at input-free preparation. It is not a runtime-build,
+staging or installer input. Adoption requires a distinguishable ABI/provenance
+gate; the current v2 export alone also exists in the accepted old DLL.
+
+`diagnostics/UserDbFixtureProbe.vcxproj` builds a strict x64 synthetic helper with
+explicit pinned LevelDB include/library and isolated output properties. The
+marker-guarded helper only seeds/verifies an existing rime_ice.userdb, with 32
+fixed synchronous synthetic records. `tools/test-userdb-errors.ps1` verifies
+actual file sharing and checksum failures through native/Actor/Broker startup,
+original data-file preservation, and subsequent recovery; all fixtures are new.
+See [evidence and limitations](../../docs/phase-0/WIN10-USERDB-ERRORS-EVIDENCE.md)
+and proposed ADR 0055 before product adoption.
