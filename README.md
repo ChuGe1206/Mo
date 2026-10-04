@@ -71,7 +71,7 @@ cargo +stable test --workspace
 
 真实 smoke 可加 `-OpenccDataDir <已校验预编译包>` 和 `-LatencyTrace`。预编译工具及字典完整性检查步骤见 [OpenCC 构建工具](tools/opencc-build/README.md)；该开发包不是可发行安装资源或签名更新包。
 
-允许列表开发运行时的显式来源准备、构建与边界检查见 [运行时构建工具](tools/runtime-build/README.md)。构建必须传入已校验的 `-OpenccDataDir`；搬迁时保持 DLL 与旁边的 `opencc` 目录一起移动。使用该运行时的 smoke 加 `-PreparedResources`；官方或旧 v1 DLL 不能用于这个模式。两者都不是可发行安装包。
+允许列表开发运行时的显式来源准备、构建与边界检查见 [运行时构建工具](tools/runtime-build/README.md)。构建必须传入已校验的 `-OpenccDataDir`；搬迁时保持 DLL 与旁边的 `opencc` 目录一起移动。使用该运行时的 smoke 加 `-PreparedResources`；该模式只接受带用户词典启动策略的 ABI v3，官方及旧 v1/v2 DLL 均会在创建私有 anchor 前被拒绝。两者都不是可发行安装包。
 
 注册系统路由测试需要分权限准备，见 [注册测试步骤](docs/phase-0/REGISTERED-TEST.md)。fake 与真实词库 smoke 均可加 `-Registered`，但只允许普通权限运行，并要求机器 profile 已在管理员 PowerShell 中准备好。用户态 COM/启用状态会回滚并严格核对；机器 profile 最后由管理员清理。此流程不设默认输入法，不是安装包或普通软件验收。
 

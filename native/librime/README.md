@@ -33,7 +33,7 @@ Adding any other plugin requires a manifest and license-policy change.
 `tools/runtime-build` now builds the pinned core plus Lua into a fresh development
 runtime, with external plugins disabled. The tracked preparation patch does not
 change `rime_api.h` or add upstream API-table slots. Installed-mode Broker requires
-the v2 extension to succeed before readiness; v1 has no prepared-mode fallback.
+the v3 extension to succeed before readiness; v1/v2 have no prepared-mode fallback.
 Official verification DLLs remain
 usable only via the explicit legacy debug entry point. Build provenance is not
 release approval. The Mo Simplifier path uses only verified files in the loaded
@@ -53,20 +53,19 @@ not runtime-build, staging, or installer inputs. Keep diagnostic outputs separat
 from the accepted runtime and consult the linked acceptance evidence before
 changing a production preparation contract.
 
-## User dictionary error policy prototype
+## User dictionary startup policy
 
-`preparation/userdb-preserve.patch` is an isolated, proposed startup policy after
-resources-v2 and the learning patch. It enables strict LevelDB recovery, removes
-automatic recovery scheduling from failed UserDictionary::Load, and checks the
-required main dictionary at input-free preparation. It is not a runtime-build,
-staging or installer input. Adoption requires a distinguishable ABI/provenance
-gate; the current v2 export alone also exists in the accepted old DLL.
+`preparation/userdb-preserve.patch` is a runtime-build input applied after
+resources-v2 and the core learning patch. It enables strict LevelDB recovery,
+removes automatic recovery scheduling from failed UserDictionary::Load, and
+checks the required main dictionary during input-free preparation. ABI v3 and
+bound provenance distinguish it from old v2 DLLs; no prepared-mode fallback exists.
 
 `diagnostics/UserDbFixtureProbe.vcxproj` builds a strict x64 synthetic helper with
 explicit pinned LevelDB include/library and isolated output properties. The
-marker-guarded helper only seeds/verifies an existing rime_ice.userdb, with 32
-fixed synchronous synthetic records. `tools/test-userdb-errors.ps1` verifies
-actual file sharing and checksum failures through native/Actor/Broker startup,
-original data-file preservation, and subsequent recovery; all fixtures are new.
-See [evidence and limitations](../../docs/phase-0/WIN10-USERDB-ERRORS-EVIDENCE.md)
-and proposed ADR 0055 before product adoption.
+marker-guarded helper seeds/verifies an existing rime_ice.userdb, with 32 fixed
+synchronous synthetic records. `tools/test-userdb-errors.ps1` verifies actual
+file sharing and checksum failures through native/Actor/Broker startup, original
+data-file preservation, and subsequent reopening. All fixtures are new.
+See [fault evidence](../../docs/phase-0/WIN10-USERDB-ERRORS-EVIDENCE.md), ADR 0055
+and the ABI v3 integration evidence before installed-host adoption.

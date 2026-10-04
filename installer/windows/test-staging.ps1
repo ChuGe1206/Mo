@@ -218,9 +218,14 @@ try {
         $runtimePath = Join-Path $copy 'evidence/runtime-provenance.json'
         $originalRuntime = [IO.File]::ReadAllBytes($runtimePath)
         foreach ($mutation in @('policy', 'patch-binding', 'own-source',
-            'learning-policy', 'learning-patch-binding', 'lua-learning-patch-binding', 'learning-own-source')) {
+            'learning-policy', 'learning-patch-binding', 'lua-learning-patch-binding', 'learning-own-source',
+            'abi-v2', 'userdb-policy', 'userdb-patch-binding', 'userdb-own-source')) {
             $badRuntime = Read-MoStageJson $runtimePath
             switch ($mutation) {
+                'abi-v2' { $badRuntime['preparation_abi'] = 2 }
+                'userdb-policy' { $badRuntime['userdb_policy'] = 'automatic-recovery' }
+                'userdb-patch-binding' { $badRuntime['userdb_policy_patch_sha256'] = '0' * 64 }
+                'userdb-own-source' { [void]$badRuntime['mo_inputs'].Remove('native/librime/preparation/userdb-preserve.patch') }
                 'policy' { $badRuntime['lua_data_policy'] = 'user-first' }
                 'patch-binding' { $badRuntime['lua_data_policy_patch_sha256'] = '0' * 64 }
                 'own-source' { [void]$badRuntime['mo_inputs'].Remove('native/librime/preparation/lua-machine-data-only.patch') }

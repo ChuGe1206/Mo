@@ -66,7 +66,7 @@ duplicate or wrong-configuration source properties (ADR 0025).
 
 `test-preparation.ps1` checks success, missing dictionary and missing export in
 fresh Unicode fixtures with copied DLL/resources, including unchanged
-input/commit, retained Emoji and exact `你好` submission. Optional
+input/commit, retained Emoji and exact `浣犲ソ` submission. Optional
 `-LegacyDistDir <previous-v1-dist>` verifies that v1 is not a fallback.
 An explicit `-BrokerPath <debug-broker.exe>` also checks the failure cases exit
 with the preparation error and never announce readiness; it does not build or
@@ -84,9 +84,9 @@ path escape/ADS/NUL, malformed/oversized JSON, UTF-8 and structural limits,
 corrupt dictionaries and unsupported/duplicate resource owners. Only new
 fixtures are mutated; original build inputs and Windows input state are preserved.
 
-`mo_rime_prepare_resources_v2(uintptr_t session_id) -> int` returns exactly 1
+`mo_rime_prepare_resources_v3(uintptr_t session_id) -> int` returns exactly 1
 only when an empty `rime_ice` session has prepared exactly one Emoji and one
-traditionalization Simplifier owner. Rust resolves only v2, never v1.
+traditionalization Simplifier owner and one healthy main `rime_ice` user dictionary. Rust resolves only v3; v1/v2 cannot satisfy prepared mode.
 Zero, busy/other-schema/unknown sessions or converter errors return 0. It does
 not send keys, clear input, commit, mutate options or add upstream RimeApi slots.
 Only Mo's private resource anchor calls it during Broker startup, inside the
@@ -115,3 +115,21 @@ sandbox. Machine scripts remain trusted executable code. Build hashes are
 provenance, not a trust root.
 
 See ADR 0024/0025/0039 for measured results and acceptance boundaries.
+
+## User dictionary startup policy (ABI 3)
+
+`userdb-preserve.patch` is applied after the core learning patch to fresh pinned
+sources. Strict LevelDB recovery errors fail ordinary user dictionary loading;
+that path schedules no automatic recovery task. Preparation checks the required
+main dictionary's successful Load and current loaded state. Optional stable text
+dictionaries retain their optional behavior. No log reuse or repair is enabled.
+
+Format 2 provenance now requires `preparation_abi = 3`,
+`userdb_policy = strict-open-no-auto-recovery-v1`, and the policy patch hash bound
+to the own-source inventory. Both runtime-build and completed-stage checks reject
+old ABI 2 metadata. `test-userdb-policy.ps1` checks the built source and regression
+mutations; `test-preparation.ps1 -LegacyDistDir <old-v2-dist>` verifies absence of
+v3 before creating the private anchor. The actual Actor/Broker fault matrix uses
+`tools/test-userdb-errors.ps1` and the pinned LevelDB synthetic fixture helper.
+This preserves files for a future explicit recovery workflow; it does not provide
+backup/repair UI or a power-loss guarantee. See ADR 0055 and the Win10 evidence.

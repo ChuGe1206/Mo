@@ -40,3 +40,8 @@ foreach($script in @('test-userdb-errors.ps1','test-userdb-errors-policy.ps1')) 
     if($errors.Count){throw 'Script AST invalid'}
 }
 Write-Host "User DB error policy $count guards and two AST checks passed."
+# The four native invalid-input cases intentionally leave a nonzero status.
+# Every guard and AST assertion above has already passed. Clear only the native
+# status channel so CI's PowerShell epilogue does not report these expected
+# negative cases as a failure of the completed policy script.
+$global:LASTEXITCODE = 0

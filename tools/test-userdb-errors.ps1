@@ -81,7 +81,7 @@ function Invoke-Owned([string]$Kind,[string]$User,[string]$Label,[bool]$Failure=
         [IO.File]::WriteAllText((Join-Path $out "$Label-stdout.log"),$stdout.Result,$utf8)
         [IO.File]::WriteAllText((Join-Path $out "$Label-stderr.log"),$err,$utf8)
         if ($Failure) {
-            if ($child.ExitCode -eq 0 -or $err -notmatch 'mo_rime_prepare_resources_v2' -or $stdout.Result -match 'MO_ACTOR_READY|MO_ACTOR trial=' -or $err -match 'Mo broker listening') { throw 'Preparation failure contract not met' }
+            if ($child.ExitCode -eq 0 -or $err -notmatch 'mo_rime_prepare_resources_v3' -or $stdout.Result -match 'MO_ACTOR_READY|MO_ACTOR trial=' -or $err -match 'Mo broker listening') { throw 'Preparation failure contract not met' }
         } elseif ($Kind -eq 'actor') {
             if ($child.ExitCode -ne 0 -or $stdout.Result -notmatch 'MO_ACTOR_READY' -or [regex]::Matches($stdout.Result,'MO_ACTOR trial=\d broker_plan=true .*candidate_count=5').Count -ne 2) { throw 'Actor recovery assertions failed' }
         } elseif ($Kind -eq 'fixture') {

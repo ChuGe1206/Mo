@@ -120,3 +120,31 @@ VM 仍为 0.0.11.0；生产 runtime/stage 未变，owned Broker 均已退出。�
 Windows Broker lifecycle 改为平台 safe primitive 的当前进程 TerminateProcess，固定应用退出码 E04D4F01，API 意外返回 fallback abort；不分配、不记录日志、不运行析构/正常 DLL detach。生产健康预算和 TIP deadline 未变，unit fixture 仍要求 intended marker+固定退出状态+三秒内结束。八阶段各三次共 24 child 实测 36–215 ms，全通过且无 parent kill。
 
 默认/trace 完整 workspace、两套 Clippy/fmt、Release 优化 EngineService 12 项、双架构 native strict/ABI/nonmutating policy 与默认 fake TIP IPC/pool/UI/edit/一轮重连故障（共四次外部 Broker 退出）均通过。没有将外部 harness kill 混作内部 watchdog；Rust production panic=abort 和 pipe 极端错误 abort、永久 kernel I/O 卡住仍是边界。接受 runtime 94D646…、VM 0.0.11.0 与 G2/G3 未变，词库延迟仍失败。ADR 0055 继续 Proposed；完整 workspace 退出缺口已补，下一步新用户词典 ABI/provenance/CI 门及安装态 Win10 验收。源码/旧新实际 PE/日志归档 WatchdogExit-v1，身份见 Git 汇总；继续在 develop 开发。
+
+## 2026-10-04 用户词典 ABI v3 工程化交接
+
+[ABI v3 接入证据](WIN10-USERDB-ABI3-EVIDENCE.md) 与 ADR 0055：开发态契约已接受。
+仅导出/解析 mo_rime_prepare_resources_v3，旧 v1/v2 在私有 anchor 前被拒绝；
+builder 快照 userdb-preserve.patch，在 learning 后明确应用并检查实际源码。
+provenance 的 ABI=3、strict-open-no-auto-recovery-v1、补丁/source inventory 绑定
+同步进入 runtime/stage/部署工具和 CI。旧 runtime 在 staging 创建输出前被拒绝。
+
+完整固定源码重建得到 BE5E3E37…，全新 release stage 在
+build/mo-windows-stage-userdb-v3/stage；stage manifest 9650E87A…。
+实际 Actor/Broker 矩阵 12 child 通过，两种 WAL 故障均就绪前拒绝，原数据文件
+哈希/集合保全（排除 LOG/LOG.old/LOCK），解除故障后各读回 32 条同步合成记录。
+preparation 3、relocation 27、隐私→正常→隐私学习 0/1/1、五方案/简繁体/Emoji，
+默认/trace workspace、两套 Clippy/fmt、双架构 ABI/fake 全 IPC 及四次外部退出通过。
+新 stage policy 97、authoring 21、lifecycle policy 18，七项真实 golden/准备/
+Actor paging 通过。native 负向 policy 的 LASTEXITCODE 仅在全部断言后清除，
+同进程 CI 状态 0；九 CI block AST 通过，PyYAML 缺失/远端 CI 未验证的边界保留。
+
+实际 stage TIP x64 首 N 未消费（外部 63 ms，exit 1）；独立 Win32 同样失败
+（外部 47 ms，exit 1），都未进入 stop cycle。47 ms 不直接代表 Actor 执行
+时长或根因；50 ms 不变，G2/G3 仍开放。组合检查父进程中止、独立补跑及全部
+失败日志都保留，未重试成通过。当前所有 owned Broker 已结束。
+
+证据封存 UserDbAbi3-v1，610 文件/输入记录，manifest 28357664…；完整身份见
+Git 汇总。VM 沿用 0.0.11.0/94D646…，本轮无安装或系统输入路由测试。下一步集中
+Win10，定位真实 TIP 首键失败，再推进安装态新 ABI、普通宿主、loaded-TIP 升级
+和登录/重启验收。继续在 develop 开发，main 留作正式版基线。

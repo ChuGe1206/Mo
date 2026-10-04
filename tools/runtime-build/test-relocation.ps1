@@ -13,9 +13,11 @@ $user = (Resolve-Path -LiteralPath $UserDataDir).Path
 $dllSource = Join-Path $dist 'lib/rime.dll'
 $resources = Join-Path $dist 'lib/opencc'
 $provenance = Get-Content -LiteralPath (Join-Path $dist 'mo-build-provenance.json') -Raw | ConvertFrom-Json -AsHashtable
-if ($provenance.format -ne 2 -or $provenance.preparation_abi -ne 2 -or
+if ($provenance.format -ne 2 -or $provenance.preparation_abi -ne 3 -or
+    $provenance.userdb_policy -cne 'strict-open-no-auto-recovery-v1' -or
+    $provenance.userdb_policy_patch_sha256 -ine $provenance.mo_inputs['native/librime/preparation/userdb-preserve.patch'] -or
     -not $provenance.development_only -or $provenance.redistributable -or
-    (Get-FileHash -LiteralPath $dllSource).Hash -ne $provenance.dll_sha256) { throw 'Invalid v2 development provenance.' }
+    (Get-FileHash -LiteralPath $dllSource).Hash -ne $provenance.dll_sha256) { throw 'Invalid v3 development provenance.' }
 $files = @(Get-ChildItem -LiteralPath $resources -File)
 if ($files.Count -ne $provenance.resources.Count) { throw 'Runtime resource inventory differs from provenance.' }
 foreach ($file in $files) {

@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "kind": "mo-win10-userdb-abi3-integration",
+  "date": "2026-10-04",
+  "host": "Windows 10 Pro 10.0.19045",
+  "base_commit": "f9c75fb684362176e516393e2f07c4ea34d2c08e",
+  "synthetic_only": true,
+  "vm_changed": false,
+  "budgets_changed": false,
+  "runtime": {
+    "root": "build/mo-runtime-userdb-v3",
+    "preparation_abi": 3,
+    "userdb_policy": "strict-open-no-auto-recovery-v1",
+    "patch_sha256": "4CA43FDB22F4E8C9CEC58A3D9DB97BBE70082A768906DEAADD8CC85F69DCA422",
+    "dll_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+    "provenance_sha256": "11C4396204CB2657696AB9EAE9E58161718B773DCFF9F631033D9CFD39389002",
+    "mo_input_count": 15,
+    "source_input_count": 6,
+    "resources": 33,
+    "only_preparation_export": "mo_rime_prepare_resources_v3"
+  },
+  "stage": {
+    "root": "build/mo-windows-stage-userdb-v3/stage",
+    "manifest_sha256": "9650E87A48E2B9DC0D12FCEE328789F57BA5678FD4A920C5E0A00D5F5AD02383",
+    "installable": false,
+    "files": 138,
+    "images": {
+      "bin/mo-broker.exe": "EDB12944A327A467BB5F2E6A520D1654196ED8083BBEF07CB47EF25B60889F1E",
+      "bin/mo-settings.exe": "3C39752395AB586645109E65027622532D8AF8A2972839689BD1F8429C564257",
+      "bin/mo-tip-registrar.exe": "B43F0807673CF159211485CA4D5F961DDDF0671161B6B452A0235829F8FA8CA4",
+      "tip/x64/mo-tip.dll": "8BD9EA4468F4204D79DC9EB90ABB563B32B248CA1629D85474B34A0D87313531",
+      "tip/x86/mo-tip.dll": "A7CCD49B3BEA96B5E2EADED7F5C1EBFABCC07CA7C2510A871B7271C7F0302442"
+    },
+    "abi_probes": {
+      "x64": "28AD5C8A4FA04CCBC9464FE22C9008B1169D74E1D47695D552205E10B89D5E06",
+      "Win32": "0F314689D1D29323B7216E4FE64F71D43A4A08A9B30B8862D8742DB6457B5DE9"
+    }
+  },
+  "matrix": {
+    "rows": 12,
+    "rejected_before_ready": 4,
+    "preservation": [
+      {
+        "fault": "read-sharing-error",
+        "data_file_count": 4,
+        "before_after_equal": true,
+        "records_read_after_fault_removed": 32
+      },
+      {
+        "fault": "wal-checksum-error",
+        "data_file_count": 4,
+        "before_after_equal": true,
+        "records_read_after_fault_removed": 32
+      }
+    ],
+    "excluded_diagnostic_files": [
+      "LOG",
+      "LOG.old",
+      "LOCK"
+    ],
+    "actor_sha256": "89E662CEA7606C6D2BF30F7737AAB19B52713CF4EE1DE8D88B82B1A2C2197924",
+    "broker_sha256": "4551434CA166E48D1DB15DCF051A88C287B83DE2F6E2E310348B21A3B50EAD55",
+    "fixture_sha256": "8DCE616B9BECBEB74E0DCCA4725F6C4A824DDB5159BB02681EC2B31FFE3BAAE6",
+    "recovered_brokers_parent_stopped_after_ready": 2
+  },
+  "checks": {
+    "workspace_default": "passed",
+    "workspace_trace": "passed",
+    "fmt": "passed",
+    "clippy_default": "passed",
+    "clippy_trace": "passed",
+    "workspace_examples_build": "passed",
+    "native_dual_abi": "passed",
+    "fake_tip_dual_ipc_ui_fault": "passed",
+    "fake_external_crashes": 4,
+    "source_policy_positive_and_mutations": 9,
+    "legacy_runtime_contract_rejection": "passed",
+    "legacy_stage_no_output_rejection": "passed",
+    "userdb_harness_guards": 9,
+    "userdb_harness_ast": 2,
+    "ci_native_status_after_policy": 0,
+    "preparation_cases": 3,
+    "old_abi2_missing_rejected_before_anchor": true,
+    "relocation_cases": 27,
+    "learning_private_normal_private": "passed: entries 0/1/1",
+    "schemas": 5,
+    "character_modes": 2,
+    "emoji_toggle": "passed",
+    "staging_policy_cases": 97,
+    "package_authoring_cases": 21,
+    "candidate_lifecycle_policy_cases": 18,
+    "runtime_builder_preflight_cases": 5,
+    "cmake_path_cases": 4,
+    "strict_native_source_cases": 7,
+    "lua_machine_policy_cases": 5,
+    "staged_machine_golden_selections": 7,
+    "staged_actor_paging_selection": "passed"
+  },
+  "tip": {
+    "x64": {
+      "exit_code": 1,
+      "failed_before_stop_cycle": 0,
+      "key": "0x4e",
+      "probe_elapsed_ms": 63
+    },
+    "Win32": {
+      "exit_code": 1,
+      "failed_before_stop_cycle": 0,
+      "key": "0x4e",
+      "probe_elapsed_ms": 47,
+      "inputs": {
+        "runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+        "tip_sha256": "A7CCD49B3BEA96B5E2EADED7F5C1EBFABCC07CA7C2510A871B7271C7F0302442",
+        "broker_sha256": "B5D0BBA881C9C9F4966626151E9E3C45DFDBC101019B8AB61954CE05E75115FC",
+        "probe_sha256": "0F314689D1D29323B7216E4FE64F71D43A4A08A9B30B8862D8742DB6457B5DE9",
+        "synthetic_only": true,
+        "deadline_changed": false
+      }
+    },
+    "stage_diagnostic_broker_sha256": "B5D0BBA881C9C9F4966626151E9E3C45DFDBC101019B8AB61954CE05E75115FC",
+    "measurement": "probe-side external elapsed time; no Actor execution timing or new root-cause attribution",
+    "new_real_fault_crashes_validated": 0
+  },
+  "ci": {
+    "wired": true,
+    "powershell_ast_blocks": 9,
+    "yaml_parser": "unavailable: bundled Python has no PyYAML",
+    "remote_result": "not verified"
+  },
+  "historical_vm_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "limitations": [
+    "Win10 VM stays at 0.0.11.0; no new install/package/system-route evidence.",
+    "Strict real TIP first-key gate failed on both architectures; G2/G3 remain open.",
+    "Finite WAL sharing/checksum cases do not establish generic recovery, application-level DB validity or power-loss durability.",
+    "Actual stage engine/TIP tests pair identical release TIP bytes with a diagnostic Broker in an owned shipping-like layout; no installed release Broker route claim.",
+    "A combined verification parent ended before lifecycle/runtime; lifecycle and actual runtime were independently rerun and original logs retained.",
+    "One invalid Rust feature command and missing local YAML parser retained as tooling failures; no test budgets were relaxed."
+  ],
+  "evidence": {
+    "root": "build/win10-evidence-clean-v1/UserDbAbi3-v1",
+    "file_count": 610,
+    "external_input_count": 610,
+    "manifest_sha256": "283576647E9A67220E4E55136C6E859D0BEEF7F13FFBF0A99A71C8AF4A3F9294"
+  }
+}

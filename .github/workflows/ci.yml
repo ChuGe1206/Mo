@@ -136,11 +136,41 @@ jobs:
           $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
           ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -OutputDirectory $runtime
           ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+          ./tools/runtime-build/test-userdb-policy.ps1 -RuntimeBuildDirectory $runtime
           ./tools/runtime-build/test-resource-file.ps1
           ./tools/runtime-build/test-relocation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -RustToolchain 1.97.1
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-preparation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -OfficialDistDir (Join-Path $env:RUNNER_TEMP 'librime-dist/dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -RustToolchain 1.97.1 -BrokerPath (Join-Path $PWD 'target/debug/mo-broker.exe')
-          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
+      - name: Verify actual user dictionary errors preserve synthetic records
+        shell: pwsh
+        run: |
+          $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
+          $vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $msbuild = & $vswhere -latest -products '*' -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          if (-not $msbuild) { throw 'MSBuild not found' }
+          $output = Join-Path $PWD 'build/userdb-fixture-probe'
+          & $msbuild native/librime/diagnostics/UserDbFixtureProbe.vcxproj /nologo /m:1 /nodeReuse:false /p:Configuration=Release /p:Platform=x64 "/p:MoLevelDbIncludeDir=$runtime/prefix/include" "/p:MoLevelDbLibrary=$runtime/prefix/lib/leveldb.lib" "/p:MoDiagnosticOutDir=$output"
+          if ($LASTEXITCODE -ne 0) { throw 'User DB fixture probe build failed' }
+          cargo +1.97.1 build -p mo-rime --example actor_latency_probe
+          if ($LASTEXITCODE -ne 0) { throw 'Actor probe build failed' }
+          cargo +1.97.1 build -p mo-broker --features latency-trace
+          if ($LASTEXITCODE -ne 0) { throw 'Broker build failed' }
+          $paths = @{
+            RuntimePath = (Join-Path $runtime 'dist/lib/rime.dll')
+            ActorPath = (Join-Path $PWD 'target/debug/examples/actor_latency_probe.exe')
+            BrokerPath = (Join-Path $PWD 'target/debug/mo-broker.exe')
+            FixtureProbePath = (Join-Path $output 'mo_userdb_fixture_probe.exe')
+            SharedDataDir = (Join-Path $env:RUNNER_TEMP 'rime-ice')
+            CompiledDataDir = (Join-Path $env:RUNNER_TEMP 'rime-user/build')
+          }
+          ./tools/test-userdb-errors-policy.ps1 @paths
+          $hashes = @{
+            runtime = (Get-FileHash -LiteralPath $paths.RuntimePath).Hash
+            actor = (Get-FileHash -LiteralPath $paths.ActorPath).Hash
+            broker = (Get-FileHash -LiteralPath $paths.BrokerPath).Hash
+            fixture = (Get-FileHash -LiteralPath $paths.FixtureProbePath).Hash
+          }
+          ./tools/test-userdb-errors.ps1 @paths -ExpectedHashes $hashes -EvidenceName ci-userdb-errors
       - name: Check synthetic LevelDB crash and error recovery boundaries
         shell: pwsh
         run: |
@@ -166,5 +196,18 @@ jobs:
           ./installer/windows/test-staging.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
           ./installer/windows/test-package-authoring.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
           ./tools/test-candidate-lifecycle-policy.ps1 -StageDirectory (Join-Path $stageBuild 'stage')
+          $shared = Join-Path $stageBuild 'stage/payload/Mo/data/rime-ice'
+          ./tools/test-learning-option.ps1 -RuntimeBuildDirectory (Join-Path $PWD 'build/mo-prepared-runtime') -SharedDataDirectory $shared -OutputDirectory (Join-Path $PWD 'build/ci-userdb-learning') -RustToolchain 1.97.1
+          cargo +1.97.1 build -p mo-rime --example settings_smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Settings probe build failed' }
+          $settingsUser = Join-Path $PWD 'build/ci-userdb-settings'
+          New-Item -ItemType Directory -Path $settingsUser | Out-Null
+          & (Join-Path $PWD 'target/debug/examples/settings_smoke.exe') (Join-Path $PWD 'build/mo-prepared-runtime/dist/lib/rime.dll') $shared $settingsUser
+          if ($LASTEXITCODE -ne 0) { throw 'User DB settings/schema/Emoji regression failed' }
           ./installer/windows/test-stage-runtime.ps1 -BuildDirectory $stageBuild -FaultRepetitions 10 -RustToolchain 1.97.1
           ./tools/candidate-lifecycle-probe.ps1 -StageDirectory (Join-Path $stageBuild 'stage') -OutputDirectory (Join-Path $PWD 'build/mo-candidate-trace') -Repetitions 10 -LatencyTrace -RustToolchain 1.97.1
+      - name: Verify strict prepared TIP latency and input flow
+        shell: pwsh
+        run: |
+          $runtime = Join-Path $PWD 'build/mo-prepared-runtime'
+          ./tools/tip-rime-smoke.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -Architecture All -RustToolchain 1.97.1 -PreparedResources -LatencyTrace -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')

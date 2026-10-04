@@ -48,14 +48,14 @@ impl RimeBackend {
         })
     }
 
-    /// Prepares the private anchor's actual OpenCC owners without synthetic input.
+    /// Prepares the private anchor's OpenCC owners and requires a healthy main user dictionary.
     ///
     /// Requires Mo's versioned native extension. Absence or any preparation
     /// failure is fatal to startup; no lazy fallback, frontend session or wire
     /// token is created. The normal engine-startup watchdog covers this work.
     pub fn with_prepared_resources(engine: Engine) -> Result<Self, Error> {
         if engine.prepare_resources.is_none() {
-            return Err(Error::MissingFunction("mo_rime_prepare_resources_v2"));
+            return Err(Error::MissingFunction("mo_rime_prepare_resources_v3"));
         }
         let backend = Self::with_resource_anchor(engine)?;
         backend.engine.prepare_resources_id(

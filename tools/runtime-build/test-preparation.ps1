@@ -60,7 +60,7 @@ foreach ($case in $cases) {
                 $stdout = $process.StandardOutput.ReadToEndAsync()
                 if (-not $process.WaitForExit(35000)) { throw 'Preparation failure did not stop Broker within startup budget.' }
                 $logs = $stderr.GetAwaiter().GetResult() + $stdout.GetAwaiter().GetResult()
-                if ($process.ExitCode -eq 0 -or -not $logs.Contains('mo_rime_prepare_resources_v2', [StringComparison]::Ordinal) -or $logs.Contains('Mo broker listening', [StringComparison]::Ordinal)) {
+                if ($process.ExitCode -eq 0 -or -not $logs.Contains('mo_rime_prepare_resources_v3', [StringComparison]::Ordinal) -or $logs.Contains('Mo broker listening', [StringComparison]::Ordinal)) {
                     throw 'Broker failed for an unrelated reason or announced readiness after preparation failure.'
                 }
                 Write-Host "Broker $case preparation rejected before readiness."

@@ -35,7 +35,7 @@ int wmain(int argc, wchar_t** argv) {
         if (!module) { throw std::runtime_error("runtime load failed"); }
         const auto getter = reinterpret_cast<RimeApi*(*)()>(GetProcAddress(module, "rime_get_api"));
         const RimeApi* api = getter ? getter() : nullptr;
-        if (!GetProcAddress(module, "mo_rime_prepare_resources_v2") || !api || api->data_size < 0
+        if (!GetProcAddress(module, "mo_rime_prepare_resources_v3") || !api || api->data_size < 0
             || !RIME_PROVIDED(api, setup) || !RIME_PROVIDED(api, deployer_initialize)
             || !RIME_PROVIDED(api, deploy) || !RIME_PROVIDED(api, finalize)) {
             FreeLibrary(module); throw std::runtime_error("required runtime ABI missing");

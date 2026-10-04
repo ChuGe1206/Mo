@@ -51,3 +51,28 @@ function Assert-MoLuaMachineDataPolicy([string]$SourcePath) {
     }
     if ([regex]::Matches($body, 'luaL_dofile\(').Count -ne 1) { throw 'Lua initialization must have exactly one machine rime.lua entry point.' }
 }
+
+# Verify the pinned, patched functions actually consumed by the runtime build.
+# Source guards supplement the native fault matrix; they do not prove database
+# recovery safety for arbitrary future upstream implementations.
+function Assert-MoUserDbStartupPolicy([string]$PreparedSourceDir) {
+    $checks = @(
+        @('src/rime/dict/level_db.cc', '(?s)leveldb::Status Open\(.*?\n  \}', @('options.paranoid_checks = true;'), @('options.paranoid_checks = false;')),
+        @('src/rime/dict/user_dictionary.cc', '(?s)bool UserDictionary::Load\(\) \{.*?\n\}', @('if (!db_->loaded() && !db_->Open()) {', 'return false;'), @('ScheduleTask', 'StartWork', 'userdb_recovery_task', 'RepairDB', 'Recover(')),
+        @('src/rime/gear/memory.cc', '(?s)Memory::Memory\(.*?\n\}', @('user_dict_ready_ = user_dict_->Load();'), @()),
+        @('src/rime/gear/memory.cc', '(?s)bool Memory::UserDictionaryReady\(\) const \{.*?\n\}', @('return user_dict_ && user_dict_ready_ && user_dict_->loaded();'), @()),
+        @('src/rime/engine.cc', '(?s)bool ConcreteEngine::PrepareResources\(\) \{.*?\n\}', @('user_dict->name() == "rime_ice"', 'if (!memory->UserDictionaryReady()) { return false; }', '++main_user_dictionaries;', 'if (main_user_dictionaries != 1) { return false; }'), @())
+    )
+    foreach ($check in $checks) {
+        $source = Get-Content -LiteralPath (Join-Path $PreparedSourceDir $check[0]) -Raw
+        $matches = [regex]::Matches($source, $check[1])
+        if ($matches.Count -ne 1) { throw 'User DB startup policy function missing or ambiguous.' }
+        $body = $matches[0].Value
+        foreach ($required in $check[2]) {
+            if ($body.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw 'User DB startup policy incomplete.' }
+        }
+        foreach ($forbidden in $check[3]) {
+            if ($body.IndexOf($forbidden, [StringComparison]::Ordinal) -ge 0) { throw 'User DB startup policy retains automatic recovery.' }
+        }
+    }
+}

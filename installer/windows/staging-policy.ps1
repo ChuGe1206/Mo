@@ -292,6 +292,7 @@ function Get-MoRuntimeOwnSourceNames {
         'native/librime/preparation/resources-v2.patch', 'native/librime/preparation/opencc-directory.patch',
         'native/librime/preparation/lua-signed-stack.patch', 'native/librime/preparation/lua-machine-data-only.patch',
         'native/librime/preparation/mo-learning-option.patch', 'native/librime/preparation/mo-lua-learning-option.patch',
+        'native/librime/preparation/userdb-preserve.patch',
         'native/librime/preparation/mo_preparation.cc', 'native/librime/preparation/mo_project.cmake',
         'native/librime/preparation/mo_resource_directory.cpp', 'native/librime/preparation/mo_resource_file.h',
         'native/librime/preparation/mo_resource_file.cpp')
@@ -302,8 +303,9 @@ function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
     $dist = Join-Path $root 'dist'
     $metadata = Read-MoStageJson (Join-Path $dist 'mo-build-provenance.json')
     Assert-MoDevelopmentMetadata $metadata 2
-    if ($metadata['preparation_abi'] -ne 2 -or $metadata['resource_directory'] -cne 'lib/opencc' -or
+    if ($metadata['preparation_abi'] -ne 3 -or $metadata['resource_directory'] -cne 'lib/opencc' -or
         $metadata['lua_data_policy'] -cne 'machine-shared-only-v1' -or
+        $metadata['userdb_policy'] -cne 'strict-open-no-auto-recovery-v1' -or
         $metadata['learning_policy'] -cne 'session-option-v1' -or
         @($metadata['plugins']).Count -ne 1 -or $metadata['plugins'][0] -cne 'lua') { throw 'Runtime ABI/plugin policy mismatch.' }
     $pins = Get-MoRuntimePins
@@ -327,10 +329,11 @@ function Assert-MoStageRuntime([string]$BuildDirectory, [string]$Repository) {
         throw 'Runtime Lua data-policy patch binding mismatch.'
     }
     foreach ($binding in @(
+        @('userdb_policy_patch_sha256', 'native/librime/preparation/userdb-preserve.patch'),
         @('learning_policy_patch_sha256', 'native/librime/preparation/mo-learning-option.patch'),
         @('lua_learning_policy_patch_sha256', 'native/librime/preparation/mo-lua-learning-option.patch'))) {
         if ($metadata[$binding[0]] -ine $metadata['mo_inputs'][$binding[1]]) {
-            throw 'Runtime learning-policy patch binding mismatch.'
+            throw 'Runtime policy patch binding mismatch.'
         }
     }
     $names = Get-MoRuntimeResourceNames
@@ -418,8 +421,9 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
     if ((Get-FileHash -LiteralPath $archive).Hash -ine $metadata['rime_ice_archive_sha256']) { throw 'Staged rime-ice source archive mismatch.' }
     $runtime = Read-MoStageJson (Join-Path $root 'evidence/runtime-provenance.json')
     Assert-MoDevelopmentMetadata $runtime 2
-    if ($runtime['preparation_abi'] -ne 2 -or $runtime['resource_directory'] -cne 'lib/opencc' -or
+    if ($runtime['preparation_abi'] -ne 3 -or $runtime['resource_directory'] -cne 'lib/opencc' -or
         $runtime['lua_data_policy'] -cne 'machine-shared-only-v1' -or
+        $runtime['userdb_policy'] -cne 'strict-open-no-auto-recovery-v1' -or
         $runtime['learning_policy'] -cne 'session-option-v1' -or
         @($runtime['plugins']).Count -ne 1 -or $runtime['plugins'][0] -cne 'lua' -or
         (Get-FileHash -LiteralPath (Join-Path $payload 'runtime/librime/rime.dll')).Hash -ine $runtime['dll_sha256']) { throw 'Staged runtime contract mismatch.' }
@@ -442,10 +446,11 @@ function Assert-MoPreparedStage([string]$Directory, [ValidateSet('mo-stage.json'
         throw 'Staged runtime Lua data-policy patch binding mismatch.'
     }
     foreach ($binding in @(
+        @('userdb_policy_patch_sha256', 'native/librime/preparation/userdb-preserve.patch'),
         @('learning_policy_patch_sha256', 'native/librime/preparation/mo-learning-option.patch'),
         @('lua_learning_policy_patch_sha256', 'native/librime/preparation/mo-lua-learning-option.patch'))) {
         if ($runtime[$binding[0]] -ine $runtime['mo_inputs'][$binding[1]]) {
-            throw 'Staged runtime learning-policy patch binding mismatch.'
+            throw 'Staged runtime policy patch binding mismatch.'
         }
     }
     $resources = Get-MoRuntimeResourceNames

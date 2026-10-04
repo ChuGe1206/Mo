@@ -546,14 +546,14 @@ impl Engine {
     fn prepare_resources_id(&self, id: sys::RimeSessionId) -> Result<(), Error> {
         let prepare = self
             .prepare_resources
-            .ok_or(Error::MissingFunction("mo_rime_prepare_resources_v2"))?;
+            .ok_or(Error::MissingFunction("mo_rime_prepare_resources_v3"))?;
         // SAFETY: the owner keeps the DLL and session alive on the engine thread.
         // The versioned extension accepts only an empty fixed-schema session and
         // reads converters without process_key, context mutation or commit.
         if unsafe { prepare(id) } == 1 {
             Ok(())
         } else {
-            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v3"))
         }
     }
 
@@ -708,7 +708,7 @@ pub struct Session<'engine> {
 impl Session<'_> {
     /// Reads the actual session's conversion dictionaries without sending input.
     ///
-    /// Requires Mo's v2 native extension and an empty `rime_ice` session. The
+    /// Requires Mo's v3 native extension and an empty `rime_ice` session. The
     /// native boundary rejects busy/other-schema sessions; it never clears them.
     pub fn prepare_resources(&mut self) -> Result<(), Error> {
         self.engine.prepare_resources_id(self.id)
@@ -1562,7 +1562,7 @@ mod tests {
             unsafe { Engine::from_raw_api(EngineConfig::new("shared", "user"), &mut api) }.unwrap();
         assert!(matches!(
             RimeBackend::with_prepared_resources(engine),
-            Err(Error::MissingFunction("mo_rime_prepare_resources_v2"))
+            Err(Error::MissingFunction("mo_rime_prepare_resources_v3"))
         ));
         assert_eq!(
             FAKE.lock().unwrap().calls,
@@ -1591,7 +1591,7 @@ mod tests {
             engine.prepare_resources = Some(prepare);
             assert!(matches!(
                 RimeBackend::with_prepared_resources(engine),
-                Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
+                Err(Error::NativeCallFailed("mo_rime_prepare_resources_v3"))
             ));
             assert_eq!(
                 FAKE.lock().unwrap().calls,

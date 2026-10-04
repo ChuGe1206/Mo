@@ -29,6 +29,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         EngineConfig::new(unicode(&paths[1])?, unicode(&paths[2])?),
         &paths[0],
     )?;
+    if outcome == "missing" {
+        assert!(!paths[2].join("rime_ice.userdb").exists());
+        assert!(matches!(
+            mo_rime::RimeBackend::with_prepared_resources(engine),
+            Err(Error::MissingFunction("mo_rime_prepare_resources_v3"))
+        ));
+        assert!(
+            !paths[2].join("rime_ice.userdb").exists(),
+            "missing v3 must reject before creating the private anchor"
+        );
+        println!("Mo missing preparation v3 rejected before anchor creation.");
+        return Ok(());
+    }
     let mut anchor = engine.create_session()?;
     let before = anchor.context()?;
     assert!(anchor.take_commit()?.is_none());
@@ -37,11 +50,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("success") => result?,
         Some("failure") => assert_eq!(
             result,
-            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v3"))
         ),
         Some("missing") => assert_eq!(
             result,
-            Err(Error::MissingFunction("mo_rime_prepare_resources_v2"))
+            Err(Error::MissingFunction("mo_rime_prepare_resources_v3"))
         ),
         _ => {
             return Err(
@@ -64,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let before = session.context()?;
         assert_eq!(
             session.prepare_resources(),
-            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v2"))
+            Err(Error::NativeCallFailed("mo_rime_prepare_resources_v3"))
         );
         assert_eq!(session.context()?, before);
         assert!(session.take_commit()?.is_none());
