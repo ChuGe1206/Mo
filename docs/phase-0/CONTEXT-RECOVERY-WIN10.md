@@ -74,3 +74,13 @@ Win10 六阶段矩阵已完成，原始证据 `build/win10-evidence-clean-v1/Mat
 原始日志/源码/两版 DLL/脚本在 `build/win10-evidence-clean-v1/ImagePages-v1`，由 manifest 锁定。本轮只读取过 VM 截图，未改变其安装或增加桌面输入验收；VM 仍为 0.0.11.0。owned 主机诊断进程均已退出。下一步集中 Win10，细分 Db::Open 和词库映射准备，测 fresh/existing profile 与首次拉起；随后补齐已注册宿主、loaded-TIP、登录矩阵。G2/G3 不升级为整体通过。
 
 2026-10-04 收尾：Rust fmt/Clippy/workspace tests 通过。Cargo 重建了开发态 `target/debug/mo-broker.exe`（当前 SHA `277CEE…`），原探针用的是 `65B3BA…`，两者身份见 Git 结果汇总；不得把新二进制计入历史探针。本机原始归档文件校验通过。
+
+## 2026-10-04 DB 打开与共享 prebuilt 后续交接
+
+详见 [用户词典打开证据](WIN10-DB-OPEN-EVIDENCE.md)。新增诊断 Env/file 转发、DB::Open 与映射分项补丁，以及 marker 守卫的共享 machine prebuilt Actor 模型。八个 Actor 进程两键均通过；shared existing 的日志复用控制使首个 DB::Open 从 106–221 ms 降到 2–3 ms，该区间 Sync 从 2–3 次降为零。fresh reuse 仍有两次 Sync、Actor prepare 403 ms。字典 touch/cache 耗时仍波动，不能把总差值全部归因于 reuse。
+
+默认 x64/Win32 完整 TIP 四组各首轮/第二轮通过，但使用 local user/build，且默认允许合成目录学习；不是共享 prebuilt 或安装态验收。reuse 条件 Broker ready 471/525 ms 仍超过 400 ms。native DB probe 的同步写/重开/锁拒绝/失败返回通过，不证明崩溃/断电或大用户词典恢复。Rust fmt/Clippy/workspace tests、Actor 三项守卫与 native 严格构建通过。
+
+隔离 DLL `build/win10-db-open-v1/dist/lib/rime.dll` SHA `CC732CB66A745372D97E73AC4688E4D15240BFCB00385D37B17AEF281D37D65E`；当前 compile 也生成它，其他已归档 dist 版本仍保留。接受的生产 runtime `94D646…`、stage、VM 0.0.11.0 未变。reuse_logs 仅为 upstream experimental 诊断选项，未接入产品。
+
+原始归档 `build/win10-evidence-clean-v1/DbOpen-v1` 的 92 个文件/205 个外部输入身份由清单 SHA `37BFAB3DE9C5355DFDB90BA91F305E230FCF1BF3CF34F1E634B00A0063E7DCA3` 锁定；实际 Broker `277CEE…` 和 Actor 已复制保留。后续优先测 Broker 参数/计划解析、pipe pool、Engine load、prepare/readiness，补代表性 profile 与错误/崩溃恢复；保持 Win10 优先及原 deadline，G2/G3 不升级。

@@ -21,6 +21,8 @@ jobs:
         run: cargo +1.97.1 clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo +1.97.1 test --workspace
+      - name: Test isolated Actor probe argument guards
+        run: cargo +1.97.1 test -p mo-rime --example actor_latency_probe
       - name: Lint and test opt-in metadata diagnostics
         shell: pwsh
         run: |

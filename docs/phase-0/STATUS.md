@@ -4,6 +4,11 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-04 Win10 用户词典启动诊断
+
+- [DB 打开与映射证据](WIN10-DB-OPEN-EVIDENCE.md)：八个 Actor 合成进程、默认双架构四组完整 TIP 首轮/第二轮及 native DB 转发/重开/锁拒绝检查通过。新增共享 prebuilt Actor fixture、原生 DB I/O scope 和 upstream experimental reuse_logs 对照；未接入产品。
+- 既有 shared profile 的首个 DB::Open 对照为 reuse 关闭 106–221 ms、打开 2–3 ms，Sync 次数 2–3 → 0；fresh reuse 的 Actor prepare 仍为 403 ms。mapped touch 存在缓存/顺序混杂，完整 TIP 是 local user/build 且允许合成学习，不能当作安装态共享数据结论。
+- reuse 条件完整 Broker ready 为 471/525 ms，400 ms activation 仍未满足；首键成功发生在预先 ready 后。生产 runtime/stage/VM 0.0.11.0 未变，50 ms deadline 未改。原始清单绑定 92 文件/205 外部输入，Rust fmt/Clippy/workspace tests 和三项 Actor 守卫通过；G2/G3 保持原状态。
 ## 2026-10-03 Win10 VM 续测
 
 - 会话恢复记录见 [CONTEXT-RECOVERY-WIN10.md](CONTEXT-RECOVERY-WIN10.md)，优先 Win10 验证。

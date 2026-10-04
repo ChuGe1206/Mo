@@ -26,6 +26,7 @@ struct Scope {
     unsigned long long id;
     std::chrono::steady_clock::time_point start;
     long long children = 0;
+    long long minimum_us = 500;
     unsigned long long cpu_start = 0;
     DWORD faults_start = 0;
     unsigned long long cycles_start = 0;
@@ -52,8 +53,9 @@ struct Scope {
         value = counters.PageFaultCount;
         return true;
     }
-    Scope(const char* c, std::string l) : category(c), label(std::move(l)),
+    Scope(const char* c, std::string l, long long minimum = 500) : category(c), label(std::move(l)),
         parent(current), id(++sequence), start(std::chrono::steady_clock::now()) {
+        minimum_us = minimum;
         cpu_valid = ReadCpu(cpu_start);
         cycles_valid = ReadCycles(cycles_start);
         faults_valid = ReadFaults(faults_start);
@@ -69,7 +71,7 @@ struct Scope {
         faults_valid = ReadFaults(faults_end) && faults_valid;
         current = parent;
         if (parent) parent->children += elapsed;
-        if (elapsed >= 500) std::fprintf(stderr,
+        if (elapsed >= minimum_us) std::fprintf(stderr,
             "MO_COMPONENT id=%llu parent=%llu category=%s label=%s wall_us=%lld self_us=%lld thread_cpu_us=%llu cpu_valid=%d process_faults=%lu faults_valid=%d thread_cycles=%llu cycles_valid=%d\n",
             id, parent ? parent->id : 0, category, label.c_str(), static_cast<long long>(elapsed),
             static_cast<long long>(elapsed-children),

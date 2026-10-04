@@ -1,0 +1,122 @@
+diff --git a/src/rime/dict/level_db.cc b/src/rime/dict/level_db.cc
+index 9a2eb3d..ab2c5bd 100644
+--- a/src/rime/dict/level_db.cc
++++ b/src/rime/dict/level_db.cc
+@@ -5,6 +5,7 @@
+ // 2014-12-04 Chen Gong <chen.sst@gmail.com>
+ //
+ 
++#include <rime/mo_db_diagnostic.h>
+ #include <leveldb/db.h>
+ #include <leveldb/write_batch.h>
+ #include <rime/common.h>
+@@ -50,10 +51,17 @@ struct LevelDbCursor {
+ struct LevelDbWrapper {
+   leveldb::DB* ptr = nullptr;
+   leveldb::WriteBatch batch;
++  std::unique_ptr<mo_diagnostic::DbEnv> diagnostic_env;
+ 
+   leveldb::Status Open(const path& file_path, bool readonly) {
+     leveldb::Options options;
+     options.create_if_missing = !readonly;
++    if (mo_diagnostic::DbFlagEnabled("MO_DIAG_TRACE_DB_IO")) {
++      diagnostic_env = std::make_unique<mo_diagnostic::DbEnv>();
++      options.env = diagnostic_env.get();
++    }
++    options.reuse_logs = mo_diagnostic::DbFlagEnabled("MO_DIAG_REUSE_DB_LOGS");
++    mo_diagnostic::Scope trace("db_open", "DB::Open");
+     return leveldb::DB::Open(options, file_path.string(), &ptr);
+   }
+ 
+@@ -240,6 +248,7 @@ bool LevelDb::Remove() {
+ }
+ 
+ bool LevelDb::Open() {
++  mo_diagnostic::Scope trace("db_open", "LevelDb::Open");
+   if (loaded())
+     return false;
+   Initialize();
+@@ -262,6 +271,7 @@ bool LevelDb::Open() {
+ }
+ 
+ bool LevelDb::OpenReadOnly() {
++  mo_diagnostic::Scope trace("db_open", "LevelDb::OpenReadOnly");
+   if (loaded())
+     return false;
+   Initialize();
+@@ -276,6 +286,7 @@ bool LevelDb::OpenReadOnly() {
+ }
+ 
+ bool LevelDb::Close() {
++  mo_diagnostic::Scope trace("db_open", "LevelDb::Close");
+   if (!loaded())
+     return false;
+ 
+@@ -289,6 +300,7 @@ bool LevelDb::Close() {
+ }
+ 
+ bool LevelDb::CreateMetadata() {
++  mo_diagnostic::Scope trace("db_open", "LevelDb::CreateMetadata");
+   return Db::CreateMetadata() && MetaUpdate("/db_type", db_type_);
+ }
+ 
+diff --git a/src/rime/dict/mapped_file.cc b/src/rime/dict/mapped_file.cc
+index b69d88f..ac8ab97 100644
+--- a/src/rime/dict/mapped_file.cc
++++ b/src/rime/dict/mapped_file.cc
+@@ -29,13 +29,20 @@ class MappedFileImpl {
+     boost::interprocess::mode_t file_mapping_mode =
+         (mode == kOpenReadOnly) ? boost::interprocess::read_only
+                                 : boost::interprocess::read_write;
+-    file_.reset(new boost::interprocess::file_mapping(file_path.c_str(),
++    {
++      mo_diagnostic::Scope trace("startup_map", "FileOpen");
++      file_.reset(new boost::interprocess::file_mapping(file_path.c_str(),
+                                                       file_mapping_mode));
+-    region_.reset(
+-        new boost::interprocess::mapped_region(*file_, file_mapping_mode));
++    }
++    {
++      mo_diagnostic::Scope trace("startup_map", "MapView");
++      region_.reset(
++          new boost::interprocess::mapped_region(*file_, file_mapping_mode));
++    }
+     const char* diag_flag = std::getenv("MO_DIAG_PREFAULT_MAPPED");
+     if (mode == kOpenReadOnly && diag_flag &&
+         diag_flag[0] == '1' && diag_flag[1] == '\0') {
++      mo_diagnostic::Scope trace("startup_map", "TouchReadOnlyPages");
+       SYSTEM_INFO system_info{};
+       GetSystemInfo(&system_info);
+       const size_t page_size = system_info.dwPageSize;
+@@ -102,6 +109,7 @@ bool MappedFile::Create(size_t capacity) {
+ }
+ 
+ bool MappedFile::OpenReadOnly() {
++  mo_diagnostic::Scope trace("startup_map", "MappedFile::OpenReadOnly");
+   if (!Exists()) {
+     LOG(ERROR) << "attempt to open non-existent file '" << file_path_ << "'.";
+     return false;
+diff --git a/src/rime/dict/prism.cc b/src/rime/dict/prism.cc
+index f78e168..e9919e8 100644
+--- a/src/rime/dict/prism.cc
++++ b/src/rime/dict/prism.cc
+@@ -81,6 +81,7 @@ Prism::Prism(const path& file_path)
+     : MappedFile(file_path), trie_(new Darts::DoubleArray) {}
+ 
+ bool Prism::Load() {
++  mo_diagnostic::Scope trace("startup_map", "Prism::Load");
+   LOG(INFO) << "loading prism file: " << file_path();
+ 
+   if (IsOpen())
+diff --git a/src/rime/dict/table.cc b/src/rime/dict/table.cc
+index 52c1b77..0df0a1c 100644
+--- a/src/rime/dict/table.cc
++++ b/src/rime/dict/table.cc
+@@ -268,6 +268,7 @@ Table::Table(const path& file_path) : MappedFile(file_path) {}
+ Table::~Table() {}
+ 
+ bool Table::Load() {
++  mo_diagnostic::Scope trace("startup_map", "Table::Load");
+   LOG(INFO) << "loading table file: " << file_path();
+ 
+   if (IsOpen())

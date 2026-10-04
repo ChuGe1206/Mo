@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals"><ProjectGuid>{AA6B1E4F-9136-4DBE-A14A-671520E80401}</ProjectGuid><WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration"><ConfigurationType>Application</ConfigurationType><UseDebugLibraries>false</UseDebugLibraries><PlatformToolset>v143</PlatformToolset><CharacterSet>Unicode</CharacterSet></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup><OutDir>$(MoDiagnosticOutDir)\</OutDir><IntDir>$(MoDiagnosticOutDir)\obj\</IntDir><TargetName>mo_db_io_probe</TargetName></PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError><LanguageStandard>stdcpp17</LanguageStandard><RuntimeLibrary>MultiThreaded</RuntimeLibrary><AdditionalIncludeDirectories>$(MoLevelDbIncludeDir);$(MoDiagnosticIncludeDir);$(MSBuildThisFileDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories><PreprocessorDefinitions>NOMINMAX;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions><AdditionalOptions>/permissive- %(AdditionalOptions)</AdditionalOptions></ClCompile>
+    <Link><SubSystem>Console</SubSystem><AdditionalDependencies>$(MoLevelDbLibrary);psapi.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup><ClCompile Include="db_io_probe.cpp" /></ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="RequirePinnedDiagnosticInputs" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Platform)' != 'x64' Or '$(Configuration)' != 'Release'" Text="This diagnostic probe requires Release/x64." />
+    <Error Condition="'$(MoLevelDbIncludeDir)' == '' Or !Exists('$(MoLevelDbIncludeDir)\leveldb\env.h')" Text="Supply the pinned MoLevelDbIncludeDir." />
+    <Error Condition="'$(MoLevelDbLibrary)' == '' Or !Exists('$(MoLevelDbLibrary)')" Text="Supply the matching pinned MoLevelDbLibrary." />
+    <Error Condition="'$(MoDiagnosticIncludeDir)' == '' Or !Exists('$(MoDiagnosticIncludeDir)\rime\mo_diagnostic.h')" Text="Supply the isolated MoDiagnosticIncludeDir with the copied Mo headers." />
+    <Error Condition="'$(MoDiagnosticOutDir)' == ''" Text="Supply an isolated MoDiagnosticOutDir." />
+  </Target>
+</Project>

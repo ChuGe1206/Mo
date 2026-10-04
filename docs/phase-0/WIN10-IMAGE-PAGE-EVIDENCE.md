@@ -81,3 +81,5 @@
 保存的 14 文件补丁已在接受源码的独立副本上检查、实际应用，并逐文件核对与编译源码一致（只正规化换行）。新头文件与编译副本一致。诊断构建和上述默认双架构完整探针通过；这次没有 Rust 生产代码变更。2026-10-04 收尾的 Rust 1.97.1 fmt、workspace/all-targets Clippy `-D warnings` 与 workspace tests 通过。测试重建了 `target/debug/mo-broker.exe`，当前 SHA-256 为 `277CEE927571F5521E44ECBFF68CA6B54AD85801DB98C9D924AA8EC2803396C5`；历史完整探针用的是 `65B3BA7FED94E50CBE5978E59D905711629222BDC125176016298EA4061BAA05`。外部输入清单记录采集时的身份，不能拿当前重建文件冒充当时的二进制；148 个归档文件仍一致。
 
 下一步继续细分 `UserDictionary::Load → Db::Open` 与 `Dictionary::Load` 的映射准备成本，分别测量 fresh/existing profile、首次拉起和受控内存压力。任何产品方案须同时满足无输入/session 隔离、50 ms key 与 400 ms activation，之后才进入已注册 Win10 宿主和 loaded-TIP 验收。G2/G3 状态保持不变。
+
+2026-10-04 后续 Db::Open 与映射准备分项、共享 prebuilt 对照见 [用户词典打开证据](WIN10-DB-OPEN-EVIDENCE.md)。原有失败和本轮清单继续保留；新诊断未进入生产 runtime。
