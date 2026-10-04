@@ -17,3 +17,11 @@ The isolated patch implements this contract, without log reuse or a new producti
 The existing v2 symbol cannot distinguish old behavior from this stricter contract. Before adoption, define a new ABI/provenance identity gate, integrate runtime-build/receipts/CI, rebuild isolated stages, and verify normal preferences/learning/schema behavior plus installed Windows 10 hosts. An explicit recovery UX/backup policy remains separate work. This does not add input replay, exactly-once commits, synchronous normal learning, generic corruption repair or a power-loss guarantee.
 
 Full workspace watchdog tests and TIP latency still fail in this turn. The accepted runtime, installed VM, deadlines and Phase 0 acceptance status remain unchanged. Evidence and reproduction: [Win10 user dictionary errors](../phase-0/WIN10-USERDB-ERRORS-EVIDENCE.md).
+
+## 2026-10-04 follow-up
+
+ADR 0056 identifies the observed post-abort exit delay and replaces the Broker
+lifecycle exit path. Default and trace workspace tests now pass without relaxing
+the three-second assertion. The previous failures remain in the proposal's
+historical evidence. This native user dictionary policy is still Proposed;
+ABI/provenance/CI, new stage and installed-host adoption gates remain open.

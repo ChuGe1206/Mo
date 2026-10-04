@@ -335,11 +335,11 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(5));
         };
-        // Rust/MSVC abort uses STATUS_STACK_BUFFER_OVERRUN (fast-fail), not a
-        // normal test failure (101/1). Do not accept arbitrary nonzero status.
+        // Require the fixed deliberate process-termination status, not a
+        // normal test failure, generic panic abort, or arbitrary nonzero exit.
         assert_eq!(
             status.code(),
-            Some(0xc000_0409u32 as i32),
+            Some(mo_windows_platform::FAIL_STOP_EXIT_CODE as i32),
             "wrong exit status for {phase}: {status}"
         );
         use std::io::Read;

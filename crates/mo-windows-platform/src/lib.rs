@@ -12,6 +12,31 @@ pub struct RuntimeRoots {
     pub local_app_data: PathBuf,
 }
 
+/// Fixed application status for a deliberately abandoned unhealthy process.
+/// This is an exit status, not a raised Windows exception or crash report.
+pub const FAIL_STOP_EXIT_CODE: u32 = 0xE04D_4F01;
+
+/// Stop only the calling process without unwinding, running DLL detach hooks,
+/// allocating, logging, or waiting for a crash-reporting path. Intended for
+/// independent workers that can no longer complete operations safely.
+/// Pending kernel I/O still has to complete or cancel before process teardown.
+/// If the Windows API unexpectedly returns, abort remains the last fallback.
+pub fn fail_stop_current_process() -> ! {
+    #[cfg(windows)]
+    {
+        // SAFETY: the pseudo-handle names only this process, needs no close,
+        // and accepts a plain fixed exit status. Success never returns; this
+        // intentionally abandons all threads and any incomplete native state.
+        unsafe {
+            windows_sys::Win32::System::Threading::TerminateProcess(
+                windows_sys::Win32::System::Threading::GetCurrentProcess(),
+                FAIL_STOP_EXIT_CODE,
+            );
+        }
+    }
+    std::process::abort()
+}
+
 /// Query OS-owned Known Folder locations for the current process user.
 /// This never consults ProgramFiles/LOCALAPPDATA environment variables.
 pub fn runtime_roots() -> io::Result<RuntimeRoots> {

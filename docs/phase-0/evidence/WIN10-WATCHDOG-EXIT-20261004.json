@@ -1,0 +1,418 @@
+{
+  "format": 1,
+  "kind": "mo-win10-watchdog-exit",
+  "date": "2026-10-04",
+  "synthetic_only": true,
+  "vm_changed": false,
+  "production_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "budgets_changed": false,
+  "abort_fallback_preserved": true,
+  "exit_status": "E04D4F01",
+  "legacy": {
+    "exe_sha256": "0CEE5EE9163FC63BC7F99F94F14427E74C0DF04118073A1850EF3ED6046852F8",
+    "wer_observed_matching_child_count": 8,
+    "above_three_seconds": 5,
+    "measurement": "parent receipt/poll plus WMI observation; no native CPU attribution",
+    "cases": [
+      {
+        "phase": "startup",
+        "trial": 1,
+        "fault_ms": 59,
+        "fail_stop_entry_ms": 126,
+        "exit_ms": 5101,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": false
+      },
+      {
+        "phase": "create",
+        "trial": 1,
+        "fault_ms": 152,
+        "fail_stop_entry_ms": 300,
+        "exit_ms": 2183,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "apply",
+        "trial": 1,
+        "fault_ms": 70,
+        "fail_stop_entry_ms": 149,
+        "exit_ms": 2733,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "destroy",
+        "trial": 1,
+        "fault_ms": 67,
+        "fail_stop_entry_ms": 144,
+        "exit_ms": 4372,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": false
+      },
+      {
+        "phase": "finalize",
+        "trial": 1,
+        "fault_ms": 1592,
+        "fail_stop_entry_ms": 1661,
+        "exit_ms": 4116,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": false
+      },
+      {
+        "phase": "panic",
+        "trial": 1,
+        "fault_ms": 158,
+        "fail_stop_entry_ms": 234,
+        "exit_ms": 7430,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": false
+      },
+      {
+        "phase": "worker-panic",
+        "trial": 1,
+        "fault_ms": 153,
+        "fail_stop_entry_ms": 251,
+        "exit_ms": 3264,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": false
+      },
+      {
+        "phase": "pool-shutdown",
+        "trial": 1,
+        "fault_ms": 364,
+        "fail_stop_entry_ms": 445,
+        "exit_ms": 2689,
+        "exit_code_hex": "C0000409",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": true,
+        "within_original_three_seconds": true
+      }
+    ]
+  },
+  "current": {
+    "maximum_exit_ms": 215.0,
+    "minimum_exit_ms": 36.0,
+    "cases": [
+      {
+        "phase": "startup",
+        "trial": 1,
+        "fault_ms": 60,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 141,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "create",
+        "trial": 1,
+        "fault_ms": 132,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 215,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "apply",
+        "trial": 1,
+        "fault_ms": 49,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 132,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "destroy",
+        "trial": 1,
+        "fault_ms": 50,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 134,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "finalize",
+        "trial": 1,
+        "fault_ms": 46,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 129,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "panic",
+        "trial": 1,
+        "fault_ms": 51,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 62,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "worker-panic",
+        "trial": 1,
+        "fault_ms": 46,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 49,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "pool-shutdown",
+        "trial": 1,
+        "fault_ms": 49,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 131,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "startup",
+        "trial": 2,
+        "fault_ms": 33,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 117,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "create",
+        "trial": 2,
+        "fault_ms": 50,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 132,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "apply",
+        "trial": 2,
+        "fault_ms": 48,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 131,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "destroy",
+        "trial": 2,
+        "fault_ms": 49,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 130,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "finalize",
+        "trial": 2,
+        "fault_ms": 86,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 171,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "panic",
+        "trial": 2,
+        "fault_ms": 63,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 64,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "worker-panic",
+        "trial": 2,
+        "fault_ms": 34,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 36,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "pool-shutdown",
+        "trial": 2,
+        "fault_ms": 39,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 121,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "startup",
+        "trial": 3,
+        "fault_ms": 56,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 140,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "create",
+        "trial": 3,
+        "fault_ms": 37,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 120,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "apply",
+        "trial": 3,
+        "fault_ms": 50,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 132,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "destroy",
+        "trial": 3,
+        "fault_ms": 45,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 130,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "finalize",
+        "trial": 3,
+        "fault_ms": 55,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 138,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "panic",
+        "trial": 3,
+        "fault_ms": 51,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 53,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "worker-panic",
+        "trial": 3,
+        "fault_ms": 112,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 114,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      },
+      {
+        "phase": "pool-shutdown",
+        "trial": 3,
+        "fault_ms": 44,
+        "fail_stop_entry_ms": null,
+        "exit_ms": 128,
+        "exit_code_hex": "E04D4F01",
+        "parent_terminated": false,
+        "matching_wer_reporter_observed": false,
+        "within_original_three_seconds": true
+      }
+    ],
+    "wer_polling_enabled": false,
+    "above_three_seconds": 0,
+    "exe_sha256": "61CB1960C76860A1DB0C082F3183894D8EB5943102312011DB8625C11916DA26"
+  },
+  "checks": {
+    "broker_release_engine_service_tests": 12,
+    "native_build_abi_nonmutating_policy": "passed",
+    "external_broker_exits": 4,
+    "workspace_trace": "passed",
+    "tip_fake_architectures": [
+      "x64",
+      "Win32"
+    ],
+    "clippy_default": "passed",
+    "fmt": "passed",
+    "clippy_trace": "passed",
+    "workspace_build": "passed",
+    "harness_preflight_guards": 6,
+    "native_architectures": [
+      "x64",
+      "Win32"
+    ],
+    "workspace_default": "passed",
+    "script_ast_checks": 2,
+    "broker_release_build": "passed",
+    "tip_fault_trials_per_architecture": 1
+  },
+  "actual_debug_broker_sha256": "A1FD932C5065AF3119CCC67AEF86920C9581818C6F7D1BF0024AF8D3C0835EA9",
+  "actual_release_broker_sha256": "6CE5D8BBE60629684F5E0FB7C56A1573F168B6F32059E2AD0C1F9F18949ABB96",
+  "limitations": [
+    "Only Broker lifecycle boundary redirected; low-level pipe aborts and implicit Rust aborts remain.",
+    "Kernel I/O cancellation still controls final teardown.",
+    "Rust release test harness uses unwind, unlike production panic=abort.",
+    "No new Rime latency/VM/release package validation.",
+    "Userdb ABI/provenance policy remains proposed."
+  ],
+  "evidence": {
+    "root": "build/win10-evidence-clean-v1/WatchdogExit-v1",
+    "external_input_count": 8,
+    "manifest_sha256": "F8409E574A34269689478FC08C0553F88F944A7F48CF238B940D82AD75D56AC7",
+    "file_count": 117
+  }
+}

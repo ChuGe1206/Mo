@@ -193,3 +193,11 @@
 完整 workspace 首轮四个三秒 watchdog 失败，默认复跑 panic 失败，串行复跑 startup 失败；单项 startup 随后 2.13 秒通过，未改时限/未定根因。正确映像位置的 TIP x64 首/第二轮及 Win32 首轮仍失败，Win32 第二轮通过，ready 2,951/1,757 ms；G2/G3、延迟预算不变。首版过度要求可缺省词典以及首轮 TIP Broker 路径配置错误的失败均归档。
 
 新 DLL `E8D8C1FD…` 和 helper `74A82A4F…` 只在隔离 build 使用；接受 runtime `94D646…` 和 VM 0.0.11.0 未变。补丁尚未接入 runtime-build/CI/stage/安装包，v2 导出尚不能识别该新策略；完整 workspace 问题、新 ABI/provenance 构建门与 privacy/learning/schema/安装态复验是接入前置检查。源码、实际 PE、合成 DB 和负向日志封存在 `build/win10-evidence-clean-v1/UserDbErrors-v1`，身份见 Git 汇总。本轮全部 owned child 已结束，日常开发继续 develop。
+
+## 2026-10-04 watchdog 退出路径交接
+
+[退出证据](WIN10-WATCHDOG-EXIT-EVIDENCE.md) 与 ADR 0056：旧 test-only 标记确认八阶段均进入 fail_stop，全部观察到指向 owned child 的 WerFault，五项超过原三秒（exit 2,183–7,430 ms）。这些时戳含父进程/WMI观察成本，不精确分配 WER/CPU 开销；旧失败保留。
+
+Windows Broker lifecycle 改为平台 safe primitive 的当前进程 TerminateProcess，固定应用退出码 E04D4F01，API 意外返回 fallback abort；不分配、不记录日志、不运行析构/正常 DLL detach。生产健康预算和 TIP deadline 未变，unit fixture 仍要求 intended marker+固定退出状态+三秒内结束。八阶段各三次共 24 child 实测 36–215 ms，全通过且无 parent kill。
+
+默认/trace 完整 workspace、两套 Clippy/fmt、Release 优化 EngineService 12 项、双架构 native strict/ABI/nonmutating policy 与默认 fake TIP IPC/pool/UI/edit/一轮重连故障（共四次外部 Broker 退出）均通过。没有将外部 harness kill 混作内部 watchdog；Rust production panic=abort 和 pipe 极端错误 abort、永久 kernel I/O 卡住仍是边界。接受 runtime 94D646…、VM 0.0.11.0 与 G2/G3 未变，词库延迟仍失败。ADR 0055 继续 Proposed；完整 workspace 退出缺口已补，下一步新用户词典 ABI/provenance/CI 门及安装态 Win10 验收。源码/旧新实际 PE/日志归档 WatchdogExit-v1，身份见 Git 汇总；继续在 develop 开发。

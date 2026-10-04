@@ -4,5 +4,12 @@
 /// a delayed commit. Do not unwind across librime, retry, detach an unsafe
 /// worker, or block on stderr while trying to terminate the broken process.
 pub(crate) fn fail_stop() -> ! {
-    std::process::abort()
+    #[cfg(windows)]
+    {
+        mo_windows_platform::fail_stop_current_process()
+    }
+    #[cfg(not(windows))]
+    {
+        std::process::abort()
+    }
 }
