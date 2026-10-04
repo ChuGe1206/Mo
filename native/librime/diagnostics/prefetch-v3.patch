@@ -1,0 +1,43 @@
+diff --git a/src/rime/dict/mapped_file.cc b/src/rime/dict/mapped_file.cc
+--- a/src/rime/dict/mapped_file.cc
++++ b/src/rime/dict/mapped_file.cc
+@@ -7,6 +7,7 @@
+ // 2011-06-30 GONG Chen <chen.sst@gmail.com>
+ //
+ #include <fstream>
++#include <rime/mo_prefetch_diagnostic.h>
+ #include <filesystem>
+ #include <boost/interprocess/file_mapping.hpp>
+ #include <boost/interprocess/mapped_region.hpp>
+@@ -29,6 +30,9 @@
+                                                       file_mapping_mode));
+     region_.reset(
+         new boost::interprocess::mapped_region(*file_, file_mapping_mode));
++    if (mode == kOpenReadOnly) {
++      mo_diagnostic::PrefetchMapping(region_->get_address(), region_->get_size());
++    }
+   }
+   ~MappedFileImpl() {
+     region_.reset();
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -6,6 +6,7 @@
+ //
+ #include <cctype>
+ #include <rime/mo_diagnostic.h>
++#include <rime/mo_prefetch_diagnostic.h>
+ #include <rime/common.h>
+ #include <rime/composition.h>
+ #include <rime/context.h>
+@@ -91,7 +92,9 @@
+     }
+   }
+   // The locked default schema has Emoji and traditionalization filters.
+-  return prepared == 2 && kinds == 3u;
++  const bool ready = prepared == 2 && kinds == 3u;
++  if (ready) { mo_diagnostic::PrefetchImage(); }
++  return ready;
+ }
+ 
+ Engine* Engine::Create() {

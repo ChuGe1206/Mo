@@ -202,3 +202,28 @@ means collection completed; inspect `results.json` and both logs for acceptance.
 This debug startup uses local user/build, not installed shared prebuilt data.
 The diagnostic emits fixed scope metadata on synthetic inputs only and can alter
 wall time. Never point it at a real user profile or package its DLL as a runtime.
+## Field-page sampling and optional Windows prefetch experiment
+
+After the v3 timing pair, `read-pages-v3.patch` adds scalar load residency/timing
+and Table/StringTable/Marisa decode scopes. Copy `mo_read_diagnostic.h` as well.
+Use `tip-latency-diagnostic.ps1 -ReadPageTrace` to enable at most 512 records per
+owned Broker process. The tool explicitly sets the flag to zero by default.
+No addresses, values, keys or candidate contents are emitted. Sampling forces
+loads and adds QueryWorkingSetEx/VirtualQuery plus synchronous stderr overhead;
+its time cannot be reported as uninstrumented performance.
+
+`prefetch-v3.patch` is a FOURTH, separate experiment requiring
+`mo_prefetch_diagnostic.h`. The tool's `-PrefetchRanges` sends input-free hints for
+read-only mappings and readable committed image regions, with no page touch or
+protection change. The default is off. API success does not promise working-set
+residency or deadline success; current Win32 tests remain failures and a mapping
+hint alone took 486 ms. Neither experimental patch is a package build input.
+
+`test-abi3-diagnostic-patches.ps1` replays the first three by default; add
+`-IncludePrefetchExperiment` for all four, retaining the userdb protection guards.
+`ReadPageProbe.vcxproj` requires Release/x64 and an isolated `MoDiagnosticOutDir`,
+compiles with /W4 /WX /MT, and uses synthetic anonymous/private pages only.
+Run `tools/test-read-page-probe.ps1 -ProbePath <absolute-executable>` for the
+bounded off/on/prefetch/invalid matrix, scalar preservation and 512-record cap.
+See [Win10 read-page evidence](../../../docs/phase-0/WIN10-READ-PAGES-EVIDENCE.md)
+for versions, raw records, retained failures, and interpretation limits.

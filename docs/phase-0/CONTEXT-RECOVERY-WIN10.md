@@ -168,3 +168,28 @@ Win32 用户词典/英文查询/Prism 也有长区间。未证明硬缺页、磁
 Abi3Latency-v1，由 Git JSON manifest 绑定。所有 owned 进程已退出。
 继续在 develop；下一步追踪 Sort/Peek 映射访问等待，验证后续键与 fresh 启动，
 随后安装态新 ABI、宿主及 loaded-TIP/登录矩阵。G2/G3 仍未完成。
+## 2026-10-04 单字段页面读取与系统预取续查
+
+[读取/预取证据](WIN10-READ-PAGES-EVIDENCE.md)：新增最多 512 条标量读取采样、
+解码分项、严格合成 probe，以及可选 PrefetchVirtualMemory 实验。四个采样进程
+首键各 419 次读取/24 次非驻留；具体 weight load 10.277 ms、string ID 3.016 ms
+伴随工作集转换。另有 24 个非驻留只合计 52 µs 的样本；元数据查询本身增加
+16–18 ms，未证明硬缺页/磁盘/调度责任，不能混同未采样性能。
+
+同 DLL 关闭/开启对照共 32 次完整 TIP，9 失败/23 通过。预取 x64 fresh 首轮
+通过但 ready 1020 ms；Win32 fresh/existing 首键仍 129/185 ms，全部 API 返回 1
+也不能保证时限。一份约 60 MB mapping 单次预取 486 ms，因此不进入产品。
+采样 DLL CF021ED0… 和预取 DLL F2A4C015… 保留 dist-v3/dist-v4，current source/
+compile 是 v4；所有测试仅 local user/build debug 计划，前端 Win32 的引擎仍 x64。
+
+完整 workspace 发现 PID+时间戳测试目录碰撞；80adaaf 改原子序列及创建所有权，
+固定同时间戳八线程回归通过。首轮失败与修复后通过均保留；fmt/Clippy/workspace、
+strict native 四项、三/四补丁 replay、八拒绝门、十 CI block AST 通过。
+原始产物/源码/profile/log 在 ReadPages-v1，由 Git JSON manifest 绑定。
+接受 stage 与 VM 0.0.11.0 未改，50/400 ms 及 G2/G3 不变，owned 进程已退出。
+继续 develop；下一步隔离 Win10 内核缺页/I/O/调度证据及 fresh 首次拉起验证，
+随后新 ABI 安装态、宿主及 loaded-TIP/登录矩阵。
+
+2026-10-05 收尾：按实验起始日保留证据文件名；567 个归档文件、245 个外部输入
+校验通过，manifest 18BCD35D…，接受 stage DLL 哈希未变。32 次探针统计为
+9 失败/23 通过，完整 workspace 在修复测试目录碰撞后通过。

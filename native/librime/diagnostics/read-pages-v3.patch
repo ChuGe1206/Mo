@@ -1,0 +1,72 @@
+diff --git a/src/rime/dict/dictionary.cc b/src/rime/dict/dictionary.cc
+--- a/src/rime/dict/dictionary.cc
++++ b/src/rime/dict/dictionary.cc
+@@ -1,4 +1,5 @@
+ #include <rime/mo_diagnostic.h>
++#include <rime/mo_read_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -80,8 +81,9 @@
+     return a.is_exact_match() > b.is_exact_match();
+   if (a.remaining_code.length() != b.remaining_code.length())
+     return a.remaining_code.length() < b.remaining_code.length();
+-  return a.credibility + a.entries[a.cursor].weight >
+-         b.credibility + b.entries[b.cursor].weight;  // by weight desc
++  const auto a_weight = mo_diagnostic::ReadScalar(&a.entries[a.cursor].weight, "sort_weight");
++  const auto b_weight = mo_diagnostic::ReadScalar(&b.entries[b.cursor].weight, "sort_weight");
++  return a.credibility + a_weight > b.credibility + b_weight;  // by weight desc
+ }
+ 
+ struct CodeMatch {
+diff --git a/src/rime/dict/table.cc b/src/rime/dict/table.cc
+--- a/src/rime/dict/table.cc
++++ b/src/rime/dict/table.cc
+@@ -1,4 +1,5 @@
+ #include <rime/mo_diagnostic.h>
++#include <rime/mo_read_diagnostic.h>
+ //
+ // Copyright RIME Developers
+ // Distributed under the BSD License
+@@ -227,7 +228,9 @@
+ // }
+ 
+ string Table::GetString(const table::StringType& x) {
+-  return string_table_->GetString(x.str_id());
++  mo_diagnostic::Scope trace("native_query", "Table::GetString");
++  const auto id = mo_diagnostic::ReadScalar(&x.str_id(), "string_id");
++  return string_table_->GetString(id);
+ }
+ 
+ bool Table::AddString(const string& src,
+@@ -633,6 +636,7 @@
+ }
+ 
+ string Table::GetEntryText(const table::Entry& entry) {
++  mo_diagnostic::Scope trace("native_query", "Table::GetEntryText");
+   return GetString(entry.text);
+ }
+ 
+diff --git a/src/rime/dict/string_table.cc b/src/rime/dict/string_table.cc
+--- a/src/rime/dict/string_table.cc
++++ b/src/rime/dict/string_table.cc
+@@ -6,6 +6,7 @@
+ //
+ 
+ #include <sstream>
++#include <rime/mo_diagnostic.h>
+ #include <rime/common.h>
+ #include <rime/dict/string_table.h>
+ 
+@@ -51,9 +52,11 @@
+ }
+ 
+ string StringTable::GetString(StringId string_id) {
++  mo_diagnostic::Scope trace("native_query", "StringTable::GetString");
+   marisa::Agent agent;
+   agent.set_query(string_id);
+   try {
++    mo_diagnostic::Scope reverse("native_query", "Marisa::reverse_lookup");
+     trie_.reverse_lookup(agent);
+   } catch (const marisa::Exception& /*ex*/) {
+     LOG(ERROR) << "invalid id for string table: " << string_id;

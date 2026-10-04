@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory=$true)][string]$RuntimeBuildDirectory)
+param([Parameter(Mandatory=$true)][string]$RuntimeBuildDirectory, [switch]$IncludePrefetchExperiment)
 $ErrorActionPreference='Stop'
 $repo=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'runtime-build/source-policy.ps1')
@@ -8,7 +8,8 @@ Assert-MoUserDbStartupPolicy $base
 $out=Join-Path $repo ('build/mo-abi3-diagnostic-replay-'+[Guid]::NewGuid().ToString('N'))
 $source=Join-Path $out 'source'
 $patchDir=Join-Path $repo 'native/librime/diagnostics'
-$patches=@('components-v3.patch','queries-v3.patch')
+$patches=@('components-v3.patch','queries-v3.patch','read-pages-v3.patch')
+if($IncludePrefetchExperiment){$patches+=@('prefetch-v3.patch')}
 $names=@('src/rime/dict/level_db.cc')
 foreach($patch in $patches){
     $text=Get-Content -LiteralPath (Join-Path $patchDir $patch) -Raw
@@ -32,6 +33,8 @@ try{
     }
 }finally{Pop-Location}
 Copy-Item -LiteralPath (Join-Path $patchDir 'mo_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_diagnostic.h')
-Write-Host 'Both ABI3 timing patches applied; startup userdb protection preserved after each patch.'
+Copy-Item -LiteralPath (Join-Path $patchDir 'mo_read_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_read_diagnostic.h')
+if($IncludePrefetchExperiment){Copy-Item -LiteralPath (Join-Path $patchDir 'mo_prefetch_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_prefetch_diagnostic.h')}
+Write-Host 'ABI3 diagnostic patches applied; startup userdb protection preserved after each patch.'
 Write-Host "Synthetic source replay retained at $out"
 $global:LASTEXITCODE=0

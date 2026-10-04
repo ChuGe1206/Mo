@@ -137,7 +137,7 @@ jobs:
           ./tools/runtime-build/build.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc') -OutputDirectory $runtime
           ./tools/runtime-build/test-policy.ps1 -SourceDir $source -CmakeArchivePath $cmakeArchive -BoostArchivePath $boostArchive -LuaArchivePath $luaArchive -PythonPath (Get-Command python).Source -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
           ./tools/runtime-build/test-userdb-policy.ps1 -RuntimeBuildDirectory $runtime
-          ./tools/test-abi3-diagnostic-patches.ps1 -RuntimeBuildDirectory $runtime
+          ./tools/test-abi3-diagnostic-patches.ps1 -RuntimeBuildDirectory $runtime -IncludePrefetchExperiment
           ./tools/runtime-build/test-resource-file.ps1
           ./tools/runtime-build/test-relocation.ps1 -LibrimeDistDir (Join-Path $runtime 'dist') -SharedDataDir (Join-Path $env:RUNNER_TEMP 'rime-ice') -UserDataDir (Join-Path $env:RUNNER_TEMP 'rime-user') -RustToolchain 1.97.1
           ./tools/runtime-build/test-dictionary-compatibility.ps1 -RuntimeBuildDirectory $runtime -OpenccDataDir (Join-Path $PWD 'build/compiled-opencc')
@@ -172,6 +172,15 @@ jobs:
             fixture = (Get-FileHash -LiteralPath $paths.FixtureProbePath).Hash
           }
           ./tools/test-userdb-errors.ps1 @paths -ExpectedHashes $hashes -EvidenceName ci-userdb-errors
+      - name: Check isolated scalar page-read diagnostics
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $msbuild = & $vswhere -latest -products * -find 'MSBuild/**/Bin/MSBuild.exe' | Select-Object -First 1
+          $output = Join-Path $PWD 'build/mo-read-page-probe'
+          & $msbuild native/librime/diagnostics/ReadPageProbe.vcxproj /nologo /m:1 /nodeReuse:false /p:Configuration=Release /p:Platform=x64 "/p:MoDiagnosticOutDir=$output"
+          if ($LASTEXITCODE -ne 0) { throw 'Read-page strict probe build failed' }
+          ./tools/test-read-page-probe.ps1 -ProbePath (Join-Path $output 'mo_read_page_probe.exe')
       - name: Check TIP latency diagnostic refusal policy
         shell: pwsh
         run: ./tools/test-tip-latency-diagnostic.ps1
