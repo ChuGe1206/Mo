@@ -178,11 +178,14 @@ impl From<StoreError> for ControllerError {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use mo_settings::{InputScheme, LoadedSettings, load};
 
     use super::*;
+
+    static FIXTURE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
     struct Fixture(PathBuf);
 
@@ -192,10 +195,25 @@ mod tests {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_nanos();
-            let path = std::env::temp_dir()
-                .join(format!("mo-settings-app-{}-{nonce}", std::process::id()));
-            fs::create_dir(&path).unwrap();
-            Self(path)
+            Self::with_nonce(nonce)
+        }
+
+        fn with_nonce(nonce: u128) -> Self {
+            // Wall-clock precision does not guarantee distinct parallel fixtures.
+            // Only successful create_dir grants this fixture cleanup ownership.
+            for _ in 0..64 {
+                let sequence = FIXTURE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+                let path = std::env::temp_dir().join(format!(
+                    "mo-settings-app-{}-{nonce}-{sequence}",
+                    std::process::id()
+                ));
+                match fs::create_dir(&path) {
+                    Ok(()) => return Self(path),
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                    Err(error) => panic!("cannot create settings test fixture: {error}"),
+                }
+            }
+            panic!("settings test fixture namespace exhausted")
         }
     }
 
@@ -203,6 +221,40 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn parallel_fixtures_with_the_same_timestamp_remain_independent() {
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(8));
+        let children = (0..8)
+            .map(|_| {
+                let barrier = std::sync::Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    Fixture::with_nonce(0)
+                })
+            })
+            .collect::<Vec<_>>();
+        let fixtures = children
+            .into_iter()
+            .map(|child| child.join().unwrap())
+            .collect::<Vec<_>>();
+        let paths = fixtures
+            .iter()
+            .map(|fixture| fixture.0.clone())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(paths.len(), 8);
+        for (index, fixture) in fixtures.iter().enumerate() {
+            fs::write(fixture.0.join("synthetic"), index.to_string()).unwrap();
+        }
+        for (index, fixture) in fixtures.iter().enumerate() {
+            assert_eq!(
+                fs::read_to_string(fixture.0.join("synthetic")).unwrap(),
+                index.to_string()
+            );
+        }
+        drop(fixtures);
+        assert!(paths.iter().all(|path| !path.exists()));
     }
 
     #[test]
