@@ -7,6 +7,7 @@ mod engine_service;
 mod latency;
 mod lifecycle;
 mod settings_service;
+pub mod startup_latency;
 mod state;
 pub mod tcp_loopback_spike;
 #[cfg(windows)]

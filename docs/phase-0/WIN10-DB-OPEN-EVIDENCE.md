@@ -64,3 +64,5 @@ Session / PrepareResources 分别为 1,244,138 / 130,744 µs、83,649 / 80,376 �
 Actor 源码在构建后只改了顶部用途注释；归档 `actor-probe-source-at-build.rs` 保留构建时注释和功能代码。归档不承诺 PE 字节可复现或完整 PDB 调试环境。
 
 接受的生产 runtime SHA-256 仍为 `94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1`；VM 仍保留 0.0.11.0，本轮无新 VM 验收。下一步优先细分 Broker 启动剩余阶段，随后验证代表性 profile 与错误/崩溃恢复，才考虑产品选项；继续以 Win10 为主，补齐注册宿主、loaded-TIP 和登录矩阵。
+
+后续 Broker 八阶段计时与 fake 启动对照见 [启动分项证据](WIN10-BROKER-STARTUP-EVIDENCE.md)，原有超预算样本继续保留。

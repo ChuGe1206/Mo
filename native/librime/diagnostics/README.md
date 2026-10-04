@@ -138,3 +138,5 @@ The pinned LevelDB 1.23 source labels `reuse_logs` experimental. Retain its
 normal fresh/large/failed-append fallback. Do not add this option to production
 without crash/error recovery and representative profile tests. Current findings
 and the startup-budget failures are recorded in the DB-open evidence document.
+
+Broker-side startup timings are available with a debug `mo-broker/latency-trace` build; they are buffered until listening and sent through the existing bounded logger. See [Win10 startup evidence](../../../docs/phase-0/WIN10-BROKER-STARTUP-EVIDENCE.md) for phase boundaries, artifacts and the remaining fresh-profile failure.

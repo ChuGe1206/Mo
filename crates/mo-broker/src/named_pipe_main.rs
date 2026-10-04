@@ -4,8 +4,15 @@ fn main() -> std::io::Result<()> {
     #[cfg(debug_assertions)]
     use std::io;
 
+    use mo_broker::startup_latency::{Phase, Span};
+
+    mo_broker::startup_latency::begin();
+    let parse = Span::new(Phase::Parse);
     let mode = parse_startup(std::env::args_os().skip(1).collect())?;
+    drop(parse);
+    let binding = Span::new(Phase::PipeBind);
     let pool = mo_broker::windows_named_pipe::bind_default_pool()?;
+    drop(binding);
     match mode {
         #[cfg(debug_assertions)]
         StartupMode::Fake => mo_broker::windows_named_pipe::serve_pool_with_backend_factory(
@@ -17,7 +24,10 @@ fn main() -> std::io::Result<()> {
             let startup = *startup;
             let settings_path = startup.settings_path;
             let factory = move || {
+                let loading = Span::new(Phase::EngineLoad);
                 let engine = mo_rime::Engine::load(startup.engine_config, startup.dll_path)?;
+                drop(loading);
+                let _preparing = Span::new(Phase::BackendPrepare);
                 if startup.require_prepared_resources {
                     mo_rime::RimeBackend::with_prepared_resources(engine)
                 } else {

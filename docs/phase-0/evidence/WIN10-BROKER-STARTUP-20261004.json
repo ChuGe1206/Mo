@@ -1,0 +1,212 @@
+{
+  "format": 1,
+  "kind": "mo-win10-broker-startup-evidence",
+  "date": "2026-10-04",
+  "source_head": "ecd8953fac635bc77c59cad9923f5262c1a23fb5",
+  "broker_trace_sha256": "DD3DB30E7D7287A186A4419075579395246BDA1C6B8A458EA04A089680A33817",
+  "broker_default_sha256": "27162C30D6285DC49965A2F2418D95644051ED0AF979F0556F4FFA90561A5FC0",
+  "broker_release_trace_sha256": "F25E962599C5AAB27C46ABC34A451946D3EAB7783E7DD11729BBEBF3BD57585C",
+  "runtime_sha256": "CC732CB66A745372D97E73AC4688E4D15240BFCB00385D37B17AEF281D37D65E",
+  "native_source_manifest_sha256": "37BFAB3DE9C5355DFDB90BA91F305E230FCF1BF3CF34F1E634B00A0063E7DCA3",
+  "key_deadline_ms": 50,
+  "activation_budget_ms": 400,
+  "first_switch_target_ms": 500,
+  "vm_changed": false,
+  "production_runtime_sha256": "94D646160F78DFF6408E21DBD0C003CD7D71C5DD6B604AEDAA6CA780F96D93C1",
+  "synthetic_input_only": true,
+  "full_tip_machine_prebuilt": false,
+  "full_tip_learning_disabled": false,
+  "case_order": [
+    "x64-fresh-reuse",
+    "x64-existing-off",
+    "x64-existing-reuse",
+    "Win32-existing-reuse",
+    "Win32-existing-off"
+  ],
+  "full_tip": [
+    {
+      "case": "x64-fresh-reuse",
+      "ready_ms": 2044,
+      "first_probe_exit": 0,
+      "second_probe_exit": 0,
+      "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "first_dispatch_queue_us": 44,
+      "first_dispatch_engine_us": 3634,
+      "startup_us": {
+        "parse": 114770,
+        "pipe_bind": 2797,
+        "settings": 13,
+        "engine_load": 31336,
+        "backend_prepare": 1694576,
+        "engine_start": 1726191,
+        "workers_start": 566,
+        "main_to_ready": 1844434
+      },
+      "host_ready_minus_main_us": 199566,
+      "first_db_open_us": 311700,
+      "first_db_sync_calls": 2,
+      "first_db_sync_us": 293722,
+      "native_session_us": 1540269,
+      "native_prepareresources_us": 154264
+    },
+    {
+      "case": "x64-existing-off",
+      "ready_ms": 900,
+      "first_probe_exit": 0,
+      "second_probe_exit": 0,
+      "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "first_dispatch_queue_us": 11,
+      "first_dispatch_engine_us": 3831,
+      "startup_us": {
+        "parse": 499,
+        "pipe_bind": 1426,
+        "settings": 7,
+        "engine_load": 6853,
+        "backend_prepare": 566147,
+        "engine_start": 573253,
+        "workers_start": 457,
+        "main_to_ready": 575713
+      },
+      "host_ready_minus_main_us": 324287,
+      "first_db_open_us": 413364,
+      "first_db_sync_calls": 3,
+      "first_db_sync_us": 385998,
+      "native_session_us": 480177,
+      "native_prepareresources_us": 85937
+    },
+    {
+      "case": "x64-existing-reuse",
+      "ready_ms": 298,
+      "first_probe_exit": 0,
+      "second_probe_exit": 0,
+      "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "first_dispatch_queue_us": 13,
+      "first_dispatch_engine_us": 4951,
+      "startup_us": {
+        "parse": 468,
+        "pipe_bind": 1437,
+        "settings": 7,
+        "engine_load": 6138,
+        "backend_prepare": 147308,
+        "engine_start": 153602,
+        "workers_start": 508,
+        "main_to_ready": 156119
+      },
+      "host_ready_minus_main_us": 141881,
+      "first_db_open_us": 3152,
+      "first_db_sync_calls": 0,
+      "first_db_sync_us": 0,
+      "native_session_us": 67884,
+      "native_prepareresources_us": 79396
+    },
+    {
+      "case": "Win32-existing-reuse",
+      "ready_ms": 175,
+      "first_probe_exit": 0,
+      "second_probe_exit": 0,
+      "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "first_dispatch_queue_us": 40,
+      "first_dispatch_engine_us": 3980,
+      "startup_us": {
+        "parse": 441,
+        "pipe_bind": 1366,
+        "settings": 7,
+        "engine_load": 5712,
+        "backend_prepare": 141174,
+        "engine_start": 147253,
+        "workers_start": 551,
+        "main_to_ready": 149687
+      },
+      "host_ready_minus_main_us": 25313,
+      "first_db_open_us": 3033,
+      "first_db_sync_calls": 0,
+      "first_db_sync_us": 0,
+      "native_session_us": 62890,
+      "native_prepareresources_us": 78254
+    },
+    {
+      "case": "Win32-existing-off",
+      "ready_ms": 1116,
+      "first_probe_exit": 0,
+      "second_probe_exit": 0,
+      "schema_sha256": "F899E759ABDDCCD6187B4506CB5B2223F9889D4FB573D757C3E0C72953A652C2",
+      "first_dispatch_queue_us": 60,
+      "first_dispatch_engine_us": 3647,
+      "startup_us": {
+        "parse": 455,
+        "pipe_bind": 1704,
+        "settings": 7,
+        "engine_load": 7394,
+        "backend_prepare": 653593,
+        "engine_start": 661300,
+        "workers_start": 661,
+        "main_to_ready": 664198
+      },
+      "host_ready_minus_main_us": 451802,
+      "first_db_open_us": 494666,
+      "first_db_sync_calls": 3,
+      "first_db_sync_us": 418164,
+      "native_session_us": 569450,
+      "native_prepareresources_us": 84095
+    }
+  ],
+  "fake": [
+    {
+      "trial": 0,
+      "ready_ms": 1705,
+      "startup_us": {
+        "parse": 133,
+        "pipe_bind": 1699,
+        "settings": 23,
+        "engine_start": 291,
+        "workers_start": 501,
+        "main_to_ready": 2769
+      },
+      "host_ready_minus_main_us": 1702231
+    },
+    {
+      "trial": 1,
+      "ready_ms": 26,
+      "startup_us": {
+        "parse": 64,
+        "pipe_bind": 1366,
+        "settings": 11,
+        "engine_start": 252,
+        "workers_start": 534,
+        "main_to_ready": 2305
+      },
+      "host_ready_minus_main_us": 23695
+    },
+    {
+      "trial": 2,
+      "ready_ms": 29,
+      "startup_us": {
+        "parse": 65,
+        "pipe_bind": 1446,
+        "settings": 11,
+        "engine_start": 270,
+        "workers_start": 595,
+        "main_to_ready": 2458
+      },
+      "host_ready_minus_main_us": 26542
+    }
+  ],
+  "checks": {
+    "fmt": true,
+    "clippy_debug_default": true,
+    "clippy_debug_trace": true,
+    "clippy_release_default": true,
+    "clippy_release_trace": true,
+    "workspace_default": true,
+    "workspace_trace": true,
+    "default_diagnostic_markers_absent": true,
+    "release_trace_diagnostic_markers_absent": true,
+    "release_default_startup_rejections": 5,
+    "release_trace_startup_rejections": 5,
+    "full_tip_probes_passed": 10,
+    "startup_records_follow_ready": true
+  },
+  "archive_manifest_sha256": "C1A50611CC5CC3F81EFE6726D228E23D1F7F076E822F5F89D40D65EC76CAE8F8",
+  "archive_file_count": 55,
+  "external_input_count": 157
+}

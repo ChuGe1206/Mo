@@ -50,7 +50,7 @@ impl Queued {
 impl Running {
     pub(crate) fn finish(self) {
         #[cfg(all(debug_assertions, feature = "latency-trace"))]
-        diagnostic::emit(diagnostic::Record {
+        diagnostic::emit(diagnostic::Record::Request {
             operation: self.queued.operation,
             queue_us: self
                 .started
@@ -67,6 +67,10 @@ pub(crate) fn initialize() {
 }
 
 #[cfg(all(debug_assertions, feature = "latency-trace"))]
+pub(crate) fn startup_record(phase: crate::startup_latency::Phase, elapsed_us: u64) {
+    diagnostic::emit(diagnostic::Record::Startup { phase, elapsed_us });
+}
+#[cfg(all(debug_assertions, feature = "latency-trace"))]
 mod diagnostic {
     use super::Operation;
     use std::io::{self, Write};
@@ -77,10 +81,16 @@ mod diagnostic {
     const CAPACITY: usize = 256;
     static SENDER: OnceLock<SyncSender<Record>> = OnceLock::new();
     static DROPPED: AtomicU64 = AtomicU64::new(0);
-    pub(super) struct Record {
-        pub operation: Operation,
-        pub queue_us: u128,
-        pub engine_us: u128,
+    pub(super) enum Record {
+        Request {
+            operation: Operation,
+            queue_us: u128,
+            engine_us: u128,
+        },
+        Startup {
+            phase: crate::startup_latency::Phase,
+            elapsed_us: u64,
+        },
     }
 
     pub(super) fn initialize() {
@@ -105,18 +115,31 @@ mod diagnostic {
     }
 
     fn write_record(writer: &mut impl Write, record: &Record, dropped: u64) -> io::Result<()> {
-        let operation = match record.operation {
-            Operation::Create => "create",
-            Operation::Dispatch => "dispatch",
-            Operation::Destroy => "destroy",
-        };
-        writeln!(
-            writer,
-            "MO_LATENCY op={operation} queue_us={} engine_us={} dropped={dropped}",
-            record.queue_us, record.engine_us
-        )
+        match record {
+            Record::Request {
+                operation,
+                queue_us,
+                engine_us,
+            } => {
+                let operation = match operation {
+                    Operation::Create => "create",
+                    Operation::Dispatch => "dispatch",
+                    Operation::Destroy => "destroy",
+                };
+                writeln!(
+                    writer,
+                    "MO_LATENCY op={operation} queue_us={queue_us} engine_us={engine_us} dropped={dropped}"
+                )
+            }
+            Record::Startup { phase, elapsed_us } => {
+                writeln!(
+                    writer,
+                    "MO_STARTUP phase={} elapsed_us={elapsed_us} dropped={dropped}",
+                    phase.label()
+                )
+            }
+        }
     }
-
     fn try_record(sender: &SyncSender<Record>, record: Record) -> bool {
         match sender.try_send(record) {
             Ok(()) => true,
@@ -141,7 +164,7 @@ mod diagnostic {
     mod tests {
         use super::*;
         fn record() -> Record {
-            Record {
+            Record::Request {
                 operation: Operation::Dispatch,
                 queue_us: 12,
                 engine_us: 34,
@@ -156,6 +179,42 @@ mod diagnostic {
             assert!(started.elapsed() < std::time::Duration::from_millis(100));
             drop(receiver);
             assert!(!try_record(&sender, record()));
+        }
+        #[test]
+        fn startup_records_use_fixed_phases_and_share_the_nonblocking_channel() {
+            let (sender, receiver) = sync_channel(1);
+            for phase in crate::startup_latency::Phase::ALL {
+                let mut output = Vec::new();
+                let record = Record::Startup {
+                    phase,
+                    elapsed_us: 123,
+                };
+                write_record(&mut output, &record, 7).unwrap();
+                assert_eq!(
+                    String::from_utf8(output).unwrap(),
+                    format!(
+                        "MO_STARTUP phase={} elapsed_us=123 dropped=7\n",
+                        phase.label()
+                    )
+                );
+                assert!(try_record(&sender, record));
+                assert!(!try_record(
+                    &sender,
+                    Record::Startup {
+                        phase,
+                        elapsed_us: 456
+                    }
+                ));
+                receiver.recv().unwrap();
+            }
+            drop(receiver);
+            assert!(!try_record(
+                &sender,
+                Record::Startup {
+                    phase: crate::startup_latency::Phase::Parse,
+                    elapsed_us: 1
+                }
+            ));
         }
         #[test]
         fn output_has_only_fixed_metadata_fields() {

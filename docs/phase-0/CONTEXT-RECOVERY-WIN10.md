@@ -84,3 +84,13 @@ Win10 六阶段矩阵已完成，原始证据 `build/win10-evidence-clean-v1/Mat
 隔离 DLL `build/win10-db-open-v1/dist/lib/rime.dll` SHA `CC732CB66A745372D97E73AC4688E4D15240BFCB00385D37B17AEF281D37D65E`；当前 compile 也生成它，其他已归档 dist 版本仍保留。接受的生产 runtime `94D646…`、stage、VM 0.0.11.0 未变。reuse_logs 仅为 upstream experimental 诊断选项，未接入产品。
 
 原始归档 `build/win10-evidence-clean-v1/DbOpen-v1` 的 92 个文件/205 个外部输入身份由清单 SHA `37BFAB3DE9C5355DFDB90BA91F305E230FCF1BF3CF34F1E634B00A0063E7DCA3` 锁定；实际 Broker `277CEE…` 和 Actor 已复制保留。后续优先测 Broker 参数/计划解析、pipe pool、Engine load、prepare/readiness，补代表性 profile 与错误/崩溃恢复；保持 Win10 优先及原 deadline，G2/G3 不升级。
+
+## 2026-10-04 Broker 启动分项后续交接
+
+详见 [启动分项证据](WIN10-BROKER-STARTUP-EVIDENCE.md)。`crates/mo-broker/src/startup_latency.rs` 固定八槽记录 Parse/PipeBind/Settings/EngineLoad/BackendPrepare/EngineStart/WorkersStart/MainToReady；仅 debug + latency-trace 启用，借既有有界 logger 在 listening 后输出，默认/release 为零大小且无诊断输出字符串。engine_start 包含 load/prepare；host-minus-main 含进程创建、运行时、调度与 stderr 接收，不能当作 PE/Defender/磁盘直接证据。
+
+五组 local user/build 完整 TIP 首轮/第二轮（十次）全通过，默认允许合成学习。existing reuse 的 backend prepare 147/141 ms、host ready 298/175 ms；fresh reuse ready 2,044 ms，Session 1.54 秒。三个 fake 无输入启动 host 为 1,705/26/29 ms、main 内约 2.3–2.8 ms，首次副本路径与完整 TIP 路径不同。保留此前 471/525 ms 等失败预算样本，不宣称稳定启动或安装态通过。
+
+实测 trace Broker SHA `DD3DB30E7D7287A186A4419075579395246BDA1C6B8A458EA04A089680A33817`，沿用隔离 runtime `CC732CB…`。后续 Cargo 已重建 root Broker；实际三种 Broker、双架构 TIP、DLL、源码/日志/harness/checks 封存于 `build/win10-evidence-clean-v1/BrokerStartup-v1`，55 文件/157 外部身份，manifest SHA `C1A50611CC5CC3F81EFE6726D228E23D1F7F076E822F5F89D40D65EC76CAE8F8`。fmt、四种 Clippy、两套 workspace tests、默认诊断关闭、两种 release 各五拒绝门通过。
+
+VM 仍为 0.0.11.0；生产 runtime/stage 未变，owned Broker 均已退出。下一步验证 reuse_logs 合成崩溃/错误恢复与代表性词典，细分 fresh Session/文件打开/进程外启动，再考虑产品方案与安装态共享 prebuilt/注册宿主验收。G2/G3 与 50/400 ms 门槛不变。

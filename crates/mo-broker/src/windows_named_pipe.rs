@@ -20,6 +20,7 @@ use mo_windows_pipe::{
 use crate::BrokerConnection;
 use crate::engine_service::{EngineClient, EngineService};
 use crate::settings_service::SettingsService;
+use crate::startup_latency::{Phase, Span};
 
 pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
 pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
@@ -51,13 +52,11 @@ where
     B: EngineBackend + 'static,
     E: fmt::Display,
 {
-    serve_pool_with_shutdown_and_settings(
-        pool,
-        factory,
-        PipeCancellation::new()?,
-        per_slot_limit,
-        SettingsService::defaults(),
-    )
+    let setup = Span::new(Phase::Settings);
+    let shutdown = PipeCancellation::new()?;
+    let settings = SettingsService::defaults();
+    drop(setup);
+    serve_pool_with_shutdown_and_settings(pool, factory, shutdown, per_slot_limit, settings)
 }
 
 /// Installed startup opens the fixed Known Folder settings path before any
@@ -73,14 +72,11 @@ where
     B: EngineBackend + 'static,
     E: fmt::Display,
 {
+    let setup = Span::new(Phase::Settings);
     let settings = SettingsService::open(settings_path)?;
-    serve_pool_with_shutdown_and_settings(
-        pool,
-        factory,
-        PipeCancellation::new()?,
-        per_slot_limit,
-        settings,
-    )
+    let shutdown = PipeCancellation::new()?;
+    drop(setup);
+    serve_pool_with_shutdown_and_settings(pool, factory, shutdown, per_slot_limit, settings)
 }
 
 /// Coordinator-owned, process-local stop signal; never driven by an IPC peer.
@@ -129,9 +125,12 @@ where
     // multiply shutdown latency. This guard covers ALL workers and finalize.
     let _stop_watchdog = PoolStopWatchdog::start(&shutdown, POOL_SHUTDOWN_TIMEOUT)?;
     pool.set_cancellation(&shutdown);
+    let starting = Span::new(Phase::EngineStart);
     let engine = EngineService::start(factory)?;
+    drop(starting);
     let slot_count = pool.listeners().len();
     let outcome = thread::scope(|scope| {
+        let starting_workers = Span::new(Phase::WorkersStart);
         let mut gates = Vec::new();
         let mut workers: Vec<thread::ScopedJoinHandle<'_, io::Result<()>>> = Vec::new();
         for (slot, mut listener) in pool.into_listeners().into_iter().enumerate() {
@@ -200,8 +199,11 @@ where
             gate.send(())
                 .map_err(|_| io::Error::other("pipe worker exited before startup"))?;
         }
+        drop(starting_workers);
+        crate::startup_latency::capture_ready();
         eprintln!("Mo broker listening on {slot_count} protected pipe slots");
         crate::latency::initialize();
+        crate::startup_latency::publish();
         for worker in workers {
             let result = worker
                 .join()
