@@ -61,6 +61,9 @@ jobs:
         run: |
           ./installer/windows/test-staging.ps1
           ./installer/windows/test-package-authoring.ps1
+      - name: Verify same and changed payload upgrade-pair policies
+        shell: pwsh
+        run: ./installer/windows/test-linked-upgrade-pair.ps1
 
   librime-abi:
     runs-on: windows-2022

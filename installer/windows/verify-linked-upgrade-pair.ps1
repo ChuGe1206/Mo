@@ -3,7 +3,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$BaseEvidencePath,
     [Parameter(Mandatory = $true)][string]$UpgradeEvidencePath,
-    [Parameter(Mandatory = $true)][string]$OutputDirectory
+    [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [ValidateSet('Same', 'Changed')][string]$PayloadMode = 'Same'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,14 +60,18 @@ $upgradeVersion = [version]$upgrade['product_version']
 if ($baseVersion -ge $upgradeVersion -or
     $base['build_flavor'] -cne $upgrade['build_flavor'] -or
     $base['fault_injection_included'] -ne $upgrade['fault_injection_included'] -or
-    $base['stage_manifest_sha256'] -cne $upgrade['stage_manifest_sha256'] -or
     $base['msi_upgrade_code'] -cne $upgrade['msi_upgrade_code'] -or
     $base['bundle_upgrade_code'] -cne $upgrade['bundle_upgrade_code'] -or
     $base['msi_product_code'] -ceq $upgrade['msi_product_code'] -or
     $base['bundle_id'] -ceq $upgrade['bundle_id'] -or
     $base['msi_sha256'] -ceq $upgrade['msi_sha256'] -or
     $base['bundle_sha256'] -ceq $upgrade['bundle_sha256']) {
-    throw 'Linked installer pair is not a valid same-payload major-upgrade pair.'
+    throw 'Linked installer pair is not a valid major-upgrade pair.'
+}
+
+$samePayload = $base['stage_manifest_sha256'] -ceq $upgrade['stage_manifest_sha256']
+if (($PayloadMode -ceq 'Same') -ne $samePayload) {
+    throw "Linked installer pair does not match the requested $PayloadMode payload mode."
 }
 
 New-Item -ItemType Directory -Path $output | Out-Null
@@ -89,6 +94,17 @@ $result = [ordered]@{
     base_bundle_sha256 = $base['bundle_sha256']
     upgrade_bundle_sha256 = $upgrade['bundle_sha256']
 }
+if ($PayloadMode -ceq 'Changed') {
+    # Separate contracts prevent the same-payload VM matrix from accepting this
+    # receipt. Each installed tree must be checked against its own stage.
+    $result['format'] = 3
+    $result['kind'] = 'mo-linked-changed-payload-upgrade-pair'
+    $result.Remove('stage_manifest_sha256')
+    $result['base_stage_manifest_sha256'] = $base['stage_manifest_sha256']
+    $result['upgrade_stage_manifest_sha256'] = $upgrade['stage_manifest_sha256']
+    $result['base_linked_evidence_sha256'] = (Get-FileHash -LiteralPath $basePath).Hash
+    $result['upgrade_linked_evidence_sha256'] = (Get-FileHash -LiteralPath $upgradePath).Hash
+}
 $result | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (
     Join-Path $output 'linked-upgrade-pair-evidence.json') -Encoding utf8NoBOM
-Write-Host "Verified linked major-upgrade pair $baseVersion -> $upgradeVersion without executing either installer."
+Write-Host "Verified linked $PayloadMode-payload major-upgrade pair $baseVersion -> $upgradeVersion without executing either installer."

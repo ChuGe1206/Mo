@@ -303,3 +303,25 @@ install, repair, upgrade, forced rollback and uninstall in disposable VMs; sign
 the x64/x86 DLLs, Broker, MSI and Bundle with timestamping; and enforce signature
 checks in CI. Never run the Broker, updater or current-user finalizer as
 LocalSystem.
+
+## Changed payload upgrade evidence
+
+A new runtime or settings executable changes the stage identity. Verify each
+linked package against its own stage first, then record a changed payload pair:
+
+~~~powershell
+./installer/windows/verify-linked-upgrade-pair.ps1 -BaseEvidencePath <old-linked-installer-evidence.json> -UpgradeEvidencePath <new-linked-installer-evidence.json> -PayloadMode Changed -OutputDirectory <new-build-child>
+./installer/windows/test-linked-upgrade-pair.ps1
+~~~
+
+The default Same mode still requires identical stage hashes and emits the
+existing format 2 receipt. Changed requires different stage hashes, preserves
+the version/family/package identity checks, and emits format 3 with separate
+base/upgrade stage and linked evidence hashes. Neither mode executes installers
+or authorizes a VM test. Hash receipts are unsigned consistency records.
+
+The existing prepare-vm-matrix-test-kit.ps1 accepts only the same payload
+receipt. A changed payload test must verify the original installed tree against
+the base manifest and the upgraded tree against the upgrade manifest. The
+changed pair receipt does not prove runtime ABI compatibility, settings
+preservation, rollback, loaded TIP handling, or successful installation.

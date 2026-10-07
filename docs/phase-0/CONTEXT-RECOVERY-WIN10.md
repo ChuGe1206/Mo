@@ -232,3 +232,21 @@ ordinary save 在自有跨进程保护内核对强类型值与 absent/stored 来
 旧窗口不能关闭另一窗口的隐私偏好；设置模型 25/控制器 9 项通过，
 ignored child 入口由父测试明确调用。fmt/Clippy/workspace 与 EXE 构建通过。
 未操作真实用户配置、安装 GUI、stage 或 VM；v1 格式及输入时限不变。
+
+## 2026-10-07 ABI v3 与设置修复整合包
+
+[0.0.12.0 开发包证据](WIN10-PACKAGED-0120-EVIDENCE.md)：基于 6aebe7c 产品
+源快照重新构建 release Broker/settings、双架构 TIP/registrar；使用已验收 BE5E…
+ABI v3 运行时，诊断导出缺席。132-file 载荷、linked MSI/Burn、无警告 MSI ICE、
+kit 哈希通过，unsigned DevelopmentTest 仍不可分发。
+
+升级 pair 新增显式 Changed 模式，旧、新 stage 各自绑定；默认 Same 回执不变。
+14 项策略、21 项作者、39 项 VM 策略通过；实际 0.0.11.0 → 0.0.12.0 pair
+通过，默认模式和旧同载荷矩阵均拒绝它。脚本 AST、十个 CI block 通过，
+远端 CI 未核验。Package0120-v1 封存 123 文件/139 外部输入，
+manifest 62E9E136…；产品源 commit 与本轮验证工具改动分别记载。
+
+VM 在线，但无密码 guest command 被账户限制拒绝，Computer Use 两次无法激活
+窗口；本轮未执行安装/升级/GUI。最近验证的 VM 仍 0.0.11.0、旧 ABI v2。
+等待恢复可操作桌面，继续独立变更载荷 guest 升级和多窗口设置/宿主验证；
+现有 matrix 不能复用。时延专项保持暂停优先级，50/400 ms、G2/G3 未整体通过。
