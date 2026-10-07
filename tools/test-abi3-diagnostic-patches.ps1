@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory=$true)][string]$RuntimeBuildDirectory, [switch]$IncludePrefetchExperiment)
+param([Parameter(Mandatory=$true)][string]$RuntimeBuildDirectory, [switch]$IncludePrefetchExperiment, [switch]$IncludeDeferredTrace)
 $ErrorActionPreference='Stop'
 $repo=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'runtime-build/source-policy.ps1')
@@ -10,6 +10,7 @@ $source=Join-Path $out 'source'
 $patchDir=Join-Path $repo 'native/librime/diagnostics'
 $patches=@('components-v3.patch','queries-v3.patch','read-pages-v3.patch')
 if($IncludePrefetchExperiment){$patches+=@('prefetch-v3.patch')}
+if($IncludeDeferredTrace){$patches+=@('deferred-v3.patch')}
 $names=@('src/rime/dict/level_db.cc')
 foreach($patch in $patches){
     $text=Get-Content -LiteralPath (Join-Path $patchDir $patch) -Raw
@@ -32,6 +33,8 @@ try{
         Assert-MoUserDbStartupPolicy $source
     }
 }finally{Pop-Location}
+Copy-Item -LiteralPath (Join-Path $patchDir 'mo_thread_dispatch_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_thread_dispatch_diagnostic.h')
+Copy-Item -LiteralPath (Join-Path $patchDir 'mo_deferred_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_deferred_diagnostic.h')
 Copy-Item -LiteralPath (Join-Path $patchDir 'mo_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_diagnostic.h')
 Copy-Item -LiteralPath (Join-Path $patchDir 'mo_read_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_read_diagnostic.h')
 if($IncludePrefetchExperiment){Copy-Item -LiteralPath (Join-Path $patchDir 'mo_prefetch_diagnostic.h') -Destination (Join-Path $source 'src/rime/mo_prefetch_diagnostic.h')}

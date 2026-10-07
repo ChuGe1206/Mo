@@ -6,11 +6,15 @@ param(
     [Parameter(Mandatory=$true)][string]$NativeOutputDirectory,
     [Parameter(Mandatory=$true)][ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')][string]$EvidenceName,
     [switch]$ReadPageTrace,
-    [switch]$PrefetchRanges
+    [switch]$PrefetchRanges,
+    [switch]$DeferredTrace,
+    [switch]$ThreadDispatch
 )
 # Development measurement with fixed synthetic probes in new owned profiles.
 # A zero script exit means collection completed, NOT first-key acceptance.
 $ErrorActionPreference='Stop'
+if($ThreadDispatch -and -not $DeferredTrace){throw 'Thread dispatch requires deferred trace'}
+if($DeferredTrace -and ($ReadPageTrace -or $PrefetchRanges)){throw 'Deferred trace requires page queries and prefetch disabled'}
 $repo=Split-Path -Parent $PSScriptRoot
 $out=Join-Path $repo ('build/'+$EvidenceName)
 if(Test-Path -LiteralPath $out){throw 'Fresh evidence directory required'}
@@ -76,6 +80,8 @@ foreach($arch in @('x64','Win32')){
         $start.RedirectStandardError=$true
         $start.Environment["MO_DIAG_READ_PAGES"]=$(if($ReadPageTrace){"1"}else{"0"})
         $start.Environment["MO_DIAG_PREFETCH_RANGES"]=$(if($PrefetchRanges){"1"}else{"0"})
+        $start.Environment["MO_DIAG_DEFER_LOGS"]=$(if($DeferredTrace){"1"}else{"0"})
+        $start.Environment["MO_DIAG_THREAD_DISPATCH"]=$(if($ThreadDispatch){"1"}else{"0"})
         foreach($arg in @('--rime-prepared',$runtime,$shared,$user)){[void]$start.ArgumentList.Add($arg)}
         $watch=[Diagnostics.Stopwatch]::StartNew()
         $child=[Diagnostics.Process]::Start($start)
@@ -106,7 +112,7 @@ foreach($arch in @('x64','Win32')){
         if(-not $dispatch.Success){throw 'Missing completed dispatch evidence'}
         $row=[ordered]@{architecture=$arch;profile=$state;ready_ms=$readyMs;first_probe_exit=$first;second_probe_exit=$second;first_dispatch_queue_us=[long]$dispatch.Groups[1].Value;first_dispatch_engine_us=[long]$dispatch.Groups[2].Value;dropped=[long]$dispatch.Groups[3].Value;runtime_sha256=(Get-FileHash $runtime).Hash;broker_sha256=(Get-FileHash $broker).Hash;tip_sha256=(Get-FileHash $tip).Hash;probe_sha256=(Get-FileHash $probe).Hash}
         $rows+=$row
-        [ordered]@{format=1;kind='mo-win10-tip-latency-diagnostic';synthetic_only=$true;deadline_changed=$false;read_page_trace=[bool]$ReadPageTrace;prefetch_ranges=[bool]$PrefetchRanges;input_free_preparation=$true;debug_plan='local-user-build';cases=$rows}|ConvertTo-Json -Depth 5|Set-Content (Join-Path $out 'results.json') -Encoding utf8NoBOM
+        [ordered]@{format=1;kind='mo-win10-tip-latency-diagnostic';synthetic_only=$true;deadline_changed=$false;read_page_trace=[bool]$ReadPageTrace;prefetch_ranges=[bool]$PrefetchRanges;deferred_trace=[bool]$DeferredTrace;thread_dispatch=[bool]$ThreadDispatch;input_free_preparation=$true;debug_plan='local-user-build';cases=$rows}|ConvertTo-Json -Depth 5|Set-Content (Join-Path $out 'results.json') -Encoding utf8NoBOM
         $row|ConvertTo-Json -Compress
     }
 }

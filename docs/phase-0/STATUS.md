@@ -274,3 +274,27 @@ strict native 四项、三/四补丁 replay、八拒绝门、十 CI block AST �
 2026-10-05 收尾：按实验起始日保留证据文件名；567 个归档文件、245 个外部输入
 校验通过，manifest 18BCD35D…，接受 stage DLL 哈希未变。32 次探针统计为
 9 失败/23 通过，完整 workspace 在修复测试目录碰撞后通过。
+
+## 2026-10-07 固定缓冲、线程调度与候选惰性生成续查
+
+[缓冲与调度证据](WIN10-DEFERRED-EVIDENCE.md)：新增固定 2048 scope/每 capture、
+512 scalar/每进程；ProcessKey 与 Menu::Prepare 分开缓冲并配对 current-thread
+dispatch profiling。默认关闭，不用全系统 ETW 或硬件计数器，不进入产品包。
+六项严格 probe（含已有采集所有权）、原四项页面/预取、十一拒绝门、五补丁
+replay/实际源码、fmt/Clippy/workspace、十非空 CI block AST 通过；远端 CI 未验证。
+
+五组共 40 次完整 TIP：21 失败/19 通过。未加内部诊断的 BE5E…基线 fresh 首
+Actor x64 290 ms、Win32 88 ms，依旧失败。低扰动字段窗口最大 69.834 ms，
+x64 fresh 321 ms native/29 次切换、位 0/31；调度位图是聚合信息，
+未证明硬缺页、磁盘或具体等待原因。日志排出分项报告，但仍计入 50 ms 请求总耗时。
+
+发现 ProcessKey 后还会惰性生成候选：v6 native 31.5 ms 后 Menu::Prepare
+120.8 ms；v7 单独缓冲后仍有 94.3 ms menu（Sort 51.7 ms，2 次切换）。
+快首 native 1.36 ms 的 x64 existing 后续 native 256 ms，完整首轮仍失败。
+三个隔离 DLL 6830E63E…/D0053304…/4C3E5B73…，current source/compile 为 v7，
+前版 source-v5/v6 与产物保留；仅 debug local user/build/x64 引擎，两种前端。
+
+证据 Deferred-v1 按 SHA 去重 PE，原始日志/源码/合成 DB 与 external profile/build
+字典哈希绑定。旧归档未改，stage BE5E…及 VM 0.0.11.0 未改，owned 进程均退出。
+继续 develop；50/400 ms 与 G2/G3 仍开放，下一步关联缺页/I/O/逐项调度并
+覆盖全请求/后续键，再推进安装态新 ABI、宿主与 loaded-TIP/登录矩阵。

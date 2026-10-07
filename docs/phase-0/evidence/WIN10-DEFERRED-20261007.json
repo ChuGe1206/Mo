@@ -1,0 +1,5922 @@
+{
+  "format": 1,
+  "date": "2026-10-07",
+  "archive_path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\Deferred-v1",
+  "archive_manifest_sha256": "6205DF4E923D151DEC6AF4D4AD651BF42D1F0C40EBC8C343742CF9DADAA3A178",
+  "archive_file_count": 341,
+  "external_input_count": 603,
+  "results": {
+    "format": 1,
+    "date": "2026-10-07",
+    "baseline_commit": "d398ef7e7c6c1e7879b6089ece2562a36029c9e7",
+    "key_deadline_ms": 50,
+    "activation_budget_ms": 400,
+    "synthetic_only": true,
+    "vm_changed": false,
+    "system_trace_started": false,
+    "runtime_sha256": {
+      "5": "6830E63ECD621E59B943AE25ACF36A21DBA6C90C93D37278E1FEEB93E76174B7",
+      "6": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+      "7": "4C3E5B737141CCAED1122DDBD31C47662B92A62DB801AE2A124528A31A1F2916"
+    },
+    "accepted_runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+    "probe_count": 40,
+    "failures": 21,
+    "passes": 19,
+    "first_failures": 14,
+    "second_failures": 7,
+    "rows": [
+      {
+        "mode": "base",
+        "architecture": "x64",
+        "profile": "fresh",
+        "ready_ms": 2357,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 49,
+        "first_dispatch_engine_us": 290048,
+        "dropped": 0,
+        "runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 63,
+        "dispatch_max_us": 290048,
+        "dispatch_over_50ms": 1
+      },
+      {
+        "mode": "base",
+        "architecture": "x64",
+        "profile": "existing",
+        "ready_ms": 289,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 50,
+        "first_dispatch_engine_us": 2943,
+        "dropped": 0,
+        "runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 124,
+        "dispatch_max_us": 3059,
+        "dispatch_over_50ms": 0
+      },
+      {
+        "mode": "base",
+        "architecture": "Win32",
+        "profile": "fresh",
+        "ready_ms": 1189,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 44,
+        "first_dispatch_engine_us": 88420,
+        "dropped": 0,
+        "runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 3,
+        "dispatch_max_us": 88420,
+        "dispatch_over_50ms": 2
+      },
+      {
+        "mode": "base",
+        "architecture": "Win32",
+        "profile": "existing",
+        "ready_ms": 375,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 40,
+        "first_dispatch_engine_us": 2528,
+        "dropped": 0,
+        "runtime_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 124,
+        "dispatch_max_us": 38152,
+        "dispatch_over_50ms": 0
+      },
+      {
+        "mode": "off",
+        "architecture": "x64",
+        "profile": "fresh",
+        "ready_ms": 2118,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 42,
+        "first_dispatch_engine_us": 139172,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 3,
+        "dispatch_max_us": 139172,
+        "dispatch_over_50ms": 2
+      },
+      {
+        "mode": "off",
+        "architecture": "x64",
+        "profile": "existing",
+        "ready_ms": 551,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 40,
+        "first_dispatch_engine_us": 7161,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 65,
+        "dispatch_max_us": 360531,
+        "dispatch_over_50ms": 1
+      },
+      {
+        "mode": "off",
+        "architecture": "Win32",
+        "profile": "fresh",
+        "ready_ms": 1488,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 62,
+        "first_dispatch_engine_us": 85308,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 3,
+        "dispatch_max_us": 191804,
+        "dispatch_over_50ms": 2
+      },
+      {
+        "mode": "off",
+        "architecture": "Win32",
+        "profile": "existing",
+        "ready_ms": 538,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 40,
+        "first_dispatch_engine_us": 6491,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 65,
+        "dispatch_max_us": 79570,
+        "dispatch_over_50ms": 1
+      },
+      {
+        "mode": "on",
+        "architecture": "x64",
+        "profile": "fresh",
+        "ready_ms": 2227,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 10,
+        "first_dispatch_engine_us": 74749,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 19,
+        "dispatch_max_us": 133552,
+        "dispatch_over_50ms": 2,
+        "captured_frames": 16,
+        "captured_keys": 16,
+        "native_max_us": 130242,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 68607,
+            "flush": {
+              "scopes": 30,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 3,
+              "capture_us": 68608,
+              "flush_us": 1664
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 68607,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 486,
+                "wall_us": 68121,
+                "self_us": 165,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 648,
+                "wall_us": 67956,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 659,
+                "wall_us": 67944,
+                "self_us": 29,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 665,
+                "wall_us": 48999,
+                "self_us": 284,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 843,
+                "wall_us": 48714,
+                "self_us": 202,
+                "truncated": 0
+              },
+              {
+                "id": 236,
+                "parent": 228,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 26311,
+                "wall_us": 23073,
+                "self_us": 560,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 9104,
+                "wall_us": 17204,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 10215,
+                "wall_us": 16090,
+                "self_us": 16090,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 50457,
+                "wall_us": 12150,
+                "self_us": 369,
+                "truncated": 0
+              },
+              {
+                "id": 241,
+                "parent": 240,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 26695,
+                "wall_us": 11736,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 240,
+                "parent": 236,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 26695,
+                "wall_us": 11736,
+                "self_us": 0,
+                "truncated": 0
+              }
+            ]
+          },
+          {
+            "frame_index": 4,
+            "kind": "process_key",
+            "native_us": 13767,
+            "flush": {
+              "scopes": 26,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 130,
+              "arm_us": 8,
+              "capture_us": 13768,
+              "flush_us": 5074
+            },
+            "slow_scopes": [
+              {
+                "id": 3577,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 13767,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3583,
+                "parent": 3577,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 38,
+                "wall_us": 13729,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3584,
+                "parent": 3583,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 41,
+                "wall_us": 13724,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3586,
+                "parent": 3584,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 53,
+                "wall_us": 13712,
+                "self_us": 19,
+                "truncated": 0
+              },
+              {
+                "id": 3588,
+                "parent": 3586,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 54,
+                "wall_us": 12130,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 3590,
+                "parent": 3588,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 58,
+                "wall_us": 12122,
+                "self_us": 16,
+                "truncated": 0
+              },
+              {
+                "id": 3602,
+                "parent": 3590,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 893,
+                "wall_us": 11274,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 3603,
+                "parent": 3602,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 893,
+                "wall_us": 11272,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3604,
+                "parent": 3603,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 894,
+                "wall_us": 11268,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3605,
+                "parent": 3604,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 894,
+                "wall_us": 11267,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3606,
+                "parent": 3605,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 895,
+                "wall_us": 11266,
+                "self_us": 10,
+                "truncated": 0
+              },
+              {
+                "id": 3607,
+                "parent": 3606,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 895,
+                "wall_us": 11256,
+                "self_us": 11256,
+                "truncated": 0
+              }
+            ]
+          },
+          {
+            "frame_index": 16,
+            "kind": "process_key",
+            "native_us": 130242,
+            "flush": {
+              "scopes": 7,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 132,
+              "arm_us": 6,
+              "capture_us": 130243,
+              "flush_us": 28
+            },
+            "slow_scopes": [
+              {
+                "id": 11610,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 130242,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 11616,
+                "parent": 11610,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 36,
+                "wall_us": 130207,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 11617,
+                "parent": 11616,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 38,
+                "wall_us": 130202,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 11619,
+                "parent": 11617,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 50,
+                "wall_us": 130190,
+                "self_us": 19,
+                "truncated": 0
+              },
+              {
+                "id": 11621,
+                "parent": 11619,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 51,
+                "wall_us": 129579,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 11623,
+                "parent": 11621,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 54,
+                "wall_us": 129573,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 11634,
+                "parent": 11623,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 103,
+                "wall_us": 129515,
+                "self_us": 129515,
+                "truncated": 0
+              }
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 68607,
+        "first_flush": {
+          "scopes": 30,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 3,
+          "capture_us": 68608,
+          "flush_us": 1664
+        },
+        "read_count": 419,
+        "read_total_ns": 16441600,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 10216200,
+            "read_ns": 5083000,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 15708500,
+            "read_ns": 2391800,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 19759000,
+            "read_ns": 2199100,
+            "truncated": 0
+          },
+          {
+            "sample": 44,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 24407900,
+            "read_ns": 1897800,
+            "truncated": 0
+          },
+          {
+            "sample": 16,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 19044800,
+            "read_ns": 713700,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 68607,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 486,
+            "wall_us": 68121,
+            "self_us": 165,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 648,
+            "wall_us": 67956,
+            "self_us": 2,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 659,
+            "wall_us": 67944,
+            "self_us": 29,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 665,
+            "wall_us": 48999,
+            "self_us": 284,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 843,
+            "wall_us": 48714,
+            "self_us": 202,
+            "truncated": 0
+          },
+          {
+            "id": 236,
+            "parent": 228,
+            "category": "native_query",
+            "label": "UserDictionary::Lookup",
+            "start_us": 26311,
+            "wall_us": 23073,
+            "self_us": 560,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 9104,
+            "wall_us": 17204,
+            "self_us": 6,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 10215,
+            "wall_us": 16090,
+            "self_us": 16090,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 50457,
+            "wall_us": 12150,
+            "self_us": 369,
+            "truncated": 0
+          },
+          {
+            "id": 241,
+            "parent": 240,
+            "category": "native_query",
+            "label": "StringTable::GetString",
+            "start_us": 26695,
+            "wall_us": 11736,
+            "self_us": 3,
+            "truncated": 0
+          },
+          {
+            "id": 240,
+            "parent": 236,
+            "category": "native_query",
+            "label": "Table::GetString",
+            "start_us": 26695,
+            "wall_us": 11736,
+            "self_us": 0,
+            "truncated": 0
+          }
+        ]
+      },
+      {
+        "mode": "on",
+        "architecture": "x64",
+        "profile": "existing",
+        "ready_ms": 480,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 12,
+        "first_dispatch_engine_us": 9179,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 124,
+        "dispatch_max_us": 26638,
+        "dispatch_over_50ms": 0,
+        "captured_frames": 116,
+        "captured_keys": 116,
+        "native_max_us": 23209,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 18,
+            "kind": "process_key",
+            "native_us": 23209,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 8,
+              "capture_us": 23210,
+              "flush_us": 56
+            },
+            "slow_scopes": [
+              {
+                "id": 12336,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 23209,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 12342,
+                "parent": 12336,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 107,
+                "wall_us": 23103,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 12343,
+                "parent": 12342,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 110,
+                "wall_us": 23096,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 12345,
+                "parent": 12343,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 133,
+                "wall_us": 23073,
+                "self_us": 24,
+                "truncated": 0
+              },
+              {
+                "id": 12347,
+                "parent": 12345,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 134,
+                "wall_us": 22108,
+                "self_us": 8,
+                "truncated": 0
+              },
+              {
+                "id": 12349,
+                "parent": 12347,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 139,
+                "wall_us": 22099,
+                "self_us": 10,
+                "truncated": 0
+              },
+              {
+                "id": 12365,
+                "parent": 12349,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 253,
+                "wall_us": 21978,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 12366,
+                "parent": 12365,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 253,
+                "wall_us": 21977,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 12368,
+                "parent": 12367,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 254,
+                "wall_us": 21975,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 12367,
+                "parent": 12366,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 254,
+                "wall_us": 21975,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 12369,
+                "parent": 12368,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 255,
+                "wall_us": 21974,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 12370,
+                "parent": 12369,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 255,
+                "wall_us": 21969,
+                "self_us": 21969,
+                "truncated": 0
+              }
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 2079,
+        "first_flush": {
+          "scopes": 5,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 3,
+          "capture_us": 2079,
+          "flush_us": 1503
+        },
+        "read_count": 419,
+        "read_total_ns": 69900,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 175100,
+            "read_ns": 5200,
+            "truncated": 0
+          },
+          {
+            "sample": 1,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 180400,
+            "read_ns": 3700,
+            "truncated": 0
+          },
+          {
+            "sample": 71,
+            "parent": 331,
+            "label": "string_id",
+            "start_ns": 1073000,
+            "read_ns": 3500,
+            "truncated": 0
+          },
+          {
+            "sample": 82,
+            "parent": 378,
+            "label": "string_id",
+            "start_ns": 1156600,
+            "read_ns": 2800,
+            "truncated": 0
+          },
+          {
+            "sample": 12,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 193900,
+            "read_ns": 2700,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 2079,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 39,
+            "wall_us": 2039,
+            "self_us": 9,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 44,
+            "wall_us": 2030,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 61,
+            "wall_us": 2013,
+            "self_us": 25,
+            "truncated": 0
+          },
+          {
+            "id": 318,
+            "parent": 224,
+            "category": "translator",
+            "label": "*date_translator",
+            "start_us": 379,
+            "wall_us": 611,
+            "self_us": 608,
+            "truncated": 0
+          }
+        ]
+      },
+      {
+        "mode": "on",
+        "architecture": "Win32",
+        "profile": "fresh",
+        "ready_ms": 1667,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 44,
+        "first_dispatch_engine_us": 67850,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 63,
+        "dispatch_max_us": 67850,
+        "dispatch_over_50ms": 1,
+        "captured_frames": 59,
+        "captured_keys": 59,
+        "native_max_us": 62147,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 62147,
+            "flush": {
+              "scopes": 24,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 3,
+              "capture_us": 62147,
+              "flush_us": 1411
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 62147,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 34,
+                "wall_us": 62112,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 38,
+                "wall_us": 62105,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 46,
+                "wall_us": 62096,
+                "self_us": 26,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 49,
+                "wall_us": 47777,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 55,
+                "wall_us": 47767,
+                "self_us": 15,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 329,
+                "wall_us": 23862,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 362,
+                "wall_us": 23827,
+                "self_us": 23827,
+                "truncated": 0
+              },
+              {
+                "id": 236,
+                "parent": 228,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 24193,
+                "wall_us": 23267,
+                "self_us": 79,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 48256,
+                "wall_us": 13034,
+                "self_us": 40,
+                "truncated": 0
+              },
+              {
+                "id": 329,
+                "parent": 327,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 48258,
+                "wall_us": 12704,
+                "self_us": 6870,
+                "truncated": 0
+              },
+              {
+                "id": 240,
+                "parent": 236,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 24230,
+                "wall_us": 12442,
+                "self_us": 1,
+                "truncated": 0
+              }
+            ]
+          },
+          {
+            "frame_index": 19,
+            "kind": "process_key",
+            "native_us": 11897,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 11,
+              "capture_us": 11899,
+              "flush_us": 48
+            },
+            "slow_scopes": [
+              {
+                "id": 13529,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 1,
+                "wall_us": 11897,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 13535,
+                "parent": 13529,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 44,
+                "wall_us": 11854,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 13536,
+                "parent": 13535,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 47,
+                "wall_us": 11849,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 13538,
+                "parent": 13536,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 62,
+                "wall_us": 11834,
+                "self_us": 53,
+                "truncated": 0
+              },
+              {
+                "id": 13540,
+                "parent": 13538,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 62,
+                "wall_us": 11013,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 13542,
+                "parent": 13540,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 67,
+                "wall_us": 11006,
+                "self_us": 8,
+                "truncated": 0
+              },
+              {
+                "id": 13558,
+                "parent": 13542,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 140,
+                "wall_us": 10928,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 13559,
+                "parent": 13558,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 140,
+                "wall_us": 10927,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 13561,
+                "parent": 13560,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 141,
+                "wall_us": 10926,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 13560,
+                "parent": 13559,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 141,
+                "wall_us": 10926,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 13562,
+                "parent": 13561,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 141,
+                "wall_us": 10925,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 13563,
+                "parent": 13562,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 141,
+                "wall_us": 10921,
+                "self_us": 10921,
+                "truncated": 0
+              }
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 62147,
+        "first_flush": {
+          "scopes": 24,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 3,
+          "capture_us": 62147,
+          "flush_us": 1411
+        },
+        "read_count": 419,
+        "read_total_ns": 24261200,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 362500,
+            "read_ns": 14041200,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 18742600,
+            "read_ns": 2176000,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 15262400,
+            "read_ns": 1898800,
+            "truncated": 0
+          },
+          {
+            "sample": 12,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 17449700,
+            "read_ns": 668000,
+            "truncated": 0
+          },
+          {
+            "sample": 16,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 18123600,
+            "read_ns": 617400,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 62147,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 34,
+            "wall_us": 62112,
+            "self_us": 7,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 38,
+            "wall_us": 62105,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 46,
+            "wall_us": 62096,
+            "self_us": 26,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 49,
+            "wall_us": 47777,
+            "self_us": 9,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 55,
+            "wall_us": 47767,
+            "self_us": 15,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 329,
+            "wall_us": 23862,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 362,
+            "wall_us": 23827,
+            "self_us": 23827,
+            "truncated": 0
+          },
+          {
+            "id": 236,
+            "parent": 228,
+            "category": "native_query",
+            "label": "UserDictionary::Lookup",
+            "start_us": 24193,
+            "wall_us": 23267,
+            "self_us": 79,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 48256,
+            "wall_us": 13034,
+            "self_us": 40,
+            "truncated": 0
+          },
+          {
+            "id": 329,
+            "parent": 327,
+            "category": "native_query",
+            "label": "Dictionary::LookupWords",
+            "start_us": 48258,
+            "wall_us": 12704,
+            "self_us": 6870,
+            "truncated": 0
+          },
+          {
+            "id": 240,
+            "parent": 236,
+            "category": "native_query",
+            "label": "Table::GetString",
+            "start_us": 24230,
+            "wall_us": 12442,
+            "self_us": 1,
+            "truncated": 0
+          }
+        ]
+      },
+      {
+        "mode": "on",
+        "architecture": "Win32",
+        "profile": "existing",
+        "ready_ms": 375,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 8,
+        "first_dispatch_engine_us": 7010,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 124,
+        "dispatch_max_us": 8530,
+        "dispatch_over_50ms": 0,
+        "captured_frames": 116,
+        "captured_keys": 116,
+        "native_max_us": 1703,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [],
+        "slow_menus": [],
+        "first_native_us": 1703,
+        "first_flush": {
+          "scopes": 4,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 3,
+          "capture_us": 1704,
+          "flush_us": 1065
+        },
+        "read_count": 419,
+        "read_total_ns": 70100,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 215400,
+            "read_ns": 7800,
+            "truncated": 0
+          },
+          {
+            "sample": 34,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 264400,
+            "read_ns": 5100,
+            "truncated": 0
+          },
+          {
+            "sample": 32,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 260800,
+            "read_ns": 3400,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 243900,
+            "read_ns": 2800,
+            "truncated": 0
+          },
+          {
+            "sample": 1,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 223500,
+            "read_ns": 2700,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 1703,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 44,
+            "wall_us": 1659,
+            "self_us": 9,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 51,
+            "wall_us": 1650,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 68,
+            "wall_us": 1632,
+            "self_us": 19,
+            "truncated": 0
+          }
+        ]
+      },
+      {
+        "mode": "thread",
+        "architecture": "x64",
+        "profile": "fresh",
+        "ready_ms": 1480,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 23,
+        "first_dispatch_engine_us": 84081,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 3,
+        "dispatch_max_us": 152537,
+        "dispatch_over_50ms": 2,
+        "captured_frames": 3,
+        "captured_keys": 3,
+        "native_max_us": 77726,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 77726,
+            "flush": {
+              "scopes": 29,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 15,
+              "capture_us": 77726,
+              "flush_us": 1411
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 77726,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 481,
+                "wall_us": 77245,
+                "self_us": 336,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 815,
+                "wall_us": 76909,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 831,
+                "wall_us": 76892,
+                "self_us": 25,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 838,
+                "wall_us": 59070,
+                "self_us": 699,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 1429,
+                "wall_us": 58369,
+                "self_us": 515,
+                "truncated": 0
+              },
+              {
+                "id": 236,
+                "parent": 228,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 27621,
+                "wall_us": 31964,
+                "self_us": 683,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 2693,
+                "wall_us": 24925,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 2912,
+                "wall_us": 24702,
+                "self_us": 24702,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 60830,
+                "wall_us": 14074,
+                "self_us": 167,
+                "truncated": 0
+              },
+              {
+                "id": 329,
+                "parent": 327,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 60833,
+                "wall_us": 13754,
+                "self_us": 6384,
+                "truncated": 0
+              },
+              {
+                "id": 240,
+                "parent": 236,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 27981,
+                "wall_us": 11075,
+                "self_us": 1,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 65,
+              "wait_bitmap": 2147483649,
+              "cycles": 8966444
+            },
+            "wait_bits": [
+              0,
+              31
+            ]
+          },
+          {
+            "frame_index": 3,
+            "kind": "process_key",
+            "native_us": 31501,
+            "flush": {
+              "scopes": 8,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 27,
+              "arm_us": 11,
+              "capture_us": 31501,
+              "flush_us": 39
+            },
+            "slow_scopes": [
+              {
+                "id": 2504,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 31501,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 2506,
+                "parent": 2504,
+                "category": "processor",
+                "label": "*select_character",
+                "start_us": 2,
+                "wall_us": 25501,
+                "self_us": 25501,
+                "truncated": 0
+              },
+              {
+                "id": 2510,
+                "parent": 2504,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 25517,
+                "wall_us": 5983,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 2511,
+                "parent": 2510,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 25520,
+                "wall_us": 5978,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2513,
+                "parent": 2511,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 25534,
+                "wall_us": 5964,
+                "self_us": 20,
+                "truncated": 0
+              },
+              {
+                "id": 2545,
+                "parent": 2513,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 25601,
+                "wall_us": 5201,
+                "self_us": 27,
+                "truncated": 0
+              },
+              {
+                "id": 2547,
+                "parent": 2545,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 25604,
+                "wall_us": 5171,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 2572,
+                "parent": 2547,
+                "category": "native_query",
+                "label": "Table::QueryWords",
+                "start_us": 25642,
+                "wall_us": 5116,
+                "self_us": 5116,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 2,
+              "wait_bitmap": 1,
+              "cycles": 2429864
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 77726,
+        "first_flush": {
+          "scopes": 29,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 15,
+          "capture_us": 77726,
+          "flush_us": 1411
+        },
+        "read_count": 419,
+        "read_total_ns": 24853100,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 2913800,
+            "read_ns": 14867900,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 21232500,
+            "read_ns": 2092500,
+            "truncated": 0
+          },
+          {
+            "sample": 30,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 24116900,
+            "read_ns": 1420200,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 18069200,
+            "read_ns": 1396600,
+            "truncated": 0
+          },
+          {
+            "sample": 44,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 26800500,
+            "read_ns": 814100,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 77726,
+            "self_us": 6,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 481,
+            "wall_us": 77245,
+            "self_us": 336,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 815,
+            "wall_us": 76909,
+            "self_us": 2,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 831,
+            "wall_us": 76892,
+            "self_us": 25,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 838,
+            "wall_us": 59070,
+            "self_us": 699,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 1429,
+            "wall_us": 58369,
+            "self_us": 515,
+            "truncated": 0
+          },
+          {
+            "id": 236,
+            "parent": 228,
+            "category": "native_query",
+            "label": "UserDictionary::Lookup",
+            "start_us": 27621,
+            "wall_us": 31964,
+            "self_us": 683,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 2693,
+            "wall_us": 24925,
+            "self_us": 7,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 2912,
+            "wall_us": 24702,
+            "self_us": 24702,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 60830,
+            "wall_us": 14074,
+            "self_us": 167,
+            "truncated": 0
+          },
+          {
+            "id": 329,
+            "parent": 327,
+            "category": "native_query",
+            "label": "Dictionary::LookupWords",
+            "start_us": 60833,
+            "wall_us": 13754,
+            "self_us": 6384,
+            "truncated": 0
+          },
+          {
+            "id": 240,
+            "parent": 236,
+            "category": "native_query",
+            "label": "Table::GetString",
+            "start_us": 27981,
+            "wall_us": 11075,
+            "self_us": 1,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 65,
+          "wait_bitmap": 2147483649,
+          "cycles": 8966444
+        },
+        "wait_bits": [
+          0,
+          31
+        ]
+      },
+      {
+        "mode": "thread",
+        "architecture": "x64",
+        "profile": "existing",
+        "ready_ms": 303,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 44,
+        "first_dispatch_engine_us": 6845,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 65,
+        "dispatch_max_us": 110813,
+        "dispatch_over_50ms": 1,
+        "captured_frames": 61,
+        "captured_keys": 61,
+        "native_max_us": 103162,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 3,
+            "kind": "process_key",
+            "native_us": 103162,
+            "flush": {
+              "scopes": 30,
+              "reads": 66,
+              "scope_dropped": 0,
+              "read_skipped": 64,
+              "arm_us": 13,
+              "capture_us": 103162,
+              "flush_us": 273
+            },
+            "slow_scopes": [
+              {
+                "id": 2362,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 103162,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 2368,
+                "parent": 2362,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 52,
+                "wall_us": 103110,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 2369,
+                "parent": 2368,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 55,
+                "wall_us": 103104,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 2371,
+                "parent": 2369,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 73,
+                "wall_us": 103086,
+                "self_us": 23,
+                "truncated": 0
+              },
+              {
+                "id": 2373,
+                "parent": 2371,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 74,
+                "wall_us": 95285,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 2375,
+                "parent": 2373,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 78,
+                "wall_us": 95277,
+                "self_us": 10,
+                "truncated": 0
+              },
+              {
+                "id": 2388,
+                "parent": 2387,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 31364,
+                "wall_us": 63987,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 2387,
+                "parent": 2375,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 31364,
+                "wall_us": 63987,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 2390,
+                "parent": 2389,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 31365,
+                "wall_us": 63985,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2389,
+                "parent": 2388,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 31364,
+                "wall_us": 63985,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 2391,
+                "parent": 2390,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 31365,
+                "wall_us": 63984,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2392,
+                "parent": 2391,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 31365,
+                "wall_us": 63980,
+                "self_us": 63980,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 18,
+              "wait_bitmap": 1,
+              "cycles": 3805122
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 7,
+            "kind": "process_key",
+            "native_us": 12499,
+            "flush": {
+              "scopes": 9,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 19,
+              "arm_us": 25,
+              "capture_us": 12502,
+              "flush_us": 36
+            },
+            "slow_scopes": [
+              {
+                "id": 6322,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 12499,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 6328,
+                "parent": 6322,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 24,
+                "wall_us": 12475,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 6329,
+                "parent": 6328,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 25,
+                "wall_us": 12471,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 6331,
+                "parent": 6329,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 34,
+                "wall_us": 12462,
+                "self_us": 19,
+                "truncated": 0
+              },
+              {
+                "id": 6333,
+                "parent": 6331,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 35,
+                "wall_us": 11802,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 6335,
+                "parent": 6333,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 37,
+                "wall_us": 11798,
+                "self_us": 110,
+                "truncated": 0
+              },
+              {
+                "id": 6368,
+                "parent": 6335,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 119,
+                "wall_us": 11614,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 6370,
+                "parent": 6369,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 120,
+                "wall_us": 11613,
+                "self_us": 11610,
+                "truncated": 0
+              },
+              {
+                "id": 6369,
+                "parent": 6368,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 120,
+                "wall_us": 11613,
+                "self_us": 0,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 1,
+              "wait_bitmap": 1,
+              "cycles": 2266362
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 21,
+            "kind": "process_key",
+            "native_us": 32046,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 10,
+              "capture_us": 32046,
+              "flush_us": 62
+            },
+            "slow_scopes": [
+              {
+                "id": 15438,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 32046,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 15444,
+                "parent": 15438,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 30,
+                "wall_us": 32016,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 15445,
+                "parent": 15444,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 32,
+                "wall_us": 32011,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15447,
+                "parent": 15445,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 43,
+                "wall_us": 32000,
+                "self_us": 19,
+                "truncated": 0
+              },
+              {
+                "id": 15449,
+                "parent": 15447,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 44,
+                "wall_us": 31341,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 15451,
+                "parent": 15449,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 48,
+                "wall_us": 31335,
+                "self_us": 8,
+                "truncated": 0
+              },
+              {
+                "id": 15468,
+                "parent": 15467,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 120,
+                "wall_us": 31257,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15467,
+                "parent": 15451,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 120,
+                "wall_us": 31257,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 15469,
+                "parent": 15468,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 120,
+                "wall_us": 31256,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15471,
+                "parent": 15470,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 121,
+                "wall_us": 31255,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 15470,
+                "parent": 15469,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 120,
+                "wall_us": 31255,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 15472,
+                "parent": 15471,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 121,
+                "wall_us": 31252,
+                "self_us": 31252,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 14,
+              "wait_bitmap": 1,
+              "cycles": 2803256
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 1396,
+        "first_flush": {
+          "scopes": 4,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 13,
+          "capture_us": 1396,
+          "flush_us": 1085
+        },
+        "read_count": 419,
+        "read_total_ns": 55800,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 118500,
+            "read_ns": 5200,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 138200,
+            "read_ns": 3400,
+            "truncated": 0
+          },
+          {
+            "sample": 71,
+            "parent": 331,
+            "label": "string_id",
+            "start_ns": 735600,
+            "read_ns": 3000,
+            "truncated": 0
+          },
+          {
+            "sample": 1,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 123800,
+            "read_ns": 2100,
+            "truncated": 0
+          },
+          {
+            "sample": 82,
+            "parent": 378,
+            "label": "string_id",
+            "start_ns": 791000,
+            "read_ns": 1900,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 1396,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 30,
+            "wall_us": 1365,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 33,
+            "wall_us": 1361,
+            "self_us": 2,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 41,
+            "wall_us": 1352,
+            "self_us": 19,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 0,
+          "wait_bitmap": 0,
+          "cycles": 3177156
+        },
+        "wait_bits": []
+      },
+      {
+        "mode": "thread",
+        "architecture": "Win32",
+        "profile": "fresh",
+        "ready_ms": 1473,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 11,
+        "first_dispatch_engine_us": 104495,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 63,
+        "dispatch_max_us": 104495,
+        "dispatch_over_50ms": 1,
+        "captured_frames": 59,
+        "captured_keys": 59,
+        "native_max_us": 99042,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 99042,
+            "flush": {
+              "scopes": 24,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 14,
+              "capture_us": 99042,
+              "flush_us": 1200
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 99042,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 55,
+                "wall_us": 98987,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 61,
+                "wall_us": 98978,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 82,
+                "wall_us": 98957,
+                "self_us": 22,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 86,
+                "wall_us": 50731,
+                "self_us": 12,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 94,
+                "wall_us": 50718,
+                "self_us": 17,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 51322,
+                "wall_us": 47000,
+                "self_us": 44,
+                "truncated": 0
+              },
+              {
+                "id": 329,
+                "parent": 327,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 51324,
+                "wall_us": 46488,
+                "self_us": 38259,
+                "truncated": 0
+              },
+              {
+                "id": 236,
+                "parent": 228,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 23379,
+                "wall_us": 27079,
+                "self_us": 80,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 147,
+                "wall_us": 23230,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 189,
+                "wall_us": 23185,
+                "self_us": 23185,
+                "truncated": 0
+              },
+              {
+                "id": 288,
+                "parent": 236,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 41056,
+                "wall_us": 9373,
+                "self_us": 1,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 34,
+              "wait_bitmap": 1,
+              "cycles": 7883170
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 4,
+            "kind": "process_key",
+            "native_us": 20453,
+            "flush": {
+              "scopes": 25,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 130,
+              "arm_us": 10,
+              "capture_us": 20453,
+              "flush_us": 124
+            },
+            "slow_scopes": [
+              {
+                "id": 3577,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 20453,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3583,
+                "parent": 3577,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 31,
+                "wall_us": 20422,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3584,
+                "parent": 3583,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 33,
+                "wall_us": 20418,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3586,
+                "parent": 3584,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 45,
+                "wall_us": 20406,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 3588,
+                "parent": 3586,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 46,
+                "wall_us": 18940,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3590,
+                "parent": 3588,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 49,
+                "wall_us": 18934,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 3603,
+                "parent": 3602,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 811,
+                "wall_us": 18167,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3602,
+                "parent": 3590,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 810,
+                "wall_us": 18167,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 3604,
+                "parent": 3603,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 811,
+                "wall_us": 18166,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3606,
+                "parent": 3605,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 811,
+                "wall_us": 18165,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3605,
+                "parent": 3604,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 811,
+                "wall_us": 18165,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 3607,
+                "parent": 3606,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 812,
+                "wall_us": 18161,
+                "self_us": 18161,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 18,
+              "wait_bitmap": 1,
+              "cycles": 3066988
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 19,
+            "kind": "process_key",
+            "native_us": 20558,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 14,
+              "capture_us": 20559,
+              "flush_us": 48
+            },
+            "slow_scopes": [
+              {
+                "id": 13529,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 20558,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 13535,
+                "parent": 13529,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 42,
+                "wall_us": 20516,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 13536,
+                "parent": 13535,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 45,
+                "wall_us": 20511,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 13538,
+                "parent": 13536,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 57,
+                "wall_us": 20499,
+                "self_us": 20,
+                "truncated": 0
+              },
+              {
+                "id": 13540,
+                "parent": 13538,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 58,
+                "wall_us": 19780,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 13542,
+                "parent": 13540,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 62,
+                "wall_us": 19774,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 13559,
+                "parent": 13558,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 133,
+                "wall_us": 19697,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 13558,
+                "parent": 13542,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 133,
+                "wall_us": 19697,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 13561,
+                "parent": 13560,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 134,
+                "wall_us": 19695,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 13560,
+                "parent": 13559,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 134,
+                "wall_us": 19695,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 13562,
+                "parent": 13561,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 134,
+                "wall_us": 19694,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 13563,
+                "parent": 13562,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 134,
+                "wall_us": 19691,
+                "self_us": 19691,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 9,
+              "wait_bitmap": 1,
+              "cycles": 2661508
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 99042,
+        "first_flush": {
+          "scopes": 24,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 14,
+          "capture_us": 99042,
+          "flush_us": 1200
+        },
+        "read_count": 419,
+        "read_total_ns": 23640200,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 189800,
+            "read_ns": 13525100,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 17032500,
+            "read_ns": 2123200,
+            "truncated": 0
+          },
+          {
+            "sample": 30,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 20111200,
+            "read_ns": 1270400,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 14471200,
+            "read_ns": 888300,
+            "truncated": 0
+          },
+          {
+            "sample": 16,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 16282600,
+            "read_ns": 749100,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 99042,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 55,
+            "wall_us": 98987,
+            "self_us": 9,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 61,
+            "wall_us": 98978,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 82,
+            "wall_us": 98957,
+            "self_us": 22,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 86,
+            "wall_us": 50731,
+            "self_us": 12,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 94,
+            "wall_us": 50718,
+            "self_us": 17,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 51322,
+            "wall_us": 47000,
+            "self_us": 44,
+            "truncated": 0
+          },
+          {
+            "id": 329,
+            "parent": 327,
+            "category": "native_query",
+            "label": "Dictionary::LookupWords",
+            "start_us": 51324,
+            "wall_us": 46488,
+            "self_us": 38259,
+            "truncated": 0
+          },
+          {
+            "id": 236,
+            "parent": 228,
+            "category": "native_query",
+            "label": "UserDictionary::Lookup",
+            "start_us": 23379,
+            "wall_us": 27079,
+            "self_us": 80,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 147,
+            "wall_us": 23230,
+            "self_us": 6,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 189,
+            "wall_us": 23185,
+            "self_us": 23185,
+            "truncated": 0
+          },
+          {
+            "id": 288,
+            "parent": 236,
+            "category": "native_query",
+            "label": "Table::GetString",
+            "start_us": 41056,
+            "wall_us": 9373,
+            "self_us": 1,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 34,
+          "wait_bitmap": 1,
+          "cycles": 7883170
+        },
+        "wait_bits": [
+          0
+        ]
+      },
+      {
+        "mode": "thread",
+        "architecture": "Win32",
+        "profile": "existing",
+        "ready_ms": 418,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 11,
+        "first_dispatch_engine_us": 7934,
+        "dropped": 0,
+        "runtime_sha256": "D00533045C95D5ECDBDEDB210D9DEE444D1642809CCAED6E9C47A6570324423B",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 124,
+        "dispatch_max_us": 11741,
+        "dispatch_over_50ms": 0,
+        "captured_frames": 116,
+        "captured_keys": 116,
+        "native_max_us": 4635,
+        "menu_max_us": 0,
+        "slow_deferred_keys": [],
+        "slow_menus": [],
+        "first_native_us": 1690,
+        "first_flush": {
+          "scopes": 5,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 14,
+          "capture_us": 1691,
+          "flush_us": 1515
+        },
+        "read_count": 419,
+        "read_total_ns": 63800,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 179300,
+            "read_ns": 6100,
+            "truncated": 0
+          },
+          {
+            "sample": 71,
+            "parent": 331,
+            "label": "string_id",
+            "start_ns": 973800,
+            "read_ns": 3600,
+            "truncated": 0
+          },
+          {
+            "sample": 34,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 221100,
+            "read_ns": 3500,
+            "truncated": 0
+          },
+          {
+            "sample": 82,
+            "parent": 378,
+            "label": "string_id",
+            "start_ns": 1047000,
+            "read_ns": 2700,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 190300,
+            "read_ns": 2400,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 1690,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 44,
+            "wall_us": 1646,
+            "self_us": 6,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 49,
+            "wall_us": 1640,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 76,
+            "wall_us": 1612,
+            "self_us": 21,
+            "truncated": 0
+          },
+          {
+            "id": 318,
+            "parent": 224,
+            "category": "translator",
+            "label": "*date_translator",
+            "start_us": 389,
+            "wall_us": 516,
+            "self_us": 512,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 0,
+          "wait_bitmap": 0,
+          "cycles": 3893936
+        },
+        "wait_bits": []
+      },
+      {
+        "mode": "menu",
+        "architecture": "x64",
+        "profile": "fresh",
+        "ready_ms": 3672,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 9,
+        "first_dispatch_engine_us": 324305,
+        "dropped": 0,
+        "runtime_sha256": "4C3E5B737141CCAED1122DDBD31C47662B92A62DB801AE2A124528A31A1F2916",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 3,
+        "dispatch_max_us": 324305,
+        "dispatch_over_50ms": 2,
+        "captured_frames": 9,
+        "captured_keys": 3,
+        "native_max_us": 321378,
+        "menu_max_us": 94298,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 321378,
+            "flush": {
+              "scopes": 25,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 184,
+              "capture_us": 321378,
+              "flush_us": 1192
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 321378,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 54,
+                "wall_us": 321323,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 60,
+                "wall_us": 321314,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 70,
+                "wall_us": 321304,
+                "self_us": 31,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 86,
+                "wall_us": 287023,
+                "self_us": 18,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 99,
+                "wall_us": 287003,
+                "self_us": 19,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 155,
+                "wall_us": 258812,
+                "self_us": 11,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 194,
+                "wall_us": 258767,
+                "self_us": 258767,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 287595,
+                "wall_us": 33029,
+                "self_us": 70,
+                "truncated": 0
+              },
+              {
+                "id": 236,
+                "parent": 228,
+                "category": "native_query",
+                "label": "UserDictionary::Lookup",
+                "start_us": 258972,
+                "wall_us": 28115,
+                "self_us": 101,
+                "truncated": 0
+              },
+              {
+                "id": 329,
+                "parent": 327,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 287597,
+                "wall_us": 23536,
+                "self_us": 7846,
+                "truncated": 0
+              },
+              {
+                "id": 246,
+                "parent": 236,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 259036,
+                "wall_us": 12594,
+                "self_us": 1,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 29,
+              "wait_bitmap": 2147483649,
+              "cycles": 6795146
+            },
+            "wait_bits": [
+              0,
+              31
+            ]
+          },
+          {
+            "frame_index": 7,
+            "kind": "process_key",
+            "native_us": 120079,
+            "flush": {
+              "scopes": 8,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 27,
+              "arm_us": 11,
+              "capture_us": 120079,
+              "flush_us": 35
+            },
+            "slow_scopes": [
+              {
+                "id": 2504,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 120079,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2510,
+                "parent": 2504,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 48,
+                "wall_us": 120031,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2511,
+                "parent": 2510,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 50,
+                "wall_us": 120027,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 2513,
+                "parent": 2511,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 61,
+                "wall_us": 120015,
+                "self_us": 18,
+                "truncated": 0
+              },
+              {
+                "id": 2545,
+                "parent": 2513,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 147,
+                "wall_us": 119343,
+                "self_us": 25,
+                "truncated": 0
+              },
+              {
+                "id": 2547,
+                "parent": 2545,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 149,
+                "wall_us": 119315,
+                "self_us": 26,
+                "truncated": 0
+              },
+              {
+                "id": 2569,
+                "parent": 2547,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 181,
+                "wall_us": 76559,
+                "self_us": 76554,
+                "truncated": 0
+              },
+              {
+                "id": 2572,
+                "parent": 2547,
+                "category": "native_query",
+                "label": "Table::QueryWords",
+                "start_us": 76742,
+                "wall_us": 42702,
+                "self_us": 42702,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 2,
+              "wait_bitmap": 1,
+              "cycles": 2145454
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [
+          {
+            "frame_index": 8,
+            "kind": "menu_prepare",
+            "native_us": 94298,
+            "flush": {
+              "scopes": 17,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 383,
+              "arm_us": 8,
+              "capture_us": 94298,
+              "flush_us": 58
+            },
+            "slow_scopes": [
+              {
+                "id": 2727,
+                "parent": 0,
+                "category": "menu",
+                "label": "Prepare",
+                "start_us": 0,
+                "wall_us": 94298,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2728,
+                "parent": 2727,
+                "category": "lua_resume",
+                "label": "radical_pinyin",
+                "start_us": 0,
+                "wall_us": 94297,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 2729,
+                "parent": 2728,
+                "category": "lua_resume",
+                "label": "*reduce_english_filter",
+                "start_us": 1,
+                "wall_us": 94276,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 2730,
+                "parent": 2729,
+                "category": "lua_resume",
+                "label": "*long_word_filter",
+                "start_us": 1,
+                "wall_us": 94273,
+                "self_us": 141,
+                "truncated": 0
+              },
+              {
+                "id": 3041,
+                "parent": 2730,
+                "category": "lua_resume",
+                "label": "*pin_cand_filter",
+                "start_us": 443,
+                "wall_us": 51778,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3042,
+                "parent": 3041,
+                "category": "lua_resume",
+                "label": "*v_filter",
+                "start_us": 444,
+                "wall_us": 51774,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3043,
+                "parent": 3042,
+                "category": "lua_resume",
+                "label": "*autocap_filter",
+                "start_us": 444,
+                "wall_us": 51770,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3044,
+                "parent": 3043,
+                "category": "lua_resume",
+                "label": "*corrector",
+                "start_us": 444,
+                "wall_us": 51765,
+                "self_us": 83,
+                "truncated": 0
+              },
+              {
+                "id": 3045,
+                "parent": 3044,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 445,
+                "wall_us": 51677,
+                "self_us": 51677,
+                "truncated": 0
+              },
+              {
+                "id": 3111,
+                "parent": 2730,
+                "category": "lua_resume",
+                "label": "*pin_cand_filter",
+                "start_us": 52356,
+                "wall_us": 41579,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 3112,
+                "parent": 3111,
+                "category": "lua_resume",
+                "label": "*v_filter",
+                "start_us": 52356,
+                "wall_us": 41576,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3113,
+                "parent": 3112,
+                "category": "lua_resume",
+                "label": "*autocap_filter",
+                "start_us": 52356,
+                "wall_us": 41572,
+                "self_us": 4,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 2,
+              "wait_bitmap": 1,
+              "cycles": 3297166
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "first_native_us": 321378,
+        "first_flush": {
+          "scopes": 25,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 184,
+          "capture_us": 321378,
+          "flush_us": 1192
+        },
+        "read_count": 419,
+        "read_total_ns": 268169700,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 194900,
+            "read_ns": 69833600,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 112070600,
+            "read_ns": 60446100,
+            "truncated": 0
+          },
+          {
+            "sample": 8,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 172526800,
+            "read_ns": 42081100,
+            "truncated": 0
+          },
+          {
+            "sample": 2,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 70239600,
+            "read_ns": 41829200,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 224966000,
+            "read_ns": 12508000,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 321378,
+            "self_us": 5,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 54,
+            "wall_us": 321323,
+            "self_us": 9,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 60,
+            "wall_us": 321314,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 70,
+            "wall_us": 321304,
+            "self_us": 31,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 86,
+            "wall_us": 287023,
+            "self_us": 18,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 99,
+            "wall_us": 287003,
+            "self_us": 19,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 155,
+            "wall_us": 258812,
+            "self_us": 11,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 194,
+            "wall_us": 258767,
+            "self_us": 258767,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 287595,
+            "wall_us": 33029,
+            "self_us": 70,
+            "truncated": 0
+          },
+          {
+            "id": 236,
+            "parent": 228,
+            "category": "native_query",
+            "label": "UserDictionary::Lookup",
+            "start_us": 258972,
+            "wall_us": 28115,
+            "self_us": 101,
+            "truncated": 0
+          },
+          {
+            "id": 329,
+            "parent": 327,
+            "category": "native_query",
+            "label": "Dictionary::LookupWords",
+            "start_us": 287597,
+            "wall_us": 23536,
+            "self_us": 7846,
+            "truncated": 0
+          },
+          {
+            "id": 246,
+            "parent": 236,
+            "category": "native_query",
+            "label": "Table::GetString",
+            "start_us": 259036,
+            "wall_us": 12594,
+            "self_us": 1,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 29,
+          "wait_bitmap": 2147483649,
+          "cycles": 6795146
+        },
+        "wait_bits": [
+          0,
+          31
+        ]
+      },
+      {
+        "mode": "menu",
+        "architecture": "x64",
+        "profile": "existing",
+        "ready_ms": 452,
+        "first_probe_exit": 1,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 40,
+        "first_dispatch_engine_us": 4580,
+        "dropped": 0,
+        "runtime_sha256": "4C3E5B737141CCAED1122DDBD31C47662B92A62DB801AE2A124528A31A1F2916",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "A798D96205E308269CC94EE55E1692D6CA516117D0FB4FCDBCF85B01D089EE8D",
+        "probe_sha256": "58CDA8D4982079F4459DDCFB359BFE6D62A2FED965D3872FCC7CCEBF73FCE827",
+        "dispatch_count": 65,
+        "dispatch_max_us": 262623,
+        "dispatch_over_50ms": 1,
+        "captured_frames": 174,
+        "captured_keys": 61,
+        "native_max_us": 256183,
+        "menu_max_us": 7060,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 7,
+            "kind": "process_key",
+            "native_us": 256183,
+            "flush": {
+              "scopes": 28,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 130,
+              "arm_us": 8,
+              "capture_us": 256184,
+              "flush_us": 124
+            },
+            "slow_scopes": [
+              {
+                "id": 2362,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 256183,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2368,
+                "parent": 2362,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 29,
+                "wall_us": 256154,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 2369,
+                "parent": 2368,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 31,
+                "wall_us": 256149,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2371,
+                "parent": 2369,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 42,
+                "wall_us": 256138,
+                "self_us": 34,
+                "truncated": 0
+              },
+              {
+                "id": 2373,
+                "parent": 2371,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 43,
+                "wall_us": 244191,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 2375,
+                "parent": 2373,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 46,
+                "wall_us": 244185,
+                "self_us": 12,
+                "truncated": 0
+              },
+              {
+                "id": 2387,
+                "parent": 2375,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 61124,
+                "wall_us": 183102,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2388,
+                "parent": 2387,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 61124,
+                "wall_us": 183101,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 2389,
+                "parent": 2388,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 61126,
+                "wall_us": 183099,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2391,
+                "parent": 2390,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 61127,
+                "wall_us": 183098,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2390,
+                "parent": 2389,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 61126,
+                "wall_us": 183098,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 2392,
+                "parent": 2391,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 61127,
+                "wall_us": 183094,
+                "self_us": 183094,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 17,
+              "wait_bitmap": 1,
+              "cycles": 4521002
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 19,
+            "kind": "process_key",
+            "native_us": 36228,
+            "flush": {
+              "scopes": 9,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 19,
+              "arm_us": 11,
+              "capture_us": 36229,
+              "flush_us": 38
+            },
+            "slow_scopes": [
+              {
+                "id": 6322,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 36228,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 6328,
+                "parent": 6322,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 42,
+                "wall_us": 36186,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 6329,
+                "parent": 6328,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 44,
+                "wall_us": 36182,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 6331,
+                "parent": 6329,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 56,
+                "wall_us": 36169,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 6333,
+                "parent": 6331,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 57,
+                "wall_us": 35456,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 6335,
+                "parent": 6333,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 61,
+                "wall_us": 35450,
+                "self_us": 40,
+                "truncated": 0
+              },
+              {
+                "id": 6369,
+                "parent": 6368,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 145,
+                "wall_us": 35335,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 6368,
+                "parent": 6335,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 145,
+                "wall_us": 35335,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 6370,
+                "parent": 6369,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 145,
+                "wall_us": 35334,
+                "self_us": 35330,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 1,
+              "wait_bitmap": 1,
+              "cycles": 2240972
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 60,
+            "kind": "process_key",
+            "native_us": 37014,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 12,
+              "capture_us": 37014,
+              "flush_us": 45
+            },
+            "slow_scopes": [
+              {
+                "id": 15438,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 37014,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 15444,
+                "parent": 15438,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 38,
+                "wall_us": 36976,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 15445,
+                "parent": 15444,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 41,
+                "wall_us": 36971,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15447,
+                "parent": 15445,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 54,
+                "wall_us": 36957,
+                "self_us": 18,
+                "truncated": 0
+              },
+              {
+                "id": 15449,
+                "parent": 15447,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 55,
+                "wall_us": 36265,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 15451,
+                "parent": 15449,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 60,
+                "wall_us": 36257,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 15467,
+                "parent": 15451,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 172,
+                "wall_us": 36140,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15468,
+                "parent": 15467,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 172,
+                "wall_us": 36139,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15469,
+                "parent": 15468,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 172,
+                "wall_us": 36138,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 15471,
+                "parent": 15470,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 173,
+                "wall_us": 36137,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 15470,
+                "parent": 15469,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 172,
+                "wall_us": 36137,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 15472,
+                "parent": 15471,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 173,
+                "wall_us": 36133,
+                "self_us": 36133,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 9,
+              "wait_bitmap": 1,
+              "cycles": 3035928
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 1357,
+        "first_flush": {
+          "scopes": 4,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 12,
+          "capture_us": 1357,
+          "flush_us": 1408
+        },
+        "read_count": 419,
+        "read_total_ns": 54700,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 116600,
+            "read_ns": 5000,
+            "truncated": 0
+          },
+          {
+            "sample": 24,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 141600,
+            "read_ns": 2900,
+            "truncated": 0
+          },
+          {
+            "sample": 71,
+            "parent": 331,
+            "label": "string_id",
+            "start_ns": 699300,
+            "read_ns": 2900,
+            "truncated": 0
+          },
+          {
+            "sample": 2,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 123800,
+            "read_ns": 1900,
+            "truncated": 0
+          },
+          {
+            "sample": 8,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 129100,
+            "read_ns": 1900,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 1357,
+            "self_us": 3,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 28,
+            "wall_us": 1328,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 31,
+            "wall_us": 1324,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 39,
+            "wall_us": 1316,
+            "self_us": 16,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 0,
+          "wait_bitmap": 0,
+          "cycles": 3102062
+        },
+        "wait_bits": []
+      },
+      {
+        "mode": "menu",
+        "architecture": "Win32",
+        "profile": "fresh",
+        "ready_ms": 954,
+        "first_probe_exit": 1,
+        "second_probe_exit": 1,
+        "first_dispatch_queue_us": 17,
+        "first_dispatch_engine_us": 90274,
+        "dropped": 0,
+        "runtime_sha256": "4C3E5B737141CCAED1122DDBD31C47662B92A62DB801AE2A124528A31A1F2916",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 4,
+        "dispatch_max_us": 90274,
+        "dispatch_over_50ms": 2,
+        "captured_frames": 12,
+        "captured_keys": 4,
+        "native_max_us": 87724,
+        "menu_max_us": 15568,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 1,
+            "kind": "process_key",
+            "native_us": 87724,
+            "flush": {
+              "scopes": 18,
+              "reads": 419,
+              "scope_dropped": 0,
+              "read_skipped": 0,
+              "arm_us": 12,
+              "capture_us": 87725,
+              "flush_us": 1058
+            },
+            "slow_scopes": [
+              {
+                "id": 215,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 87724,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 221,
+                "parent": 215,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 41,
+                "wall_us": 87684,
+                "self_us": 6,
+                "truncated": 0
+              },
+              {
+                "id": 222,
+                "parent": 221,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 45,
+                "wall_us": 87678,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 224,
+                "parent": 222,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 54,
+                "wall_us": 87668,
+                "self_us": 23,
+                "truncated": 0
+              },
+              {
+                "id": 226,
+                "parent": 224,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 58,
+                "wall_us": 65437,
+                "self_us": 13,
+                "truncated": 0
+              },
+              {
+                "id": 228,
+                "parent": 226,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 66,
+                "wall_us": 65423,
+                "self_us": 20,
+                "truncated": 0
+              },
+              {
+                "id": 232,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Dictionary::Lookup",
+                "start_us": 32670,
+                "wall_us": 32696,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 229,
+                "parent": 228,
+                "category": "native_query",
+                "label": "Syllabifier::BuildSyllableGraph",
+                "start_us": 69,
+                "wall_us": 32600,
+                "self_us": 45,
+                "truncated": 0
+              },
+              {
+                "id": 230,
+                "parent": 229,
+                "category": "native_query",
+                "label": "Prism::CommonPrefixSearch",
+                "start_us": 71,
+                "wall_us": 32555,
+                "self_us": 32555,
+                "truncated": 0
+              },
+              {
+                "id": 235,
+                "parent": 232,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 33161,
+                "wall_us": 32202,
+                "self_us": 32202,
+                "truncated": 0
+              },
+              {
+                "id": 327,
+                "parent": 224,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 66122,
+                "wall_us": 20899,
+                "self_us": 34,
+                "truncated": 0
+              },
+              {
+                "id": 329,
+                "parent": 327,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 66123,
+                "wall_us": 17367,
+                "self_us": 12485,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 26,
+              "wait_bitmap": 1,
+              "cycles": 6154156
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 7,
+            "kind": "process_key",
+            "native_us": 19503,
+            "flush": {
+              "scopes": 7,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 27,
+              "arm_us": 10,
+              "capture_us": 19504,
+              "flush_us": 75
+            },
+            "slow_scopes": [
+              {
+                "id": 2504,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 19503,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 2510,
+                "parent": 2504,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 43,
+                "wall_us": 19460,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 2511,
+                "parent": 2510,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 46,
+                "wall_us": 19456,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 2513,
+                "parent": 2511,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 57,
+                "wall_us": 19444,
+                "self_us": 22,
+                "truncated": 0
+              },
+              {
+                "id": 2545,
+                "parent": 2513,
+                "category": "translator",
+                "label": "melt_eng",
+                "start_us": 132,
+                "wall_us": 18698,
+                "self_us": 26,
+                "truncated": 0
+              },
+              {
+                "id": 2547,
+                "parent": 2545,
+                "category": "native_query",
+                "label": "Dictionary::LookupWords",
+                "start_us": 134,
+                "wall_us": 18669,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 2572,
+                "parent": 2547,
+                "category": "native_query",
+                "label": "Table::QueryWords",
+                "start_us": 171,
+                "wall_us": 18616,
+                "self_us": 18616,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 1,
+              "wait_bitmap": 1,
+              "cycles": 2186396
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 10,
+            "kind": "process_key",
+            "native_us": 46660,
+            "flush": {
+              "scopes": 25,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 130,
+              "arm_us": 10,
+              "capture_us": 46661,
+              "flush_us": 80
+            },
+            "slow_scopes": [
+              {
+                "id": 3577,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 46660,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3583,
+                "parent": 3577,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 32,
+                "wall_us": 46628,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3584,
+                "parent": 3583,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 34,
+                "wall_us": 46624,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3586,
+                "parent": 3584,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 45,
+                "wall_us": 46613,
+                "self_us": 26,
+                "truncated": 0
+              },
+              {
+                "id": 3588,
+                "parent": 3586,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 46,
+                "wall_us": 41915,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3590,
+                "parent": 3588,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 49,
+                "wall_us": 41909,
+                "self_us": 7,
+                "truncated": 0
+              },
+              {
+                "id": 3602,
+                "parent": 3590,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 578,
+                "wall_us": 41376,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3603,
+                "parent": 3602,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 578,
+                "wall_us": 41375,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3604,
+                "parent": 3603,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 578,
+                "wall_us": 41374,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3606,
+                "parent": 3605,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 579,
+                "wall_us": 41373,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3605,
+                "parent": 3604,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 579,
+                "wall_us": 41373,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 3607,
+                "parent": 3606,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 579,
+                "wall_us": 41369,
+                "self_us": 41369,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 16,
+              "wait_bitmap": 1,
+              "cycles": 4583568
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [
+          {
+            "frame_index": 8,
+            "kind": "menu_prepare",
+            "native_us": 11425,
+            "flush": {
+              "scopes": 14,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 383,
+              "arm_us": 20,
+              "capture_us": 11426,
+              "flush_us": 50
+            },
+            "slow_scopes": [
+              {
+                "id": 2727,
+                "parent": 0,
+                "category": "menu",
+                "label": "Prepare",
+                "start_us": 0,
+                "wall_us": 11425,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 2728,
+                "parent": 2727,
+                "category": "lua_resume",
+                "label": "radical_pinyin",
+                "start_us": 1,
+                "wall_us": 11424,
+                "self_us": 23,
+                "truncated": 0
+              },
+              {
+                "id": 2729,
+                "parent": 2728,
+                "category": "lua_resume",
+                "label": "*reduce_english_filter",
+                "start_us": 5,
+                "wall_us": 11401,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 2730,
+                "parent": 2729,
+                "category": "lua_resume",
+                "label": "*long_word_filter",
+                "start_us": 7,
+                "wall_us": 11396,
+                "self_us": 135,
+                "truncated": 0
+              },
+              {
+                "id": 3041,
+                "parent": 2730,
+                "category": "lua_resume",
+                "label": "*pin_cand_filter",
+                "start_us": 543,
+                "wall_us": 9767,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3042,
+                "parent": 3041,
+                "category": "lua_resume",
+                "label": "*v_filter",
+                "start_us": 543,
+                "wall_us": 9763,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3043,
+                "parent": 3042,
+                "category": "lua_resume",
+                "label": "*autocap_filter",
+                "start_us": 543,
+                "wall_us": 9759,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3044,
+                "parent": 3043,
+                "category": "lua_resume",
+                "label": "*corrector",
+                "start_us": 543,
+                "wall_us": 9754,
+                "self_us": 34,
+                "truncated": 0
+              },
+              {
+                "id": 3045,
+                "parent": 3044,
+                "category": "native_query",
+                "label": "DictEntryIterator::Sort",
+                "start_us": 544,
+                "wall_us": 9715,
+                "self_us": 9715,
+                "truncated": 0
+              },
+              {
+                "id": 3111,
+                "parent": 2730,
+                "category": "lua_resume",
+                "label": "*pin_cand_filter",
+                "start_us": 10430,
+                "wall_us": 622,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 3112,
+                "parent": 3111,
+                "category": "lua_resume",
+                "label": "*v_filter",
+                "start_us": 10431,
+                "wall_us": 619,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 3113,
+                "parent": 3112,
+                "category": "lua_resume",
+                "label": "*autocap_filter",
+                "start_us": 10431,
+                "wall_us": 616,
+                "self_us": 4,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 2,
+              "wait_bitmap": 1,
+              "cycles": 3434840
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 11,
+            "kind": "menu_prepare",
+            "native_us": 15568,
+            "flush": {
+              "scopes": 44,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 171,
+              "arm_us": 11,
+              "capture_us": 15568,
+              "flush_us": 135
+            },
+            "slow_scopes": [
+              {
+                "id": 3781,
+                "parent": 0,
+                "category": "menu",
+                "label": "Prepare",
+                "start_us": 0,
+                "wall_us": 15568,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 3782,
+                "parent": 3781,
+                "category": "lua_resume",
+                "label": "radical_pinyin",
+                "start_us": 1,
+                "wall_us": 15566,
+                "self_us": 26,
+                "truncated": 0
+              },
+              {
+                "id": 3783,
+                "parent": 3782,
+                "category": "lua_resume",
+                "label": "*reduce_english_filter",
+                "start_us": 3,
+                "wall_us": 15540,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3784,
+                "parent": 3783,
+                "category": "lua_resume",
+                "label": "*long_word_filter",
+                "start_us": 4,
+                "wall_us": 15536,
+                "self_us": 122,
+                "truncated": 0
+              },
+              {
+                "id": 3965,
+                "parent": 3784,
+                "category": "lua_resume",
+                "label": "*pin_cand_filter",
+                "start_us": 8432,
+                "wall_us": 6466,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 3966,
+                "parent": 3965,
+                "category": "lua_resume",
+                "label": "*v_filter",
+                "start_us": 8432,
+                "wall_us": 6463,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3967,
+                "parent": 3966,
+                "category": "lua_resume",
+                "label": "*autocap_filter",
+                "start_us": 8432,
+                "wall_us": 6459,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3968,
+                "parent": 3967,
+                "category": "lua_resume",
+                "label": "*corrector",
+                "start_us": 8432,
+                "wall_us": 6455,
+                "self_us": 52,
+                "truncated": 0
+              },
+              {
+                "id": 3971,
+                "parent": 3968,
+                "category": "native_query",
+                "label": "ScriptTranslation::PrepareCandidate",
+                "start_us": 8433,
+                "wall_us": 6399,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 3972,
+                "parent": 3971,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 8433,
+                "wall_us": 6397,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 3975,
+                "parent": 3974,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 8434,
+                "wall_us": 6395,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3974,
+                "parent": 3973,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 8434,
+                "wall_us": 6395,
+                "self_us": 0,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 14,
+              "wait_bitmap": 1,
+              "cycles": 4510412
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "first_native_us": 87724,
+        "first_flush": {
+          "scopes": 18,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 12,
+          "capture_us": 87725,
+          "flush_us": 1058
+        },
+        "read_count": 419,
+        "read_total_ns": 35696500,
+        "max_reads": [
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 33161800,
+            "read_ns": 9925200,
+            "truncated": 0
+          },
+          {
+            "sample": 1,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 43088500,
+            "read_ns": 5755600,
+            "truncated": 0
+          },
+          {
+            "sample": 4,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 49322000,
+            "read_ns": 4581100,
+            "truncated": 0
+          },
+          {
+            "sample": 18,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 56318300,
+            "read_ns": 4201500,
+            "truncated": 0
+          },
+          {
+            "sample": 82,
+            "parent": 378,
+            "label": "string_id",
+            "start_ns": 83520300,
+            "read_ns": 3491500,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 87724,
+            "self_us": 4,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 41,
+            "wall_us": 87684,
+            "self_us": 6,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 45,
+            "wall_us": 87678,
+            "self_us": 2,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 54,
+            "wall_us": 87668,
+            "self_us": 23,
+            "truncated": 0
+          },
+          {
+            "id": 226,
+            "parent": 224,
+            "category": "translator",
+            "label": "translator",
+            "start_us": 58,
+            "wall_us": 65437,
+            "self_us": 13,
+            "truncated": 0
+          },
+          {
+            "id": 228,
+            "parent": 226,
+            "category": "native_query",
+            "label": "ScriptTranslation::Evaluate",
+            "start_us": 66,
+            "wall_us": 65423,
+            "self_us": 20,
+            "truncated": 0
+          },
+          {
+            "id": 232,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Dictionary::Lookup",
+            "start_us": 32670,
+            "wall_us": 32696,
+            "self_us": 7,
+            "truncated": 0
+          },
+          {
+            "id": 229,
+            "parent": 228,
+            "category": "native_query",
+            "label": "Syllabifier::BuildSyllableGraph",
+            "start_us": 69,
+            "wall_us": 32600,
+            "self_us": 45,
+            "truncated": 0
+          },
+          {
+            "id": 230,
+            "parent": 229,
+            "category": "native_query",
+            "label": "Prism::CommonPrefixSearch",
+            "start_us": 71,
+            "wall_us": 32555,
+            "self_us": 32555,
+            "truncated": 0
+          },
+          {
+            "id": 235,
+            "parent": 232,
+            "category": "native_query",
+            "label": "DictEntryIterator::Sort",
+            "start_us": 33161,
+            "wall_us": 32202,
+            "self_us": 32202,
+            "truncated": 0
+          },
+          {
+            "id": 327,
+            "parent": 224,
+            "category": "translator",
+            "label": "melt_eng",
+            "start_us": 66122,
+            "wall_us": 20899,
+            "self_us": 34,
+            "truncated": 0
+          },
+          {
+            "id": 329,
+            "parent": 327,
+            "category": "native_query",
+            "label": "Dictionary::LookupWords",
+            "start_us": 66123,
+            "wall_us": 17367,
+            "self_us": 12485,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 26,
+          "wait_bitmap": 1,
+          "cycles": 6154156
+        },
+        "wait_bits": [
+          0
+        ]
+      },
+      {
+        "mode": "menu",
+        "architecture": "Win32",
+        "profile": "existing",
+        "ready_ms": 274,
+        "first_probe_exit": 0,
+        "second_probe_exit": 0,
+        "first_dispatch_queue_us": 40,
+        "first_dispatch_engine_us": 4901,
+        "dropped": 0,
+        "runtime_sha256": "4C3E5B737141CCAED1122DDBD31C47662B92A62DB801AE2A124528A31A1F2916",
+        "broker_sha256": "93211EC1F076AF772DCBCCF75FD2EA711C692D7C2F540FBC31BC4377B266C4EB",
+        "tip_sha256": "366C82E868D1875DD1A4A8B01D9491AC0E0CEC0C7F1980CBC6BE6F75A590CE62",
+        "probe_sha256": "6E96320AB1D2ED6EDE2BB24FED601E1B9FDDD28F39B33CFBCDDC128743E71366",
+        "dispatch_count": 124,
+        "dispatch_max_us": 19741,
+        "dispatch_over_50ms": 0,
+        "captured_frames": 330,
+        "captured_keys": 116,
+        "native_max_us": 18897,
+        "menu_max_us": 1816,
+        "slow_deferred_keys": [
+          {
+            "frame_index": 10,
+            "kind": "process_key",
+            "native_us": 17947,
+            "flush": {
+              "scopes": 9,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 19,
+              "arm_us": 10,
+              "capture_us": 17947,
+              "flush_us": 37
+            },
+            "slow_scopes": [
+              {
+                "id": 3198,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 17947,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3204,
+                "parent": 3198,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 49,
+                "wall_us": 17898,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 3205,
+                "parent": 3204,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 51,
+                "wall_us": 17893,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3207,
+                "parent": 3205,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 62,
+                "wall_us": 17882,
+                "self_us": 21,
+                "truncated": 0
+              },
+              {
+                "id": 3209,
+                "parent": 3207,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 63,
+                "wall_us": 17250,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 3211,
+                "parent": 3209,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 67,
+                "wall_us": 17245,
+                "self_us": 33,
+                "truncated": 0
+              },
+              {
+                "id": 3244,
+                "parent": 3211,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 152,
+                "wall_us": 17136,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 3246,
+                "parent": 3245,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 152,
+                "wall_us": 17135,
+                "self_us": 17131,
+                "truncated": 0
+              },
+              {
+                "id": 3245,
+                "parent": 3244,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 152,
+                "wall_us": 17135,
+                "self_us": 0,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 1,
+              "wait_bitmap": 1,
+              "cycles": 1992818
+            },
+            "wait_bits": [
+              0
+            ]
+          },
+          {
+            "frame_index": 51,
+            "kind": "process_key",
+            "native_us": 18897,
+            "flush": {
+              "scopes": 12,
+              "reads": 0,
+              "scope_dropped": 0,
+              "read_skipped": 22,
+              "arm_us": 9,
+              "capture_us": 18897,
+              "flush_us": 45
+            },
+            "slow_scopes": [
+              {
+                "id": 12314,
+                "parent": 0,
+                "category": "engine",
+                "label": "ProcessKey",
+                "start_us": 0,
+                "wall_us": 18897,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 12320,
+                "parent": 12314,
+                "category": "processor",
+                "label": "processor",
+                "start_us": 28,
+                "wall_us": 18869,
+                "self_us": 4,
+                "truncated": 0
+              },
+              {
+                "id": 12321,
+                "parent": 12320,
+                "category": "engine",
+                "label": "Compose",
+                "start_us": 30,
+                "wall_us": 18865,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 12323,
+                "parent": 12321,
+                "category": "engine",
+                "label": "TranslateSegments",
+                "start_us": 40,
+                "wall_us": 18854,
+                "self_us": 20,
+                "truncated": 0
+              },
+              {
+                "id": 12325,
+                "parent": 12323,
+                "category": "translator",
+                "label": "translator",
+                "start_us": 41,
+                "wall_us": 18163,
+                "self_us": 5,
+                "truncated": 0
+              },
+              {
+                "id": 12327,
+                "parent": 12325,
+                "category": "native_query",
+                "label": "ScriptTranslation::Evaluate",
+                "start_us": 44,
+                "wall_us": 18157,
+                "self_us": 9,
+                "truncated": 0
+              },
+              {
+                "id": 12344,
+                "parent": 12343,
+                "category": "native_query",
+                "label": "DictEntryIterator::Peek",
+                "start_us": 137,
+                "wall_us": 18059,
+                "self_us": 2,
+                "truncated": 0
+              },
+              {
+                "id": 12343,
+                "parent": 12327,
+                "category": "native_query",
+                "label": "has_exact_match_phrase",
+                "start_us": 137,
+                "wall_us": 18059,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 12345,
+                "parent": 12344,
+                "category": "native_query",
+                "label": "Table::GetEntryText",
+                "start_us": 138,
+                "wall_us": 18057,
+                "self_us": 1,
+                "truncated": 0
+              },
+              {
+                "id": 12347,
+                "parent": 12346,
+                "category": "native_query",
+                "label": "StringTable::GetString",
+                "start_us": 138,
+                "wall_us": 18056,
+                "self_us": 3,
+                "truncated": 0
+              },
+              {
+                "id": 12346,
+                "parent": 12345,
+                "category": "native_query",
+                "label": "Table::GetString",
+                "start_us": 138,
+                "wall_us": 18056,
+                "self_us": 0,
+                "truncated": 0
+              },
+              {
+                "id": 12348,
+                "parent": 12347,
+                "category": "native_query",
+                "label": "Marisa::reverse_lookup",
+                "start_us": 138,
+                "wall_us": 18053,
+                "self_us": 18053,
+                "truncated": 0
+              }
+            ],
+            "thread": {
+              "enable_error": 0,
+              "first_error": 0,
+              "last_error": 0,
+              "disable_error": 0,
+              "valid": 1,
+              "context_switches": 9,
+              "wait_bitmap": 1,
+              "cycles": 2533122
+            },
+            "wait_bits": [
+              0
+            ]
+          }
+        ],
+        "slow_menus": [],
+        "first_native_us": 1642,
+        "first_flush": {
+          "scopes": 4,
+          "reads": 419,
+          "scope_dropped": 0,
+          "read_skipped": 0,
+          "arm_us": 13,
+          "capture_us": 1642,
+          "flush_us": 1333
+        },
+        "read_count": 419,
+        "read_total_ns": 75400,
+        "max_reads": [
+          {
+            "sample": 20,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 151600,
+            "read_ns": 20900,
+            "truncated": 0
+          },
+          {
+            "sample": 0,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 129000,
+            "read_ns": 4700,
+            "truncated": 0
+          },
+          {
+            "sample": 1,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 133800,
+            "read_ns": 3100,
+            "truncated": 0
+          },
+          {
+            "sample": 71,
+            "parent": 331,
+            "label": "string_id",
+            "start_ns": 774500,
+            "read_ns": 3100,
+            "truncated": 0
+          },
+          {
+            "sample": 30,
+            "parent": 235,
+            "label": "sort_weight",
+            "start_ns": 178800,
+            "read_ns": 2900,
+            "truncated": 0
+          }
+        ],
+        "slow_scopes": [
+          {
+            "id": 215,
+            "parent": 0,
+            "category": "engine",
+            "label": "ProcessKey",
+            "start_us": 0,
+            "wall_us": 1642,
+            "self_us": 3,
+            "truncated": 0
+          },
+          {
+            "id": 221,
+            "parent": 215,
+            "category": "processor",
+            "label": "processor",
+            "start_us": 29,
+            "wall_us": 1612,
+            "self_us": 5,
+            "truncated": 0
+          },
+          {
+            "id": 222,
+            "parent": 221,
+            "category": "engine",
+            "label": "Compose",
+            "start_us": 32,
+            "wall_us": 1607,
+            "self_us": 1,
+            "truncated": 0
+          },
+          {
+            "id": 224,
+            "parent": 222,
+            "category": "engine",
+            "label": "TranslateSegments",
+            "start_us": 41,
+            "wall_us": 1598,
+            "self_us": 20,
+            "truncated": 0
+          }
+        ],
+        "first_thread": {
+          "enable_error": 0,
+          "first_error": 0,
+          "last_error": 0,
+          "disable_error": 0,
+          "valid": 1,
+          "context_switches": 0,
+          "wait_bitmap": 0,
+          "cycles": 3782146
+        },
+        "wait_bits": []
+      }
+    ],
+    "checks": {
+      "strict_deferred_probe_cases": 6,
+      "original_read_probe_cases": 4,
+      "collector_refusals": 11,
+      "source_replay_matches_compiled": true,
+      "source_normalization": "universal newlines and one missing final newline in retained prefetch header",
+      "ci_nonempty_ps_blocks_ast": 10,
+      "script_ast": 4,
+      "remote_ci_verified": false,
+      "fmt": true,
+      "clippy": true,
+      "workspace": true,
+      "already_profiled_thread_preserved": true
+    },
+    "archive_profile_policy": "final synthetic non-build files copied; unchanged profile/build dictionaries retained as hashed external inputs; not a fresh-time profile snapshot",
+    "plan": "debug local user/build; x64 Broker/runtime; x64/Win32 frontend",
+    "setup_notes": [
+      "initial auxiliary AST collector expression error; corrected strict nonempty block checks used for acceptance",
+      "Python preparation string quoting repaired before mutation; final generator retained"
+    ]
+  }
+}

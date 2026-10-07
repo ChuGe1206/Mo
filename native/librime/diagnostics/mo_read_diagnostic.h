@@ -38,6 +38,16 @@ template <class T>
 inline T ReadScalar(const T* field, const char* label) {
     static_assert(std::is_arithmetic_v<T> && sizeof(T) <= 8);
     // Call sites use naturally aligned fields that fit in one Windows page.
+    if (deferred_state.active) {
+        const auto sample = read_sequence.fetch_add(1, std::memory_order_relaxed);
+        if (sample >= 512) { ++deferred_state.read_skipped; return *field; }
+        const auto started = std::chrono::steady_clock::now();
+        const T value = *static_cast<const volatile T*>(field);
+        const auto read_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - started).count();
+        DeferRead(sample, current ? current->id : 0, label, started, read_ns);
+        return value;
+    }
     if (!ReadPagesEnabled()) return *field;
     const auto sample = read_sequence.fetch_add(1, std::memory_order_relaxed);
     if (sample >= 512) return *field;

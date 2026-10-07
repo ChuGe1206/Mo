@@ -227,3 +227,39 @@ Run `tools/test-read-page-probe.ps1 -ProbePath <absolute-executable>` for the
 bounded off/on/prefetch/invalid matrix, scalar preservation and 512-record cap.
 See [Win10 read-page evidence](../../../docs/phase-0/WIN10-READ-PAGES-EVIDENCE.md)
 for versions, raw records, retained failures, and interpretation limits.
+
+## Deferred key scopes and current-thread dispatch snapshots
+
+Apply deferred-v3.patch after the v3 diagnostic patches and copy
+mo_deferred_diagnostic.h and mo_thread_dispatch_diagnostic.h, along with the
+updated timing/read headers. test-abi3-diagnostic-patches.ps1 with
+-IncludePrefetchExperiment -IncludeDeferredTrace checks the exact five-patch
+experimental source; neither optional feature is enabled by replay or packaging.
+
+tip-latency-diagnostic.ps1 -DeferredTrace arms fixed thread-local storage
+around ConcreteEngine::ProcessKey and lazy Menu::Prepare. Nested captures
+reuse the owner and do not drain twice. Nested scopes skip CPU/fault queries and
+buffer timing metadata; the first 512 scalar reads per process across both phases use clock samples
+without residency queries. Scope storage is limited to 2048 records per key.
+Overflow, skipped reads and label truncation are explicit. The existing labels,
+string construction, forced scalar loads, clocks and atomics still perturb work.
+
+Logs drain after each owning native key/menu scope and before its caller returns. A
+MO_DEFER_FLUSH record separates arming, capture and draining. The full Actor
+dispatch and the unchanged 50 ms TIP check still include drain time. Never treat
+the capture duration alone as an IPC pass or this buffering as a product fix.
+
+Add -ThreadDispatch only with -DeferredTrace to request the current owned
+thread's dispatch counters (hardware counters remain zero). The collector
+rejects mixed residency/prefetch modes and explicitly clears inherited switches.
+The snapshot checks for prior profiling, reads at capture boundaries and disables
+only its own profiling handle. API errors and validity are explicit. The wait
+bitmap is an aggregate since the last read: it gives no per-wait duration, order,
+file identity or proof of disk I/O. CPU cycles must not be converted to time.
+
+DeferredProbe.vcxproj builds with the same strict Release/x64 contract.
+tools/test-deferred-probe.ps1 -ProbePath <absolute-executable> covers off/on,
+overflow, dispatch availability, existing-profile ownership and invalid arguments, deferred output, nested
+ownership, bounded copies, process cap, second-capture reset and scalar values.
+ThreadDispatchProbe.vcxproj is a separate local capability check using one
+synthetic Sleep; exit 3 reports API unavailability, not a performance pass.

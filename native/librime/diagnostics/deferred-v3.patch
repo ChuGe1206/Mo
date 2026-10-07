@@ -1,0 +1,26 @@
+diff --git a/src/rime/engine.cc b/src/rime/engine.cc
+--- a/src/rime/engine.cc
++++ b/src/rime/engine.cc
+@@ -138,7 +138,8 @@
+ }
+ 
+ bool ConcreteEngine::ProcessKey(const KeyEvent& key_event) {
+-  mo_diagnostic::Scope all("engine", "ProcessKey");
++  mo_diagnostic::DeferredCapture capture;
++  mo_diagnostic::Scope all("engine", "ProcessKey", 0);
+   DLOG(INFO) << "process key: " << key_event;
+   ProcessResult ret = kNoop;
+   for (auto& processor : processors_) {
+diff --git a/src/rime/menu.cc b/src/rime/menu.cc
+--- a/src/rime/menu.cc
++++ b/src/rime/menu.cc
+@@ -25,7 +25,8 @@
+ }
+ 
+ size_t Menu::Prepare(size_t requested) {
+-  mo_diagnostic::Scope trace("menu", "Prepare");
++  mo_diagnostic::DeferredCapture capture;
++  mo_diagnostic::Scope trace("menu", "Prepare", 0);
+   DLOG(INFO) << "preparing " << requested << " candidates.";
+   while (candidates_.size() < requested && !result_->exhausted()) {
+     if (auto cand = result_->Peek()) {

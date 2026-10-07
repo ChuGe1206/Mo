@@ -15,6 +15,7 @@
 #undef StartService
 #endif
 #pragma comment(lib, "psapi.lib")
+#include "mo_deferred_diagnostic.h"
 namespace mo_diagnostic {
 struct Scope;
 inline thread_local Scope* current = nullptr;
@@ -31,6 +32,7 @@ struct Scope {
     DWORD faults_start = 0;
     unsigned long long cycles_start = 0;
     bool cycles_valid = false;
+    bool deferred = false;
     static bool ReadCycles(unsigned long long& value) {
         ULONG64 cycles = 0;
         if (!QueryThreadCycleTime(GetCurrentThread(), &cycles)) return false;
@@ -56,13 +58,23 @@ struct Scope {
     Scope(const char* c, std::string l, long long minimum = 500) : category(c), label(std::move(l)),
         parent(current), id(++sequence), start(std::chrono::steady_clock::now()) {
         minimum_us = minimum;
-        cpu_valid = ReadCpu(cpu_start);
-        cycles_valid = ReadCycles(cycles_start);
-        faults_valid = ReadFaults(faults_start);
+        deferred = deferred_state.active;
+        if (!deferred) {
+            cpu_valid = ReadCpu(cpu_start);
+            cycles_valid = ReadCycles(cycles_start);
+            faults_valid = ReadFaults(faults_start);
+        }
         current = this;
     }
     ~Scope() {
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-start).count();
+        if (deferred) {
+            current = parent;
+            if (parent) parent->children += elapsed;
+            if (elapsed >= minimum_us) DeferScope(id, parent ? parent->id : 0,
+                category, label.c_str(), start, elapsed, elapsed - children);
+            return;
+        }
         unsigned long long cpu_end = 0;
         DWORD faults_end = 0;
         unsigned long long cycles_end = 0;

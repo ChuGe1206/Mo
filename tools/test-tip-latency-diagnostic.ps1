@@ -18,7 +18,7 @@ function Reject-Case([string]$Name,[hashtable]$Overrides){
     $argsMap=@{LibrimeDistDir=$dist;SharedDataDir=$shared;BrokerPath="$fixture/mo-broker.exe";NativeOutputDirectory=$native;EvidenceName=$evidence}
     foreach($key in $Overrides.Keys){$argsMap[$key]=$Overrides[$key]}
     $argsList=@('-NoProfile','-File',$collector)
-    foreach($key in $argsMap.Keys){$argsList+=@('-'+$key,[string]$argsMap[$key])}
+    foreach($key in $argsMap.Keys){if($argsMap[$key] -is [bool]){if($argsMap[$key]){$argsList+=('-'+$key)}}else{$argsList+=@('-'+$key,[string]$argsMap[$key])}}
     $actualOutput=Join-Path $repo ('build/'+$argsMap.EvidenceName)
     $alreadyExists=Test-Path -LiteralPath $actualOutput
     & $pwsh @argsList *> (Join-Path $fixture ($Name+'.log'))
@@ -27,6 +27,9 @@ function Reject-Case([string]$Name,[hashtable]$Overrides){
     if(-not $alreadyExists -and (Test-Path -LiteralPath $actualOutput)){throw 'Rejected diagnostic created its requested output'}
     $script:count++
 }
+Reject-Case 'dispatch-without-defer' @{ThreadDispatch=$true}
+Reject-Case 'mixed-deferred-pages' @{DeferredTrace=$true;ReadPageTrace=$true}
+Reject-Case 'mixed-deferred-prefetch' @{DeferredTrace=$true;PrefetchRanges=$true}
 Reject-Case 'relative-runtime' @{LibrimeDistDir='relative-dist'}
 Reject-Case 'missing-runtime' @{LibrimeDistDir=(Join-Path $fixture 'missing')}
 Reject-Case 'relative-shared' @{SharedDataDir='relative-shared'}
