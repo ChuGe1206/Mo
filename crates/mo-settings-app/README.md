@@ -1,14 +1,18 @@
 # mo-settings-app
 
-Native Rust/Win32 settings frontend for Mo. It deliberately exposes only
-settings whose runtime behavior is already validated. The current interactive
-surface can change the candidate theme; engine-backed preferences are displayed
-as read-only “under development” values.
+Native Rust/Win32 per-user settings frontend. It exposes input scheme, character
+set, candidate theme/comments, Emoji, local learning and privacy preferences
+through validated runtime contracts; planned candidate page size remains preserved.
 
-The controller distinguishes an absent document from corrupt or future data.
-Only an explicit **restore defaults** action may replace an unreadable document.
-Saving creates `LocalAppData\Mo\Profile` one component at a time, rejects files
-and reparse points, and delegates atomic replacement to `mo-settings`.
+The controller distinguishes absent, corrupt and future documents. Only the explicit
+restore-defaults action may replace unreadable data. Saving verifies and creates the
+Known Folder Mo/Profile directory one component at a time, rejecting reparse points.
 
-The executable is `mo-settings.exe`. It is an `asInvoker`, per-user settings
-tool and must never request elevation or write Rime YAML/Lua.
+Ordinary saves compare the latest stored semantic document with the window's loaded
+snapshot under the shared Mo write guard. A stale window cannot overwrite another
+window's choices or a future document. It reports reload-required/busy status and
+retains its existing snapshot. Reload observes the latest data; explicit recovery
+uses the same guard without a snapshot precondition. See ADR 0057.
+
+The executable is mo-settings.exe. It stays asInvoker and never writes Rime YAML/Lua.
+Installed desktop behavior and visual acceptance remain separate from controller tests.

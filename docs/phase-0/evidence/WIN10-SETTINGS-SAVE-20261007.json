@@ -1,0 +1,51 @@
+{
+  "format": 1,
+  "date": "2026-10-07",
+  "archive_path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\SettingsSave-v1",
+  "archive_manifest_sha256": "9536654B9889A9129FE739100BCFBC11438D09B11837ECC4D5B7FF8B3156A980",
+  "archive_file_count": 16,
+  "results": {
+    "format": 1,
+    "date": "2026-10-07",
+    "kind": "mo-win10-settings-checked-save",
+    "base_commit": "17e7e2a965cd5dc3818958f5746709cfa839c68e",
+    "synthetic_only": true,
+    "real_user_profile_changed": false,
+    "vm_changed": false,
+    "latency_budget_changed": false,
+    "settings_tests_passed": 25,
+    "controller_tests_passed": 9,
+    "ignored_owned_child_explicitly_invoked_by_parent": true,
+    "checks": {
+      "thread_race_one_winner": true,
+      "cross_process_guard": true,
+      "forced_owned_process_exit_releases_guard": true,
+      "future_and_corrupt_bytes_preserved": true,
+      "stale_privacy_change_rejected": true,
+      "reload_and_explicit_recovery": true,
+      "foreign_marker_preserved": true,
+      "fmt": true,
+      "clippy": true,
+      "workspace": true,
+      "gui_executable_built": true,
+      "installed_gui_retested": false
+    },
+    "input_sha256": {
+      "crates/mo-settings/src/lib.rs": "43E04FEFFE1642B9180E7A80555E5C9C835DE5371FEB2FD8A93A1B4219CFC8DC",
+      "crates/mo-settings-app/src/lib.rs": "E2B67D13233ACC782F6C34508073EB9AA9B0EEA7790BD4A525E2487B23373F29",
+      "crates/mo-settings/README.md": "33286AD15DE4FA014EBE7C06B041138046FA11E3D8CB85585F3AF4D64C43DFF3",
+      "crates/mo-settings-app/README.md": "9496421DE25978CBD7322D153D61CB692A3218AE689E74D96E5DD1B9FC359450",
+      "crates/mo-settings/Cargo.toml": "3709310B8CFDA34B352AF1F53C6D24D1EAC409F8D0C39D2D2D557BADED9E75B8",
+      "crates/mo-settings-app/Cargo.toml": "2FE04CD1BE36CA74310F2D7844062E460C46B4D4D879A97F8E9D77802BA4560D",
+      "Cargo.lock": "D3B4AD97091A3F11814251F06B42FF147889D7C2910A75BEC1B2F13A1889706C",
+      "rust-toolchain.toml": "DA4FA49758E2D8DA0F35F79049581134C98B02DB0176E515E62367BF9242047C",
+      "docs/adr/0057-settings-checked-save.md": "012B676A3B95F5A5E130B85F788C3C3DBD3706C622FDDAD62758D20B07F89EFC",
+      "build/settings-conflict-cross-process.log": "3EE49A2475831CE8784C9CE08F300EEAA1FD4D62CE124E3D25FCD950920C9A18",
+      "build/settings-conflict-fmt-final.log": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "build/settings-conflict-clippy-final.log": "9BFC543D360756250162335CC003ABB29259E007DF62C8589B08B2117F2CEA48",
+      "build/settings-conflict-workspace-final.log": "C1D501A16C07334F8F9D1A2D86E023850600C235007813109AA5F79976AC0D21",
+      "build/settings-conflict-app-build-final.log": "AA8E2EA650ED126F53502799A24887305AC2645BEE061B4023C7341FD8F0DC27",
+      "target/debug/mo-settings.exe": "839E208A052C4FBC14CBF724A030424D3D3AA048B0131D09D339C30566EDA836"
+    }
+  }
+}

@@ -391,6 +391,8 @@ pub enum StoreError {
     UnsafeFileType,
     UnsafeDirectory,
     MissingParent,
+    Changed,
+    WriteBusy,
 }
 
 impl fmt::Display for StoreError {
@@ -405,6 +407,8 @@ impl fmt::Display for StoreError {
                 formatter.write_str("settings directory is not a safe directory")
             }
             Self::MissingParent => formatter.write_str("settings parent directory does not exist"),
+            Self::Changed => formatter.write_str("settings changed since they were loaded"),
+            Self::WriteBusy => formatter.write_str("another settings writer holds the write guard"),
         }
     }
 }
@@ -414,7 +418,11 @@ impl std::error::Error for StoreError {
         match self {
             Self::Io(error) => Some(error),
             Self::InvalidDocument(error) => Some(error),
-            Self::UnsafeFileType | Self::UnsafeDirectory | Self::MissingParent => None,
+            Self::UnsafeFileType
+            | Self::UnsafeDirectory
+            | Self::MissingParent
+            | Self::Changed
+            | Self::WriteBusy => None,
         }
     }
 }
@@ -576,6 +584,24 @@ pub fn load(path: &Path) -> Result<LoadedSettings, StoreError> {
 /// Writes and flushes a new file beside the destination, then atomically
 /// replaces the destination. The caller owns directory creation and ACL policy.
 pub fn save_atomic(path: &Path, settings: &Settings) -> Result<(), StoreError> {
+    save_atomic_checked(path, settings, None)
+}
+
+/// Saves only if the semantic document and its absent/stored origin match.
+/// All Mo writers share one guard. Explicit recovery uses save_atomic.
+pub fn save_atomic_if_unchanged(
+    path: &Path,
+    settings: &Settings,
+    expected: &LoadedSettings,
+) -> Result<(), StoreError> {
+    save_atomic_checked(path, settings, Some(expected))
+}
+
+fn save_atomic_checked(
+    path: &Path,
+    settings: &Settings,
+    expected: Option<&LoadedSettings>,
+) -> Result<(), StoreError> {
     let encoded = settings.encode()?;
     let parent = path
         .parent()
@@ -596,6 +622,14 @@ pub fn save_atomic(path: &Path, settings: &Settings) -> Result<(), StoreError> {
         Err(error) => return Err(error.into()),
     }
 
+    let _writer = WriteGuard::acquire(path)?;
+    if let Some(expected) = expected {
+        match load(path) {
+            Ok(current) if &current == expected => {}
+            Ok(_) | Err(StoreError::InvalidDocument(_)) => return Err(StoreError::Changed),
+            Err(error) => return Err(error),
+        }
+    }
     let (temporary, mut file) = create_temporary_file(path)?;
     let flushed = file
         .write_all(encoded.as_bytes())
@@ -608,6 +642,58 @@ pub fn save_atomic(path: &Path, settings: &Settings) -> Result<(), StoreError> {
         let _ = fs::remove_file(&temporary);
     }
     result
+}
+
+// Exclusively create this reserved sidecar; never adopt an existing file.
+// On Windows the owning handle deletes it on close, including process exit.
+struct WriteGuard {
+    _file: fs::File,
+    #[cfg(not(windows))]
+    path: PathBuf,
+}
+
+impl WriteGuard {
+    fn acquire(path: &Path) -> Result<Self, StoreError> {
+        let mut name = path
+            .file_name()
+            .ok_or(StoreError::MissingParent)?
+            .to_os_string();
+        name.push(".write-lock");
+        let lock_path = path.with_file_name(name);
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_DELETE_ON_CLOSE;
+            options
+                .share_mode(0)
+                .custom_flags(FILE_FLAG_DELETE_ON_CLOSE);
+        }
+        let file = match options.open(&lock_path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                return Err(StoreError::WriteBusy);
+            }
+            #[cfg(windows)]
+            Err(error) if matches!(error.raw_os_error(), Some(32 | 303)) => {
+                return Err(StoreError::WriteBusy);
+            }
+            Err(error) => return Err(error.into()),
+        };
+        Ok(Self {
+            _file: file,
+            #[cfg(not(windows))]
+            path: lock_path,
+        })
+    }
+}
+
+#[cfg(not(windows))]
+impl Drop for WriteGuard {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
 }
 
 fn create_temporary_file(path: &Path) -> Result<(PathBuf, fs::File), StoreError> {
@@ -1071,5 +1157,209 @@ mod tests {
     fn helper_replaces_only_the_requested_line() {
         let changed = replace_line(&canonical(), "emoji=", "emoji=false");
         assert!(!Settings::decode(changed.as_bytes()).unwrap().emoji);
+    }
+
+    #[test]
+    fn stale_snapshots_and_absent_stored_transitions_do_not_overwrite() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let absent = load(&path).unwrap();
+        let dark = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        save_atomic_if_unchanged(&path, &dark, &absent).unwrap();
+        let before = fs::read(&path).unwrap();
+        assert!(matches!(
+            save_atomic_if_unchanged(&path, &Settings::default(), &absent),
+            Err(StoreError::Changed)
+        ));
+        assert_eq!(fs::read(&path).unwrap(), before);
+        let stored = load(&path).unwrap();
+        fs::remove_file(&path).unwrap();
+        assert!(matches!(
+            save_atomic_if_unchanged(&path, &dark, &stored),
+            Err(StoreError::Changed)
+        ));
+        assert!(!path.exists());
+        assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn future_and_corrupt_external_documents_are_preserved() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        save_atomic(&path, &Settings::default()).unwrap();
+        let expected = load(&path).unwrap();
+        for bytes in [
+            b"mo-settings\nformat=2\n".as_slice(),
+            b"synthetic corrupt document",
+        ] {
+            fs::write(&path, bytes).unwrap();
+            assert!(matches!(
+                save_atomic_if_unchanged(&path, &Settings::default(), &expected),
+                Err(StoreError::Changed)
+            ));
+            assert_eq!(fs::read(&path).unwrap(), bytes);
+            assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 1);
+        }
+    }
+
+    #[test]
+    fn guard_excludes_both_save_apis_and_releases_on_drop() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let expected = load(&path).unwrap();
+        let guard = WriteGuard::acquire(&path).unwrap();
+        assert!(matches!(
+            save_atomic(&path, &Settings::default()),
+            Err(StoreError::WriteBusy)
+        ));
+        assert!(matches!(
+            save_atomic_if_unchanged(&path, &Settings::default(), &expected),
+            Err(StoreError::WriteBusy)
+        ));
+        assert!(!path.exists());
+        drop(guard);
+        save_atomic_if_unchanged(&path, &Settings::default(), &expected).unwrap();
+        assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn existing_guard_marker_is_never_adopted_or_deleted() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let marker = fixture.0.join("settings.mo.write-lock");
+        fs::write(&marker, b"synthetic foreign owner").unwrap();
+        assert!(matches!(
+            save_atomic(&path, &Settings::default()),
+            Err(StoreError::WriteBusy)
+        ));
+        assert_eq!(fs::read(&marker).unwrap(), b"synthetic foreign owner");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn simultaneous_snapshots_cannot_both_commit() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let expected = load(&path).unwrap();
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(8));
+        let children = (0..8)
+            .map(|_| {
+                let path = path.clone();
+                let expected = expected.clone();
+                let barrier = std::sync::Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    save_atomic_if_unchanged(&path, &Settings::default(), &expected)
+                })
+            })
+            .collect::<Vec<_>>();
+        let outcomes = children
+            .into_iter()
+            .map(|child| child.join().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(outcomes.iter().filter(|x| x.is_ok()).count(), 1);
+        for outcome in outcomes {
+            assert!(matches!(
+                outcome,
+                Ok(()) | Err(StoreError::Changed | StoreError::WriteBusy)
+            ));
+        }
+        assert_eq!(
+            load(&path).unwrap(),
+            LoadedSettings::Stored(Settings::default())
+        );
+        assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 1);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "owned child entry point for writer_process_exit_releases_guard"]
+    fn writer_guard_owned_child() {
+        let directory =
+            PathBuf::from(std::env::var_os("MO_SETTINGS_GUARD_CHILD_DIR").expect("owned fixture"));
+        assert_eq!(directory.parent(), Some(std::env::temp_dir().as_path()));
+        assert!(
+            directory
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("mo-settings-test-")
+        );
+        assert_eq!(
+            fs::read(directory.join("guard-fixture")).unwrap(),
+            b"synthetic settings guard fixture"
+        );
+        let _guard = WriteGuard::acquire(&directory.join("settings.mo")).unwrap();
+        let mut marker = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(directory.join("guard-ready"))
+            .unwrap();
+        marker.write_all(b"owned guard ready").unwrap();
+        marker.sync_all().unwrap();
+        drop(marker);
+        loop {
+            std::thread::park();
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn writer_process_exit_releases_guard() {
+        use std::process::{Child, Command, Stdio};
+        use std::time::{Duration, Instant};
+        struct OwnedChild(Child);
+        impl Drop for OwnedChild {
+            fn drop(&mut self) {
+                if !matches!(self.0.try_wait(), Ok(Some(_))) {
+                    let _ = self.0.kill();
+                }
+                let _ = self.0.wait();
+            }
+        }
+        let fixture = Fixture::new();
+        fs::write(
+            fixture.0.join("guard-fixture"),
+            b"synthetic settings guard fixture",
+        )
+        .unwrap();
+        let path = fixture.0.join("settings.mo");
+        let mut child = OwnedChild(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "tests::writer_guard_owned_child", "--ignored"])
+                .env("MO_SETTINGS_GUARD_CHILD_DIR", &fixture.0)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        let ready = fixture.0.join("guard-ready");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !ready.exists() {
+            assert!(
+                child.0.try_wait().unwrap().is_none(),
+                "owned child exited before acquiring guard"
+            );
+            assert!(Instant::now() < deadline, "owned guard readiness timeout");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(fs::read(ready).unwrap(), b"owned guard ready");
+        assert!(matches!(
+            save_atomic(&path, &Settings::default()),
+            Err(StoreError::WriteBusy)
+        ));
+        assert!(!path.exists());
+        child.0.kill().unwrap();
+        child.0.wait().unwrap();
+        assert!(!fixture.0.join("settings.mo.write-lock").exists());
+        save_atomic(&path, &Settings::default()).unwrap();
+        assert_eq!(
+            load(&path).unwrap(),
+            LoadedSettings::Stored(Settings::default())
+        );
+        assert!(!fixture.0.join("settings.mo.write-lock").exists());
     }
 }

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use mo_settings::{
     CharacterSet, InputScheme, LoadedSettings, Settings, StoreError, Theme,
     ensure_installed_settings_directory, installed_settings_path, load, save_atomic,
+    save_atomic_if_unchanged,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -95,7 +96,7 @@ impl SettingsController {
         }
         let mut changed = self.settings.clone();
         changed.theme = theme;
-        self.persist(changed)
+        self.persist_checked(changed)
     }
 
     /// Saves implemented engine and presentation preferences as one atomic document.
@@ -115,25 +116,42 @@ impl SettingsController {
         changed.emoji = preferences.emoji;
         changed.local_learning = preferences.local_learning;
         changed.privacy_mode = preferences.privacy_mode;
-        self.persist(changed)
+        self.persist_checked(changed)
     }
 
     /// Explicit user recovery. This is the only path that overwrites a corrupt
     /// or future settings document with product defaults.
     pub fn restore_defaults(&mut self) -> Result<(), ControllerError> {
-        self.persist(Settings::default())
+        self.persist(Settings::default(), None)
     }
 
     pub fn reload(&mut self) {
         *self = Self::open(self.local_app_data_root.clone());
     }
 
-    fn persist(&mut self, settings: Settings) -> Result<(), ControllerError> {
+    fn persist_checked(&mut self, settings: Settings) -> Result<(), ControllerError> {
+        let expected = if self.stored {
+            LoadedSettings::Stored(self.settings.clone())
+        } else {
+            LoadedSettings::Defaults(self.settings.clone())
+        };
+        self.persist(settings, Some(expected))
+    }
+
+    fn persist(
+        &mut self,
+        settings: Settings,
+        expected: Option<LoadedSettings>,
+    ) -> Result<(), ControllerError> {
         let directory = ensure_installed_settings_directory(&self.local_app_data_root)?;
         if self.path.parent() != Some(directory.as_path()) {
             return Err(ControllerError::PathMismatch);
         }
-        save_atomic(&self.path, &settings)?;
+        if let Some(expected) = expected {
+            save_atomic_if_unchanged(&self.path, &settings, &expected)?;
+        } else {
+            save_atomic(&self.path, &settings)?;
+        }
         self.settings = settings;
         self.stored = true;
         self.health = DocumentHealth::Ready;
@@ -151,6 +169,10 @@ pub enum ControllerError {
 impl fmt::Display for ControllerError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Store(StoreError::Changed) => {
+                formatter.write_str("设置已被修改，请点击“重新读取”后再保存")
+            }
+            Self::Store(StoreError::WriteBusy) => formatter.write_str("设置正在保存，请稍后重试"),
             Self::Store(error) => write!(formatter, "无法保存设置：{error}"),
             Self::RecoveryRequired => {
                 formatter.write_str("设置文件已损坏或版本过新，请明确选择恢复默认设置")
@@ -370,5 +392,71 @@ mod tests {
         controller.reload();
         assert_eq!(controller.settings().theme, Theme::Light);
         assert!(controller.stored());
+    }
+
+    #[test]
+    fn stale_window_preserves_other_window_preferences_until_reload() {
+        let fixture = Fixture::new();
+        let mut first = SettingsController::open(&fixture.0);
+        let mut stale = SettingsController::open(&fixture.0);
+        first.save_theme(Theme::Dark).unwrap();
+        let saved = fs::read(first.path()).unwrap();
+        assert!(matches!(
+            stale.save_theme(Theme::Light),
+            Err(ControllerError::Store(StoreError::Changed))
+        ));
+        assert_eq!(fs::read(first.path()).unwrap(), saved);
+        assert!(!stale.stored());
+        assert_eq!(stale.settings().theme, Theme::System);
+        stale.reload();
+        stale.save_theme(Theme::Light).unwrap();
+        first.reload();
+        assert_eq!(first.settings().theme, Theme::Light);
+    }
+
+    #[test]
+    fn external_future_document_requires_reload_and_explicit_recovery() {
+        let fixture = Fixture::new();
+        let mut controller = SettingsController::open(&fixture.0);
+        controller.save_theme(Theme::Dark).unwrap();
+        let future = b"mo-settings\nformat=2\n";
+        fs::write(controller.path(), future).unwrap();
+        let error = controller.save_theme(Theme::Light).unwrap_err();
+        assert!(matches!(error, ControllerError::Store(StoreError::Changed)));
+        assert!(error.to_string().contains("重新读取"));
+        assert_eq!(fs::read(controller.path()).unwrap(), future);
+        assert_eq!(controller.settings().theme, Theme::Dark);
+        controller.reload();
+        assert!(!controller.can_save_changes());
+        controller.restore_defaults().unwrap();
+        assert_eq!(controller.settings(), &Settings::default());
+    }
+
+    #[test]
+    fn stale_primary_save_cannot_disable_other_window_privacy_preference() {
+        let fixture = Fixture::new();
+        let mut first = SettingsController::open(&fixture.0);
+        let mut stale = SettingsController::open(&fixture.0);
+        let preferences = |privacy_mode, theme| PrimaryPreferences {
+            input_scheme: InputScheme::FullPinyin,
+            character_set: CharacterSet::Simplified,
+            theme,
+            show_comments: true,
+            emoji: true,
+            local_learning: true,
+            privacy_mode,
+        };
+        first
+            .save_primary_preferences(preferences(true, Theme::Dark))
+            .unwrap();
+        let before = fs::read(first.path()).unwrap();
+        assert!(matches!(
+            stale.save_primary_preferences(preferences(false, Theme::Light)),
+            Err(ControllerError::Store(StoreError::Changed))
+        ));
+        assert_eq!(fs::read(first.path()).unwrap(), before);
+        let stored = load(first.path()).unwrap();
+        assert!(stored.settings().privacy_mode);
+        assert!(!stored.settings().effective_learning());
     }
 }
