@@ -177,3 +177,74 @@ function Assert-MoVmChangedUpgradeKit([string]$KitRoot) {
     }
     return $kit
 }
+
+
+# Internal orchestration seam. The guest entry point owns VM/token/kit guards
+# and supplies the fixed production operations; no callbacks are CLI options.
+function Invoke-MoVmChangedUpgradeTransaction(
+    [Collections.IDictionary]$Result,
+    [Collections.IDictionary]$Operations
+) {
+    $required = @('Preflight', 'ValidateBase', 'ReadSettings', 'ReadDefault',
+        'Install', 'ValidateUpgrade', 'ReadFinalState')
+    if ($Operations.Count -ne $required.Count) { throw 'Invalid upgrade operation set.' }
+    foreach ($name in $required) {
+        if (-not $Operations.Contains($name) -or $Operations[$name] -isnot [scriptblock]) {
+            throw "Missing upgrade operation: $name"
+        }
+    }
+    foreach ($name in @('completed', 'installer_invocation_attempted', 'base_payload_verified',
+        'upgrade_payload_verified', 'install_tree_security_audited', 'settings_preserved',
+        'default_override_unchanged', 'final_state_verified')) {
+        $Result[$name] = $false
+    }
+    $Result['exit_code'] = $null
+    $Result['failure'] = $null
+    $Result['final_state'] = $null
+    $Result['final_state_failure'] = $null
+    $primaryFailure = $null
+    try {
+        & $Operations['Preflight']
+        & $Operations['ValidateBase']
+        $Result['base_payload_verified'] = $true
+        $settingsBefore = & $Operations['ReadSettings']
+        $defaultBefore = & $Operations['ReadDefault']
+        $Result['installer_invocation_attempted'] = $true
+        $installerExit = & $Operations['Install']
+        if ($installerExit -isnot [int]) { throw 'Installer must return one integer exit code.' }
+        $Result['exit_code'] = $installerExit
+        if ($installerExit -ne 0) { throw "Upgrade failed or requested reboot: $installerExit" }
+        & $Operations['ValidateUpgrade']
+        $Result['upgrade_payload_verified'] = $true
+        $Result['install_tree_security_audited'] = $true
+        Assert-MoVmSettingsPreserved $settingsBefore (& $Operations['ReadSettings'])
+        $Result['settings_preserved'] = $true
+        if ((& $Operations['ReadDefault']) -cne $defaultBefore) {
+            throw 'Upgrade changed the default input method override.'
+        }
+        $Result['default_override_unchanged'] = $true
+    } catch {
+        $primaryFailure = $_
+        $Result['failure'] = $_.Exception.Message
+    } finally {
+        try {
+            $finalState = & $Operations['ReadFinalState']
+            $Result['final_state'] = $finalState
+            if ($null -eq $primaryFailure) {
+                Assert-MoVmLifecycleState $finalState Installed
+                $Result['final_state_verified'] = $true
+            }
+        } catch {
+            $Result['final_state_failure'] = $_.Exception.Message
+            if ($null -eq $Result['final_state']) {
+                $Result['final_state'] = @{ error = $_.Exception.Message }
+            }
+            if ($null -eq $primaryFailure) {
+                $primaryFailure = $_
+                $Result['failure'] = $_.Exception.Message
+            }
+        }
+    }
+    if ($null -ne $primaryFailure) { throw $primaryFailure }
+    $Result['completed'] = $true
+}

@@ -67,6 +67,12 @@ jobs:
       - name: Test changed payload VM kit and execution guards
         shell: pwsh
         run: ./installer/windows/test-vm-changed-upgrade-policy.ps1
+      - name: Test VM upgrade transaction success and failure paths
+        shell: pwsh
+        run: ./installer/windows/test-vm-changed-upgrade-transaction.ps1
+      - name: Test VM upgrade transaction on Windows PowerShell 5.1
+        shell: powershell
+        run: ./installer/windows/test-vm-changed-upgrade-transaction.ps1
 
   librime-abi:
     runs-on: windows-2022

@@ -45,7 +45,7 @@ function Assert-ProductState([string]$Code, [int]$Expected) {
 
 New-Item -ItemType Directory -Path $evidence | Out-Null
 $result = [ordered]@{
-    format = 1; kind = 'mo-vm-changed-payload-upgrade-evidence'; development_only = $true
+    format = 2; kind = 'mo-vm-changed-payload-upgrade-evidence'; development_only = $true
     vm_id = $sentinel.vm_id; completed = $false; installer_invocation_attempted = $false; exit_code = $null
     base_version = $kit.base_version; upgrade_version = $kit.upgrade_version
     base_bundle_sha256 = $kit.base_bundle_sha256; upgrade_bundle_sha256 = $kit.upgrade_bundle_sha256
@@ -55,50 +55,48 @@ $result = [ordered]@{
     base_payload_verified = $false; upgrade_payload_verified = $false
     install_tree_security_audited = $false; settings_preserved = $false; default_override_unchanged = $false
     loaded_tip_matrix_executed = $false; desktop_input_executed = $false; reboot_executed = $false
-    failure = $null; final_state = $null; logs = $null
+    failure = $null; final_state = $null; final_state_verified = $false
+    final_state_failure = $null; logs = $null
+}
+$operations = [ordered]@{
+    Preflight = {
+        if (@(Get-Process -Name 'mo-broker', 'mo-settings' -ErrorAction SilentlyContinue).Count) {
+            throw 'Close Mo Broker and settings before this unloaded-process upgrade test.'
+        }
+        if (Test-Path -LiteralPath ($settingsPath + '.write-lock')) {
+            throw 'Settings writer marker exists; finish or review that writer before upgrading.'
+        }
+    }
+    ValidateBase = {
+        Assert-ProductState $kit.base_product_code 5
+        Assert-ProductState $kit.upgrade_product_code -1
+        Assert-MoVmLifecycleState (Read-RegistrarState) Installed
+        Assert-MoVmMachineComState Installed $installRoot
+        Assert-MoVmInstalledPayload $installRoot $baseContract
+        Assert-MoVmInstalledSecurity $installRoot
+    }
+    ReadSettings = { Get-MoVmSettingsFingerprint $settingsPath }
+    ReadDefault = { (Get-WinDefaultInputMethodOverride | Out-String).Trim() }
+    Install = {
+        # Burn retains the non-elevated initiating user; the VM user handles UAC.
+        $arguments = @('/install', '/quiet', '/norestart', '/log',
+            ('"{0}"' -f (Join-Path $evidence 'upgrade.log')))
+        $installedProcess = Start-Process -FilePath $bundle -ArgumentList $arguments -Wait -PassThru
+        return $installedProcess.ExitCode
+    }
+    ValidateUpgrade = {
+        Assert-ProductState $kit.base_product_code -1
+        Assert-ProductState $kit.upgrade_product_code 5
+        Assert-MoVmLifecycleState (Read-RegistrarState) Installed
+        Assert-MoVmMachineComState Installed $installRoot
+        Assert-MoVmInstalledPayload $installRoot $upgradeContract
+        Assert-MoVmInstalledSecurity $installRoot
+    }
+    ReadFinalState = { Read-RegistrarState }
 }
 try {
-    if (@(Get-Process -Name 'mo-broker', 'mo-settings' -ErrorAction SilentlyContinue).Count) {
-        throw 'Close Mo Broker and settings before this unloaded-process upgrade test.'
-    }
-    if (Test-Path -LiteralPath ($settingsPath + '.write-lock')) {
-        throw 'Settings writer marker exists; finish or review that writer before upgrading.'
-    }
-    Assert-ProductState $kit.base_product_code 5
-    Assert-ProductState $kit.upgrade_product_code -1
-    Assert-MoVmLifecycleState (Read-RegistrarState) Installed
-    Assert-MoVmMachineComState Installed $installRoot
-    Assert-MoVmInstalledPayload $installRoot $baseContract
-    Assert-MoVmInstalledSecurity $installRoot
-    $result.base_payload_verified = $true
-    $beforeSettings = Get-MoVmSettingsFingerprint $settingsPath
-    $beforeDefault = (Get-WinDefaultInputMethodOverride | Out-String).Trim()
-    # Burn retains the non-elevated initiating user; the VM user handles UAC.
-    $arguments = @('/install', '/quiet', '/norestart', '/log', ('"{0}"' -f (Join-Path $evidence 'upgrade.log')))
-    $result.installer_invocation_attempted = $true
-    $process = Start-Process -FilePath $bundle -ArgumentList $arguments -Wait -PassThru
-    $result.exit_code = $process.ExitCode
-    if ($process.ExitCode -ne 0) { throw "Upgrade failed or requested reboot: $($process.ExitCode)" }
-    Assert-ProductState $kit.base_product_code -1
-    Assert-ProductState $kit.upgrade_product_code 5
-    Assert-MoVmLifecycleState (Read-RegistrarState) Installed
-    Assert-MoVmMachineComState Installed $installRoot
-    Assert-MoVmInstalledPayload $installRoot $upgradeContract
-    $result.upgrade_payload_verified = $true
-    Assert-MoVmInstalledSecurity $installRoot
-    $result.install_tree_security_audited = $true
-    Assert-MoVmSettingsPreserved $beforeSettings (Get-MoVmSettingsFingerprint $settingsPath)
-    $result.settings_preserved = $true
-    if ((Get-WinDefaultInputMethodOverride | Out-String).Trim() -cne $beforeDefault) {
-        throw 'Upgrade changed the default input method override.'
-    }
-    $result.default_override_unchanged = $true
-    $result.completed = $true
-} catch {
-    $result.failure = $_.Exception.Message
-    throw
+    Invoke-MoVmChangedUpgradeTransaction $result $operations
 } finally {
-    try { $result.final_state = Read-RegistrarState } catch { $result.final_state = @{ error = $_.Exception.Message } }
     $logs = [ordered]@{}
     foreach ($file in @(Get-ChildItem -LiteralPath $evidence -File -Force)) {
         $logs[$file.Name] = [ordered]@{ size = $file.Length; sha256 = (Get-FileHash $file.FullName).Hash }

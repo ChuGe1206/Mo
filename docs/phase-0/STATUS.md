@@ -351,3 +351,21 @@ VM 在线；窗口最小化后请求恢复，捕获 FrameArrived 超时，仍无
 本轮未执行升级/安装态设置/输入；最近 VM 验证版本仍 0.0.11.0/ABI v2。
 后续使用 build/mo-vm-changed-upgrade-kit-0110-0120-v2；恢复访问后先单次升级
 和设置保全，再多窗口设置与真实宿主。时延专项维持低优先级、G2/G3 保持开放。
+
+## 2026-10-08 升级事务最终状态完成门
+
+[事务修复与 v3 kit](WIN10-UPGRADE-TRANSACTION-EVIDENCE.md) 修正最后 registrar
+读取失败仍可能 completed=true；format 2 回执要求最终 Installed 状态通过，
+保存 final_state_verified/final_state_failure，主错误与最终错误各自保留，
+异常可读状态不丢失。内部操作不作为 CLI 参数，VM/普通权限/kit 拒绝门保留。
+
+PS7/WinPS5.1 各 21 事务测试（含两项原始 driver 操作块内存适配）通过，
+原 kit 34 项、实际 v3 kit 哈希/最终源码和两项 host 拒绝门通过。
+三脚本、十 CI block AST 和双 shell CI 入口通过；远端 CI 未核验。
+ChangedUpgradeTxn0120-v1 封存 35 文件/280 外部输入，manifest 9C15C62E…。
+产品二进制与历史归档未改；后续使用 build/mo-vm-changed-upgrade-kit-0110-0120-v3。
+
+VM 窗口在，但捕获仍 FrameArrived 超时；本轮没有真实安装/输入/重启。
+自动通道不可用时，VM 手动运行及共享目录证据回传步骤已写入文档。
+最近 VM 验证仍 0.0.11.0/ABI v2，单次升级成功路径尚未取得真实证据。
+继续优先升级/设置保全及普通宿主；时延专项低优先级，G2/G3 状态保持开放。

@@ -82,3 +82,8 @@ build/win10-evidence-clean-v1/ChangedUpgrade0120-v1，37 封存文件、
 87A5F2CDA740AFA1AB6AD9A3F0E11C02CDC75E43EFF7B787F11AEF7BD15912A2。
 含最终 kit、验证源码、WinPS harness、原始正负日志、VM 访问失败；
 旧、新 stage 全部条目逐项比对，前轮 Package0120-v1 的 manifest 未改。
+
+## 最终状态完成门后续修复（2026-10-08）
+
+v3 已修正最终读取失败仍可能完成的问题，回执 format 2，双 shell 各 21 项事务测试通过。
+后续使用 v3；v2 仅保留历史记录，见 [事务修复与手动入口](WIN10-UPGRADE-TRANSACTION-EVIDENCE.md)。

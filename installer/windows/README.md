@@ -367,3 +367,29 @@ exercise injected rollback, establish absence of every loaded TIP module,
 reboot or send desktop input. Those acceptance cases remain separate.
 test-vm-changed-upgrade-policy.ps1 exercises synthetic inventories, distinct
 installed trees, tampering, paths/settings and pre-execution refusals.
+
+
+### Upgrade transaction completion and final audit
+
+The changed upgrade driver's evidence is now format 2. Completion requires the
+final registrar read to match Installed in addition to all upgrade checks.
+A final read error or state mismatch leaves completed=false and
+final_state_verified=false. The observed state is retained when it can be read;
+final_state_failure records the final audit error. An earlier failure remains
+the primary failure if the final audit also fails.
+
+The internal Invoke-MoVmChangedUpgradeTransaction operation set lets tests
+simulate failure paths. The guest entry point supplies fixed operations after
+its VM/token/kit guards; there are no callback parameters on the command line.
+
+~~~powershell
+./installer/windows/test-vm-changed-upgrade-transaction.ps1
+~~~
+
+The same script runs on PowerShell 7 and Windows PowerShell 5.1. It checks
+success, early refusal, missing/multiple/nonzero exits including 3010, failed
+new-payload validation, settings/default drift, and final state failures.
+Two cases extract the actual driver's operation bodies and run them through
+in-memory adapters to check product states, distinct payload contracts and
+synchronous Burn arguments. They do not execute an installer or prove a VM
+transaction succeeded.
