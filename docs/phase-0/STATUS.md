@@ -369,3 +369,22 @@ VM 窗口在，但捕获仍 FrameArrived 超时；本轮没有真实安装/输�
 自动通道不可用时，VM 手动运行及共享目录证据回传步骤已写入文档。
 最近 VM 验证仍 0.0.11.0/ABI v2，单次升级成功路径尚未取得真实证据。
 继续优先升级/设置保全及普通宿主；时延专项低优先级，G2/G3 状态保持开放。
+
+## 2026-10-08 候选窗口高对比度与外观重绘
+
+[ADR 0058](../adr/0058-candidate-system-high-contrast.md) 实现高对比度优先于
+保存的 Light/Dark/System，预编辑/页脚使用系统正文颜色、按压使用系统高亮；
+退出后恢复保存主题，查询失败回退系统色。首次窗口与三个外观消息查询并重绘，
+不变更候选 revision、焦点、文本、窗口锚点或会话，不改变 settings/IPC。
+
+早期 Unicode scheme 指针 LocalFree 导致 x64 0xC0000374；改为只读 flags，
+不释放系统方案指针后，双架构 /W4 /WX、配色策略、真实 EDIT/受控 TSF
+外观重绘、fake IPC/连接池/候选与每架构两次 Broker 崩溃恢复全部通过。
+Rust fmt/Clippy/workspace 通过；原失败日志保留，不声称保存了失败 PE。
+[证据清单](evidence/WIN10-CANDIDATE-CONTRAST-20261008.json) 封存
+CandidateContrast-v1，56 文件，manifest C47121D90D053447CC711D9C3324EC1451FE2C59BBB6FD4DEC239F5E998F5D25。
+
+本轮未切换系统高对比度、运行真实 Rime 烟测、注册 TIP、操作真实设置或 VM；
+未重建 stage/安装包，0.0.12.0 开发包不含本轮修复，最近验证的 VM 仍
+0.0.11.0/ABI v2。真实视觉/混合 DPI/宿主验收保留；50/400 ms 和 G2/G3 未整体通过。
+下一步可继续候选辅助功能和设置可靠性；guest 证据返回后核验新 ABI 升级。

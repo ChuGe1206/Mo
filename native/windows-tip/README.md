@@ -15,6 +15,12 @@ open.
 The first candidate view is a separate Mo-owned Win32/GDI presentation module:
 vertical display ordinals, mouse paging/selection, owner DPI scaling and monitor
 work-area placement. It does not own a language engine or candidate ordering.
+Windows high contrast overrides all saved candidate themes using system window
+text/background and highlight colors. Turning it off restores the saved theme.
+A failed accessibility query falls back to system colors. Owned popup appearance
+messages repaint without changing focus, text, layout, page revision or session;
+the controlled x64/Win32 probe verifies this path. See ADR 0058 for the query
+ownership decision and the remaining installed/visual accessibility checks.
 The popup uses NOACTIVATE/TOOLWINDOW and MA_NOACTIVATE. UI-element-only hosts do
 not receive this self-drawn window. CandidateAction is an additive feature-gated
 IPC 1.0 request; old peers keep the unchanged key/Snapshot layout. UI actions

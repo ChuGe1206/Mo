@@ -58,6 +58,7 @@
     <ClInclude Include="include\mo_broker_launcher.h" />
     <ClInclude Include="include\mo_candidate_window.h" />
     <ClInclude Include="include\mo_settings_change_window.h" />
+    <ClInclude Include="include\mo_candidate_palette.h" />
     <ClInclude Include="include\mo_tip_ids.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -24,6 +24,7 @@ public:
 private:
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM) noexcept;
     void Paint() noexcept;
+    void RefreshAccessibilityState() noexcept;
     int HitTest(LPARAM position) const noexcept;
     void ResetPress() noexcept;
 
@@ -44,6 +45,7 @@ private:
     int pressed_item_ = -1;
     std::uint64_t pressed_revision_ = 0;
     CandidateTheme theme_ = CandidateTheme::System;
+    bool high_contrast_ = true;
 };
 
 }  // namespace mo::windows_tip

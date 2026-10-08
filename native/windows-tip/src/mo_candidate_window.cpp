@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "mo_candidate_window.h"
+#include "mo_candidate_palette.h"
 
 namespace {
 constexpr wchar_t kWindowClass[] = L"Mo.CandidateWindow.v1";
@@ -47,25 +48,7 @@ void Draw(HDC dc, const wchar_t* text, RECT rectangle, COLORREF color) noexcept 
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
 }
 
-struct Palette final {
-    COLORREF background;
-    COLORREF preedit;
-    COLORREF text;
-    COLORREF pressed;
-    COLORREF pressed_text;
-    COLORREF footer;
-    COLORREF footer_text;
-};
-
-Palette ResolvePalette(mo::windows_tip::CandidateTheme theme) noexcept {
-    if (theme == mo::windows_tip::CandidateTheme::Dark) {
-        return {RGB(32, 32, 34), RGB(190, 190, 194), RGB(245, 245, 247),
-            RGB(54, 72, 92), RGB(245, 245, 247), RGB(43, 43, 46), RGB(214, 214, 218)};
-    }
-    if (theme == mo::windows_tip::CandidateTheme::Light) {
-        return {RGB(250, 250, 248), RGB(80, 80, 80), RGB(25, 25, 25),
-            RGB(220, 232, 245), RGB(25, 25, 25), RGB(238, 238, 235), RGB(70, 70, 70)};
-    }
+mo::windows_tip::CandidatePalette SystemPalette() noexcept {
     return {GetSysColor(COLOR_WINDOW), GetSysColor(COLOR_GRAYTEXT),
         GetSysColor(COLOR_WINDOWTEXT), GetSysColor(COLOR_HIGHLIGHT),
         GetSysColor(COLOR_HIGHLIGHTTEXT), GetSysColor(COLOR_BTNFACE),
@@ -127,6 +110,7 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
                 kWindowClass, L"Mo 墨 · 候选", WS_POPUP | WS_BORDER,
                 0, 0, 0, 0, owner, nullptr, module, this);
             if (window_ == nullptr) { UnregisterClassW(kWindowClass, module); return false; }
+            RefreshAccessibilityState();
         }
         SetWindowLongPtrW(window_, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(owner));
         const UINT dpi = GetDpiForWindow(owner);
@@ -207,13 +191,23 @@ int CandidateWindow::HitTest(LPARAM position) const noexcept {
     return x < client.right / 2 ? kPreviousPage : kNextPage;
 }
 
+void CandidateWindow::RefreshAccessibilityState() noexcept {
+    HIGHCONTRASTW state{};
+    state.cbSize = sizeof(state);
+    const bool queried = SystemParametersInfoW(SPI_GETHIGHCONTRAST,
+        sizeof(state), &state, 0) != FALSE;
+    high_contrast_ = UseHighContrastPalette(queried, state.dwFlags);
+    // SPI_GETHIGHCONTRAST (Unicode) supplies a system-owned scheme pointer.
+    // Only dwFlags is needed; never read, retain, or free the scheme name.
+}
+
 void CandidateWindow::Paint() noexcept {
     PAINTSTRUCT paint{};
     const HDC dc = BeginPaint(window_, &paint);
     if (dc == nullptr) { return; }
     RECT client{};
     GetClientRect(window_, &client);
-    const Palette palette = ResolvePalette(theme_);
+    const CandidatePalette palette = ResolveCandidatePalette(theme_, SystemPalette(), high_contrast_);
     Fill(dc, client, palette.background);
     const HGDIOBJ previous_font = SelectObject(dc,
         font_ != nullptr ? font_ : GetStockObject(DEFAULT_GUI_FONT));
@@ -248,6 +242,14 @@ LRESULT CALLBACK CandidateWindow::WindowProc(HWND window, UINT message,
         SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
     }
     if (self == nullptr) { return DefWindowProcW(window, message, parameter, data); }
+    if (IsCandidateAppearanceMessage(message)) {
+        // Repaint only: keep candidate revision, press identity, focus and
+        // engine/session state intact. Re-read OS accessibility state off the
+        // key dispatch path, without changing the saved theme preference.
+        self->RefreshAccessibilityState();
+        InvalidateRect(window, nullptr, FALSE);
+        return 0;
+    }
     switch (message) {
     case WM_MOUSEACTIVATE: return MA_NOACTIVATE;
     case WM_ERASEBKGND: return 1;

@@ -20,6 +20,7 @@
 #include "mo_broker_launcher.h"
 #include "mo_latency_diagnostics.h"
 #include "mo_deadline.h"
+#include "mo_candidate_palette.h"
 #include "mo_settings_change_window.h"
 
 namespace {
@@ -40,6 +41,41 @@ int expect_result(const wchar_t* operation, HRESULT actual, HRESULT expected) {
     std::wcerr << operation << L" returned 0x" << std::hex << actual
                << L", expected 0x" << expected << L'\n';
     return 1;
+}
+
+bool EqualPalette(const mo::windows_tip::CandidatePalette& left,
+    const mo::windows_tip::CandidatePalette& right) noexcept {
+    return left.background == right.background && left.preedit == right.preedit
+        && left.text == right.text && left.pressed == right.pressed
+        && left.pressed_text == right.pressed_text && left.footer == right.footer
+        && left.footer_text == right.footer_text;
+}
+
+bool ProbeCandidatePalette() {
+    using namespace mo::windows_tip;
+    const CandidatePalette system{RGB(1, 2, 3), RGB(4, 5, 6), RGB(7, 8, 9),
+        RGB(10, 11, 12), RGB(13, 14, 15), RGB(16, 17, 18), RGB(19, 20, 21)};
+    const CandidatePalette accessible{system.background, system.text, system.text,
+        system.pressed, system.pressed_text, system.background, system.text};
+    for (const auto theme : {CandidateTheme::System, CandidateTheme::Light, CandidateTheme::Dark}) {
+        if (!EqualPalette(ResolveCandidatePalette(theme, system, true), accessible)) { return false; }
+    }
+    const CandidatePalette light{RGB(250, 250, 248), RGB(80, 80, 80), RGB(25, 25, 25),
+        RGB(220, 232, 245), RGB(25, 25, 25), RGB(238, 238, 235), RGB(70, 70, 70)};
+    const CandidatePalette dark{RGB(32, 32, 34), RGB(190, 190, 194), RGB(245, 245, 247),
+        RGB(54, 72, 92), RGB(245, 245, 247), RGB(43, 43, 46), RGB(214, 214, 218)};
+    if (!EqualPalette(ResolveCandidatePalette(CandidateTheme::System, system, false), system)
+        || !EqualPalette(ResolveCandidatePalette(CandidateTheme::Light, system, false), light)
+        || !EqualPalette(ResolveCandidatePalette(CandidateTheme::Dark, system, false), dark)) { return false; }
+    if (!UseHighContrastPalette(false, 0)
+        || !UseHighContrastPalette(true, HCF_HIGHCONTRASTON)
+        || UseHighContrastPalette(true, 0)
+        || UseHighContrastPalette(true, HCF_AVAILABLE | HCF_HOTKEYACTIVE)) { return false; }
+    return IsCandidateAppearanceMessage(WM_SYSCOLORCHANGE)
+        && IsCandidateAppearanceMessage(WM_SETTINGCHANGE)
+        && IsCandidateAppearanceMessage(WM_THEMECHANGED)
+        && !IsCandidateAppearanceMessage(WM_PAINT)
+        && !IsCandidateAppearanceMessage(WM_LBUTTONUP);
 }
 
 bool ProbeDeadlineArithmetic() {
@@ -1610,6 +1646,30 @@ int probe_broker_input(
                 break;
             }
             if (!WaitForCandidateWindow(true, service, L"initial-composition")) { keys_succeeded = false; break; }
+            if (!registered) {
+                const HWND appearance_window = CandidateWindowForCurrentThread();
+                const HWND focus_before = GetFocus();
+                const auto text_before = edit_store->text();
+                RECT bounds_before{};
+                GetWindowRect(appearance_window, &bounds_before);
+                for (const UINT appearance : {WM_SYSCOLORCHANGE, WM_SETTINGCHANGE, WM_THEMECHANGED}) {
+                    SendMessageW(appearance_window, appearance, 0, 0);
+                    if (!GetUpdateRect(appearance_window, nullptr, FALSE)) {
+                        std::wcerr << L"Candidate appearance message did not invalidate paint\n";
+                        keys_succeeded = false; break;
+                    }
+                    UpdateWindow(appearance_window);
+                    RECT bounds_after{};
+                    GetWindowRect(appearance_window, &bounds_after);
+                    if (GetUpdateRect(appearance_window, nullptr, FALSE)
+                        || GetFocus() != focus_before || edit_store->text() != text_before
+                        || !EqualRect(&bounds_before, &bounds_after)) {
+                        std::wcerr << L"Candidate appearance repaint changed focus/text/layout\n";
+                        keys_succeeded = false; break;
+                    }
+                }
+                if (!keys_succeeded) { break; }
+            }
             if (composition_index == 1 && !registered) {
                 RECT before_layout{};
                 GetWindowRect(CandidateWindowForCurrentThread(), &before_layout);
@@ -2114,6 +2174,10 @@ int wmain(int argument_count, wchar_t** arguments) {
     if (FAILED(result)) {
         FreeLibrary(module);
         return fail(L"IClassFactory::CreateInstance", result);
+    }
+    if (!ProbeCandidatePalette()) {
+        service->Release(); FreeLibrary(module);
+        return fail(L"Candidate palette/accessibility policy", E_FAIL);
     }
     if (!ProbeDeadlineArithmetic()) {
         service->Release(); FreeLibrary(module); return fail(L"Deadline arithmetic", E_FAIL);
