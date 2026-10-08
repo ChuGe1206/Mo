@@ -388,3 +388,20 @@ CandidateContrast-v1，56 文件，manifest C47121D90D053447CC711D9C3324EC1451FE
 未重建 stage/安装包，0.0.12.0 开发包不含本轮修复，最近验证的 VM 仍
 0.0.11.0/ABI v2。真实视觉/混合 DPI/宿主验收保留；50/400 ms 和 G2/G3 未整体通过。
 下一步可继续候选辅助功能和设置可靠性；guest 证据返回后核验新 ABI 升级。
+
+## 2026-10-08 0.0.13.0 高对比度修复整合包
+
+[Win10 开发包证据](WIN10-PACKAGED-0130-EVIDENCE.md)：产品源 0babd75，
+fresh release / 双架构严格编译，89 源文件绑定、132 payload / 138 stage 项通过。
+高对比度与安全 scheme 查询进入实际 TIP；ABI v3 BE5E…运行时不变。
+实际 staged DLL + 隔离 fake Broker 的重绘/候选/提交及每架构两次退出恢复通过。
+MSI/Burn、无警告 ICE、Changed 0.0.11.0 → 0.0.13.0 pair、kit 全哈希通过；
+WinPS 5.1 核验最终脚本并从实际 kit driver 通过两项 host 拒绝。
+Package0130-v1 封存 160 文件/140 外部输入，
+manifest 1451CC7F0B477CF21355C3168182F42F0293C136024F4C919528B101370F0298。unsigned DevelopmentTest 不可分发。
+
+最新 kit：build/mo-vm-changed-upgrade-kit-0110-0130-v1，使用最终 format 2 审计门；
+共享封存 Package0130-v1/kit，guest 回传 ChangedUpgradeGuest0130-v1。
+最近 VM 已验证基线仍 0.0.11.0/ABI v2，本轮没有新 VM 操作；若已执行旧 0.0.12.0
+kit，先核验其回执再匹配升级基线。真实 Rime 输入/系统高对比度/安装态 GUI/
+宿主/重启未验收，50/400 ms 与 G2/G3 仍开放，时延专项维持暂缓。

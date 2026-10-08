@@ -51,3 +51,9 @@ System 模式的预编辑使用灰色文本，页脚使用按钮色；高对比�
 - [Microsoft 高对比度参数](https://learn.microsoft.com/en-us/windows/win32/winauto/high-contrast-parameter)
 - [HIGHCONTRASTW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-highcontrastw)
 - [Microsoft WPF SystemParameters.HighContrast 实现](https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/SystemParameters.cs)
+
+## 2026-10-08 开发包整合
+
+修复已进入 [0.0.13.0 Win10 开发包](../phase-0/WIN10-PACKAGED-0130-EVIDENCE.md)。
+fresh staged 双架构 TIP 的合成候选/重绘/故障恢复通过；MSI/Burn/ICE 与
+0.0.11.0 → 0.0.13.0 kit 通过。安装态及系统高对比度视觉检查仍待验收。
