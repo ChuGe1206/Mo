@@ -64,6 +64,9 @@ jobs:
       - name: Verify same and changed payload upgrade-pair policies
         shell: pwsh
         run: ./installer/windows/test-linked-upgrade-pair.ps1
+      - name: Test changed payload VM kit and execution guards
+        shell: pwsh
+        run: ./installer/windows/test-vm-changed-upgrade-policy.ps1
 
   librime-abi:
     runs-on: windows-2022

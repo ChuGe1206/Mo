@@ -78,3 +78,8 @@ manifest SHA-256 为 62E9E136E1DE7AA968A9FDF039DF6DC4BC0D0DDBCDD93DEE76DF2285F22
 其中包含产品源快照、实际 Broker/settings/TIP/registrar/Rime、Bundle/MSI/kit、
 linked 回执及 pair、正负日志和 VM 访问失败状态。外部 stage 文件逐项哈希校验；
 旧档案未改。哈希是未签名的一致性证据。
+
+## 2026-10-08 后续入口
+
+独立双清单 kit 与 guest upgrade driver 已补齐，实际 kit 和 WinPS 5.1 拒绝门通过。
+VM 升级仍未执行；后续使用 v2，见 [变更载荷升级续测](WIN10-CHANGED-UPGRADE-EVIDENCE.md)。

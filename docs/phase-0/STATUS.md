@@ -331,3 +331,23 @@ VM 在线，但无密码 guest command 被账户限制拒绝，Computer Use 两�
 窗口；本轮未执行安装/升级/GUI。最近验证的 VM 仍 0.0.11.0、旧 ABI v2。
 等待恢复可操作桌面，继续独立变更载荷 guest 升级和多窗口设置/宿主验证；
 现有 matrix 不能复用。时延专项保持暂停优先级，50/400 ms、G2/G3 未整体通过。
+
+## 2026-10-08 独立变更载荷升级测试包
+
+[双清单 kit 与 guest driver](WIN10-CHANGED-UPGRADE-EVIDENCE.md) 补齐
+0.0.11.0 → 0.0.12.0 独立升级入口。旧树按历史 frozen inventory、新树按当前
+stage 复核；12 文件 kit 分别绑定旧/新 Bundle、stage、linked 回执和 registrar。
+普通用户、VM sentinel 与两执行开关控制 guest；安装前/后各自校验 MSI、载荷、
+ACL/COM/profile/finalizer，设置存在性/字节和默认 override 不变，非 0 exit 拒绝。
+只运行新 Bundle，未覆盖 clean install、注入 rollback、loaded TIP、reboot/输入。
+
+新合成策略 34 项、原 pair 14 项、原 VM 策略 39 项通过，实际最终 v2 kit 哈希
+校验通过；Win10 原生 PowerShell 5.1.19041.6456 实际 kit/helper/driver AST
+及两项 host 拒绝门通过。四脚本和十 CI block AST 通过，测试接入唯一 CI step；
+远端 CI 未核验。ChangedUpgrade0120-v1 封存 37 文件/279 外部输入，
+manifest 87A5F2CD…，旧 Package0120-v1 未改。
+
+VM 在线；窗口最小化后请求恢复，捕获 FrameArrived 超时，仍无可观察桌面。
+本轮未执行升级/安装态设置/输入；最近 VM 验证版本仍 0.0.11.0/ABI v2。
+后续使用 build/mo-vm-changed-upgrade-kit-0110-0120-v2；恢复访问后先单次升级
+和设置保全，再多窗口设置与真实宿主。时延专项维持低优先级、G2/G3 保持开放。

@@ -325,3 +325,45 @@ receipt. A changed payload test must verify the original installed tree against
 the base manifest and the upgraded tree against the upgrade manifest. The
 changed pair receipt does not prove runtime ABI compatibility, settings
 preservation, rollback, loaded TIP handling, or successful installation.
+
+
+## Changed payload VM upgrade kit
+
+prepare-vm-changed-upgrade-kit.ps1 creates a separate kit for an already
+installed base version. Provide BaseBundlePath, UpgradeBundlePath,
+BaseStageDirectory, UpgradeStageDirectory, BaseLinkedEvidencePath,
+UpgradeLinkedEvidencePath, UpgradePairEvidencePath and a new OutputDirectory
+under repository build. All paths must be absolute local DOS paths.
+
+The builder checks the complete frozen base inventory and its linked hashes.
+The upgrade stage must pass current staging policy. This permits using a
+historical base ABI as evidence for the existing installation without accepting
+that runtime for the new build. Both payload contracts currently require 132
+files. The flat kit has 12 hashed files plus vm-changed-upgrade-kit.json,
+including distinct stage/linked manifests and both bundles. The default-off
+execution flag is consistency metadata, not permission or a signature.
+
+Copy the complete kit to a local directory inside an initialized disposable
+Win10 VM. Use its original non-elevated user and 64-bit PowerShell 5.1:
+
+~~~powershell
+./run-vm-changed-payload-upgrade.ps1 -DisposableVm -AllowInstallerExecution -EvidenceDirectory C:\MoChangedEvidence0120
+~~~
+
+The guest driver requires the exact base MSI installed, new MSI absent, Mo
+enabled but inactive, and the existing Installed finalizer receipt. Finish
+settings writes and close Mo Broker/settings before running it; it does not
+stop processes. The VM user handles Burn's UAC request.
+
+The driver checks the base tree before installation and the upgrade tree
+afterwards, with machine COM/profile/finalizer, ACL, exact MSI states, unchanged
+settings bytes (including initial absence) and default input override. Only
+exit 0 is accepted; reboot requests are failures for this run. Evidence records
+the invocation attempt, exit code, completed checks, failure and final
+registrar state. A failed run is not automatically rolled back by the driver.
+
+This single upgrade does not run the base bundle, install onto a clean VM,
+exercise injected rollback, establish absence of every loaded TIP module,
+reboot or send desktop input. Those acceptance cases remain separate.
+test-vm-changed-upgrade-policy.ps1 exercises synthetic inventories, distinct
+installed trees, tampering, paths/settings and pre-execution refusals.
