@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "date": "2026-10-12",
+  "branch": "develop",
+  "product_base_commit": "58ed63b1429f394da18a4a5a6e365cc0f2882135",
+  "cache_clean": {
+    "files": 20338,
+    "reported_space": "3.1 GiB",
+    "automation_id": "mo-cargo",
+    "daily_check": "03:00 Asia/Shanghai"
+  },
+  "verification": {
+    "workspace_ps7": 10,
+    "workspace_winps51": 10,
+    "staging_policy": 71,
+    "native_architectures": [
+      "x64",
+      "Win32"
+    ],
+    "stage": "passed",
+    "msi_ice": "passed",
+    "linked_payload": "passed",
+    "real_stage_fault": "x64 N 47ms failed; Win32 not reached"
+  },
+  "guest": {
+    "running": true,
+    "migration_verified": false,
+    "new_install_verified": false,
+    "remote_control": "computer-use captures timed out; blank-password guestcontrol rejected",
+    "tool_shared": "MoEvidence/WorkspaceTools-v1",
+    "upgrade_shared": "MoEvidence/Package0140-v1/kit"
+  },
+  "package": {
+    "format": 3,
+    "development_only": true,
+    "install_executed": false,
+    "build_flavor": "DevelopmentTest",
+    "fault_injection_included": true,
+    "wix_version": "4.0.6+73c89738",
+    "product_version": "0.0.14.0",
+    "msi_product_code": "{77F77B6F-ADB6-4E1F-A615-B97861760669}",
+    "msi_upgrade_code": "{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}",
+    "bundle_id": "{5F79D190-9910-453F-8AF6-0210789F2952}",
+    "bundle_upgrade_code": "{E08C0321-3F73-4D39-BC28-E7DF02C5134E}",
+    "known_link_warning": "WIX1140: per-user Bundle does not register a dependency on its per-machine MSI",
+    "msi_ice_validated": true,
+    "stage_manifest_sha256": "5FB9D6E12A1D68FEC97AB78AF94BE0E34F39AC463658BBED1AECD4955B6FB546",
+    "msi_sha256": "7F6006A81AB79C94B56FC6166EC3561CC0487FF869122E3711EAFF0B1A0E5C2D",
+    "bundle_sha256": "E161175B81FF405C5C81813869CD61457C32DA0087608AD0A1A648B82795DFB4"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256_lf": "BC54DE952A6AABBDFBC2870F56DBDF5B0F7FE27847A12E3C558E221A7CF00CA4"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256_lf": "05A3B193B1A56058DD80965F4267AB315E3D4235DA00E96D86573C38FB78A0A1"
+    },
+    {
+      "path": "installer/windows/prepare-stage.ps1",
+      "sha256_lf": "8C01F3367BFF5448840D3A9602AE60ACE86669235556EE73AFBBA5916E627466"
+    },
+    {
+      "path": "installer/windows/staging-policy.ps1",
+      "sha256_lf": "CA394AF6315EBABD48DA0D026194919679E756E0B0EC6AEC779F7EA5E8008FF8"
+    },
+    {
+      "path": "installer/windows/test-staging.ps1",
+      "sha256_lf": "CFABC438E617A10CC1956C368BDD204DD9D814ED1BEA30BD32D1B4CA26B8A1BB"
+    },
+    {
+      "path": "installer/windows/organize-vm-workspace.ps1",
+      "sha256_lf": "B4FDE0EE786A70F503C36B31BA27F1DFD4E6D91F9E5E282E6621C6AD0E60C7FF"
+    },
+    {
+      "path": "installer/windows/vm-workspace-policy.ps1",
+      "sha256_lf": "7CF7EA853E9EEC94A12F44BB295813234367331BDAE3A7FD1E64D02EEDF8624E"
+    },
+    {
+      "path": "installer/windows/test-vm-workspace.ps1",
+      "sha256_lf": "C41DB61F15AAE991B8233FF63600F0AC0266969C9855CCC282159D4A6DBAF8A1"
+    },
+    {
+      "path": "native/windows-tip/src/mo_ui.rc",
+      "sha256_lf": "854ECB1662679486C405B3900311F4E0AE6E1B3A07B17A71545355BF84613066"
+    },
+    {
+      "path": "native/windows-tip/probe/candidate_preview.cpp",
+      "sha256_lf": "EAA20900872AC3413E8CFDA87770BE781926059DE245A58CA82906DCF553E5D0"
+    },
+    {
+      "path": "docs/phase-0/WIN10-WORKSPACE-20261012.md",
+      "sha256_lf": "753742C3C07BA3D03432B9B2CDDDEE9A6BFDC126AB3152419ECDC3F398A78100"
+    }
+  ],
+  "upgrade_pair": {
+    "format": 3,
+    "kind": "mo-linked-changed-payload-upgrade-pair",
+    "development_only": true,
+    "install_executed": false,
+    "build_flavor": "DevelopmentTest",
+    "fault_injection_included": true,
+    "base_version": "0.0.11.0",
+    "upgrade_version": "0.0.14.0",
+    "msi_upgrade_code": "{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}",
+    "bundle_upgrade_code": "{E08C0321-3F73-4D39-BC28-E7DF02C5134E}",
+    "base_product_code": "{DA51A39A-4343-4C21-9A05-F036918762C7}",
+    "upgrade_product_code": "{77F77B6F-ADB6-4E1F-A615-B97861760669}",
+    "base_bundle_id": "{4130B3CA-FFC4-4F47-BED1-B8C8A5862B5A}",
+    "upgrade_bundle_id": "{5F79D190-9910-453F-8AF6-0210789F2952}",
+    "base_bundle_sha256": "25B1B2BA8DBCAA8904830F38E0303147FB5D208760611A84F09836414502E978",
+    "upgrade_bundle_sha256": "E161175B81FF405C5C81813869CD61457C32DA0087608AD0A1A648B82795DFB4",
+    "base_stage_manifest_sha256": "2D796DC212348F760470B8CE2A547B02943C8EAE4377306CED388D077E476B7B",
+    "upgrade_stage_manifest_sha256": "5FB9D6E12A1D68FEC97AB78AF94BE0E34F39AC463658BBED1AECD4955B6FB546",
+    "base_linked_evidence_sha256": "DCBB89D303F297AB22619143B3387E235B2302CD95BDA68D6C455A4ADC666906",
+    "upgrade_linked_evidence_sha256": "A2E39CA792769709D1CB4AF3C637F301E97FBFA3ABF7B30397946DEBA1F09964"
+  },
+  "kit_manifest_sha256": "B4623BADF9D1FBCEFEAB01894CF6FCE2A6C5C54853CD84C7447A8568312BB83F"
+}

@@ -75,6 +75,17 @@ bool Capture(HWND window, const std::filesystem::path& path) {
 }
 bool Run(HWND owner, const std::filesystem::path& output) {
     const HINSTANCE module = GetModuleHandleW(nullptr);
+    const HRSRC notice = FindResourceW(module, MAKEINTRESOURCEW(306), RT_RCDATA);
+    if (notice == nullptr) { return false; }
+    const DWORD notice_size = SizeofResource(module, notice);
+    const HGLOBAL notice_data = LoadResource(module, notice);
+    const char* notice_bytes = static_cast<const char*>(LockResource(notice_data));
+    if (notice_bytes == nullptr || notice_size < 1000 || notice_size > 4096) { return false; }
+    const std::string notice_text(notice_bytes, notice_size);
+    if (notice_text.find("Copyright (c) 2024 Figma") == std::string::npos
+        || notice_text.find("Permission is hereby granted") == std::string::npos
+        || notice_text.find("THE SOFTWARE IS PROVIDED") == std::string::npos) { return false; }
+
     const HWND focus = GetFocus();
     CandidateWindow candidate;
     Actions actions;

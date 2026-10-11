@@ -19,6 +19,14 @@ cargo test --workspace
 
 These commands build Rust, check formatting and lint, run workspace tests, probe both TIP architectures, and exercise TIP-to-Broker IPC. Real librime tests require verified runtime and rime-ice paths; see `README.md` for `tools/tip-rime-smoke.ps1` arguments.
 
+## Cargo Cache Maintenance
+
+Periodically run cargo clean after completed build/test milestones, especially after
+cargo run diagnostics. Check that no project build, test, running binary, or packaging task
+still needs the target directory before cleaning. Validate the resolved Cargo target path is
+inside this repository. Preserve sealed build/ packages, stages, runtimes, evidence and user
+data. Record cleanup time and reclaimed space; do not rebuild solely to warm the cache.
+
 ## Coding Style & Naming Conventions
 
 Follow `.editorconfig`: UTF-8, final newline, four spaces for Rust, TOML, C++, headers, and WiX; two spaces for JSON/YAML. Rust uses edition 2024 and `rustfmt.toml` (100-column width). Keep crate names in `mo-*` form, Rust modules in `snake_case`, and PowerShell tests named `test-*.ps1`. Treat Clippy warnings as errors.

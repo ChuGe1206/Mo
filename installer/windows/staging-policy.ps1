@@ -66,6 +66,16 @@ function Resolve-MoPinnedSourceInput(
     return [pscustomobject]@{ Kind = 'Archive'; Path = $archive }
 }
 
+# Explicit source/asset inputs used by Rust include_bytes!, RC and icon compilation.
+function Get-MoStageUiSourceNames {
+    $names = @('assets/icons/mo-app-icon.ico', 'third_party/figma-sds-MIT.txt',
+        'third_party/design-assets-20261011.md')
+    foreach ($name in @('previous', 'next', 'expand', 'collapse', 'close', 'smile', 'shield', 'add')) {
+        $names += "assets/ui/$name.svg", "assets/ui/$name.mask"
+    }
+    return $names
+}
+
 function Get-MoStageFiles([string]$Directory) {
     $root = Assert-MoPlainPath $Directory
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Expected a staging directory.' }

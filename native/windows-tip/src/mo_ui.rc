@@ -6,3 +6,4 @@
 303 RCDATA "../../../assets/ui/collapse.mask"
 304 RCDATA "../../../assets/ui/close.mask"
 305 RCDATA "../../../assets/ui/smile.mask"
+306 RCDATA "../../../third_party/figma-sds-MIT.txt"

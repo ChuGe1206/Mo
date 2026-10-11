@@ -64,6 +64,15 @@ jobs:
       - name: Verify same and changed payload upgrade-pair policies
         shell: pwsh
         run: ./installer/windows/test-linked-upgrade-pair.ps1
+      - name: Test VM workspace organization on PowerShell 7
+        shell: pwsh
+        run: ./installer/windows/test-vm-workspace.ps1
+      - name: Test VM workspace organization on Windows PowerShell 5.1
+        shell: powershell
+        run: ./installer/windows/test-vm-workspace.ps1
+      - name: Verify native UI assets and notices
+        shell: pwsh
+        run: ./tools/test-ui-assets.ps1
       - name: Test changed payload VM kit and execution guards
         shell: pwsh
         run: ./installer/windows/test-vm-changed-upgrade-policy.ps1

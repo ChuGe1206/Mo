@@ -4,6 +4,16 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-12 开发包与 VM 目录
+
+- [目录/缓存与开发包记录](WIN10-WORKSPACE-20261012.md)：统一后续测试至 C:/MoDev；
+  目录工具在 PS7/WinPS5.1 各十项合成检查通过，客机回执待取得。
+- 默认 Cargo target 已清理 20338 文件/3.1 GiB；每日 03:00 条件检查并在空闲时清理。
+- 新 0.0.14.0 fresh release/双架构/132-file stage、实际 MSI/Burn 反解和 ICE 通过；
+  是 unsigned DevelopmentTest，尚未执行客机安装。实际资源 golden/准备/Actor 通过，
+  x64 fault 首键 N 47 ms 未消费失败，Win32 fault 未到达，不升级 G2/G3。
+
+
 ## 2026-10-12 Figma 原生 UI 改造
 
 - [实施与证据](../design/MO-NATIVE-UI-20261012.md)、[ADR 0060](../adr/0060-compact-candidates-symbols-and-skins.md)：

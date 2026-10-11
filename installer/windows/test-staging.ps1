@@ -29,6 +29,18 @@ function Write-FixtureJson([string]$Path, $Value) {
 }
 $junction = Join-Path $fixture 'junction'
 try {
+    Pass 'native UI source snapshot includes all compiled resources and MIT attribution' {
+        $names = @(Get-MoStageUiSourceNames)
+        if ($names.Count -ne 19 -or @($names | Select-Object -Unique).Count -ne 19) {
+            throw 'UI input list size/uniqueness mismatch.'
+        }
+        foreach ($name in $names) {
+            Assert-MoRelativeName $name
+            if (-not (Test-Path -LiteralPath (Join-Path $repo $name) -PathType Leaf)) { throw "Missing UI input: $name" }
+        }
+        if ('assets/icons/mo-app-icon.ico' -cnotin $names -or 'assets/ui/smile.mask' -cnotin $names -or
+            'third_party/figma-sds-MIT.txt' -cnotin $names) { throw 'Missing compiled icon or notice.' }
+    }
     Pass 'safe relative path' { Assert-MoRelativeName 'data/rime-ice/build/rime_ice.table.bin' }
     foreach ($name in @('../escape', 'a/../escape', '/root', 'a\b', 'a:b', 'a//b', 'a.', 'CON', 'nul.txt', 'COM1.db', 'LPT9', 'a/file ', ('a' * 241))) {
         Reject "relative path $name" { Assert-MoRelativeName $name } 'relative path'

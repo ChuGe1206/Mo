@@ -85,8 +85,13 @@ function Copy-StageFile([string]$InputPath, [string]$Destination) {
 # prebuilt Broker/TIP parameters. Only explicit files/trees enter this snapshot.
 foreach ($name in @('Cargo.toml', 'Cargo.lock')) { Copy-StageFile (Join-Path $repo $name) (Join-Path $moSource $name) }
 foreach ($name in Get-MoStageFiles (Join-Path $repo 'crates')) {
-    if ($name -cnotmatch '\.(rs|toml|md)$') { throw 'Unexpected Cargo source snapshot file.' }
+    if ($name -cnotmatch '\.(rs|toml|md)$' -and $name -cne 'mo-settings-app/mo-settings.manifest') {
+        throw 'Unexpected Cargo source snapshot file.'
+    }
     Copy-StageFile (Join-Path $repo "crates/$name") (Join-Path $moSource "crates/$name")
+}
+foreach ($name in Get-MoStageUiSourceNames) {
+    Copy-StageFile (Join-Path $repo $name) (Join-Path $moSource $name)
 }
 $nativeSource = Join-Path $moSource 'native/windows-tip'
 foreach ($directory in @('src', 'include', 'probe')) {

@@ -2,6 +2,23 @@
 
 更新：2026-10-04。用户优先验证 Win10；其当前主机也是 Win10。虚拟机已准备，测试账户无密码。
 
+## 2026-10-12 缓存与 VM 目录续测
+
+[目录/开发包记录](WIN10-WORKSPACE-20261012.md)：用户要求统一 Mo 测试目录，并定期 cargo clean。
+已清理默认 target 20338 文件/3.1 GiB，维护约定进入 AGENTS，每日 03:00 检查自动化
+mo-cargo 已建立；有活动构建/测试时跳过，保留封存材料。
+
+新目录约定 C:/MoDev/Packages、Evidence、Archive/Legacy、Manifests。
+整理工具的 PS7/WinPS5.1 各十项合成检查通过，源快照资源策略 71 项通过。
+VM 从 saved 恢复，原生捕获仍超时，VBox 自带截图可读；无密码 guestcontrol
+受账户限制拒绝。已请求用户执行 MoEvidence/WorkspaceTools-v1 工具，回执返回
+WorkspaceGuest-v1。收到回执前不声称客机迁移完成，不用 UI 代敲终端命令。
+
+0.0.14.0 fresh stage 已构建，MIT 声明嵌入 TIP；实际 MSI/Burn/ICE 通过。
+真实 stage golden/准备/Actor 通过，x64 fault N 47 ms 未消费失败，
+Win32 fault 未执行；不扩大复跑、不改变 50/400 ms 或 G2/G3。
+
+
 ## 最新交接：2026-10-12
 
 UI 按用户认可的 Figma 设计实施，开发仍在 develop，远端推送已获授权。
