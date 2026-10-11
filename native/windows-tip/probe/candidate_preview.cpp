@@ -10,13 +10,19 @@
 
 namespace {
 using namespace mo::windows_tip;
-struct Actions { int count = 0; std::uint64_t revision = 0; std::uint32_t index = 0; };
+struct Actions {
+    int count = 0;
+    int total = 0;
+    CandidateAction last = CandidateAction::Select;
+    std::uint64_t revision = 0;
+    std::uint32_t index = 0;
+};
 void Action(void* context, std::uint64_t revision, CandidateAction action,
     std::uint32_t index) noexcept {
     auto& actions = *static_cast<Actions*>(context);
-    if (action == CandidateAction::Select) {
-        ++actions.count; actions.revision = revision; actions.index = index;
-    }
+    ++actions.total;
+    actions.last = action; actions.revision = revision; actions.index = index;
+    if (action == CandidateAction::Select) { ++actions.count; }
 }
 HWND FindCandidate() {
     HWND result = nullptr;
@@ -74,8 +80,11 @@ bool Run(HWND owner, const std::filesystem::path& output) {
     Actions actions;
     BrokerSnapshot snapshot;
     snapshot.revision = 1;
-    snapshot.composition = "chun feng";
-    snapshot.candidates = {"春风", "春峰", "淳风", "春丰", "春锋"};
+    snapshot.composition = "qing";
+    snapshot.symbols_supported = true;
+    snapshot.quick_settings_supported = true;
+    snapshot.page = CandidatePage{0, false, true, std::uint8_t{0}};
+    snapshot.candidates = {"清", "请", "情", "晴", "青", "庆"};
     snapshot.candidate_comments = {"chūn fēng", "拼音", "拼音", "拼音", "拼音"};
     const RECT anchor{200, 200, 202, 224};
     for (const auto theme : {CandidateTheme::Light, CandidateTheme::Dark, CandidateTheme::System}) {
@@ -106,13 +115,22 @@ bool Run(HWND owner, const std::filesystem::path& output) {
             SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, point);
             SendMessageW(window, WM_LBUTTONUP, 0, point);
         };
+        if (!output.empty() && theme == CandidateTheme::Light) {
+            click(502, 56);
+            if (!Capture(window, output / L"expanded.bmp")) { return false; }
+            click(534, 56);
+            if (!Capture(window, output / L"emoji.bmp")) { return false; }
+            click(224, 134);
+            if (!Capture(window, output / L"kaomoji.bmp")) { return false; }
+            if (!candidate.ClosePanel()) { return false; }
+        }
         const int count = actions.count;
         click(4, 58);  // Outer padding must not commit.
-        click(24, 80); // Four-pixel row gap must not commit.
+        click(74, 56); // Four-pixel row gap must not commit.
         if (actions.count != count) { return false; }
-        click(24, 99);
+        click(90, 56);
         if (actions.count != count + 1 || actions.index != 1 || actions.revision != 1) { return false; }
-        const LPARAM first = MAKELPARAM(MulDiv(24, dpi, 96), MulDiv(58, dpi, 96));
+        const LPARAM first = MAKELPARAM(MulDiv(24, dpi, 96), MulDiv(56, dpi, 96));
         SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, first);
         snapshot.revision = 2;
         if (!candidate.Update(module, owner, anchor, snapshot, theme, false, Action, &actions)) {
@@ -122,6 +140,68 @@ bool Run(HWND owner, const std::filesystem::path& output) {
         if (actions.count != count + 1 || GetFocus() != focus) { return false; }
         snapshot.revision = 1;
     }
+    // Disabled affordances must not open panels or dispatch requests to older peers.
+    const int dpi = static_cast<int>(GetDpiForWindow(owner));
+    const HWND window = FindCandidate();
+    const auto click = [window, dpi](int x, int y) {
+        const LPARAM point = MAKELPARAM(MulDiv(x, dpi, 96), MulDiv(y, dpi, 96));
+        SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, point);
+        SendMessageW(window, WM_LBUTTONUP, 0, point);
+    };
+    snapshot.page.reset();
+    snapshot.symbols_supported = false;
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions)) { return false; }
+    int total = actions.total;
+    click(438, 56); click(470, 56); click(534, 56);
+    if (actions.total != total || candidate.panel_open()) { return false; }
+    snapshot.page = CandidatePage{0, false, true, std::uint8_t{0}};
+    snapshot.symbols_supported = true;
+    snapshot.quick_settings_supported = false;
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions)) { return false; }
+    click(470, 56);
+    if (actions.total != ++total || actions.last != CandidateAction::NextPage) { return false; }
+    click(534, 56); click(530, 134);
+    if (!candidate.panel_open() || actions.total != total) { return false; }
+    click(42, 134); click(42, 176);
+    if (actions.total != ++total || actions.last != CandidateAction::InsertSymbol
+        || actions.index != 0 || actions.revision != snapshot.revision) { return false; }
+    click(224, 134); click(42, 176);
+    if (actions.total != ++total || actions.last != CandidateAction::InsertSymbol
+        || actions.index != 24) { return false; }
+    if (!candidate.ClosePanel()) { return false; }
+    BrokerSettings settings;
+    for (std::uint8_t skin = 1; skin <= 6; ++skin) {
+        settings.skin = skin;
+        settings.font_size = skin == 6 ? 24 : 16;
+        settings.background = 0xF4F4EA; settings.accent = 0x526143; settings.text = 0x303C2A;
+        settings.radius = 20;
+        if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+            true, Action, &actions, &settings)) { return false; }
+        RECT bounds{}; GetClientRect(window, &bounds);
+        if (bounds.right != MulDiv(560, dpi, 96) || bounds.bottom != MulDiv(86, dpi, 96)
+            || GetFocus() != focus) { return false; }
+        if (!output.empty() && !Capture(window, output / (L"skin-" + std::to_wstring(skin) + L".bmp"))) { return false; }
+    }
+    settings.vertical = true;
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions, &settings)) { return false; }
+    RECT vertical{}; GetClientRect(window, &vertical);
+    if (vertical.right != MulDiv(340, dpi, 96) || vertical.bottom <= MulDiv(86, dpi, 96)) { return false; }
+    if (!output.empty() && !Capture(window, output / L"custom-vertical.bmp")) { return false; }
+    const int count = actions.count;
+    click(40, 100);
+    if (actions.count != count + 1 || actions.index != 1) { return false; }
+    // Ending a composition resets expansion even when the next preedit is identical.
+    settings.vertical = false;
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions, &settings)) { return false; }
+    click(502, 56);
+    candidate.Hide();
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions)) { return false; }
+    if (candidate.panel_open()) { return false; }
     // Reusing the same DPI must not accumulate fonts, regions or brushes.
     const DWORD gdi_before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     for (int iteration = 0; iteration < 200; ++iteration) {
@@ -140,7 +220,6 @@ bool Run(HWND owner, const std::filesystem::path& output) {
         monitor.rcWork.right, monitor.rcWork.bottom};
     if (!candidate.Update(module, owner, corner, snapshot, CandidateTheme::Light,
         true, Action, &actions)) { return false; }
-    const HWND window = FindCandidate();
     RECT bounds{};
     GetWindowRect(window, &bounds);
     if (bounds.left < monitor.rcWork.left || bounds.top < monitor.rcWork.top

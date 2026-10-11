@@ -1020,3 +1020,159 @@ fn negotiated_candidate_details_preserve_labels_and_comments_with_legacy_fallbac
     );
     assert_eq!(first_key(&mut small).header.kind, MessageKind::Snapshot);
 }
+
+#[test]
+fn negotiated_presentation_and_symbols_share_revision_and_connection_guards() {
+    use mo_ipc::{
+        FEATURE_CANDIDATE_ACTIONS, FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION,
+        FEATURE_SYMBOL_ACTIONS, PresentationSnapshot, SymbolAction,
+    };
+    let mut connection = BrokerConnection::new(311);
+    let features = FEATURE_KEY_EVENTS
+        | FEATURE_CANDIDATE_ACTIONS
+        | FEATURE_CANDIDATE_DETAILS
+        | FEATURE_CANDIDATE_PRESENTATION
+        | FEATURE_SYMBOL_ACTIONS;
+    let hello = Hello {
+        supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+        features,
+        max_payload_len: MAX_PAYLOAD_LEN as u32,
+    };
+    let ack = connection
+        .handle(frame(
+            MessageKind::Hello,
+            0,
+            0,
+            1,
+            hello.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert_eq!(
+        HelloAck::decode_payload(&ack.payload).unwrap().features,
+        features
+    );
+    let token = open(&mut connection, 2);
+    let key = KeyEvent {
+        virtual_key: 0x41,
+        scan_code: 0x1e,
+        modifiers: 0,
+        key_down: true,
+        repeat: false,
+    };
+    let first = connection
+        .handle(frame(
+            MessageKind::KeyEvent,
+            311,
+            token,
+            3,
+            key.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert_eq!(first.header.kind, MessageKind::PresentationSnapshot);
+    let first = PresentationSnapshot::decode_payload(&first.payload).unwrap();
+    assert!(!first.page.unwrap().has_previous);
+    let action = SymbolAction {
+        expected_revision: first.snapshot.revision,
+        index: 20,
+    };
+    let foreign = connection
+        .handle(frame(
+            MessageKind::SymbolAction,
+            311,
+            token + 1,
+            4,
+            action.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert_eq!(error_code(foreign), ERROR_NO_SUCH_SESSION);
+    let invalid = SymbolAction {
+        index: u32::MAX,
+        ..action
+    };
+    let rejected = connection
+        .handle(frame(
+            MessageKind::SymbolAction,
+            311,
+            token,
+            5,
+            invalid.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert_eq!(error_code(rejected), mo_broker::ERROR_BAD_REQUEST);
+    let committed = connection
+        .handle(frame(
+            MessageKind::SymbolAction,
+            311,
+            token,
+            6,
+            action.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    let committed = PresentationSnapshot::decode_payload(&committed.payload).unwrap();
+    assert_eq!(committed.snapshot.commit.as_deref(), Some("❤️"));
+    assert!(committed.snapshot.composition.is_empty() && committed.page.is_none());
+    let stale = connection
+        .handle(frame(
+            MessageKind::SymbolAction,
+            311,
+            token,
+            7,
+            action.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert_eq!(error_code(stale), mo_broker::ERROR_STALE_CANDIDATES);
+    let next = connection
+        .handle(frame(
+            MessageKind::KeyEvent,
+            311,
+            token,
+            8,
+            key.encode_payload().unwrap(),
+        ))
+        .unwrap();
+    assert!(
+        PresentationSnapshot::decode_payload(&next.payload)
+            .unwrap()
+            .snapshot
+            .commit
+            .is_none()
+    );
+}
+#[test]
+fn presentation_capability_requires_details_and_sufficient_payload() {
+    use mo_ipc::{
+        FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION, FEATURE_SYMBOL_ACTIONS,
+        MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN,
+    };
+    for (features, maximum) in [
+        (
+            FEATURE_CANDIDATE_PRESENTATION | FEATURE_SYMBOL_ACTIONS,
+            MAX_PAYLOAD_LEN,
+        ),
+        (
+            FEATURE_CANDIDATE_PRESENTATION | FEATURE_CANDIDATE_DETAILS,
+            MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN,
+        ),
+    ] {
+        let mut connection = BrokerConnection::new(17);
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features,
+            max_payload_len: maximum as u32,
+        };
+        let ack = connection
+            .handle(frame(
+                MessageKind::Hello,
+                0,
+                0,
+                1,
+                hello.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let features = HelloAck::decode_payload(&ack.payload).unwrap().features;
+        assert_eq!(
+            features & (FEATURE_CANDIDATE_PRESENTATION | FEATURE_SYMBOL_ACTIONS),
+            0
+        );
+    }
+}

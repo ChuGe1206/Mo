@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(mo_windows_tip LANGUAGES CXX)
+project(mo_windows_tip LANGUAGES CXX RC)
 option(MO_LATENCY_TRACE "Development-only input timing metadata" OFF)
 option(MO_DEVELOPMENT_FAULT_INJECTION "Development-only installer rollback probe" OFF)
 
@@ -19,9 +19,9 @@ function(mo_apply_compile_policy target)
     target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 endfunction()
 
-add_library(mo_tip SHARED src/mo_broker_client.cpp src/mo_broker_launcher.cpp src/mo_candidate_window.cpp src/mo_settings_change_window.cpp src/mo_tip.cpp src/mo_tip.def)
+add_library(mo_tip SHARED src/mo_broker_client.cpp src/mo_broker_launcher.cpp src/mo_candidate_window.cpp src/mo_ui_icons.cpp src/mo_ui.rc src/mo_settings_change_window.cpp src/mo_tip.cpp src/mo_tip.def)
 mo_apply_compile_policy(mo_tip)
-target_link_libraries(mo_tip PRIVATE advapi32 gdi32 ole32 shell32 uuid)
+target_link_libraries(mo_tip PRIVATE comctl32 msimg32 advapi32 gdi32 ole32 shell32 uuid)
 set_target_properties(mo_tip PROPERTIES OUTPUT_NAME "mo_tip")
 
 add_executable(mo_tip_registrar src/registrar.cpp)
@@ -39,6 +39,6 @@ add_executable(mo_tip_ipc_probe probe/ipc_probe.cpp src/mo_broker_client.cpp)
 mo_apply_compile_policy(mo_tip_ipc_probe)
 
 # Synthetic-only native render/interaction fixture; never registers the TIP.
-add_executable(mo_tip_candidate_preview probe/candidate_preview.cpp src/mo_candidate_window.cpp)
+add_executable(mo_tip_candidate_preview probe/candidate_preview.cpp src/mo_candidate_window.cpp src/mo_ui_icons.cpp src/mo_ui.rc)
 mo_apply_compile_policy(mo_tip_candidate_preview)
-target_link_libraries(mo_tip_candidate_preview PRIVATE gdi32 user32)
+target_link_libraries(mo_tip_candidate_preview PRIVATE advapi32 comctl32 msimg32 gdi32 user32)

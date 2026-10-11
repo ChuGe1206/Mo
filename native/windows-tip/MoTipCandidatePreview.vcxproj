@@ -27,9 +27,10 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Link><SubSystem>Console</SubSystem><AdditionalDependencies>gdi32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies><ControlFlowGuard>Guard</ControlFlowGuard></Link>
+    <Link><SubSystem>Console</SubSystem><AdditionalDependencies>advapi32.lib;gdi32.lib;msimg32.lib;comctl32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies><ControlFlowGuard>Guard</ControlFlowGuard></Link>
   </ItemDefinitionGroup>
   <ItemGroup><ClCompile Include="probe\candidate_preview.cpp" /><ClCompile Include="src\mo_candidate_window.cpp" /></ItemGroup>
   <ItemGroup><ClInclude Include="include\mo_candidate_window.h" /><ClInclude Include="include\mo_candidate_palette.h" /></ItemGroup>
+  <ItemGroup><ClCompile Include="src\mo_ui_icons.cpp" /><ResourceCompile Include="src\mo_ui.rc" /></ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

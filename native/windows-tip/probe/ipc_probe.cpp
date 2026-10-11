@@ -289,6 +289,21 @@ bool ProbeRimeIce(mo::windows_tip::BrokerClient* broker) {
     return true;
 }
 
+bool ProbeSymbols(const wchar_t* path) {
+    mo::windows_tip::BrokerClient peer(path);
+    mo::windows_tip::BrokerSnapshot snapshot;
+    if (!peer.ConnectAndOpen(2000) || !peer.SendKey('M', 0, 0, true, false, &snapshot, 2000)
+        || !snapshot.symbols_supported || !snapshot.page.has_value() || snapshot.page->has_previous
+        || !peer.SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::InsertSymbol, 20, &snapshot, 2000)
+        || snapshot.commit != u8"❤️" || !snapshot.composition.empty() || !snapshot.candidates.empty()
+        || snapshot.page.has_value()) { return false; }
+    if (!peer.SendKey('N', 0, 0, true, false, &snapshot, 2000) || snapshot.commit.has_value()
+        || snapshot.composition != "n"
+        || !peer.SendCandidateAction(snapshot.revision, mo::windows_tip::CandidateAction::InsertSymbol, 24, &snapshot, 2000)
+        || snapshot.commit != u8"( •̀ ω •́ )✧" || !snapshot.composition.empty()) { return false; }
+    peer.Close(500); return true;
+}
+
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -354,6 +369,7 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     broker.Close(500);
+    if (!ProbeSymbols(argv[1])) { std::wcerr << L"Symbol catalog/clear/Unicode IPC probe failed\n"; return 1; }
     std::wcout << (rime_ice
         ? L"Mo TIP C++ client -> Broker -> librime/rime-ice probe passed.\n"
         : L"Mo TIP C++ client -> Rust named-pipe Broker probe passed.\n");

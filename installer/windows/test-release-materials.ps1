@@ -39,9 +39,9 @@ try {
     Pass 'independent release materials verification' {
         & (Join-Path $PSScriptRoot 'verify-release-materials.ps1') @common -MaterialsDirectory $materials
     }
-    Pass 'nine archives and fifteen documents' {
+    Pass 'nine archives and seventeen documents' {
         $manifest = Read-MoStageJson (Join-Path $materials 'materials-manifest.json')
-        if ($manifest['archives'].Count -ne 9 -or $manifest['documents'].Count -ne 15 -or
+        if ($manifest['archives'].Count -ne 9 -or $manifest['documents'].Count -ne 17 -or
             @($manifest['archives'] | Where-Object { $_['gpl_corresponding_source'] -eq $true }).Count -ne 1 -or
             $manifest['legal_review_complete'] -ne $false -or $manifest['release_authorized'] -ne $false) {
             throw 'Unexpected materials manifest shape.'

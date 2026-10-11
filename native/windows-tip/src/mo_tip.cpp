@@ -900,6 +900,10 @@ private:
             return result;
         }
         if (handling_termination_) { return S_OK; }
+        if (key_down && virtual_key == VK_ESCAPE && has_focus_
+            && composition_context_.Get() == context && candidate_window_.panel_open()) {
+            *eaten = TRUE; return S_OK;
+        }
         if (!CachedKeyMatches(context, virtual_key, key_data, key_down)
             && !DispatchKey(context, virtual_key, key_data, key_down)) {
             return S_OK;
@@ -919,6 +923,10 @@ private:
             return result;
         }
         if (handling_termination_) { return S_OK; }
+        if (key_down && virtual_key == VK_ESCAPE && has_focus_
+            && composition_context_.Get() == context && candidate_window_.ClosePanel()) {
+            cached_key_.valid = false; *eaten = TRUE; return S_OK;
+        }
         if (!CachedKeyMatches(context, virtual_key, key_data, key_down)
             && !DispatchKey(context, virtual_key, key_data, key_down)) {
             return S_OK;
@@ -1013,7 +1021,7 @@ private:
         if (!CheckCandidateIdentity(identity)) { return; }
         const bool shown = candidate_window_.Update(
             g_module, candidate_owner_, candidate_anchor_, snapshot, broker_.settings().theme,
-            broker_.settings().show_comments, CandidateActionCallback, this);
+            broker_.settings().show_comments, CandidateActionCallback, this, &broker_.settings(), active_input_scheme_);
         // Win32 show/owner/capture calls may synchronously reenter the host.
         if (!CheckCandidateIdentity(identity)) { return; }
         TraceCandidate(shown ? 11 : 10, shown ? S_OK : E_FAIL);
@@ -1133,11 +1141,25 @@ private:
 
     void QueueCandidateAction(std::uint64_t revision, mo::windows_tip::CandidateAction action,
         std::uint32_t index) noexcept {
+        if (action == mo::windows_tip::CandidateAction::ToggleEmoji) {
+            if (handling_termination_ || !has_focus_ || !broker_.connected() || revision != latest_revision_
+                || composition_context_ == nullptr || active_range_ == nullptr) { return; }
+            const bool saved = broker_.SetEmoji(revision, !broker_.settings().emoji, kBrokerKeyTimeoutMs);
+            if (saved) {
+                settings_change_window_.ScheduleRefresh();
+                const auto message = RegisterWindowMessageW(L"Mo.Settings.Changed.v1");
+                if (message != 0) { PostMessageW(HWND_BROADCAST, message, 0, 0); }
+            } else if (!broker_.connected()) { DisconnectBroker(0); return; }
+            if (display_snapshot_.has_value()) { ShowCandidateWindow(*display_snapshot_); }
+            if (!saved) { candidate_window_.ReportSettingsFailure(); }
+            return;
+        }
         if (handling_termination_ || !has_focus_ || !broker_.connected() || revision != latest_revision_
             || composition_context_ == nullptr || active_range_ == nullptr) { return; }
         auto* session = new (std::nothrow) CandidateEditSession(this, composition_context_.Get(), revision, action, index);
         if (session == nullptr) { return; }
-        candidate_window_.Hide();
+        candidate_window_.Hide(action != mo::windows_tip::CandidateAction::PreviousPage
+            && action != mo::windows_tip::CandidateAction::NextPage);
         HRESULT session_result = E_FAIL;
         const HRESULT result = composition_context_->RequestEditSession(client_id_, session,
             TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &session_result);

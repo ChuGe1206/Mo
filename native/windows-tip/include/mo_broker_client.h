@@ -15,6 +15,8 @@ enum class CandidateAction : std::uint8_t {
     Select = 0,
     PreviousPage = 1,
     NextPage = 2,
+    InsertSymbol = 3,
+    ToggleEmoji = 4,
 };
 
 enum class InputScheme : std::uint8_t {
@@ -40,6 +42,13 @@ struct BrokerSettings final {
     bool local_learning = true;
     bool privacy_mode = false;
     bool effective_learning = true;
+    std::uint8_t skin = 0;
+    std::uint32_t background = 0xffffff;
+    std::uint32_t accent = 0x176d5e;
+    std::uint32_t text = 0x25352f;
+    std::uint8_t radius = 12;
+    std::uint8_t font_size = 16;
+    bool vertical = false;
 };
 
 enum class SettingsRefreshResult : std::uint8_t {
@@ -55,9 +64,18 @@ enum class SessionReplaceResult : std::uint8_t {
     Disconnected,
 };
 
+struct CandidatePage final {
+    std::uint32_t number = 0;
+    bool has_previous = false;
+    bool has_next = false;
+    std::optional<std::uint8_t> highlighted;
+};
 struct BrokerSnapshot final {
     std::uint64_t revision = 0;
     bool handled = false;
+    std::optional<CandidatePage> page;
+    bool symbols_supported = false;
+    bool quick_settings_supported = false;
     std::string composition;
     std::optional<std::string> commit;
     std::vector<std::string> candidates;
@@ -99,6 +117,7 @@ public:
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
+    bool SetEmoji(std::uint64_t candidate_revision, bool value, DWORD timeout_ms) noexcept;
     SettingsRefreshResult RefreshSettings(DWORD timeout_ms) noexcept;
     // Open the next configured session before retiring the old one. A stable
     // Broker rejection keeps the old session alive; ambiguous transport drops
@@ -124,6 +143,10 @@ private:
     std::uint64_t next_request_id_ = 1;
     bool candidate_actions_supported_ = false;
     bool candidate_details_supported_ = false;
+    bool candidate_presentation_supported_ = false;
+    bool symbols_supported_ = false;
+    bool presentation_settings_supported_ = false;
+    bool quick_settings_supported_ = false;
     bool settings_supported_ = false;
     bool session_settings_ack_supported_ = false;
     BrokerSettings settings_;

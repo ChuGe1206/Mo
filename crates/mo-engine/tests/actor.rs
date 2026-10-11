@@ -137,3 +137,72 @@ fn backend_failure_consumes_its_attempt_revision() {
     let next = actor.dispatch(session, EngineCommand::Clear).unwrap();
     assert_eq!(next.revision, Revision::new(2));
 }
+
+#[test]
+fn catalog_insertion_clears_preedit_and_commits_exactly_once() {
+    let mut actor = EngineActor::new(FakeBackend::new());
+    let token = actor.create_session(SessionOptions::new()).unwrap();
+    for (index, symbol) in mo_domain::SYMBOLS_V1.iter().enumerate() {
+        actor.dispatch(token, type_character('a')).unwrap();
+        let snapshot = actor
+            .dispatch(
+                token,
+                EngineCommand::InsertSymbol {
+                    index: index as u32,
+                },
+            )
+            .unwrap();
+        assert!(snapshot.handled);
+        assert_eq!(snapshot.commit.as_deref(), Some(symbol.text));
+        assert!(
+            snapshot.composition.is_none()
+                && snapshot.candidates.is_empty()
+                && snapshot.page.is_none()
+        );
+        assert!(!snapshot.status.composing);
+        assert!(matches!(
+            actor.backend().events().last(),
+            Some(FakeEvent::CommandApplied {
+                command: EngineCommand::Clear,
+                ..
+            })
+        ));
+        let next = actor.dispatch(token, type_character('b')).unwrap();
+        assert!(next.commit.is_none());
+        assert_eq!(next.composition.unwrap().preedit(), "b");
+        actor.dispatch(token, EngineCommand::Clear).unwrap();
+    }
+    let revision = actor.current_revision();
+    let count = actor.backend().events().len();
+    assert_eq!(
+        actor.dispatch(token, EngineCommand::InsertSymbol { index: u32::MAX }),
+        Err(EngineError::InvalidSymbol)
+    );
+    assert_eq!(actor.current_revision(), revision);
+    assert_eq!(actor.backend().events().len(), count);
+}
+
+struct RetainingClearBackend;
+impl EngineBackend for RetainingClearBackend {
+    type Session = ();
+    type Error = &'static str;
+    fn create_session(&mut self, _: SessionOptions) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn apply(&mut self, _: &mut (), _: &EngineCommand) -> Result<EngineOutput, Self::Error> {
+        Ok(EngineOutput {
+            composition: Some(mo_domain::Composition::from_preedit("a")),
+            ..EngineOutput::default()
+        })
+    }
+}
+#[test]
+fn symbol_never_commits_when_backend_retains_unconfirmed_input() {
+    let mut actor = EngineActor::new(RetainingClearBackend);
+    let token = actor.create_session(SessionOptions::new()).unwrap();
+    assert_eq!(
+        actor.dispatch(token, EngineCommand::InsertSymbol { index: 0 }),
+        Err(EngineError::SymbolClearIncomplete)
+    );
+    assert_eq!(actor.current_revision(), Revision::new(1));
+}

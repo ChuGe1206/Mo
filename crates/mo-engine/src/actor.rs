@@ -36,6 +36,10 @@ pub enum EngineError<E> {
     SessionCapacityExhausted,
     /// The actor cannot assign another globally ordered revision.
     RevisionExhausted,
+    /// A symbol does not exist in the negotiated catalog.
+    InvalidSymbol,
+    /// Backend retained input after a catalog insertion requested clear.
+    SymbolClearIncomplete,
     /// The backend rejected an operation.
     Backend(E),
 }
@@ -59,6 +63,10 @@ impl<E: fmt::Display> fmt::Display for EngineError<E> {
                 formatter.write_str("engine session capacity exhausted")
             }
             Self::RevisionExhausted => formatter.write_str("engine revision exhausted"),
+            Self::InvalidSymbol => formatter.write_str("unknown symbol catalog entry"),
+            Self::SymbolClearIncomplete => {
+                formatter.write_str("symbol insertion could not clear input")
+            }
             Self::Backend(source) => write!(formatter, "engine backend failed: {source}"),
         }
     }
@@ -187,6 +195,15 @@ where
         command: EngineCommand,
     ) -> Result<EngineSnapshot, EngineError<B::Error>> {
         let index = self.resolve_active_index(token)?;
+        let symbol = if let EngineCommand::InsertSymbol { index } = command {
+            Some(
+                mo_domain::SYMBOLS_V1
+                    .get(index as usize)
+                    .ok_or(EngineError::InvalidSymbol)?,
+            )
+        } else {
+            None
+        };
         let revision = self
             .revision
             .checked_next()
@@ -199,9 +216,36 @@ where
             .expect("validated active session must be present");
         let output = self
             .backend
-            .apply(session, &command)
+            .apply(
+                session,
+                if symbol.is_some() {
+                    &EngineCommand::Clear
+                } else {
+                    &command
+                },
+            )
             .map_err(EngineError::Backend)?;
 
+        if symbol.is_some()
+            && (output.composition.is_some()
+                || !output.candidates.is_empty()
+                || output.status.composing)
+        {
+            return Err(EngineError::SymbolClearIncomplete);
+        }
+        let output = if let Some(symbol) = symbol {
+            mo_domain::EngineOutput {
+                handled: true,
+                commit: Some(symbol.text.to_owned()),
+                status: mo_domain::EngineStatus {
+                    composing: false,
+                    ..output.status
+                },
+                ..mo_domain::EngineOutput::default()
+            }
+        } else {
+            output
+        };
         Ok(EngineSnapshot::from_output(token, revision, output))
     }
 

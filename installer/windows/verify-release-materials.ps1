@@ -49,10 +49,10 @@ if ($evidence.Count -ne $required.Count -or @($required | Where-Object { -not $e
     $evidence['format'] -ne 1 -or $evidence['kind'] -cne 'mo-release-materials-evidence' -or
     $evidence['development_only'] -ne $true -or $evidence['technical_materials_complete'] -ne $true -or
     $evidence['legal_review_complete'] -ne $false -or $evidence['release_authorized'] -ne $false -or
-    $evidence['archive_count'] -ne 9 -or $evidence['document_count'] -ne 15 -or
+    $evidence['archive_count'] -ne 9 -or $evidence['document_count'] -ne 17 -or
     $evidence['gpl_corresponding_source_ids'].Count -ne 1 -or
     $evidence['gpl_corresponding_source_ids'][0] -cne 'rime-ice' -or
     $evidence['manifest_sha256'] -cne (Get-FileHash $manifestPath -Algorithm SHA256).Hash) {
     throw 'Release materials evidence mismatch.'
 }
-Write-Host 'Verified 9 source archives and 15 license/notice documents; release authorization remains false.'
+Write-Host 'Verified 9 source archives and 17 license/notice documents; release authorization remains false.'

@@ -1,0 +1,8 @@
+#include <windows.h>
+1 ICON "../../../assets/icons/mo-app-icon.ico"
+300 RCDATA "../../../assets/ui/previous.mask"
+301 RCDATA "../../../assets/ui/next.mask"
+302 RCDATA "../../../assets/ui/expand.mask"
+303 RCDATA "../../../assets/ui/collapse.mask"
+304 RCDATA "../../../assets/ui/close.mask"
+305 RCDATA "../../../assets/ui/smile.mask"

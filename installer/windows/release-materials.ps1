@@ -9,7 +9,7 @@ function Read-MoReleaseMaterialsPolicy([string]$Path) {
         @($required | Where-Object { -not $policy.Contains($_) }).Count -or
         $policy['format'] -ne 1 -or $policy['status'] -cne 'phase-0-technical-materials' -or
         $policy['archives'] -isnot [Collections.IList] -or $policy['archives'].Count -ne 9 -or
-        $policy['documents'] -isnot [Collections.IList] -or $policy['documents'].Count -ne 15) {
+        $policy['documents'] -isnot [Collections.IList] -or $policy['documents'].Count -ne 17) {
         throw 'Invalid release materials policy header.'
     }
     foreach ($group in @('archives', 'documents')) {

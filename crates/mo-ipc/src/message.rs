@@ -7,6 +7,9 @@ pub const FEATURE_CANDIDATE_ACTIONS: u64 = 1 << 1;
 pub const FEATURE_SETTINGS_SNAPSHOT: u64 = 1 << 2;
 pub const FEATURE_SESSION_SETTINGS_ACK: u64 = 1 << 3;
 pub const FEATURE_CANDIDATE_DETAILS: u64 = 1 << 4;
+pub const FEATURE_CANDIDATE_PRESENTATION: u64 = 1 << 5;
+pub const FEATURE_SYMBOL_ACTIONS: u64 = 1 << 6;
+pub const MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN: usize = MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN + 8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SettingsOrigin {
@@ -526,4 +529,204 @@ fn validate_payload_limit(max_payload_len: u32) -> Result<(), CodecError> {
         ));
     }
     Ok(())
+}
+
+/// Exact paging facts alongside an unchanged detailed snapshot body.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CandidatePage {
+    pub number: u32,
+    pub has_previous: bool,
+    pub has_next: bool,
+    pub highlighted: Option<u8>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PresentationSnapshot {
+    pub snapshot: DetailedSnapshot,
+    pub page: Option<CandidatePage>,
+}
+impl PresentationSnapshot {
+    fn validate(&self) -> Result<(), CodecError> {
+        if self.snapshot.revision == 0 {
+            return Err(CodecError::InvalidValue(
+                "presentation revision must be non-zero",
+            ));
+        }
+        if let Some(page) = self.page {
+            if self.snapshot.composition.is_empty()
+                || self.snapshot.candidates.is_empty()
+                || page.has_previous != (page.number > 0)
+                || page
+                    .highlighted
+                    .is_some_and(|i| i as usize >= self.snapshot.candidates.len())
+            {
+                return Err(CodecError::InvalidValue(
+                    "inconsistent candidate presentation",
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+impl PayloadCodec for PresentationSnapshot {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        self.validate()?;
+        let mut encoder = Encoder::new();
+        encoder.put_bool(self.page.is_some());
+        let page = self.page.unwrap_or(CandidatePage {
+            number: 0,
+            has_previous: false,
+            has_next: false,
+            highlighted: None,
+        });
+        encoder.put_u32(page.number);
+        encoder.put_bool(page.has_previous);
+        encoder.put_bool(page.has_next);
+        encoder.put_u8(page.highlighted.unwrap_or(255));
+        let mut bytes = encoder.finish();
+        bytes.extend(self.snapshot.encode_payload()?);
+        Ok(bytes)
+    }
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let mut decoder = Decoder::new(
+            payload
+                .get(..8)
+                .ok_or(CodecError::InvalidValue("missing page header"))?,
+        );
+        let present = decoder.get_bool()?;
+        let number = decoder.get_u32()?;
+        let has_previous = decoder.get_bool()?;
+        let has_next = decoder.get_bool()?;
+        let index = decoder.get_u8()?;
+        decoder.finish()?;
+        if !present && (number != 0 || has_previous || has_next || index != 255) {
+            return Err(CodecError::InvalidValue("noncanonical absent page"));
+        }
+        let value = Self {
+            snapshot: DetailedSnapshot::decode_payload(&payload[8..])?,
+            page: present.then_some(CandidatePage {
+                number,
+                has_previous,
+                has_next,
+                highlighted: (index != 255).then_some(index),
+            }),
+        };
+        value.validate()?;
+        Ok(value)
+    }
+}
+/// Catalog v1 insertion. The broker validates the catalog ordinal.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SymbolAction {
+    pub expected_revision: u64,
+    pub index: u32,
+}
+impl PayloadCodec for SymbolAction {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        if self.expected_revision == 0 {
+            return Err(CodecError::InvalidValue("symbol revision must be non-zero"));
+        }
+        let mut encoder = Encoder::new();
+        encoder.put_u64(self.expected_revision);
+        encoder.put_u32(self.index);
+        Ok(encoder.finish())
+    }
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let mut decoder = Decoder::new(payload);
+        let value = Self {
+            expected_revision: decoder.get_u64()?,
+            index: decoder.get_u32()?,
+        };
+        decoder.finish()?;
+        value.encode_payload()?;
+        Ok(value)
+    }
+}
+
+pub const FEATURE_PRESENTATION_SETTINGS: u64 = 1 << 7;
+pub const FEATURE_QUICK_SETTINGS: u64 = 1 << 8;
+/// Bounded appearance projection appended to the untouched legacy settings.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PresentationSettings {
+    pub settings: SettingsSnapshot,
+    pub skin: u8,
+    pub background: u32,
+    pub accent: u32,
+    pub text: u32,
+    pub radius: u8,
+    pub font_size: u8,
+    pub vertical: bool,
+}
+impl PayloadCodec for PresentationSettings {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        if self.skin > 6
+            || self.background > 0xffffff
+            || self.accent > 0xffffff
+            || self.text > 0xffffff
+            || !(8..=20).contains(&self.radius)
+            || !(12..=24).contains(&self.font_size)
+        {
+            return Err(CodecError::InvalidValue("invalid appearance settings"));
+        }
+        let mut bytes = self.settings.encode_payload()?;
+        let mut encoder = Encoder::new();
+        encoder.put_u8(self.skin);
+        encoder.put_u32(self.background);
+        encoder.put_u32(self.accent);
+        encoder.put_u32(self.text);
+        encoder.put_u8(self.radius);
+        encoder.put_u8(self.font_size);
+        encoder.put_bool(self.vertical);
+        bytes.extend(encoder.finish());
+        Ok(bytes)
+    }
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let settings = SettingsSnapshot::decode_payload(
+            payload
+                .get(..18)
+                .ok_or(CodecError::InvalidValue("missing settings"))?,
+        )?;
+        let mut decoder = Decoder::new(&payload[18..]);
+        let value = Self {
+            settings,
+            skin: decoder.get_u8()?,
+            background: decoder.get_u32()?,
+            accent: decoder.get_u32()?,
+            text: decoder.get_u32()?,
+            radius: decoder.get_u8()?,
+            font_size: decoder.get_u8()?,
+            vertical: decoder.get_bool()?,
+        };
+        decoder.finish()?;
+        value.encode_payload()?;
+        Ok(value)
+    }
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SetEmoji {
+    pub expected_revision: u64,
+    pub expected_settings_revision: u64,
+    pub value: bool,
+}
+impl PayloadCodec for SetEmoji {
+    fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
+        if self.expected_revision == 0 || self.expected_settings_revision == 0 {
+            return Err(CodecError::InvalidValue("zero settings action revision"));
+        }
+        let mut encoder = Encoder::new();
+        encoder.put_u64(self.expected_revision);
+        encoder.put_u64(self.expected_settings_revision);
+        encoder.put_bool(self.value);
+        Ok(encoder.finish())
+    }
+    fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
+        let mut decoder = Decoder::new(payload);
+        let value = Self {
+            expected_revision: decoder.get_u64()?,
+            expected_settings_revision: decoder.get_u64()?,
+            value: decoder.get_bool()?,
+        };
+        decoder.finish()?;
+        value.encode_payload()?;
+        Ok(value)
+    }
 }

@@ -149,6 +149,8 @@ pub enum EngineCommand {
     SelectCandidate { index: u32 },
     /// Moves to the previous or next candidate page.
     ChangePage { backward: bool },
+    /// Replaces unconfirmed input with a symbol from Mo's versioned catalog.
+    InsertSymbol { index: u32 },
     /// Changes a named boolean runtime option.
     SetOption { name: String, value: bool },
     /// Commits the active composition.
@@ -218,6 +220,8 @@ pub struct EngineOutput {
     pub composition: Option<Composition>,
     /// Candidate page after the command.
     pub candidates: Vec<Candidate>,
+    /// Backend-owned pagination, paired with the candidates' revision.
+    pub page: Option<CandidatePage>,
     /// Session status after the command.
     pub status: EngineStatus,
 }
@@ -237,6 +241,8 @@ pub struct EngineSnapshot {
     pub composition: Option<Composition>,
     /// Candidate page after the command.
     pub candidates: Vec<Candidate>,
+    /// Backend-owned pagination, paired with the candidates' revision.
+    pub page: Option<CandidatePage>,
     /// Session status after the command.
     pub status: EngineStatus,
 }
@@ -252,6 +258,7 @@ impl EngineSnapshot {
             commit: output.commit,
             composition: output.composition,
             candidates: output.candidates,
+            page: output.page,
             status: output.status,
         }
     }
@@ -289,4 +296,17 @@ mod tests {
         );
         assert!(options.options["z"]);
     }
+}
+
+/// Facts about the current page, without a guessed total page count.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CandidatePage {
+    /// Zero-based backend page number.
+    pub number: u32,
+    /// Whether the backend permits paging backward.
+    pub has_previous: bool,
+    /// Whether the backend permits paging forward.
+    pub has_next: bool,
+    /// Highlighted ordinal on this page, if available.
+    pub highlighted: Option<u32>,
 }

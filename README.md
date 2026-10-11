@@ -8,6 +8,15 @@ Mo 是一款开源、离线优先、安装即用的 Windows 中文输入法。�
 
 日常开发与 Win10 验证在 `develop` 分支进行；`main` 留作后续正式版打板分支。阶段性开发成果推送到 `develop`，正式版验收后再更新 `main`。
 
+## 现代 UI（develop）
+
+紧凑候选、当前页展开、独立 Emoji/颜文字面板，以及三页原生设置和五款皮肤已实现。
+自定义配色/字号/圆角/布局支持数据文件导入导出；应用图标已嵌入二进制。
+[实现与截图](docs/design/MO-NATIVE-UI-20261012.md)、
+[协议和升级边界](docs/adr/0060-compact-candidates-symbols-and-skins.md)。
+新设置、Broker、TIP 须配套升级；安装态 Win10 验证和首键问题仍待完成。
+
+
 ## 已落地的基线
 
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。

@@ -1374,9 +1374,20 @@ bool ClickCandidateWindow(int item) noexcept {
     }
     RECT client{}; GetClientRect(window, &client);
     const int dpi = static_cast<int>(GetDpiForWindow(window));
-    const int x = item == 33 ? client.right * 3 / 4 : client.right / 4;
-    const int y = item >= 32 ? client.bottom - MulDiv(16, dpi, 96)
-        : MulDiv(44 + item * 38 + 17, dpi, 96);
+    if (item < 32) {
+        const LPARAM expand = MAKELPARAM(client.right - MulDiv(58, dpi, 96), MulDiv(56, dpi, 96));
+        // Start from compact or already expanded, with predictable grid slots.
+        if (client.bottom == MulDiv(86, dpi, 96)) {
+            SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, expand);
+            SendMessageW(window, WM_LBUTTONUP, 0, expand);
+            GetClientRect(window, &client);
+        }
+    }
+    const int cell_width = (client.right - MulDiv(40, dpi, 96)) / 3;
+    const int x = item >= 100 ? MulDiv(42, dpi, 96) : item >= 32 ? client.right - MulDiv(122 - (item - 32) * 32, dpi, 96)
+        : MulDiv(24, dpi, 96) + (item % 3) * (cell_width + MulDiv(8, dpi, 96));
+    const int y = item >= 100 ? MulDiv(176, dpi, 96) : item >= 32 ? MulDiv(56, dpi, 96)
+        : MulDiv(128 + (item / 3) * 64, dpi, 96);
     const HWND original_focus = GetFocus();
     const LPARAM position = MAKELPARAM(x, y);
     SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, position);
@@ -1918,6 +1929,24 @@ int probe_broker_input(
             std::wcout << L"Mo TIP TSF owner termination/recovery probe passed.\n";
         }
         if (outcome != 0) { break; }
+        if (!registered) {
+            for (const char key : input) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) { keys_succeeded = false; break; }
+            }
+            const auto composing_text = edit_store->text();
+            if (!keys_succeeded || !ClickCandidateWindow(35)
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)
+                || edit_store->text() != composing_text || !WaitForCandidateWindow(true, service, L"emoji-escape-preserves-input")
+                || !ClickCandidateWindow(35) || !ClickCandidateWindow(100)
+                || !WaitForCandidateWindow(false, service, L"emoji-tsf-commit")) {
+                std::wcerr << L"Emoji panel/Esc/TSF edit-lock commit failed\n"; outcome = 1; break;
+            }
+            expected += L"😀";
+            if (edit_store->text() != expected || !SendFailOpenKey(direct_key_sink.Get(), context.Get(), VK_SPACE)
+                || edit_store->text() != expected) {
+                std::wcerr << L"Emoji insertion left preedit or replayed commit\n"; outcome = 1; break;
+            }
+        }
         if (fault_prefix != nullptr) {
             for (int cycle = 0; cycle < 2 && keys_succeeded; ++cycle) {
                 // First crash: preedit + mouse action awaiting a real TSF lock.

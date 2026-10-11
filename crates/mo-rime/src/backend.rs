@@ -239,6 +239,9 @@ impl EngineBackend for RimeBackend {
             EngineCommand::ChangePage { backward } => {
                 self.engine.change_page_id(session.id, *backward)?
             }
+            EngineCommand::InsertSymbol { .. } => {
+                return Err(RimeBackendError::UnsupportedCommand("insert_symbol"));
+            }
             EngineCommand::SetOption { .. } => {
                 return Err(RimeBackendError::UnsupportedCommand("set_option"));
             }
@@ -272,6 +275,18 @@ impl EngineBackend for RimeBackend {
                 .map(context_composition)
                 .transpose()?
                 .flatten(),
+            page: context.as_ref().and_then(|context| {
+                let menu = &context.menu;
+                let number = u32::try_from(menu.page_number).ok()?;
+                (!menu.candidates.is_empty()).then_some(mo_domain::CandidatePage {
+                    number,
+                    has_previous: number > 0,
+                    has_next: !menu.is_last_page,
+                    highlighted: u32::try_from(menu.highlighted_candidate_index)
+                        .ok()
+                        .filter(|index| (*index as usize) < menu.candidates.len()),
+                })
+            }),
             candidates: context.map_or_else(Vec::new, context_candidates),
             status: EngineStatus {
                 schema_id: status.schema_id.unwrap_or_default(),

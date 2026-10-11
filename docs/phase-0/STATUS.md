@@ -1,8 +1,22 @@
 # Phase 0 状态
 
-- 快照日期：2026-10-07
+- 快照日期：2026-10-12
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
+
+## 2026-10-12 Figma 原生 UI 改造
+
+- [实施与证据](../design/MO-NATIVE-UI-20261012.md)、[ADR 0060](../adr/0060-compact-candidates-symbols-and-skins.md)：
+  默认紧凑横排、真实页信息、展开、28 项 Emoji/颜文字、checked 联想开关，
+  三页设置、五皮肤和有界自定义导入/导出、原生应用图标已实现。
+- Rust 173 运行时＋1 compile-fail doc、fmt/Clippy、双架构严格编译与 UI fixture 通过。
+  fake 双架构基本链路通过，Win32 fault 首轮失败后独立复验通过；
+  真实两架构 IPC/表情/pool 通过，x64 基本 TSF 独立复验通过，
+  x64 fault N 62 ms 和 Win32 TSF N 16 ms 未消费仍为负向结果，未定位根因。
+- 新外观文件不能由旧版 Broker/设置应用读取，须配套升级。UI 截图仅合成数据；
+  未生成新 MSI 或升级 VM，多 DPI/OS 高对比度和安装态真实应用待验证。
+  不调整 50/400 ms，不升级 G2/G3；历史阶段记录保留。
+
 
 ## 2026-10-04 Win10 用户词典恢复边界
 

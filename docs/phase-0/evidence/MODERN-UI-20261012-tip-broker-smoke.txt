@@ -1,0 +1,25 @@
+   Compiling mo-engine v0.1.0 (E:\ChuGe\CodeProject\101_ProjectCollection\Mo\crates\mo-engine)
+   Compiling mo-rime v0.1.0 (E:\ChuGe\CodeProject\101_ProjectCollection\Mo\crates\mo-rime)
+   Compiling mo-windows-pipe v0.1.0 (E:\ChuGe\CodeProject\101_ProjectCollection\Mo\crates\mo-windows-pipe)
+   Compiling mo-broker v0.1.0 (E:\ChuGe\CodeProject\101_ProjectCollection\Mo\crates\mo-broker)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 37.43s
+Mo TIP client rejected an unexpected Broker server image.
+Mo TIP C++ client -> Rust named-pipe Broker probe passed.
+16 live clients, bounded saturation, retained slot reuse, isolated candidate commits and three full-pool recovery cycles passed.
+MO_HOST noactivate=1 no_other_tip=1 created_foreground=0 created_active=0
+Mo TIP candidate layout reentrancy probe passed.
+MO_TERMINATION_REENTRY fired=1 fail_open=1
+Mo TIP TSF owner termination/recovery probe passed.
+MO_TERMINATION_REENTRY fired=1 fail_open=1
+Mo TIP TSF owner termination/recovery probe passed.
+Mo TIP fake candidate window/mouse/layout/deferred cancellation/reconnect probe passed.
+Mo TIP client rejected an unexpected Broker server image.
+Mo TIP C++ client -> Rust named-pipe Broker probe passed.
+16 live clients, bounded saturation, retained slot reuse, isolated candidate commits and three full-pool recovery cycles passed.
+MO_HOST noactivate=1 no_other_tip=1 created_foreground=0 created_active=0
+Mo TIP candidate layout reentrancy probe passed.
+MO_TERMINATION_REENTRY fired=1 fail_open=1
+Mo TIP TSF owner termination/recovery probe passed.
+MO_TERMINATION_REENTRY fired=1 fail_open=1
+Mo TIP TSF owner termination/recovery probe passed.
+Mo TIP fake candidate window/mouse/layout/deferred cancellation/reconnect probe passed.

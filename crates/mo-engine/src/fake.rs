@@ -119,6 +119,12 @@ impl FakeBackend {
             composition: (!session.preedit.is_empty())
                 .then(|| Composition::from_preedit(session.preedit.clone())),
             candidates,
+            page: (!session.preedit.is_empty()).then_some(mo_domain::CandidatePage {
+                number: session.page,
+                has_previous: session.page > 0,
+                has_next: true,
+                highlighted: Some(0),
+            }),
             status: EngineStatus {
                 schema_id: session.schema_id.clone(),
                 disabled: false,
@@ -227,6 +233,7 @@ impl EngineBackend for FakeBackend {
                     handled = true;
                 }
             }
+            EngineCommand::InsertSymbol { .. } => unreachable!("symbols are owned by EngineActor"),
             EngineCommand::Clear => {
                 if !session.preedit.is_empty() {
                     session.preedit.clear();

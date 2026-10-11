@@ -89,6 +89,14 @@ impl SettingsController {
         matches!(self.health, DocumentHealth::Ready)
     }
 
+    /// Saves the complete staged UI draft through the existing conflict guard.
+    pub fn save_settings(&mut self, settings: Settings) -> Result<(), ControllerError> {
+        if !self.can_save_changes() {
+            return Err(ControllerError::RecoveryRequired);
+        }
+        self.persist_checked(settings)
+    }
+
     /// Saves the presentation theme without changing engine preferences.
     pub fn save_theme(&mut self, theme: Theme) -> Result<(), ControllerError> {
         if !self.can_save_changes() {

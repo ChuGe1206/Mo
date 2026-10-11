@@ -6,15 +6,19 @@ use mo_domain::{
 };
 use mo_engine::{EngineActor, EngineBackend, FakeBackend};
 use mo_ipc::{
-    CURRENT_VERSION, CandidateAction, CandidateActionKind, CharacterSet as WireCharacterSet,
-    DetailedCandidate, DetailedSnapshot, ErrorMessage, FEATURE_CANDIDATE_ACTIONS,
-    FEATURE_CANDIDATE_DETAILS, FEATURE_KEY_EVENTS, FEATURE_SESSION_SETTINGS_ACK,
-    FEATURE_SETTINGS_SNAPSHOT, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck,
+    CURRENT_VERSION, CandidateAction, CandidateActionKind, CandidatePage,
+    CharacterSet as WireCharacterSet, DetailedCandidate, DetailedSnapshot, ErrorMessage,
+    FEATURE_CANDIDATE_ACTIONS, FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION,
+    FEATURE_KEY_EVENTS, FEATURE_SESSION_SETTINGS_ACK, FEATURE_SETTINGS_SNAPSHOT,
+    FEATURE_SYMBOL_ACTIONS, FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, Hello, HelloAck,
     InputScheme as WireInputScheme, KeyEvent as WireKeyEvent, MAX_CANDIDATE_COMMENT_BYTES,
-    MAX_CANDIDATE_LABEL_BYTES, MAX_PAYLOAD_LEN, MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN, MessageKind,
-    PayloadCodec, ProtocolVersion, SettingsSnapshot as WireSettingsSnapshot, Snapshot,
+    MAX_CANDIDATE_LABEL_BYTES, MAX_PAYLOAD_LEN, MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN,
+    MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN, MessageKind, PayloadCodec, PresentationSnapshot,
+    ProtocolVersion, SettingsSnapshot as WireSettingsSnapshot, Snapshot, SymbolAction,
     VersionRange, negotiate_version,
 };
+
+use mo_ipc::{FEATURE_PRESENTATION_SETTINGS, FEATURE_QUICK_SETTINGS, SetEmoji};
 
 use crate::engine_service::EngineClient;
 use crate::settings_service::SettingsService;
@@ -204,6 +208,8 @@ where
             MessageKind::OpenSession => self.open_session(request),
             MessageKind::KeyEvent => self.key_event(request),
             MessageKind::CandidateAction => self.candidate_action(request),
+            MessageKind::SymbolAction => self.symbol_action(request),
+            MessageKind::SetEmoji => self.set_emoji(request),
             MessageKind::GetSettings => self.get_settings(request),
             MessageKind::CloseSession => self.close_session(request),
             MessageKind::Ping => self.pong(request),
@@ -246,13 +252,31 @@ where
         self.negotiated_features = hello.features
             & (FEATURE_KEY_EVENTS
                 | FEATURE_CANDIDATE_ACTIONS
+                | FEATURE_PRESENTATION_SETTINGS
+                | FEATURE_QUICK_SETTINGS
                 | FEATURE_CANDIDATE_DETAILS
+                | FEATURE_CANDIDATE_PRESENTATION
+                | FEATURE_SYMBOL_ACTIONS
                 | FEATURE_SETTINGS_SNAPSHOT
                 | FEATURE_SESSION_SETTINGS_ACK);
         if hello.max_payload_len < MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN as u32 {
             self.negotiated_features &= !FEATURE_CANDIDATE_DETAILS;
         }
 
+        if self.negotiated_features & FEATURE_CANDIDATE_DETAILS == 0
+            || hello.max_payload_len < MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN as u32
+        {
+            self.negotiated_features &= !FEATURE_CANDIDATE_PRESENTATION;
+        }
+        if self.negotiated_features & FEATURE_CANDIDATE_ACTIONS == 0 {
+            self.negotiated_features &= !FEATURE_SYMBOL_ACTIONS;
+        }
+        if self.negotiated_features & FEATURE_SETTINGS_SNAPSHOT == 0 {
+            self.negotiated_features &= !(FEATURE_PRESENTATION_SETTINGS | FEATURE_QUICK_SETTINGS);
+        }
+        if self.negotiated_features & FEATURE_CANDIDATE_ACTIONS == 0 || !self.settings.writable() {
+            self.negotiated_features &= !FEATURE_QUICK_SETTINGS;
+        }
         let ack = HelloAck {
             selected,
             features: self.negotiated_features,
@@ -288,7 +312,7 @@ where
         let needs_settings = matches!(self.engine, EngineOwner::Shared(_))
             || self.negotiated_features & FEATURE_SESSION_SETTINGS_ACK != 0;
         let settings_snapshot = if needs_settings {
-            let settings = match self.settings.snapshot() {
+            let settings = match self.settings.presentation() {
                 Ok(snapshot) => snapshot,
                 Err(_) => {
                     return self.error(
@@ -303,14 +327,21 @@ where
             None
         };
         let options = if matches!(self.engine, EngineOwner::Shared(_)) {
-            session_options_from_settings(settings_snapshot.expect("shared engine reads settings"))
+            session_options_from_settings(
+                settings_snapshot
+                    .expect("shared engine reads settings")
+                    .settings,
+            )
         } else {
             SessionOptions::new()
         };
         let payload = if self.negotiated_features & FEATURE_SESSION_SETTINGS_ACK != 0 {
-            settings_snapshot
-                .expect("negotiated session settings were read")
-                .encode_payload()?
+            let settings = settings_snapshot.expect("negotiated session settings were read");
+            if self.negotiated_features & FEATURE_PRESENTATION_SETTINGS != 0 {
+                settings.encode_payload()?
+            } else {
+                settings.settings.encode_payload()?
+            }
         } else {
             Vec::new()
         };
@@ -423,6 +454,48 @@ where
         self.dispatch_snapshot(&request, engine_token, command)
     }
 
+    fn symbol_action(&mut self, request: Frame) -> Result<Frame, BrokerError> {
+        if self.negotiated_features & FEATURE_SYMBOL_ACTIONS == 0 {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "symbol actions were not negotiated",
+            );
+        }
+        let Some(session) = self.sessions.get(&request.header.session_token) else {
+            return self.error(
+                &request,
+                ERROR_NO_SUCH_SESSION,
+                "session token does not belong to this connection",
+            );
+        };
+        let action = match SymbolAction::decode_payload(&request.payload) {
+            Ok(action) => action,
+            Err(_) => return self.error(&request, ERROR_BAD_REQUEST, "malformed symbol action"),
+        };
+        if !session
+            .page
+            .is_some_and(|(revision, _)| revision == action.expected_revision)
+        {
+            return self.error(
+                &request,
+                ERROR_STALE_CANDIDATES,
+                "symbol panel revision is stale",
+            );
+        }
+        if action.index as usize >= mo_domain::SYMBOLS_V1.len() {
+            return self.error(&request, ERROR_BAD_REQUEST, "unknown symbol catalog entry");
+        }
+        let engine_token = session.engine_token;
+        self.dispatch_snapshot(
+            &request,
+            engine_token,
+            EngineCommand::InsertSymbol {
+                index: action.index,
+            },
+        )
+    }
+
     fn dispatch_snapshot(
         &mut self,
         request: &Frame,
@@ -475,7 +548,24 @@ where
                     })
                     .collect(),
             };
-            (MessageKind::DetailedSnapshot, detailed.encode_payload()?)
+            if self.negotiated_features & FEATURE_CANDIDATE_PRESENTATION != 0 {
+                let page = engine_snapshot.page.map(|page| CandidatePage {
+                    number: page.number,
+                    has_previous: page.has_previous,
+                    has_next: page.has_next,
+                    highlighted: page.highlighted.and_then(|index| u8::try_from(index).ok()),
+                });
+                (
+                    MessageKind::PresentationSnapshot,
+                    PresentationSnapshot {
+                        snapshot: detailed,
+                        page,
+                    }
+                    .encode_payload()?,
+                )
+            } else {
+                (MessageKind::DetailedSnapshot, detailed.encode_payload()?)
+            }
         } else {
             let legacy = Snapshot {
                 revision,
@@ -554,6 +644,75 @@ where
         )
     }
 
+    fn set_emoji(&self, request: Frame) -> Result<Frame, BrokerError> {
+        if self.negotiated_features & FEATURE_QUICK_SETTINGS == 0 {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "quick settings were not negotiated",
+            );
+        }
+        let action = match SetEmoji::decode_payload(&request.payload) {
+            Ok(value) => value,
+            Err(_) => return self.error(&request, ERROR_BAD_REQUEST, "malformed quick settings"),
+        };
+        let Some(session) = self.sessions.get(&request.header.session_token) else {
+            return self.error(
+                &request,
+                ERROR_NO_SUCH_SESSION,
+                "session token does not belong to this connection",
+            );
+        };
+        if !session
+            .page
+            .is_some_and(|(revision, _)| revision == action.expected_revision)
+        {
+            return self.error(
+                &request,
+                ERROR_STALE_CANDIDATES,
+                "settings panel revision is stale",
+            );
+        }
+        let snapshot = match self
+            .settings
+            .set_emoji(action.expected_settings_revision, action.value)
+        {
+            Ok(value) => value,
+            Err(_) => {
+                return self.error(
+                    &request,
+                    ERROR_SETTINGS_UNAVAILABLE,
+                    "settings could not be saved; reload before retry",
+                );
+            }
+        };
+        self.settings_response(&request, snapshot)
+    }
+    fn settings_response(
+        &self,
+        request: &Frame,
+        snapshot: mo_ipc::PresentationSettings,
+    ) -> Result<Frame, BrokerError> {
+        let (kind, payload) = if self.negotiated_features & FEATURE_PRESENTATION_SETTINGS != 0 {
+            (
+                MessageKind::PresentationSettings,
+                snapshot.encode_payload()?,
+            )
+        } else {
+            (
+                MessageKind::SettingsSnapshot,
+                snapshot.settings.encode_payload()?,
+            )
+        };
+        self.response(
+            self.selected_version(),
+            kind,
+            request.header.session_token,
+            request.header.request_id,
+            payload,
+        )
+    }
+
     fn get_settings(&self, request: Frame) -> Result<Frame, BrokerError> {
         if self.negotiated_features & FEATURE_SETTINGS_SNAPSHOT == 0 {
             return self.error(
@@ -569,7 +728,7 @@ where
                 "GetSettings requires an empty payload and zero session token",
             );
         }
-        let snapshot = match self.settings.snapshot() {
+        let snapshot = match self.settings.presentation() {
             Ok(snapshot) => snapshot,
             Err(_) => {
                 return self.error(
@@ -579,13 +738,7 @@ where
                 );
             }
         };
-        self.response(
-            self.selected_version(),
-            MessageKind::SettingsSnapshot,
-            0,
-            request.header.request_id,
-            snapshot.encode_payload()?,
-        )
+        self.settings_response(&request, snapshot)
     }
 
     fn allocate_session_token(&mut self) -> u64 {
@@ -709,6 +862,188 @@ mod session_settings_tests {
         fn destroy_session(&mut self, session: Self::Session) -> Result<(), Self::Error> {
             self.inner.destroy_session(session)
         }
+    }
+
+    #[test]
+    fn quick_settings_require_owned_current_page_and_checked_file_revision() {
+        use mo_ipc::{
+            FEATURE_CANDIDATE_ACTIONS, FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION,
+            PresentationSettings, PresentationSnapshot, SetEmoji,
+        };
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory =
+            std::env::temp_dir().join(format!("mo-panel-settings-{}-{nonce}", std::process::id()));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join("settings.mo");
+        let initial = Settings {
+            privacy_mode: true,
+            appearance: mo_settings::Appearance {
+                skin: mo_settings::CandidateSkin::Bamboo,
+                ..Default::default()
+            },
+            ..Settings::default()
+        };
+        save_atomic(&path, &initial).unwrap();
+        let mut connection = BrokerConnection::new(42);
+        connection.settings = SettingsService::open(path.clone()).unwrap();
+        let mut id = 0;
+        let mut request = |kind, token, payload| {
+            id += 1;
+            Frame::new(
+                CURRENT_VERSION,
+                kind,
+                0,
+                if kind == MessageKind::Hello { 0 } else { 42 },
+                token,
+                id,
+                payload,
+            )
+            .unwrap()
+        };
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features: FEATURE_KEY_EVENTS
+                | FEATURE_CANDIDATE_ACTIONS
+                | FEATURE_CANDIDATE_DETAILS
+                | FEATURE_CANDIDATE_PRESENTATION
+                | FEATURE_SETTINGS_SNAPSHOT
+                | FEATURE_PRESENTATION_SETTINGS
+                | FEATURE_QUICK_SETTINGS,
+            max_payload_len: MAX_PAYLOAD_LEN as u32,
+        };
+        let reply = connection
+            .handle(request(
+                MessageKind::Hello,
+                0,
+                hello.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_ne!(
+            HelloAck::decode_payload(&reply.payload).unwrap().features & FEATURE_QUICK_SETTINGS,
+            0
+        );
+        let opened = connection
+            .handle(request(MessageKind::OpenSession, 0, Vec::new()))
+            .unwrap();
+        let token = opened.header.session_token;
+        let settings_revision = connection
+            .settings
+            .presentation()
+            .unwrap()
+            .settings
+            .revision;
+        let key = KeyEvent {
+            virtual_key: 0x4e,
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        let page = connection
+            .handle(request(
+                MessageKind::KeyEvent,
+                token,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let page = PresentationSnapshot::decode_payload(&page.payload).unwrap();
+        let action = SetEmoji {
+            expected_revision: page.snapshot.revision,
+            expected_settings_revision: settings_revision,
+            value: false,
+        };
+        let before = fs::read(&path).unwrap();
+        for (target, update, expected) in [
+            (token + 1, action, ERROR_NO_SUCH_SESSION),
+            (
+                token,
+                SetEmoji {
+                    expected_revision: action.expected_revision + 1,
+                    ..action
+                },
+                ERROR_STALE_CANDIDATES,
+            ),
+            (
+                token,
+                SetEmoji {
+                    expected_settings_revision: settings_revision + 1,
+                    ..action
+                },
+                ERROR_SETTINGS_UNAVAILABLE,
+            ),
+        ] {
+            let reply = connection
+                .handle(request(
+                    MessageKind::SetEmoji,
+                    target,
+                    update.encode_payload().unwrap(),
+                ))
+                .unwrap();
+            assert_eq!(
+                ErrorMessage::decode_payload(&reply.payload).unwrap().code,
+                expected
+            );
+            assert_eq!(fs::read(&path).unwrap(), before);
+        }
+        let saved = connection
+            .handle(request(
+                MessageKind::SetEmoji,
+                token,
+                action.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(saved.header.kind, MessageKind::PresentationSettings);
+        assert!(
+            !PresentationSettings::decode_payload(&saved.payload)
+                .unwrap()
+                .settings
+                .emoji
+        );
+        assert_eq!(
+            *mo_settings::load(&path).unwrap().settings(),
+            Settings {
+                emoji: false,
+                ..initial.clone()
+            }
+        );
+        // Preferences change without clearing or advancing the candidate page.
+        assert_eq!(
+            connection.sessions[&token].page.unwrap().0,
+            page.snapshot.revision
+        );
+        fs::write(&path, b"broken").unwrap();
+        let failed = connection
+            .handle(request(
+                MessageKind::SetEmoji,
+                token,
+                action.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(
+            ErrorMessage::decode_payload(&failed.payload).unwrap().code,
+            ERROR_SETTINGS_UNAVAILABLE
+        );
+        assert_eq!(fs::read(&path).unwrap(), b"broken");
+        let continued = connection
+            .handle(request(
+                MessageKind::KeyEvent,
+                token,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(
+            PresentationSnapshot::decode_payload(&continued.payload)
+                .unwrap()
+                .snapshot
+                .composition,
+            "nn"
+        );
+        drop(connection);
+        fs::remove_file(&path).unwrap();
+        fs::remove_dir(&directory).unwrap();
     }
 
     #[test]

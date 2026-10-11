@@ -143,11 +143,155 @@ pub enum Theme {
     Dark,
 }
 
+/// Candidate skin independent of the settings window's theme.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(u8)]
+pub enum CandidateSkin {
+    #[default]
+    FollowTheme = 0,
+    Paper = 1,
+    Midnight = 2,
+    Mint = 3,
+    Dusk = 4,
+    Bamboo = 5,
+    Custom = 6,
+}
+impl CandidateSkin {
+    pub fn from_index(index: u8) -> Option<Self> {
+        match index {
+            0 => Some(Self::FollowTheme),
+            1 => Some(Self::Paper),
+            2 => Some(Self::Midnight),
+            3 => Some(Self::Mint),
+            4 => Some(Self::Dusk),
+            5 => Some(Self::Bamboo),
+            6 => Some(Self::Custom),
+            _ => None,
+        }
+    }
+}
+/// Data-only appearance settings; never filenames, fonts or executable content.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Appearance {
+    pub window_theme: Theme,
+    pub skin: CandidateSkin,
+    pub background: u32,
+    pub accent: u32,
+    pub text: u32,
+    pub radius: u8,
+    pub font_size: u8,
+    pub vertical: bool,
+}
+impl Default for Appearance {
+    fn default() -> Self {
+        Self {
+            window_theme: Theme::System,
+            skin: CandidateSkin::FollowTheme,
+            background: 0xffffff,
+            accent: 0x176d5e,
+            text: 0x25352f,
+            radius: 12,
+            font_size: 16,
+            vertical: false,
+        }
+    }
+}
+impl Appearance {
+    pub fn validate(&self) -> Result<(), SettingsError> {
+        if self.background > 0xffffff
+            || self.accent > 0xffffff
+            || self.text > 0xffffff
+            || !(8..=20).contains(&self.radius)
+            || !(12..=24).contains(&self.font_size)
+        {
+            return Err(SettingsError::InvalidValue("appearance"));
+        }
+        Ok(())
+    }
+    pub fn encode_skin(&self) -> Result<String, SettingsError> {
+        self.validate()?;
+        Ok(format!(
+            "mo-skin\nformat=1\nbackground={:06X}\naccent={:06X}\ntext={:06X}\nradius={}\nfont_size={}\nvertical={}\n",
+            self.background, self.accent, self.text, self.radius, self.font_size, self.vertical
+        ))
+    }
+    pub fn decode_skin(bytes: &[u8]) -> Result<Self, SettingsError> {
+        if bytes.len() > 1024 {
+            return Err(SettingsError::TooLarge);
+        }
+        let value = std::str::from_utf8(bytes).map_err(|_| SettingsError::InvalidUtf8)?;
+        let mut lines = value.lines();
+        if lines.next() != Some("mo-skin") {
+            return Err(SettingsError::InvalidHeader);
+        }
+        let mut fields = BTreeMap::new();
+        for line in lines {
+            let (key, value) = line.split_once('=').ok_or(SettingsError::MalformedLine)?;
+            if fields.insert(key, value).is_some() {
+                return Err(SettingsError::DuplicateField);
+            }
+        }
+        if fields.get("format") != Some(&"1") {
+            return Err(SettingsError::UnsupportedVersion);
+        }
+        const KEYS: [&str; 7] = [
+            "format",
+            "background",
+            "accent",
+            "text",
+            "radius",
+            "font_size",
+            "vertical",
+        ];
+        if fields.keys().any(|key| !KEYS.contains(key)) {
+            return Err(SettingsError::UnknownField);
+        }
+        for key in KEYS {
+            if !fields.contains_key(key) {
+                return Err(SettingsError::MissingField(key));
+            }
+        }
+        let result = Self {
+            skin: CandidateSkin::Custom,
+            background: parse_rgb(fields["background"])?,
+            accent: parse_rgb(fields["accent"])?,
+            text: parse_rgb(fields["text"])?,
+            radius: fields["radius"]
+                .parse()
+                .map_err(|_| SettingsError::InvalidValue("radius"))?,
+            font_size: fields["font_size"]
+                .parse()
+                .map_err(|_| SettingsError::InvalidValue("font_size"))?,
+            vertical: parse_bool("vertical", fields["vertical"])?,
+            ..Self::default()
+        };
+        result.validate()?;
+        Ok(result)
+    }
+}
+fn parse_rgb(value: &str) -> Result<u32, SettingsError> {
+    if value.len() != 6 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(SettingsError::InvalidValue("color"));
+    }
+    u32::from_str_radix(value, 16).map_err(|_| SettingsError::InvalidValue("color"))
+}
+const APPEARANCE_FIELDS: [&str; 8] = [
+    "window_theme",
+    "candidate_skin",
+    "skin_background",
+    "skin_accent",
+    "skin_text",
+    "skin_radius",
+    "skin_font_size",
+    "skin_vertical",
+];
+
 /// Settings that a native frontend may apply without changing engine state.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PresentationPlan {
     pub show_comments: bool,
     pub theme: Theme,
+    pub appearance: Appearance,
 }
 
 /// Desired engine behavior. This is deliberately data, not a set of librime
@@ -178,6 +322,7 @@ impl RuntimePlan {
             presentation: PresentationPlan {
                 show_comments: settings.show_comments,
                 theme: settings.theme,
+                appearance: settings.appearance,
             },
             engine: EnginePreferences {
                 input_scheme: settings.input_scheme,
@@ -222,6 +367,7 @@ pub struct Settings {
     pub local_learning: bool,
     pub privacy_mode: bool,
     pub theme: Theme,
+    pub appearance: Appearance,
 }
 
 impl Default for Settings {
@@ -235,6 +381,7 @@ impl Default for Settings {
             local_learning: true,
             privacy_mode: false,
             theme: Theme::System,
+            appearance: Appearance::default(),
         }
     }
 }
@@ -250,13 +397,13 @@ impl Settings {
         if !(3..=9).contains(&self.candidate_page_size) {
             return Err(SettingsError::InvalidValue("candidate_page_size"));
         }
-        Ok(())
+        self.appearance.validate()
     }
 
     /// Encodes a canonical, deterministic representation.
     pub fn encode(&self) -> Result<String, SettingsError> {
         self.validate()?;
-        Ok(format!(
+        let mut encoded = format!(
             "{HEADER}\nformat={FORMAT}\ninput_scheme={}\ncharacter_set={}\n\
              candidate_page_size={}\nshow_comments={}\nemoji={}\nlocal_learning={}\n\
              privacy_mode={}\ntheme={}\n",
@@ -268,7 +415,16 @@ impl Settings {
             self.local_learning,
             self.privacy_mode,
             self.theme.as_str(),
-        ))
+        );
+        // Default documents remain byte-compatible. Older apps reject the new
+        // known fields rather than silently dropping a selected skin.
+        if self.appearance != Appearance::default() {
+            let appearance = self.appearance;
+            encoded.push_str(&format!("window_theme={}\ncandidate_skin={}\nskin_background={:06X}\nskin_accent={:06X}\nskin_text={:06X}\nskin_radius={}\nskin_font_size={}\nskin_vertical={}\n",
+                appearance.window_theme.as_str(), appearance.skin as u8, appearance.background,
+                appearance.accent, appearance.text, appearance.radius, appearance.font_size, appearance.vertical));
+        }
+        Ok(encoded)
     }
 
     /// Decodes one complete settings document. Unknown, missing or duplicate
@@ -309,7 +465,10 @@ impl Settings {
         if *format != FORMAT {
             return Err(SettingsError::UnsupportedVersion);
         }
-        if fields.keys().any(|name| !REQUIRED_FIELDS.contains(name)) {
+        if fields
+            .keys()
+            .any(|name| !REQUIRED_FIELDS.contains(name) && !APPEARANCE_FIELDS.contains(name))
+        {
             return Err(SettingsError::UnknownField);
         }
         for required in REQUIRED_FIELDS {
@@ -318,6 +477,33 @@ impl Settings {
             }
         }
 
+        let mut appearance = Appearance::default();
+        if APPEARANCE_FIELDS.iter().any(|key| fields.contains_key(key)) {
+            for key in APPEARANCE_FIELDS {
+                if !fields.contains_key(key) {
+                    return Err(SettingsError::MissingField(key));
+                }
+            }
+            appearance = Appearance {
+                vertical: parse_bool("skin_vertical", fields["skin_vertical"])?,
+                window_theme: Theme::parse(fields["window_theme"])?,
+                skin: fields["candidate_skin"]
+                    .parse()
+                    .ok()
+                    .and_then(CandidateSkin::from_index)
+                    .ok_or(SettingsError::InvalidValue("candidate_skin"))?,
+                background: parse_rgb(fields["skin_background"])?,
+                accent: parse_rgb(fields["skin_accent"])?,
+                text: parse_rgb(fields["skin_text"])?,
+                radius: fields["skin_radius"]
+                    .parse()
+                    .map_err(|_| SettingsError::InvalidValue("skin_radius"))?,
+                font_size: fields["skin_font_size"]
+                    .parse()
+                    .map_err(|_| SettingsError::InvalidValue("skin_font_size"))?,
+            };
+            appearance.validate()?;
+        }
         let settings = Self {
             input_scheme: InputScheme::parse(fields["input_scheme"])?,
             character_set: CharacterSet::parse(fields["character_set"])?,
@@ -329,6 +515,7 @@ impl Settings {
             local_learning: parse_bool("local_learning", fields["local_learning"])?,
             privacy_mode: parse_bool("privacy_mode", fields["privacy_mode"])?,
             theme: Theme::parse(fields["theme"])?,
+            appearance,
         };
         settings.validate()?;
         Ok(settings)
@@ -919,6 +1106,7 @@ mod tests {
             local_learning: true,
             privacy_mode: true,
             theme: Theme::Dark,
+            appearance: Appearance::default(),
         };
         let plan = RuntimePlan::from_settings(&settings);
         assert_eq!(
@@ -926,6 +1114,7 @@ mod tests {
             PresentationPlan {
                 show_comments: false,
                 theme: Theme::Dark,
+                appearance: Appearance::default(),
             }
         );
         assert_eq!(plan.engine.input_scheme, InputScheme::DoublePinyinNatural);
@@ -1058,6 +1247,7 @@ mod tests {
             local_learning: false,
             privacy_mode: true,
             theme: Theme::Dark,
+            appearance: Appearance::default(),
         };
         save_atomic(&path, &changed).unwrap();
         assert_eq!(load(&path).unwrap(), LoadedSettings::Stored(changed));

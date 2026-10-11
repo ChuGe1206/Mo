@@ -1,0 +1,656 @@
+{
+  "format": 1,
+  "date": "2026-10-12",
+  "branch": "develop",
+  "base_commit": "e7eb285872d5dd6466082c06852bcc1897915a69",
+  "figma": {
+    "fileKey": "pFUWDZYKrLw9dxdNQ4XanU",
+    "nodes": [
+      "5:7",
+      "66:549",
+      "73:402"
+    ]
+  },
+  "verification": {
+    "build_fmt_clippy": "passed",
+    "rust_runtime_tests": 173,
+    "compile_fail_doc_tests": 1,
+    "ignored_child_entries": 1,
+    "native_architectures": [
+      "x64",
+      "Win32"
+    ],
+    "synthetic_native_render_and_interaction": "passed",
+    "fake_smoke": "both basic passed; initial Win32 fault failed, isolated Win32 recheck passed",
+    "real_rime_ipc_symbols_pool": "both architectures passed",
+    "real_rime_tsf": "x64 basic passed on recheck; x64 fault N 62ms failed; Win32 basic N 16ms failed",
+    "ui_assets": "passed",
+    "historical_stage_compliance_tests": 12,
+    "historical_stage_materials_tests": 8,
+    "material_document_count": 17
+  },
+  "boundaries": {
+    "new_msi": false,
+    "vm_upgrade": false,
+    "real_user_settings_written": false,
+    "real_registered_app_input": false,
+    "real_os_high_contrast_switch": false,
+    "multiple_physical_dpi": false,
+    "deadlines_changed": false,
+    "g2_g3_promoted": false,
+    "older_settings_reader": "rejects added appearance fields; paired binary upgrade required",
+    "emoji_rendering": "monochrome Win10 GDI; fixed 28 item v1 catalog"
+  },
+  "runtime_dll_sha256": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "size": 488,
+      "sha256": "0682D3465233C4348E9656E38B86FE9176C6B7F635CBCC42243C434E0CD0AF7E",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "README.md",
+      "size": 14263,
+      "sha256": "722F4984CF03EA3370AB2D53ACD86BDDCEE050AF6BBB1C52D8D60FAE10119925",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "assets/ui/README.md",
+      "size": 687,
+      "sha256": "E229922DDCAE8D8AF65A57867FCE1776C7E13A08407087F1F8E979D3A228C977",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "assets/ui/add.mask",
+      "size": 16068,
+      "sha256": "DA4C3884ADAA4CE325A72B920E99CAC440D47E2785BFC8DFD304F8F9F95E6127",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/add.svg",
+      "size": 320,
+      "sha256": "4EA6B1E62A07A17A33B6962C818A0135156444B0F165A4157E00913C3CEBDCE9",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/close.mask",
+      "size": 16068,
+      "sha256": "D080AE4505F314BB022C961886E43117D6965CE49D07FE2A497D3A4C920B45CD",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/close.svg",
+      "size": 325,
+      "sha256": "4DDBFB473FE621EA0A116CF64524923D3E421A9DA1B45E31A7AD2918E57CF534",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/collapse.mask",
+      "size": 16068,
+      "sha256": "119B74BF7EB7FAD31751DD465346512553596894EBA894B183FB7DDE47FADBAD",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/collapse.svg",
+      "size": 327,
+      "sha256": "C172EE5EE0B9A094016A6B9D94258F1CF35794463587F79FF8BDE1B99897184F",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/expand.mask",
+      "size": 16068,
+      "sha256": "A1DBC64615A755F5218AAD9621B782E5A5FE5B421C28725AD235DD09F1306788",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/expand.svg",
+      "size": 326,
+      "sha256": "1C18FCF9BC355B2F050472436E72B1C8813126EE9C45F47034DF2C32512D7B60",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/next.mask",
+      "size": 16068,
+      "sha256": "ACB294C04EE9BAB29DC1732FB860A05B2A27351184565B5ED597EE64825ECBB2",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/next.svg",
+      "size": 326,
+      "sha256": "CFE1E37A5D1924E81EFF520EDC0A8F55DC393C4E423275D9F7FFC43518206961",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/previous.mask",
+      "size": 16068,
+      "sha256": "9EFF9DC4D64726D67C804ADF35B32B6C7EF8118581E4066DB0B18C179BC431E3",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/previous.svg",
+      "size": 337,
+      "sha256": "AE744ADDEDC3264B747724B8EB5EC7F759B62B5F9D4195DD874EE96F38BB161F",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/shield.mask",
+      "size": 16068,
+      "sha256": "5447DE82BABAFE088D983758DA83C6C8F05FD1E8BCA88594078858609815301F",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/shield.svg",
+      "size": 431,
+      "sha256": "149A263D4303B911ED9E44925D570360110E208EF7E6A0C2C9B6A2A9199148CF",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/smile.mask",
+      "size": 16068,
+      "sha256": "F28649A6F638D58B162826789D55DE8D6C004C875F9A0327D9D4B19F22317C96",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "assets/ui/smile.svg",
+      "size": 595,
+      "sha256": "AB691D2BF92EEB60E7F844AE1D142E7F6B6A49AFCE1A0EC775494DD9AA72E954",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "crates/mo-broker/src/settings_service.rs",
+      "size": 9827,
+      "sha256": "F30348A67B8AD8013C1604824D280CA501EAD94A2ED87D2A57CF35CE0542E4B6",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-broker/src/state.rs",
+      "size": 48816,
+      "sha256": "3C9A0F738900A9661BF448B10CEC4C05390D279DF447CD7666479B7B832EE6F1",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-broker/tests/broker_spike.rs",
+      "size": 39893,
+      "sha256": "743E18B91C6705A9B7B8D3E8F79F3C181BA4BFC6A8DDA50B64A0EE6E324F5984",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-domain/src/engine.rs",
+      "size": 9413,
+      "sha256": "12FAAFEA1FD726ED02F853F9C0ED145F811B78055B9DD65D6E461BAE1EDA9726",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-domain/src/lib.rs",
+      "size": 649,
+      "sha256": "CAB8591C8A12DC496020958C3859E26A1AC438A750CE7A7010D786000812A4B8",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-domain/src/symbols.rs",
+      "size": 3808,
+      "sha256": "C7E5E090950FB5A232FC80F2B01D18C10F900F59A0F6E72F4BE11B6A32DF1A1F",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-engine/src/actor.rs",
+      "size": 9715,
+      "sha256": "20E2ACCE3F9A788452B279E29FCA5D5B9530C25D4BD83E7750F572B02F277FEF",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-engine/src/fake.rs",
+      "size": 8366,
+      "sha256": "2E0C7A353D1BC684ED50D0E0BA0CF7DC29810CF3049E35E010DE203107D5AF08",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-engine/tests/actor.rs",
+      "size": 7449,
+      "sha256": "4A9C8076AA5B4EFD16282E1B3E99421190CFD11431AF43BEE3E79B74EB77CC0D",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-ipc/src/frame.rs",
+      "size": 11708,
+      "sha256": "13C919B2BBA93583DD00B3ED5F89872F537F06B99DD90A739F2B7268EFE0645E",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-ipc/src/lib.rs",
+      "size": 1515,
+      "sha256": "FEDC541B68A4E08CCAB5F86879919E0186CC01DA070F7138D3D966627040EB4A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-ipc/src/message.rs",
+      "size": 25062,
+      "sha256": "563C3E952E733FCD3F1BACC3019EAA882C14DC8F0CBB9E3862BCF2830364A265",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-ipc/tests/presentation.rs",
+      "size": 3934,
+      "sha256": "289686B05B64D4B3D5622D5200ABD5E9A6C0EDCEE3EA66A582F36E7B07F5B99E",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-rime/src/backend.rs",
+      "size": 15987,
+      "sha256": "BFCCA4F7DAEF8FDBFC860E7BA7194B9CE8ACC2E08E3B22EDFCDC6B1419D4A7D3",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings-app/Cargo.toml",
+      "size": 823,
+      "sha256": "C6F7EAC4D08805DC47A7F0DB9DA067DCA9B48E90F83A42EE8FBAABCDDABA73D0",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings-app/build.rs",
+      "size": 2236,
+      "sha256": "778A6A7EF92058C1EBBB11D11AE5AE8490585FEAE7E26AC649107D39DB0E1E53",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings-app/mo-settings.manifest",
+      "size": 539,
+      "sha256": "A9B234AAA5031EAF5F2AF1A6F205ADF8B58E0988222162BC68644EE1B344206A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings-app/src/lib.rs",
+      "size": 16565,
+      "sha256": "FDC808AB6F3939F9D242D1D6CEB4779B27AC6736BD51FB7664BFBEF5664A009A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings-app/src/windows_app.rs",
+      "size": 79147,
+      "sha256": "F989A7611085E048CA10550BC5CDDCD76B7496DF3F2B9075D454B874DD82BCE4",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings/src/lib.rs",
+      "size": 53116,
+      "sha256": "B8F705D6844E0C00079B3B56CB26D5CAA840DB51F1B4D7E8DC4BBB3FC3DA4630",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "crates/mo-settings/tests/appearance.rs",
+      "size": 2006,
+      "sha256": "DA17B568437EBF82BD4A9969E1029D171E93A133E08F2F15D272CF467D6116FD",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/adr/0060-compact-candidates-symbols-and-skins.md",
+      "size": 4556,
+      "sha256": "77768B5DE9F3180323FE9F2E3B185E630F1EB6FAA4EF322F5120F9ECE710596F",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/design/MO-COMPACT-EMOJI-ICON-20261011.md",
+      "size": 4983,
+      "sha256": "C8DB24973CF641B91D8CB059E953B4286E81CB7110E5B9D5EDBA15AB012C7764",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/design/MO-NATIVE-UI-20261012.md",
+      "size": 4088,
+      "sha256": "3C592E4801B928258375BC0583C7B462D0CC7C85BAF9310EFD6BE80A8DE2AA07",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/design/MO-UI-DESIGN-20261011.md",
+      "size": 8250,
+      "sha256": "2E4F7C54AC41F5B68AC3DCE25E18241F49C8370B015C4EE4303333C935F4A9C4",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/design/previews/mo-native-custom-vertical-20261012.png",
+      "size": 7781,
+      "sha256": "CC6F26A029CBBD9C906D722B1B88E4B0B03167A2818A9E4F061C004D8454C67A",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-emoji-20261012.png",
+      "size": 24613,
+      "sha256": "D75A3CBC6A013460F213BA468F0698F03D0411550052D611E611032BFB96FDCD",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-expanded-20261012.png",
+      "size": 10219,
+      "sha256": "5B143623B4C81F7D2C8D5899542FCD206CD1B65527392916E92C4E6EB44449EC",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-kaomoji-20261012.png",
+      "size": 13998,
+      "sha256": "771CA025EDCE31E8897C558426546C1DC3A467F5C6D6CDF343DB577EB6056A11",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-paper-20261012.png",
+      "size": 4605,
+      "sha256": "B603914DF0CB262DF589635741EF960BE9172568638E3F814BAF59F5542CB8C0",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-appearance-20261012.png",
+      "size": 64860,
+      "sha256": "1C642731AA1DA9090905095BE6BBC21E8FD77E944DC961AA2B85A64D50E32B98",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-custom-20261012.png",
+      "size": 53460,
+      "sha256": "A9E20B23AB48AAC88BFBCF4ABAE8EAF573DD508547EF06BC588979639982F95C",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-dark-20261012.png",
+      "size": 65353,
+      "sha256": "14287C481C526CF6C128D4046498B9188F62A9AE8CA134F1F38AF4EBD8B83035",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-general-20261012.png",
+      "size": 50035,
+      "sha256": "329CC70F7EDB3D101CDD2C38764292D5A3EA3729ED5D7BA42FF06FAE7F3E3595",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-privacy-20261012.png",
+      "size": 50077,
+      "sha256": "ACDDAA00B7B269778914095C17171E46201FEB337F508E839F837064B1AB07E7",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-settings-small-20261012.png",
+      "size": 36115,
+      "sha256": "ACC9417C3ADBA67B39C5E3A83826EFB2AEE23B224BBE8B4FCB22093F015EF22C",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-skin-2-20261012.png",
+      "size": 4689,
+      "sha256": "EB0D2F4BB2DC8700AFA02EFF696CEA8C85713877EBDD1520A6A62419F0439B93",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-skin-3-20261012.png",
+      "size": 4572,
+      "sha256": "7B05290BCB8BA0C744ACCA2129DD465D92E9AA64E3C0D922255FABDA00392674",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-skin-4-20261012.png",
+      "size": 4615,
+      "sha256": "E557B2F56AAD899E4F710AC33BF05F157AAF2FB2BCC1823F587DFFAFE03E81C1",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-skin-5-20261012.png",
+      "size": 4612,
+      "sha256": "B1C90D85ABEE9CB1D904A0EA4256650BBAF6EDDE2724B4CDA18040A06E94FFEA",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/design/previews/mo-native-skin-6-20261012.png",
+      "size": 5369,
+      "sha256": "725F7D352A05CA0874F192D59C9FBEBBD6CFF87D6401EC0BBAF68938A24A112E",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "docs/phase-0/CONTEXT-RECOVERY-WIN10.md",
+      "size": 37011,
+      "sha256": "83F9137802490968A3F444DD78018DC558AD111B20BD1DCDD9C04C090E56DF13",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/phase-0/STATUS.md",
+      "size": 80386,
+      "sha256": "829AEC51F77064F182DD9FD29E9A09772F972D8043B4B6F37A83B6BE248538FA",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/phase-0/evidence/MODERN-UI-20261012-rime-final.txt",
+      "size": 1866,
+      "sha256": "B379019039A6186109774E26B54C336FF07633717646854331E22AEBED876CE5",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/phase-0/evidence/MODERN-UI-20261012-rime-recheck.txt",
+      "size": 1590,
+      "sha256": "1B06A3F70E0D7AE2C16446CF5627451497813637AF0001CD5F83B4E0C1FC6E2E",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/phase-0/evidence/MODERN-UI-20261012-rime-win32.txt",
+      "size": 1866,
+      "sha256": "40957D126B77A03A662912C4DDB0A4D23022A426C1526CC62895204A1E389BDC",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "docs/phase-0/evidence/MODERN-UI-20261012-tip-broker-smoke.txt",
+      "size": 1753,
+      "sha256": "488E27E9418ADFDCE0EC11941257A5B2157A5AF6CB5D8E184A74E13C4081ECBA",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/release-compliance-policy.json",
+      "size": 10217,
+      "sha256": "4C45FA7443450B00DBC6CF8D4F987193B5C1405F1F59B660DBED67162BBC288F",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/release-compliance.ps1",
+      "size": 15029,
+      "sha256": "84557E55CB63612D45869ECEC08499E6A0673B83EC161674C501A2950118C762",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/release-materials-policy.json",
+      "size": 6396,
+      "sha256": "9628A3A22222E6DD80D9CCDBE61E4DB93AEB97A54C7EA70CD5DD52C8DCE254DB",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/release-materials.ps1",
+      "size": 7816,
+      "sha256": "FF2C2ED365EE9FD3B899D461064234AE8A81BB65172E305867496A3C56002422",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/test-release-materials.ps1",
+      "size": 5040,
+      "sha256": "CE89C4E72AF3F0EBF708E27B70DEC2217AD51907E9AFCA763C9A11A8A43E3BE4",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "installer/windows/verify-release-materials.ps1",
+      "size": 3623,
+      "sha256": "80DC20DC98712444D4054E846E4B472B5B28FD37156B44512DF096CD82223A0F",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/CMakeLists.txt",
+      "size": 2350,
+      "sha256": "E05D1BBB0DD66E41EB5EB8E75385802C1712B05BD4EA9598DA5CE6F68F68D1E8",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/MoTip.vcxproj",
+      "size": 3483,
+      "sha256": "E1EE20B1159FFD893E385AC309D2479A6A0E26D2F3382C72F84B5DBF9D3F498A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/MoTipCandidatePreview.vcxproj",
+      "size": 2844,
+      "sha256": "ADE6FD79D1B6DA6F04B8FC8675B9690C973A5753750BB336542223D13B21CE0D",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/include/mo_broker_client.h",
+      "size": 5390,
+      "sha256": "526323C57DE169493AA3FEDD2FC8E8E5911BC9D011D0D08E348DE9B97FC7A78A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/include/mo_candidate_palette.h",
+      "size": 3114,
+      "sha256": "0C34D8C39B6E81879AF0CECFB6D3ED7C01B0EA0CA4D5FB524E3BC46642CAA002",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/include/mo_candidate_window.h",
+      "size": 3167,
+      "sha256": "C996AEBE22CCAD85056758CF4EBA4F65F698E5E87920940251FC36BDFA2AFB55",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/include/mo_symbols.h",
+      "size": 1105,
+      "sha256": "3342295CA46E5B5E1A2DCCC27DDEC6C21BD797688E0C08AD2E52B0BF5F35B1FC",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/include/mo_ui_icons.h",
+      "size": 305,
+      "sha256": "A2B3A61644C9E2106C7313652EB0E38964CC488FE457FB3C54FD950CBEFDADBF",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/probe/abi_probe.cpp",
+      "size": 101862,
+      "sha256": "7BBEA0AE8EFADB7DCD391B6A594024C674CE87CE42D3B2E660C2A0A38C46F9A8",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/probe/candidate_preview.cpp",
+      "size": 12096,
+      "sha256": "45FB71B364CF47DB9798F952023F62222CE534121A38D27986200D2C7FC0833A",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/probe/ipc_probe.cpp",
+      "size": 19051,
+      "sha256": "070CC5D6E439E2DF8F07BD02160C2F8081827E52C88064C3C19B6CC52F85B175",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/src/mo_broker_client.cpp",
+      "size": 48652,
+      "sha256": "A68FAAC68DB890B76AA9F77475395CD8657FE11569EBA7F3C25F5156D8825A7E",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/src/mo_candidate_window.cpp",
+      "size": 32587,
+      "sha256": "9AB761A943ABD900347D18950D55984AC163A65CD1D9EBD58FA03307040E535F",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/src/mo_tip.cpp",
+      "size": 60994,
+      "sha256": "4D252CCA3B08CC5EB89179855B377D219EF979110CFD72AE9DC352BDB5DF9BB9",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/src/mo_ui.rc",
+      "size": 332,
+      "sha256": "5C3EE62E67859FE8BC11124F2A4F7600891FB7FCA8431F4701DB900B92927703",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "native/windows-tip/src/mo_ui_icons.cpp",
+      "size": 2950,
+      "sha256": "1F2791A57F99FA03427C43A0E0702E8D867724E3C42A9388F905017667B98BB1",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "third_party/design-assets-20261011.md",
+      "size": 1655,
+      "sha256": "CB68B35FBA16F668040F3F6E31B4A709891A93E9075DF0EC1DEB4FE5167DB273",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "third_party/figma-sds-MIT.txt",
+      "size": 1062,
+      "sha256": "570F1F1C07D32E2CDC7DA3EEA40F9C772E584782DB15CBF455A72A19DE36B7BC",
+      "hash_encoding": "raw"
+    },
+    {
+      "path": "tools/export-ui-icons.ps1",
+      "size": 2557,
+      "sha256": "12E189A9DABB4213247D92B1C43D2EAA56EF95CFBD360F6C7F81509E04A8E932",
+      "hash_encoding": "UTF-8 with LF line endings"
+    },
+    {
+      "path": "tools/test-ui-assets.ps1",
+      "size": 3654,
+      "sha256": "9BFD1265F7527780D84E4486BB3C5E8A22693667F203799D45A92012858D3D91",
+      "hash_encoding": "UTF-8 with LF line endings"
+    }
+  ],
+  "local_logs": [
+    {
+      "path": "build/ui-20261011/rust-final.log",
+      "size": 19406,
+      "sha256": "73FFAF7BDC430C8F508035EC2043DD9B7B7526EA0D27DE8E27449151F8907F8D"
+    },
+    {
+      "path": "build/ui-20261011/clippy-final.log",
+      "size": 333,
+      "sha256": "9144DF7650B8580F7FA79FAB4BD2439E7CFEC9F0D92515A783FE1BCEFBB00B83"
+    },
+    {
+      "path": "build/ui-20261011/native-final.log",
+      "size": 29405,
+      "sha256": "A5CCB91BA1ED87ABCBD695B6524E899F48EDE673CCDB349E58C42A3116C6FA37"
+    },
+    {
+      "path": "build/ui-20261011/tip-broker-smoke.log",
+      "size": 41209,
+      "sha256": "B16472D429F0A79F6EFBE0D03F0AE48D698BA464421531206D9BB429154F2A12"
+    },
+    {
+      "path": "build/ui-20261011/tip-broker-smoke-win32-recheck.log",
+      "size": 9676,
+      "sha256": "79E8FCB06964AFF878501F07E9F66F794152BCFB98F757A67CA6ADC43FB7DD21"
+    },
+    {
+      "path": "build/ui-20261011/rime-final.log",
+      "size": 18365,
+      "sha256": "4C2E288E39836885428D0E15CB57502E17F061C68193EF0CEE0336E7F36174EC"
+    },
+    {
+      "path": "build/ui-20261011/rime-recheck.log",
+      "size": 19027,
+      "sha256": "88E457016660EBEB18C68E566A68DA303819BC33DEE843FDBB86E50B3CDAB58B"
+    },
+    {
+      "path": "build/ui-20261011/rime-win32.log",
+      "size": 9570,
+      "sha256": "E43D8B4C1B4D69CC2A05E5EE9476D18E33DD786102F036A4388AFFE5AAFEB444"
+    },
+    {
+      "path": "build/ui-20261011/assets-final.log",
+      "size": 86,
+      "sha256": "DA09E8A2EB63BEC6FC22554A001493004B84AC6C63189A1C4B48E178DE9C69C9"
+    },
+    {
+      "path": "build/ui-20261011/materials-final.log",
+      "size": 1397,
+      "sha256": "E154AE2CCA12FFB6755CA0EE887B55E159205AB74B0BC1BBFF867A15CBF10CF2"
+    },
+    {
+      "path": "build/ui-20261011/compliance-prepare.log",
+      "size": 244,
+      "sha256": "8F23AE49147BECF29020B59BE5837064595B1626AF0019653BD5C22BC6901D38"
+    }
+  ]
+}

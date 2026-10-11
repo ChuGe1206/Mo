@@ -40,6 +40,79 @@ impl SettingsService {
         })
     }
 
+    pub(crate) fn writable(&self) -> bool {
+        matches!(self.state.as_ref(), SettingsState::File(_))
+    }
+    pub(crate) fn presentation(&self) -> io::Result<mo_ipc::PresentationSettings> {
+        match self.state.as_ref() {
+            SettingsState::Fixed(snapshot) => {
+                Ok(project_appearance(*snapshot, &Settings::default()))
+            }
+            SettingsState::File(runtime) => {
+                let mut runtime = runtime
+                    .lock()
+                    .map_err(|_| io::Error::other("settings lock is poisoned"))?;
+                let snapshot = runtime.refresh().map_err(io::Error::other)?;
+                Ok(project_appearance(
+                    project_runtime(snapshot),
+                    &snapshot.settings,
+                ))
+            }
+        }
+    }
+    pub(crate) fn set_emoji(
+        &self,
+        expected_revision: u64,
+        value: bool,
+    ) -> io::Result<mo_ipc::PresentationSettings> {
+        let SettingsState::File(runtime) = self.state.as_ref() else {
+            return Err(io::Error::other("settings are read-only"));
+        };
+        let mut runtime = runtime
+            .lock()
+            .map_err(|_| io::Error::other("settings lock is poisoned"))?;
+        let snapshot = runtime.refresh().map_err(io::Error::other)?.clone();
+        if snapshot.revision != expected_revision {
+            return Err(io::Error::other("settings changed"));
+        }
+        let expected = match snapshot.origin {
+            SettingsOrigin::Defaults => {
+                mo_settings::LoadedSettings::Defaults(snapshot.settings.clone())
+            }
+            SettingsOrigin::Stored => {
+                mo_settings::LoadedSettings::Stored(snapshot.settings.clone())
+            }
+        };
+        let mut changed = snapshot.settings;
+        changed.emoji = value;
+        // A missing installed profile may be created only under the fixed product path.
+        if runtime
+            .path()
+            .parent()
+            .is_some_and(|parent| !parent.exists())
+        {
+            let root = runtime
+                .path()
+                .ancestors()
+                .nth(3)
+                .ok_or_else(|| io::Error::other("invalid settings path"))?;
+            if mo_settings::installed_settings_path(root) != runtime.path() {
+                return Err(io::Error::other(
+                    "settings path is not the installed profile",
+                ));
+            }
+            mo_settings::ensure_installed_settings_directory(root).map_err(io::Error::other)?;
+        }
+        mo_settings::save_atomic_if_unchanged(runtime.path(), &changed, &expected)
+            .map_err(io::Error::other)?;
+        let snapshot = runtime.refresh().map_err(io::Error::other)?;
+        Ok(project_appearance(
+            project_runtime(snapshot),
+            &snapshot.settings,
+        ))
+    }
+
+    #[cfg(test)]
     pub(crate) fn snapshot(&self) -> io::Result<WireSettingsSnapshot> {
         match self.state.as_ref() {
             SettingsState::Fixed(snapshot) => Ok(*snapshot),
@@ -51,6 +124,23 @@ impl SettingsService {
                 Ok(project_runtime(snapshot))
             }
         }
+    }
+}
+
+fn project_appearance(
+    settings: WireSettingsSnapshot,
+    source: &Settings,
+) -> mo_ipc::PresentationSettings {
+    let appearance = source.appearance;
+    mo_ipc::PresentationSettings {
+        settings,
+        skin: appearance.skin as u8,
+        background: appearance.background,
+        accent: appearance.accent,
+        text: appearance.text,
+        radius: appearance.radius,
+        font_size: appearance.font_size,
+        vertical: appearance.vertical,
     }
 }
 
@@ -144,5 +234,33 @@ mod tests {
         let recovered = service.snapshot().unwrap();
         assert_eq!(recovered.revision, refreshed.revision + 1);
         assert_eq!(recovered.theme, WireTheme::System);
+    }
+    #[test]
+    fn quick_emoji_save_preserves_other_preferences_and_rejects_stale_or_corrupt_files() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("settings.mo");
+        let original = Settings {
+            privacy_mode: true,
+            appearance: mo_settings::Appearance {
+                skin: mo_settings::CandidateSkin::Mint,
+                vertical: true,
+                ..mo_settings::Appearance::default()
+            },
+            ..Settings::default()
+        };
+        save_atomic(&path, &original).unwrap();
+        let service = SettingsService::open(path.clone()).unwrap();
+        let first = service.presentation().unwrap();
+        let changed = service.set_emoji(first.settings.revision, false).unwrap();
+        assert!(changed.settings.revision > first.settings.revision && !changed.settings.emoji);
+        let saved = mo_settings::load(&path).unwrap();
+        let mut expected = original.clone();
+        expected.emoji = false;
+        assert_eq!(saved.settings(), &expected);
+        assert!(service.set_emoji(first.settings.revision, true).is_err());
+        assert_eq!(mo_settings::load(&path).unwrap().settings(), &expected);
+        fs::write(&path, b"future or corrupt data").unwrap();
+        assert!(service.set_emoji(changed.settings.revision, true).is_err());
+        assert_eq!(fs::read(&path).unwrap(), b"future or corrupt data");
     }
 }

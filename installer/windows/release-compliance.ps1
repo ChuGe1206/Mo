@@ -295,6 +295,14 @@ function Get-MoThirdPartyNotices([Collections.IDictionary]$Model) {
         if ($package.Contains('source_required') -and $package['source_required']) {
             $notice.Add('Corresponding source required: yes')
         }
+        if ($package['id'] -ceq 'figma-sds') {
+            $license = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'third_party/figma-sds-MIT.txt'
+            if ((Get-FileHash -LiteralPath $license -Algorithm SHA256).Hash -cne $package['license_notice_sha256']) {
+                throw 'Figma SDS license notice hash mismatch.'
+            }
+            $notice.Add('Copyright and permission notice for the embedded Smile icon:')
+            $notice.Add([IO.File]::ReadAllText($license).TrimEnd([char[]]@([char]13, [char]10)))
+        }
         $notice.Add('')
     }
     return $notice.ToArray()

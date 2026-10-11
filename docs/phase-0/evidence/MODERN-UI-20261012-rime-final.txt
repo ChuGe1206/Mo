@@ -1,0 +1,25 @@
+         所有输出均为最新。
+       ResourceCompile:
+         所有输出均为最新。
+       Link:
+         所有输出均为最新。
+         MoTipCandidatePreview.vcxproj -> E:\ChuGe\CodeProject\101_ProjectCollection\Mo\native\windows-tip\out\msbuild\Win32\Release\mo_tip_candidate_preview.exe
+       FinalizeBuildStatus:
+         正在删除文件“E:\ChuGe\CodeProject\101_ProjectCollection\Mo\native\windows-tip\out\msbuild\obj\Win32\Release\candidate-preview\MoTipCan.68331615.tlog\unsuccessfulbuild”。
+         正在对“E:\ChuGe\CodeProject\101_ProjectCollection\Mo\native\windows-tip\out\msbuild\obj\Win32\Release\candidate-preview\MoTipCan.68331615.tlog\MoTipCandidatePreview.lastbuildstate”执行 Touch 任务。
+     1>已完成生成项目“E:\ChuGe\CodeProject\101_ProjectCollection\Mo\native\windows-tip\MoTipCandidatePreview.vcxproj”(Build 个目标)的操作。
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:00.37
+Mo TIP ABI probe passed (load, exports, class factory, Ex/key sink lifecycle, unload).
+Candidate native render/focus/gap/stale-revision/workarea/GDI fixture passed.
+Compile/load plus non-mutating machine transaction and current-user finalizer policy probes passed; development fault injection is physically absent. This does not validate TSF registration, input, named pipes, ACLs, or AppContainer hosts.
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+Real librime/rime-ice Actor candidate paging and page-local selection passed.
+Mo TIP C++ client -> Broker -> librime/rime-ice probe passed.
+16 live clients, bounded saturation, retained slot reuse, isolated candidate commits and three full-pool recovery cycles passed.
+MO_HOST noactivate=1 no_other_tip=1 created_foreground=0 created_active=0
+OnTestKeyDown did not consume virtual key 0x4e (elapsed 62 ms)
