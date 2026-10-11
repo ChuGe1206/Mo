@@ -5,6 +5,12 @@
 后续源码已接入纸白/夜墨原生候选呈现，见 [实施记录](MO-NATIVE-CANDIDATE-20261011.md)；
 设置页和其余皮肤仍为设计稿。Figma 当前 Professional / Full 已确认。
 
+## 紧凑版更新
+
+用户参考讯飞气泡后完成了两行候选、独立表情面板和应用图标，见
+[新版设计记录](MO-COMPACT-EMOJI-ICON-20261011.md)。
+该版尚未接入原生产品；本文件以下内容保留初版交接。
+
 ## Figma 入口
 
 - [设置页面与保存状态](https://www.figma.com/design/pFUWDZYKrLw9dxdNQ4XanU?node-id=5-7)
