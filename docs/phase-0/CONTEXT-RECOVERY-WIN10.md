@@ -339,3 +339,15 @@ get_screenshot 被 Starter 额度拒绝、备用浏览器初始化超时；
 随后使用 Plugin API 原生截图完成两个修正后画板的末轮视觉复核，通过。
 首轮 PNG 仅为历史参考，最终图片在本会话原生附件中；记录/ledger 位于 docs/design。
 产品代码、stage/安装包/VM 未改；50/400 ms 与 G2/G3 仍开放。
+
+
+## 2026-10-11 Figma 原生候选呈现
+
+Figma 已确认 Professional / Full；从纸白/夜墨竖排高保真上下文接入
+C++ CandidateWindow，见 [实施记录](../design/MO-NATIVE-CANDIDATE-20261011.md)
+及 ADR 0059。圆角/细边框、分层字号、独立标签和注释已完成；
+System/高对比度、焦点、revision 和空闲设置合同保留。
+双架构 /W4 /WX、合成原生截图、200 次 GDI 刷新、
+fake IPC/TSF/两次 Broker 崩溃恢复及 Rust fmt/Clippy/163 测试通过。
+设置三页 UI/自定义皮肤尚待实施；没有更新 stage/MSI/VM，
+最后已验证 VM 0.0.11.0、准备好的 0.0.13.0 kit 及 50/400 ms 边界不变，G2/G3 不升级。

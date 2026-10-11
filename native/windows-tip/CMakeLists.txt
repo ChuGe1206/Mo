@@ -37,3 +37,8 @@ target_link_libraries(mo_tip_abi_probe PRIVATE advapi32 ole32 shell32 uuid)
 
 add_executable(mo_tip_ipc_probe probe/ipc_probe.cpp src/mo_broker_client.cpp)
 mo_apply_compile_policy(mo_tip_ipc_probe)
+
+# Synthetic-only native render/interaction fixture; never registers the TIP.
+add_executable(mo_tip_candidate_preview probe/candidate_preview.cpp src/mo_candidate_window.cpp)
+mo_apply_compile_policy(mo_tip_candidate_preview)
+target_link_libraries(mo_tip_candidate_preview PRIVATE gdi32 user32)

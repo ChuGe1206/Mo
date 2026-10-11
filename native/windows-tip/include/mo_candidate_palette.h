@@ -12,6 +12,7 @@ struct CandidatePalette final {
     COLORREF pressed_text;
     COLORREF footer;
     COLORREF footer_text;
+    COLORREF border;
 };
 
 // If accessibility state cannot be read, prefer the user's system colors.
@@ -23,15 +24,17 @@ inline CandidatePalette ResolveCandidatePalette(CandidateTheme theme,
     const CandidatePalette& system, bool high_contrast) noexcept {
     if (high_contrast) {
         return {system.background, system.text, system.text,
-            system.pressed, system.pressed_text, system.background, system.text};
+            system.pressed, system.pressed_text, system.background, system.text, system.border};
     }
     if (theme == CandidateTheme::Dark) {
-        return {RGB(32, 32, 34), RGB(190, 190, 194), RGB(245, 245, 247),
-            RGB(54, 72, 92), RGB(245, 245, 247), RGB(43, 43, 46), RGB(214, 214, 218)};
+        return {RGB(36, 43, 41), RGB(239, 245, 241), RGB(239, 245, 241),
+            RGB(154, 218, 197), RGB(21, 53, 44), RGB(36, 43, 41), RGB(176, 190, 181),
+            RGB(76, 89, 82)};
     }
     if (theme == CandidateTheme::Light) {
-        return {RGB(250, 250, 248), RGB(80, 80, 80), RGB(25, 25, 25),
-            RGB(220, 232, 245), RGB(25, 25, 25), RGB(238, 238, 235), RGB(70, 70, 70)};
+        return {RGB(255, 255, 255), RGB(37, 53, 47), RGB(37, 53, 47),
+            RGB(23, 109, 94), RGB(255, 255, 255), RGB(255, 255, 255), RGB(98, 111, 104),
+            RGB(224, 230, 226)};
     }
     return system;
 }

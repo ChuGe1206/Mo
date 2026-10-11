@@ -48,22 +48,24 @@ bool EqualPalette(const mo::windows_tip::CandidatePalette& left,
     return left.background == right.background && left.preedit == right.preedit
         && left.text == right.text && left.pressed == right.pressed
         && left.pressed_text == right.pressed_text && left.footer == right.footer
-        && left.footer_text == right.footer_text;
+        && left.footer_text == right.footer_text && left.border == right.border;
 }
 
 bool ProbeCandidatePalette() {
     using namespace mo::windows_tip;
     const CandidatePalette system{RGB(1, 2, 3), RGB(4, 5, 6), RGB(7, 8, 9),
-        RGB(10, 11, 12), RGB(13, 14, 15), RGB(16, 17, 18), RGB(19, 20, 21)};
+        RGB(10, 11, 12), RGB(13, 14, 15), RGB(16, 17, 18), RGB(19, 20, 21), RGB(22, 23, 24)};
     const CandidatePalette accessible{system.background, system.text, system.text,
-        system.pressed, system.pressed_text, system.background, system.text};
+        system.pressed, system.pressed_text, system.background, system.text, system.border};
     for (const auto theme : {CandidateTheme::System, CandidateTheme::Light, CandidateTheme::Dark}) {
         if (!EqualPalette(ResolveCandidatePalette(theme, system, true), accessible)) { return false; }
     }
-    const CandidatePalette light{RGB(250, 250, 248), RGB(80, 80, 80), RGB(25, 25, 25),
-        RGB(220, 232, 245), RGB(25, 25, 25), RGB(238, 238, 235), RGB(70, 70, 70)};
-    const CandidatePalette dark{RGB(32, 32, 34), RGB(190, 190, 194), RGB(245, 245, 247),
-        RGB(54, 72, 92), RGB(245, 245, 247), RGB(43, 43, 46), RGB(214, 214, 218)};
+    const CandidatePalette light{RGB(255, 255, 255), RGB(37, 53, 47), RGB(37, 53, 47),
+        RGB(23, 109, 94), RGB(255, 255, 255), RGB(255, 255, 255), RGB(98, 111, 104),
+        RGB(224, 230, 226)};
+    const CandidatePalette dark{RGB(36, 43, 41), RGB(239, 245, 241), RGB(239, 245, 241),
+        RGB(154, 218, 197), RGB(21, 53, 44), RGB(36, 43, 41), RGB(176, 190, 181),
+        RGB(76, 89, 82)};
     if (!EqualPalette(ResolveCandidatePalette(CandidateTheme::System, system, false), system)
         || !EqualPalette(ResolveCandidatePalette(CandidateTheme::Light, system, false), light)
         || !EqualPalette(ResolveCandidatePalette(CandidateTheme::Dark, system, false), dark)) { return false; }
@@ -1374,7 +1376,7 @@ bool ClickCandidateWindow(int item) noexcept {
     const int dpi = static_cast<int>(GetDpiForWindow(window));
     const int x = item == 33 ? client.right * 3 / 4 : client.right / 4;
     const int y = item >= 32 ? client.bottom - MulDiv(16, dpi, 96)
-        : MulDiv(40 + item * 32 + 16, dpi, 96);
+        : MulDiv(44 + item * 38 + 17, dpi, 96);
     const HWND original_focus = GetFocus();
     const LPARAM position = MAKELPARAM(x, y);
     SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, position);

@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "date": "2026-10-11",
+  "branch": "develop",
+  "figma": {
+    "fileKey": "pFUWDZYKrLw9dxdNQ4XanU",
+    "nodeIds": [
+      "4:69",
+      "4:120"
+    ],
+    "tier": "pro",
+    "seat": "Full"
+  },
+  "verification": {
+    "msbuild": [
+      "x64",
+      "Win32"
+    ],
+    "native_synthetic_render": "visually inspected; passed",
+    "focus_gap_revision_workarea_gdi": "passed",
+    "same_dpi_updates": 200,
+    "fake_tip_broker_smoke": "passed",
+    "rust_fmt": "passed",
+    "rust_clippy": "passed",
+    "workspace_tests_passed": 163,
+    "workspace_ignored_children": 1
+  },
+  "boundaries": {
+    "settings_ui": "pending",
+    "new_skin_format": "pending",
+    "msi_vm_update": false,
+    "real_rime_input": false,
+    "real_high_contrast_switch": false,
+    "multi_dpi_visual": false,
+    "deadlines_changed": false,
+    "g2_g3_promoted": false
+  },
+  "files": [
+    {
+      "path": "native/windows-tip/src/mo_candidate_window.cpp",
+      "size": 18793,
+      "sha256": "72212DF980C6A495BB703BF3F483DDAB11689137ED5E38E4553DFF87F530802E"
+    },
+    {
+      "path": "native/windows-tip/include/mo_candidate_window.h",
+      "size": 1975,
+      "sha256": "01358EB8EC18DE65750517D8EB6EB028E397A3E4D9F70C3F73684D2E517EE85C"
+    },
+    {
+      "path": "native/windows-tip/include/mo_candidate_palette.h",
+      "size": 1545,
+      "sha256": "4C04DE60EE781D7D75C99CB7F6939769B0116B3F4086B47CD70A61A4D29E1325"
+    },
+    {
+      "path": "native/windows-tip/probe/candidate_preview.cpp",
+      "size": 7859,
+      "sha256": "7CC56BDBC77B21141FA1DA8BB548EC5E2E2CF9DC958598C9F310D40B0A5D2072"
+    },
+    {
+      "path": "native/windows-tip/probe/abi_probe.cpp",
+      "size": 100020,
+      "sha256": "0ABB58FF05206F6D29BE50F3EE163EABE845E7BA9250AD143C9548E8551DAFA9"
+    },
+    {
+      "path": "native/windows-tip/MoTipCandidatePreview.vcxproj",
+      "size": 2695,
+      "sha256": "0AD32142659A91B22C2CAEC483D61E0DA113593897182F2DE0674D8C85D22C67"
+    },
+    {
+      "path": "native/windows-tip/CMakeLists.txt",
+      "size": 2238,
+      "sha256": "E2D0A970D8DFE92BCD63E0CB5512B190DD6B57DD4B0DD7BDC23DDF0CFF7729E0"
+    },
+    {
+      "path": "native/windows-tip/build-probe.ps1",
+      "size": 5983,
+      "sha256": "7E09DD7DA2FF2282A7B0126C5EBCF5DFF37DDB34CA077944754C148C7E3B741E"
+    },
+    {
+      "path": "docs/design/previews/mo-native-paper-20261011.png",
+      "size": 7113,
+      "sha256": "2E586AA257831C54E049A69B95B7CB73315D243BE02391CC1FA30648D86A2D0E"
+    },
+    {
+      "path": "docs/design/previews/mo-native-midnight-20261011.png",
+      "size": 7374,
+      "sha256": "BBB3DD6053D537C57DE3CA459EE586647293293541E46178C6E6CB73D265150D"
+    },
+    {
+      "path": "build/modern-candidate-final-smoke.log",
+      "size": 30771,
+      "sha256": "1F81C4C0248AF6FA46E58EF4D4975D42293E0703B4D5CCC6310574FD3753844D"
+    },
+    {
+      "path": "build/modern-candidate-rust-fmt.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/modern-candidate-rust-clippy.log",
+      "size": 73,
+      "sha256": "3B934A79BFED3C21C66DCF2BA5CEF56B4C5E2584BA8283C9D2F966D2EC8658D4"
+    },
+    {
+      "path": "build/modern-candidate-rust-tests.log",
+      "size": 17857,
+      "sha256": "BC3548FD93414A5CEE099113A73AB4B3EDF4DAE8E03BE3122906CB539E37DE08"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/x64/Release/mo_tip.dll",
+      "size": 211968,
+      "sha256": "BD10368B313F924D066168E697C72529263D2E99ACEF61151FFD12E0F1CFE5A2"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/x64/Release/mo_tip_abi_probe.exe",
+      "size": 364032,
+      "sha256": "931E7F47759B14AC9E32B26E581FEA2FD6B5910790722929EFB8BCD042810D7D"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/x64/Release/mo_tip_candidate_preview.exe",
+      "size": 279040,
+      "sha256": "47B570E3FCCBCDE52EEBE53D19813EDD54D5E9EDB8099D6B5C8F18916CE313E6"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/Win32/Release/mo_tip.dll",
+      "size": 175616,
+      "sha256": "EFB6AF78ECE23F02E153A62D41319D91E9035F9266EB8E2A66D256270C0B4105"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/Win32/Release/mo_tip_abi_probe.exe",
+      "size": 316928,
+      "sha256": "A665BB81CF5EAB9CE1F48D6E2BC1756F194967F99E956FFF8300C54B78D7ABC5"
+    },
+    {
+      "path": "native/windows-tip/out/msbuild/Win32/Release/mo_tip_candidate_preview.exe",
+      "size": 232448,
+      "sha256": "F53B1DCE9C685AF7BA03D4297B60F92890E186C6D28F8422952467F73BCFCAB3"
+    }
+  ],
+  "archive": {
+    "path": "build/win10-evidence-clean-v1/CandidateModern-v1",
+    "manifest_sha256": "1F58484B0E9FFB6722F6A7CDA87664D265D7CE29CD1EF0E0514C61362EBFC51D",
+    "files": 20
+  }
+}

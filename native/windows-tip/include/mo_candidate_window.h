@@ -24,6 +24,8 @@ public:
 private:
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM) noexcept;
     void Paint() noexcept;
+    void Render(HDC dc) noexcept;
+    void RefreshShape() noexcept;
     void RefreshAccessibilityState() noexcept;
     int HitTest(LPARAM position) const noexcept;
     void ResetPress() noexcept;
@@ -31,15 +33,25 @@ private:
     HINSTANCE module_ = nullptr;
     HWND window_ = nullptr;
     HFONT font_ = nullptr;
+    HFONT body_font_ = nullptr;
+    HFONT caption_font_ = nullptr;
+    struct Row final {
+        std::wstring label;
+        std::wstring text;
+        std::wstring comment;
+    };
     std::wstring preedit_;
-    std::vector<std::wstring> rows_;
+    std::vector<Row> rows_;
     std::uint64_t revision_ = 0;
     ActionCallback callback_ = nullptr;
     void* context_ = nullptr;
-    int row_height_ = 32;
-    int header_height_ = 40;
-    int footer_height_ = 32;
+    int row_height_ = 38;
+    int header_height_ = 44;
+    int footer_height_ = 36;
     int padding_ = 12;
+    int gap_ = 4;
+    int radius_ = 12;
+    int font_dpi_ = 0;
     int visible_rows_ = 0;
     int first_row_ = 0;
     int pressed_item_ = -1;

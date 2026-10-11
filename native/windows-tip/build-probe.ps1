@@ -64,7 +64,7 @@ foreach ($platform in $architectures) {
         Invoke-Checked $cmake @('--build', $buildDirectory, '--config', 'Release')
         $binaryDirectory = Join-Path $buildDirectory 'Release'
     } else {
-        foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj', 'MoTipIpcProbe.vcxproj')) {
+        foreach ($project in @('MoTip.vcxproj', 'MoTipRegistrar.vcxproj', 'MoTipAbiProbe.vcxproj', 'MoTipIpcProbe.vcxproj', 'MoTipCandidatePreview.vcxproj')) {
             $traceOption = if ($LatencyTrace) { 'true' } else { 'false' }
             $faultOption = if ($DevelopmentFaultInjection) { 'true' } else { 'false' }
             Invoke-Checked $msbuild @((Join-Path $sourceRoot $project), '/m', '/nologo', '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform", "/p:MoLatencyTrace=$traceOption", "/p:MoDevelopmentFaultInjection=$faultOption")
@@ -78,6 +78,7 @@ foreach ($platform in $architectures) {
         throw "Expected probe artifacts were not produced in $binaryDirectory"
     }
     Invoke-Checked $probe @($tip)
+    Invoke-Checked (Join-Path $binaryDirectory 'mo_tip_candidate_preview.exe') @()
     $registrar = Join-Path $binaryDirectory 'mo_tip_registrar.exe'
     $transactionMarker = Join-Path $binaryDirectory 'machine-profile-transaction.marker'
     if (-not (Test-Path -LiteralPath $registrar -PathType Leaf) -or (Test-Path -LiteralPath $transactionMarker)) {

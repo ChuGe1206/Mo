@@ -178,3 +178,17 @@ between test/key calls. See ADR 0054 and `docs/phase-0/WIN10-DESKTOP-EVIDENCE.md
 for finite Notepad/settings evidence, old-DLL rejection, preserved real-Rime
 response timeouts, and the requirement to repackage this source fix. This does
 not close the remaining real-host matrix above.
+
+
+## Modern candidate presentation
+
+Light/Dark use the Figma Paper/Midnight palette with separate label, candidate,
+and comment text, rounded rows and a DPI-scaled popup outline. System and high
+contrast keep OS colors. See ADR 0059 for native-font, shadow and footer adaptations.
+
+build-probe.ps1 also builds/runs mo_tip_candidate_preview in both architectures.
+This synthetic fixture verifies click gaps, stale revisions, focus, work-area bounds
+and repeated-update GDI resource stability without registering the TIP or reading
+desktop input. Pass an existing local directory to the executable to save synthetic
+WM_PRINTCLIENT BMP renders; omit it for assertions only. The fixture is excluded
+from product stages.
