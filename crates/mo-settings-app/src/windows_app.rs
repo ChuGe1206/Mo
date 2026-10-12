@@ -1,9 +1,15 @@
-use mo_settings::{Appearance, CandidateSkin, CharacterSet, InputScheme, Settings, Theme};
+use mo_settings::{
+    Appearance, CandidateSkin, CharacterSet, InputScheme, MAX_CANDIDATE_FONT_SIZE_PX,
+    MAX_CANDIDATE_RADIUS_PX, MAX_SKIN_BYTES, MIN_CANDIDATE_FONT_SIZE_PX, MIN_CANDIDATE_RADIUS_PX,
+    Settings, Theme,
+};
 use mo_settings_app::SettingsController;
+use mo_settings_app::text_catalog::{TextKey, UiLocale, UiTextCatalog};
 use std::ffi::c_void;
 use std::io;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr::{null, null_mut};
+use std::sync::Arc;
 use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -47,6 +53,84 @@ unsafe extern "system" fn invalidate_child(window: HWND, _: LPARAM) -> i32 {
     }
     1
 }
+// Win32 resource/control IDs are stable ordinals; only their declarations
+// contain raw numbers. Layout dimensions below are logical pixels at BASE_DPI.
+const BASE_DPI: u32 = 96;
+const BASE_DPI_I32: i32 = BASE_DPI as i32;
+const WINDOW_WIDTH_PX: i32 = 1116;
+const WINDOW_HEIGHT_PX: i32 = 760;
+const MIN_WINDOW_WIDTH_PX: i32 = 900;
+const MIN_WINDOW_HEIGHT_PX: i32 = 520;
+const PREVIEW_SMALL_HEIGHT_PX: i32 = 540;
+const PREVIEW_INITIAL_SCROLL_PX: i32 = 100;
+const KEYBOARD_FOCUS_MARGIN_PX: i32 = 8;
+const SCROLL_LINE_PX: i32 = 32;
+const WORD_SHIFT_BITS: u32 = u16::BITS;
+const WORD_MASK: usize = u16::MAX as usize;
+const FATAL_TITLE_FALLBACK: &str = "Mo settings could not start";
+const SIDEBAR_WIDTH_PX: i32 = 212;
+const FOOTER_HEIGHT_PX: i32 = 72;
+const INITIAL_CONTENT_WIDTH_PX: i32 = 888;
+const MIN_CONTENT_WIDTH_PX: i32 = 400;
+const MIN_VIEWPORT_HEIGHT_PX: i32 = 120;
+const CONTENT_HEIGHT_PX: i32 = 644;
+const NARROW_LAYOUT_BREAKPOINT_PX: i32 = 720;
+const NARROW_SKINS_CONTENT_HEIGHT_PX: i32 = 810;
+const NARROW_CUSTOM_CONTENT_HEIGHT_PX: i32 = 1000;
+const PAGE_PADDING_PX: i32 = 24;
+const CARD_GAP_PX: i32 = 16;
+const SCROLL_STEP_PX: i32 = 56;
+const COMBO_ITEM_HEIGHT_PX: u32 = 34;
+const ICON_RESOURCE_ID: u16 = 1;
+const FONT_COUNT: usize = 5;
+const BODY_FONT_INDEX: usize = 0;
+const BODY_FONT_SIZE_PX: i32 = 14;
+const CAPTION_FONT_SIZE_PX: i32 = 12;
+const HEADING_FONT_SIZE_PX: i32 = 24;
+const SECTION_FONT_SIZE_PX: i32 = 16;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SettingsPage {
+    Global,
+    General,
+    Appearance,
+    Privacy,
+    CustomSkin,
+}
+const PAGE_GLOBAL: SettingsPage = SettingsPage::Global;
+const PAGE_GENERAL: SettingsPage = SettingsPage::General;
+const PAGE_APPEARANCE: SettingsPage = SettingsPage::Appearance;
+const PAGE_PRIVACY: SettingsPage = SettingsPage::Privacy;
+const PAGE_CUSTOM_SKIN: SettingsPage = SettingsPage::CustomSkin;
+const NAVIGATION_PAGES: [SettingsPage; 3] = [PAGE_GENERAL, PAGE_APPEARANCE, PAGE_PRIVACY];
+const ID_NAV_GENERAL: usize = 200;
+const ID_NAV_APPEARANCE: usize = 201;
+const ID_NAV_PRIVACY: usize = 202;
+const ID_THEME_SYSTEM: usize = 210;
+const ID_THEME_LIGHT: usize = 211;
+const ID_THEME_DARK: usize = 212;
+const ID_SKIN_FIRST: usize = 220;
+const ID_SKIN_LAST_PRESET: usize = 224;
+const ID_SKIN_CUSTOM: usize = 225;
+// Integer luma approximation (R/G/B weights sum to 1000). This preserves the
+// existing preview color choice; it is not a WCAG contrast-ratio calculation.
+const LUMA_RED_WEIGHT: u32 = 299;
+const LUMA_GREEN_WEIGHT: u32 = 587;
+const LUMA_BLUE_WEIGHT: u32 = 114;
+const DARK_ON_ACCENT_LUMA_THRESHOLD: u32 = 150_000;
+const RGB_CHANNEL_MASK: u32 = u8::MAX as u32;
+const RGB_RED_SHIFT: u32 = 16;
+const RGB_GREEN_SHIFT: u32 = 8;
+const RGB_GREEN_MASK: u32 = RGB_CHANNEL_MASK << RGB_GREEN_SHIFT;
+const WHITE_RGB: u32 = 0x00ff_ffff;
+// BITMAPFILEHEADER + BITMAPINFOHEADER, for deterministic synthetic previews.
+const BMP_FILE_HEADER_BYTES: usize = 14;
+const BMP_INFO_HEADER_BYTES: usize = 40;
+const BMP_PIXEL_OFFSET: usize = BMP_FILE_HEADER_BYTES + BMP_INFO_HEADER_BYTES;
+const BMP_BITS_PER_PIXEL: u16 = 32;
+const BMP_BYTES_PER_PIXEL: usize = 4;
+const BMP_RESERVED_BYTES: usize = 4;
+const BMP_INFO_UNUSED_BYTES: usize = 24;
+
 const WM_APP_LAYOUT: u32 = WM_APP + 1;
 const WM_APP_RESTYLE: u32 = WM_APP + 2;
 const CLASS: &str = "Mo.Settings.Window.v2";
@@ -69,11 +153,24 @@ const ID_IMPORT: usize = 125;
 const ID_EXPORT: usize = 126;
 const ID_BACK: usize = 127;
 const ID_LAYOUT: usize = 128;
+const ID_LANGUAGE: usize = 129;
+const LANGUAGE_BUTTON_TOP_PX: i32 = 302;
+const SCHEME_LABELS: [TextKey; 5] = [
+    TextKey::FullPinyin,
+    TextKey::NaturalPinyin,
+    TextKey::FlypyPinyin,
+    TextKey::MicrosoftPinyin,
+    TextKey::SogouPinyin,
+];
+const CHARACTER_LABELS: [TextKey; 2] = [TextKey::SimplifiedChinese, TextKey::TraditionalChinese];
+const LAYOUT_LABELS: [TextKey; 2] = [TextKey::HorizontalCandidates, TextKey::VerticalCandidates];
+// Synthetic Chinese candidate data stays independent of the settings UI language.
+const PREVIEW_CANDIDATES: [&str; 5] = ["春风", "春峰", "淳风", "春丰", "春锋"];
 
 #[derive(Clone, Copy)]
 struct Control {
     handle: HWND,
-    page: i32,
+    page: SettingsPage,
     id: usize,
 }
 #[derive(Clone, Copy)]
@@ -87,8 +184,10 @@ struct Palette {
     border: u32,
     soft: u32,
 }
-fn rgb(value: u32) -> u32 {
-    ((value >> 16) & 255) | (value & 0xff00) | ((value & 255) << 16)
+const fn rgb(value: u32) -> u32 {
+    ((value >> RGB_RED_SHIFT) & RGB_CHANNEL_MASK)
+        | (value & RGB_GREEN_MASK)
+        | ((value & RGB_CHANNEL_MASK) << RGB_RED_SHIFT)
 }
 // Win32 MAKEINTRESOURCE: an ordinal tagged as a pointer, never dereferenced by Mo.
 fn resource_id(id: u16) -> *const u16 {
@@ -107,15 +206,16 @@ fn rect(x: i32, y: i32, width: i32, height: i32) -> RECT {
 }
 
 struct AppState {
+    catalog: UiTextCatalog,
     controller: SettingsController,
     draft: Settings,
     window: HWND,
     view: HWND,
     controls: Vec<Control>,
-    fonts: [HFONT; 5],
+    fonts: [HFONT; FONT_COUNT],
     background: HBRUSH,
     dpi: i32,
-    page: i32,
+    page: SettingsPage,
     scroll: i32,
     content_width: i32,
     viewport_height: i32,
@@ -137,32 +237,93 @@ impl Drop for AppState {
     }
 }
 impl AppState {
-    fn new(controller: SettingsController) -> Self {
-        let status = if controller.can_save_changes() {
-            "更改后请保存"
-        } else {
-            "设置无法读取，请重新读取或明确恢复默认"
-        }
-        .to_owned();
+    fn new(controller: SettingsController, catalog: UiTextCatalog) -> Self {
+        let status = catalog
+            .get(if catalog.override_error().is_some() {
+                TextKey::TextOverrideRejected
+            } else if controller.can_save_changes() {
+                TextKey::PendingSave
+            } else {
+                TextKey::SettingsUnreadable
+            })
+            .to_string();
         Self {
+            catalog,
             draft: controller.settings().clone(),
             controller,
             window: null_mut(),
             view: null_mut(),
             controls: Vec::new(),
-            fonts: [null_mut(); 5],
+            fonts: [null_mut(); FONT_COUNT],
             background: null_mut(),
-            dpi: 96,
-            page: 0,
+            dpi: BASE_DPI_I32,
+            page: PAGE_GENERAL,
             scroll: 0,
-            content_width: 888,
-            viewport_height: 644,
+            content_width: INITIAL_CONTENT_WIDTH_PX,
+            viewport_height: CONTENT_HEIGHT_PX,
             status,
             palette: paper(),
         }
     }
+    fn tr(&self, key: TextKey) -> Arc<str> {
+        self.catalog.get(key)
+    }
+    fn render_text(&self, key: TextKey, arguments: &[(&str, &str)]) -> String {
+        // UI call sites use the fixed field schemas exercised in both locales.
+        // User overrides cannot introduce, remove or rename those fields.
+        self.catalog
+            .render(key, arguments)
+            .expect("typed UI template arguments")
+    }
+    unsafe fn switch_language(&mut self) -> io::Result<()> {
+        let profile = self
+            .controller
+            .path()
+            .parent()
+            .ok_or_else(|| io::Error::other("missing profile directory"))?;
+        self.catalog = UiTextCatalog::from_profile(self.catalog.locale().next(), profile)
+            .map_err(io::Error::other)?;
+        for control in &self.controls {
+            if let Some(key) = control_label_key(control.id) {
+                unsafe {
+                    SetWindowTextW(control.handle, wide(&self.tr(key)).as_ptr());
+                }
+            }
+        }
+        for (id, keys) in [
+            (ID_SCHEME, SCHEME_LABELS.as_slice()),
+            (ID_CHARACTER, CHARACTER_LABELS.as_slice()),
+            (ID_LAYOUT, LAYOUT_LABELS.as_slice()),
+        ] {
+            unsafe {
+                SendMessageW(self.control(id), CB_RESETCONTENT, 0, 0);
+            }
+            for key in keys {
+                unsafe {
+                    SendMessageW(
+                        self.control(id),
+                        CB_ADDSTRING,
+                        0,
+                        wide(&self.tr(*key)).as_ptr() as isize,
+                    );
+                }
+            }
+        }
+        unsafe {
+            SetWindowTextW(self.window, wide(&self.tr(TextKey::WindowTitle)).as_ptr());
+            self.sync_controls();
+        }
+        self.status = self
+            .tr(if self.catalog.override_error().is_some() {
+                TextKey::TextOverrideRejected
+            } else {
+                TextKey::LanguageChanged
+            })
+            .to_string();
+        Ok(())
+    }
     fn s(&self, value: i32) -> i32 {
-        value * self.dpi / 96
+        value * self.dpi / BASE_DPI_I32
     }
     fn control(&self, id: usize) -> HWND {
         self.controls
@@ -210,9 +371,15 @@ impl AppState {
             }
             self.background = CreateSolidBrush(self.palette.background);
             let old_fonts = self.fonts;
-            for (index, size) in [14, 12, 24, 16, self.draft.appearance.font_size as i32]
-                .into_iter()
-                .enumerate()
+            for (index, size) in [
+                BODY_FONT_SIZE_PX,
+                CAPTION_FONT_SIZE_PX,
+                HEADING_FONT_SIZE_PX,
+                SECTION_FONT_SIZE_PX,
+                self.draft.appearance.font_size as i32,
+            ]
+            .into_iter()
+            .enumerate()
             {
                 self.fonts[index] = CreateFontW(
                     -self.s(size),
@@ -232,7 +399,12 @@ impl AppState {
                 );
             }
             for control in &self.controls {
-                SendMessageW(control.handle, WM_SETFONT, self.fonts[0] as usize, 1);
+                SendMessageW(
+                    control.handle,
+                    WM_SETFONT,
+                    self.fonts[BODY_FONT_INDEX] as usize,
+                    1,
+                );
             }
             for font in old_fonts {
                 if !font.is_null() {
@@ -244,7 +416,7 @@ impl AppState {
     unsafe fn create(&mut self, window: HWND) -> io::Result<()> {
         self.window = window;
         let _mutation = UiMutation::new(window);
-        self.dpi = unsafe { GetDpiForWindow(window) }.max(96) as i32;
+        self.dpi = unsafe { GetDpiForWindow(window) }.max(BASE_DPI) as i32;
         unsafe { self.refresh_style() };
         self.view = unsafe {
             CreateWindowExW(
@@ -266,21 +438,29 @@ impl AppState {
             return Err(io::Error::last_os_error());
         }
         for (id, label) in [
-            (200, "常用设置"),
-            (201, "外观与皮肤"),
-            (202, "隐私与学习"),
-            (ID_SAVE, "保存更改"),
-            (ID_RESTORE, "恢复默认"),
-            (ID_RELOAD, "重新读取"),
+            (ID_NAV_GENERAL, &self.tr(TextKey::General)),
+            (ID_NAV_APPEARANCE, &self.tr(TextKey::Appearance)),
+            (ID_NAV_PRIVACY, &self.tr(TextKey::Privacy)),
+            (ID_SAVE, &self.tr(TextKey::Save)),
+            (ID_RESTORE, &self.tr(TextKey::Restore)),
+            (ID_RELOAD, &self.tr(TextKey::Reload)),
+            (ID_LANGUAGE, &self.tr(TextKey::LanguageButton)),
         ] {
             unsafe {
-                self.add(window, -1, id, "BUTTON", label, BS_OWNERDRAW as u32)?;
+                self.add(
+                    window,
+                    PAGE_GLOBAL,
+                    id,
+                    "BUTTON",
+                    label,
+                    BS_OWNERDRAW as u32,
+                )?;
             }
         }
         unsafe {
             self.add(
                 self.view,
-                0,
+                PAGE_GENERAL,
                 ID_SCHEME,
                 "COMBOBOX",
                 "",
@@ -291,7 +471,7 @@ impl AppState {
             )?;
             self.add(
                 self.view,
-                0,
+                PAGE_GENERAL,
                 ID_CHARACTER,
                 "COMBOBOX",
                 "",
@@ -301,57 +481,73 @@ impl AppState {
                     | WS_VSCROLL,
             )?;
         }
-        for label in ["全拼", "自然码双拼", "小鹤双拼", "微软双拼", "搜狗双拼"] {
+        for key in SCHEME_LABELS {
+            let label = self.tr(key);
             unsafe {
                 SendMessageW(
                     self.control(ID_SCHEME),
                     CB_ADDSTRING,
                     0,
-                    wide(label).as_ptr() as isize,
+                    wide(&label).as_ptr() as isize,
                 );
             }
         }
-        for label in ["简体中文", "繁体中文"] {
+        for key in CHARACTER_LABELS {
+            let label = self.tr(key);
             unsafe {
                 SendMessageW(
                     self.control(ID_CHARACTER),
                     CB_ADDSTRING,
                     0,
-                    wide(label).as_ptr() as isize,
+                    wide(&label).as_ptr() as isize,
                 );
             }
         }
         for (page, id, label) in [
-            (0, ID_COMMENTS, "候选注释"),
-            (0, ID_EMOJI, "Emoji 候选"),
-            (2, ID_LEARNING, "本地学习"),
-            (2, ID_PRIVACY, "隐私模式"),
+            (PAGE_GENERAL, ID_COMMENTS, &self.tr(TextKey::Comments)),
+            (PAGE_GENERAL, ID_EMOJI, &self.tr(TextKey::Emoji)),
+            (PAGE_PRIVACY, ID_LEARNING, &self.tr(TextKey::Learning)),
+            (PAGE_PRIVACY, ID_PRIVACY, &self.tr(TextKey::PrivacyMode)),
         ] {
             unsafe {
                 self.add(self.view, page, id, "BUTTON", label, BS_OWNERDRAW as u32)?;
             }
         }
-        for (index, label) in ["跟随系统", "浅色", "深色"].into_iter().enumerate() {
+        for (index, label) in [
+            &self.tr(TextKey::SystemTheme),
+            &self.tr(TextKey::LightTheme),
+            &self.tr(TextKey::DarkTheme),
+        ]
+        .into_iter()
+        .enumerate()
+        {
             unsafe {
                 self.add(
                     self.view,
-                    1,
-                    210 + index,
+                    PAGE_APPEARANCE,
+                    ID_THEME_SYSTEM + index,
                     "BUTTON",
                     label,
                     BS_OWNERDRAW as u32,
                 )?;
             }
         }
-        for (index, label) in ["纸白", "夜墨", "薄荷", "暮霞", "墨竹", "自定义皮肤"]
-            .into_iter()
-            .enumerate()
+        for (index, label) in [
+            &self.tr(TextKey::PaperSkin),
+            &self.tr(TextKey::MidnightSkin),
+            &self.tr(TextKey::MintSkin),
+            &self.tr(TextKey::DuskSkin),
+            &self.tr(TextKey::BambooSkin),
+            &self.tr(TextKey::CustomSkin),
+        ]
+        .into_iter()
+        .enumerate()
         {
             unsafe {
                 self.add(
                     self.view,
-                    1,
-                    220 + index,
+                    PAGE_APPEARANCE,
+                    ID_SKIN_FIRST + index,
                     "BUTTON",
                     label,
                     BS_OWNERDRAW as u32,
@@ -359,22 +555,29 @@ impl AppState {
             }
         }
         for (id, label) in [
-            (ID_BACKGROUND, "背景颜色"),
-            (ID_ACCENT, "强调颜色"),
-            (ID_TEXT, "文字颜色"),
-            (ID_IMPORT, "导入本地皮肤"),
-            (ID_EXPORT, "导出当前皮肤"),
-            (ID_BACK, "返回皮肤"),
+            (ID_BACKGROUND, &self.tr(TextKey::BackgroundColor)),
+            (ID_ACCENT, &self.tr(TextKey::AccentColor)),
+            (ID_TEXT, &self.tr(TextKey::TextColor)),
+            (ID_IMPORT, &self.tr(TextKey::ImportSkin)),
+            (ID_EXPORT, &self.tr(TextKey::ExportSkin)),
+            (ID_BACK, &self.tr(TextKey::BackToSkins)),
         ] {
             unsafe {
-                self.add(self.view, 3, id, "BUTTON", label, BS_OWNERDRAW as u32)?;
+                self.add(
+                    self.view,
+                    PAGE_CUSTOM_SKIN,
+                    id,
+                    "BUTTON",
+                    label,
+                    BS_OWNERDRAW as u32,
+                )?;
             }
         }
         for id in [ID_RADIUS, ID_FONT, ID_LAYOUT] {
             unsafe {
                 self.add(
                     self.view,
-                    3,
+                    PAGE_CUSTOM_SKIN,
                     id,
                     "COMBOBOX",
                     "",
@@ -385,7 +588,7 @@ impl AppState {
                 )?;
             }
         }
-        for value in 8..=20 {
+        for value in MIN_CANDIDATE_RADIUS_PX..=MAX_CANDIDATE_RADIUS_PX {
             unsafe {
                 SendMessageW(
                     self.control(ID_RADIUS),
@@ -395,7 +598,7 @@ impl AppState {
                 );
             }
         }
-        for value in 12..=24 {
+        for value in MIN_CANDIDATE_FONT_SIZE_PX..=MAX_CANDIDATE_FONT_SIZE_PX {
             unsafe {
                 SendMessageW(
                     self.control(ID_FONT),
@@ -405,13 +608,14 @@ impl AppState {
                 );
             }
         }
-        for label in ["紧凑横排", "竖排候选"] {
+        for key in LAYOUT_LABELS {
+            let label = self.tr(key);
             unsafe {
                 SendMessageW(
                     self.control(ID_LAYOUT),
                     CB_ADDSTRING,
                     0,
-                    wide(label).as_ptr() as isize,
+                    wide(&label).as_ptr() as isize,
                 );
             }
         }
@@ -424,7 +628,7 @@ impl AppState {
     unsafe fn add(
         &mut self,
         parent: HWND,
-        page: i32,
+        page: SettingsPage,
         id: usize,
         class: &str,
         text: &str,
@@ -450,7 +654,7 @@ impl AppState {
             return Err(io::Error::last_os_error());
         }
         unsafe {
-            SendMessageW(handle, WM_SETFONT, self.fonts[0] as usize, 0);
+            SendMessageW(handle, WM_SETFONT, self.fonts[BODY_FONT_INDEX] as usize, 0);
         }
         self.controls.push(Control { handle, page, id });
         Ok(())
@@ -473,13 +677,13 @@ impl AppState {
             SendMessageW(
                 self.control(ID_RADIUS),
                 CB_SETCURSEL,
-                (self.draft.appearance.radius - 8) as usize,
+                (self.draft.appearance.radius - MIN_CANDIDATE_RADIUS_PX) as usize,
                 0,
             );
             SendMessageW(
                 self.control(ID_FONT),
                 CB_SETCURSEL,
-                (self.draft.appearance.font_size - 12) as usize,
+                (self.draft.appearance.font_size - MIN_CANDIDATE_FONT_SIZE_PX) as usize,
                 0,
             );
             SendMessageW(
@@ -494,17 +698,39 @@ impl AppState {
             );
         }
         for (id, name, enabled) in [
-            (ID_COMMENTS, "候选注释", self.draft.show_comments),
-            (ID_EMOJI, "Emoji 候选", self.draft.emoji),
-            (ID_LEARNING, "本地学习", self.draft.local_learning),
-            (ID_PRIVACY, "隐私模式", self.draft.privacy_mode),
+            (
+                ID_COMMENTS,
+                &self.tr(TextKey::Comments),
+                self.draft.show_comments,
+            ),
+            (ID_EMOJI, &self.tr(TextKey::Emoji), self.draft.emoji),
+            (
+                ID_LEARNING,
+                &self.tr(TextKey::Learning),
+                self.draft.local_learning,
+            ),
+            (
+                ID_PRIVACY,
+                &self.tr(TextKey::PrivacyMode),
+                self.draft.privacy_mode,
+            ),
         ] {
             unsafe {
                 SetWindowTextW(
                     self.control(id),
-                    wide(&format!(
-                        "{name}：{}",
-                        if enabled { "已开启" } else { "已关闭" }
+                    wide(&self.render_text(
+                        TextKey::ToggleState,
+                        &[
+                            ("label", name),
+                            (
+                                "state",
+                                &self.tr(if enabled {
+                                    TextKey::Enabled
+                                } else {
+                                    TextKey::Disabled
+                                }),
+                            ),
+                        ],
                     ))
                     .as_ptr(),
                 );
@@ -512,13 +738,13 @@ impl AppState {
         }
     }
     fn content_height(&self) -> i32 {
-        if self.page == 3 && self.content_width < 720 {
-            return 1000;
+        if self.page == PAGE_CUSTOM_SKIN && self.content_width < NARROW_LAYOUT_BREAKPOINT_PX {
+            return NARROW_CUSTOM_CONTENT_HEIGHT_PX;
         }
-        if self.page == 1 && self.content_width < 720 {
-            810
+        if self.page == PAGE_APPEARANCE && self.content_width < NARROW_LAYOUT_BREAKPOINT_PX {
+            NARROW_SKINS_CONTENT_HEIGHT_PX
         } else {
-            644
+            CONTENT_HEIGHT_PX
         }
     }
     unsafe fn layout(&mut self) {
@@ -527,17 +753,17 @@ impl AppState {
         unsafe {
             GetClientRect(self.window, &mut client);
         }
-        let width = client.right * 96 / self.dpi;
-        let height = client.bottom * 96 / self.dpi;
-        self.content_width = (width - 212).max(400);
-        self.viewport_height = (height - 72).max(120);
+        let width = client.right * BASE_DPI_I32 / self.dpi;
+        let height = client.bottom * BASE_DPI_I32 / self.dpi;
+        self.content_width = (width - SIDEBAR_WIDTH_PX).max(MIN_CONTENT_WIDTH_PX);
+        self.viewport_height = (height - FOOTER_HEIGHT_PX).max(MIN_VIEWPORT_HEIGHT_PX);
         self.scroll = self
             .scroll
             .clamp(0, (self.content_height() - self.viewport_height).max(0));
         unsafe {
             MoveWindow(
                 self.view,
-                self.s(212),
+                self.s(SIDEBAR_WIDTH_PX),
                 0,
                 self.s(self.content_width),
                 self.s(self.viewport_height),
@@ -557,12 +783,18 @@ impl AppState {
             SetScrollInfo(self.view, SB_VERT, &info, 1);
         }
         let w = self.content_width;
-        let columns = if w < 720 { 2 } else { 3 };
-        let card_width = (w - 48 - (columns - 1) * 16) / columns;
+        let columns = if w < NARROW_LAYOUT_BREAKPOINT_PX {
+            2
+        } else {
+            3
+        };
+        let card_width = (w - PAGE_PADDING_PX * 2 - (columns - 1) * CARD_GAP_PX) / columns;
         for control in &self.controls {
             let id = control.id;
             let logical = match id {
-                200..=202 => rect(16, 122 + (id as i32 - 200) * 52, 180, 44),
+                ID_NAV_GENERAL..=ID_NAV_PRIVACY => {
+                    rect(16, 122 + (id as i32 - ID_NAV_GENERAL as i32) * 52, 180, 44)
+                }
                 ID_RESTORE => rect(236, height - 56, 110, 40),
                 ID_RELOAD => rect(width - 276, height - 56, 120, 40),
                 ID_SAVE => rect(width - 144, height - 56, 120, 40),
@@ -572,16 +804,22 @@ impl AppState {
                 ID_EMOJI => rect(w - 96, 490, 48, 32),
                 ID_LEARNING => rect(w - 96, 310, 48, 32),
                 ID_PRIVACY => rect(w - 96, 390, 48, 32),
-                210..=212 => rect(w - 316 + (id as i32 - 210) * 96, 108, 92, 32),
-                220..=225 => {
-                    let index = id as i32 - 220;
+                ID_THEME_SYSTEM..=ID_THEME_DARK => rect(
+                    w - 316 + (id as i32 - ID_THEME_SYSTEM as i32) * 96,
+                    108,
+                    92,
+                    32,
+                ),
+                ID_SKIN_FIRST..=ID_SKIN_CUSTOM => {
+                    let index = id as i32 - ID_SKIN_FIRST as i32;
                     rect(
-                        24 + (index % columns) * (card_width + 16),
+                        24 + (index % columns) * (card_width + CARD_GAP_PX),
                         168 + (index / columns) * 152,
                         card_width,
                         136,
                     )
                 }
+                ID_LANGUAGE => rect(16, LANGUAGE_BUTTON_TOP_PX, 180, 36),
                 ID_BACK => rect(24, 88, 120, 32),
                 ID_BACKGROUND => rect(44, 182, 240, 40),
                 ID_ACCENT => rect(44, 230, 240, 40),
@@ -589,17 +827,40 @@ impl AppState {
                 ID_RADIUS => rect(160, 330, 124, 170),
                 ID_FONT => rect(160, 378, 124, 170),
                 ID_LAYOUT => rect(44, 430, 240, 100),
-                ID_IMPORT => rect(24, if w < 720 { 904 } else { 552 }, 140, 40),
-                ID_EXPORT => rect(180, if w < 720 { 904 } else { 552 }, 140, 40),
+                ID_IMPORT => rect(
+                    24,
+                    if w < NARROW_LAYOUT_BREAKPOINT_PX {
+                        904
+                    } else {
+                        552
+                    },
+                    140,
+                    40,
+                ),
+                ID_EXPORT => rect(
+                    180,
+                    if w < NARROW_LAYOUT_BREAKPOINT_PX {
+                        904
+                    } else {
+                        552
+                    },
+                    140,
+                    40,
+                ),
                 _ => rect(0, 0, 1, 1),
             };
-            let visible = control.page == -1 || control.page == self.page;
+            let visible = control.page == PAGE_GLOBAL || control.page == self.page;
             unsafe {
                 ShowWindow(control.handle, if visible { SW_SHOW } else { SW_HIDE });
                 MoveWindow(
                     control.handle,
                     self.s(logical.left),
-                    self.s(logical.top - if control.page >= 0 { self.scroll } else { 0 }),
+                    self.s(logical.top
+                        - if control.page != PAGE_GLOBAL {
+                            self.scroll
+                        } else {
+                            0
+                        }),
                     self.s(logical.right - logical.left),
                     self.s(logical.bottom - logical.top),
                     1,
@@ -614,30 +875,38 @@ impl AppState {
     unsafe fn command(&mut self, id: usize, notification: u16) {
         let _mutation = UiMutation::new(self.window);
         match id {
-            200..=202 => {
-                self.page = id as i32 - 200;
+            ID_LANGUAGE => {
+                if let Err(error) = unsafe { self.switch_language() } {
+                    self.status = error.to_string();
+                }
+            }
+            ID_NAV_GENERAL..=ID_NAV_PRIVACY => {
+                self.page = NAVIGATION_PAGES[id - ID_NAV_GENERAL];
                 self.scroll = 0;
             }
             ID_BACK => {
-                self.page = 1;
+                self.page = PAGE_APPEARANCE;
                 self.scroll = 0;
             }
             ID_COMMENTS => self.draft.show_comments = !self.draft.show_comments,
             ID_EMOJI => self.draft.emoji = !self.draft.emoji,
             ID_LEARNING => self.draft.local_learning = !self.draft.local_learning,
             ID_PRIVACY => self.draft.privacy_mode = !self.draft.privacy_mode,
-            210..=212 => {
+            ID_THEME_SYSTEM..=ID_THEME_DARK => {
                 self.draft.appearance.window_theme =
-                    [Theme::System, Theme::Light, Theme::Dark][id - 210];
+                    [Theme::System, Theme::Light, Theme::Dark][id - ID_THEME_SYSTEM];
                 unsafe {
                     self.refresh_style();
                 }
             }
-            220..=224 => {
-                self.draft.appearance.skin = CandidateSkin::from_index((id - 219) as u8).unwrap()
+            ID_SKIN_FIRST..=ID_SKIN_LAST_PRESET => {
+                self.draft.appearance.skin = CandidateSkin::from_index(
+                    (id - ID_SKIN_FIRST + CandidateSkin::Paper as usize) as u8,
+                )
+                .unwrap()
             }
-            225 => {
-                self.page = 3;
+            ID_SKIN_CUSTOM => {
+                self.page = PAGE_CUSTOM_SKIN;
                 self.scroll = 0;
                 self.draft.appearance.skin = CandidateSkin::Custom;
             }
@@ -669,11 +938,16 @@ impl AppState {
             }
             ID_RADIUS | ID_FONT if notification == CBN_SELCHANGE as u16 => {
                 let index = unsafe { SendMessageW(self.control(id), CB_GETCURSEL, 0, 0) };
-                if (0..=12).contains(&index) {
+                let maximum_index = if id == ID_RADIUS {
+                    MAX_CANDIDATE_RADIUS_PX - MIN_CANDIDATE_RADIUS_PX
+                } else {
+                    MAX_CANDIDATE_FONT_SIZE_PX - MIN_CANDIDATE_FONT_SIZE_PX
+                };
+                if (0..=isize::from(maximum_index)).contains(&index) {
                     if id == ID_RADIUS {
-                        self.draft.appearance.radius = index as u8 + 8;
+                        self.draft.appearance.radius = index as u8 + MIN_CANDIDATE_RADIUS_PX;
                     } else {
-                        self.draft.appearance.font_size = index as u8 + 12;
+                        self.draft.appearance.font_size = index as u8 + MIN_CANDIDATE_FONT_SIZE_PX;
                     }
                 }
                 unsafe {
@@ -693,9 +967,9 @@ impl AppState {
                 self.controller.reload();
                 self.draft = self.controller.settings().clone();
                 self.status = if self.controller.can_save_changes() {
-                    "设置已重新读取".into()
+                    self.tr(TextKey::SettingsReloaded).to_string()
                 } else {
-                    "设置无法读取，请明确选择恢复默认".into()
+                    self.tr(TextKey::RestoreRequired).to_string()
                 };
                 unsafe {
                     self.refresh_style();
@@ -705,8 +979,8 @@ impl AppState {
                 if unsafe {
                     MessageBoxW(
                         self.window,
-                        wide("恢复默认将覆盖当前设置，是否继续？").as_ptr(),
-                        wide("恢复默认").as_ptr(),
+                        wide(&self.tr(TextKey::RestoreConfirmation)).as_ptr(),
+                        wide(&self.tr(TextKey::Restore)).as_ptr(),
                         MB_YESNO | MB_ICONQUESTION,
                     )
                 } == IDYES
@@ -714,7 +988,7 @@ impl AppState {
                     match self.controller.restore_defaults() {
                         Ok(()) => {
                             self.draft = self.controller.settings().clone();
-                            self.status = "已恢复默认设置".into();
+                            self.status = self.tr(TextKey::DefaultsRestored).to_string();
                             notify_settings();
                             unsafe {
                                 self.refresh_style();
@@ -726,7 +1000,7 @@ impl AppState {
             }
             ID_SAVE => match self.controller.save_settings(self.draft.clone()) {
                 Ok(()) => {
-                    self.status = "已保存 · 输入偏好在当前输入结束后生效".into();
+                    self.status = self.tr(TextKey::SettingsSaved).to_string();
                     notify_settings();
                 }
                 Err(error) => self.status = error.to_string(),
@@ -762,7 +1036,10 @@ impl AppState {
     }
     unsafe fn skin_file(&mut self, save: bool) {
         let mut path = [0u16; 32768];
-        let filter = wide("Mo 皮肤 (*.mo-skin)\0*.mo-skin\0\0");
+        let filter = wide(&format!(
+            "{} (*.mo-skin)\0*.mo-skin\0\0",
+            self.tr(TextKey::SkinFileType)
+        ));
         let mut dialog: OPENFILENAMEW = unsafe { std::mem::zeroed() };
         dialog.lStructSize = std::mem::size_of::<OPENFILENAMEW>() as u32;
         dialog.hwndOwner = self.window;
@@ -803,7 +1080,8 @@ impl AppState {
             use std::io::Read;
             std::fs::File::open(&path).and_then(|file| {
                 let mut bytes = Vec::new();
-                file.take(1025).read_to_end(&mut bytes)?;
+                file.take((MAX_SKIN_BYTES + 1) as u64)
+                    .read_to_end(&mut bytes)?;
                 let mut appearance = Appearance::decode_skin(&bytes).map_err(io::Error::other)?;
                 appearance.window_theme = self.draft.appearance.window_theme;
                 self.draft.appearance = appearance;
@@ -813,69 +1091,141 @@ impl AppState {
         self.status = match result {
             Ok(()) => {
                 if save {
-                    "皮肤已导出".into()
+                    self.tr(TextKey::SkinExported).to_string()
                 } else {
-                    "皮肤已导入预览，保存后应用".into()
+                    self.tr(TextKey::SkinImported).to_string()
                 }
             }
-            Err(error) => format!("皮肤操作失败：{error}"),
+            Err(error) => self.render_text(
+                TextKey::SkinOperationFailed,
+                &[("error", &error.to_string())],
+            ),
         };
     }
 }
-fn paper() -> Palette {
-    Palette {
-        background: rgb(0xffffff),
-        canvas: rgb(0xf4f6f5),
-        text: rgb(0x25352f),
-        muted: rgb(0x626f68),
-        accent: rgb(0x176d5e),
-        on_accent: rgb(0xffffff),
-        border: rgb(0xe0e6e2),
-        soft: rgb(0xeaf3ee),
+// Named design palettes store RGB source data in one declaration each.
+fn control_label_key(id: usize) -> Option<TextKey> {
+    match id {
+        ID_NAV_GENERAL => Some(TextKey::General),
+        ID_NAV_APPEARANCE => Some(TextKey::Appearance),
+        ID_NAV_PRIVACY => Some(TextKey::Privacy),
+        ID_SAVE => Some(TextKey::Save),
+        ID_RESTORE => Some(TextKey::Restore),
+        ID_RELOAD => Some(TextKey::Reload),
+        ID_LANGUAGE => Some(TextKey::LanguageButton),
+        ID_COMMENTS => Some(TextKey::Comments),
+        ID_EMOJI => Some(TextKey::Emoji),
+        ID_LEARNING => Some(TextKey::Learning),
+        ID_PRIVACY => Some(TextKey::PrivacyMode),
+        ID_THEME_SYSTEM => Some(TextKey::SystemTheme),
+        ID_THEME_LIGHT => Some(TextKey::LightTheme),
+        ID_THEME_DARK => Some(TextKey::DarkTheme),
+        ID_BACKGROUND => Some(TextKey::BackgroundColor),
+        ID_ACCENT => Some(TextKey::AccentColor),
+        ID_TEXT => Some(TextKey::TextColor),
+        ID_IMPORT => Some(TextKey::ImportSkin),
+        ID_EXPORT => Some(TextKey::ExportSkin),
+        ID_BACK => Some(TextKey::BackToSkins),
+        ID_SKIN_FIRST..=ID_SKIN_CUSTOM => [
+            TextKey::PaperSkin,
+            TextKey::MidnightSkin,
+            TextKey::MintSkin,
+            TextKey::DuskSkin,
+            TextKey::BambooSkin,
+            TextKey::CustomSkin,
+        ]
+        .get(id - ID_SKIN_FIRST)
+        .copied(),
+        _ => None,
     }
+}
+
+const PAPER_PALETTE: Palette = Palette {
+    background: rgb(WHITE_RGB),
+    canvas: rgb(0x00f4_f6f5),
+    text: rgb(0x0025_352f),
+    muted: rgb(0x0062_6f68),
+    accent: rgb(0x0017_6d5e),
+    on_accent: rgb(WHITE_RGB),
+    border: rgb(0x00e0_e6e2),
+    soft: rgb(0x00ea_f3ee),
+};
+const MIDNIGHT_PALETTE: Palette = Palette {
+    background: rgb(0x0024_2b29),
+    canvas: rgb(0x001d_2321),
+    text: rgb(0x00ef_f5f1),
+    muted: rgb(0x00b0_beb5),
+    accent: rgb(0x009a_dac5),
+    on_accent: rgb(0x0015_352c),
+    border: rgb(0x004c_5952),
+    soft: rgb(0x0035_443d),
+};
+#[derive(Clone, Copy)]
+struct CandidateColors {
+    background: u32,
+    text: u32,
+    accent: u32,
+    muted: u32,
+    border: u32,
+}
+const MINT_COLORS: CandidateColors = CandidateColors {
+    background: 0x00f0_f8f2,
+    text: 0x0021_3d2c,
+    accent: 0x0028_6748,
+    muted: 0x0052_6a59,
+    border: 0x00c7_decf,
+};
+const DUSK_COLORS: CandidateColors = CandidateColors {
+    background: 0x00ff_f4ef,
+    text: 0x004a_3029,
+    accent: 0x0098_503f,
+    muted: 0x0079_5c50,
+    border: 0x00e8_d2c7,
+};
+const BAMBOO_COLORS: CandidateColors = CandidateColors {
+    background: 0x00f4_f4ea,
+    text: 0x0030_3c2a,
+    accent: 0x0052_6143,
+    muted: 0x0060_684f,
+    border: 0x00d4_dac5,
+};
+fn paper() -> Palette {
+    PAPER_PALETTE
 }
 fn midnight() -> Palette {
-    Palette {
-        background: rgb(0x242b29),
-        canvas: rgb(0x1d2321),
-        text: rgb(0xeff5f1),
-        muted: rgb(0xb0beb5),
-        accent: rgb(0x9adac5),
-        on_accent: rgb(0x15352c),
-        border: rgb(0x4c5952),
-        soft: rgb(0x35443d),
-    }
+    MIDNIGHT_PALETTE
 }
 fn skin_palette(index: u8, custom: Appearance) -> Palette {
-    let (background, text, accent, muted, border) = match index {
-        2 => return midnight(),
-        3 => (0xf0f8f2, 0x213d2c, 0x286748, 0x526a59, 0xc7decf),
-        4 => (0xfff4ef, 0x4a3029, 0x98503f, 0x795c50, 0xe8d2c7),
-        5 => (0xf4f4ea, 0x303c2a, 0x526143, 0x60684f, 0xd4dac5),
-        6 => (
-            custom.background,
-            custom.text,
-            custom.accent,
-            custom.text,
-            custom.text,
-        ),
-        _ => return paper(),
+    let colors = match CandidateSkin::from_index(index).unwrap_or_default() {
+        CandidateSkin::Midnight => return midnight(),
+        CandidateSkin::Mint => MINT_COLORS,
+        CandidateSkin::Dusk => DUSK_COLORS,
+        CandidateSkin::Bamboo => BAMBOO_COLORS,
+        CandidateSkin::Custom => CandidateColors {
+            background: custom.background,
+            text: custom.text,
+            accent: custom.accent,
+            muted: custom.text,
+            border: custom.text,
+        },
+        CandidateSkin::FollowTheme | CandidateSkin::Paper => return paper(),
     };
-    let brightness =
-        ((accent >> 16) & 255) * 299 + ((accent >> 8) & 255) * 587 + (accent & 255) * 114;
+    let brightness = ((colors.accent >> RGB_RED_SHIFT) & RGB_CHANNEL_MASK) * LUMA_RED_WEIGHT
+        + ((colors.accent >> RGB_GREEN_SHIFT) & RGB_CHANNEL_MASK) * LUMA_GREEN_WEIGHT
+        + (colors.accent & RGB_CHANNEL_MASK) * LUMA_BLUE_WEIGHT;
     Palette {
-        background: rgb(background),
-        canvas: rgb(background),
-        text: rgb(text),
-        muted: rgb(muted),
-        accent: rgb(accent),
-        on_accent: if brightness > 150000 {
+        background: rgb(colors.background),
+        canvas: rgb(colors.background),
+        text: rgb(colors.text),
+        muted: rgb(colors.muted),
+        accent: rgb(colors.accent),
+        on_accent: if brightness > DARK_ON_ACCENT_LUMA_THRESHOLD {
             0
         } else {
-            rgb(0xffffff)
+            rgb(WHITE_RGB)
         },
-        border: rgb(border),
-        soft: rgb(background),
+        border: rgb(colors.border),
+        soft: rgb(colors.background),
     }
 }
 unsafe fn fill(dc: HDC, bounds: RECT, color: u32) {
@@ -966,13 +1316,17 @@ impl AppState {
         unsafe {
             GetClientRect(self.window, &mut client);
         }
-        let height = client.bottom * 96 / self.dpi;
+        let height = client.bottom * BASE_DPI_I32 / self.dpi;
         unsafe {
             fill(dc, client, self.palette.background);
-            fill(dc, self.box_at(0, 0, 212, height), self.palette.canvas);
+            fill(
+                dc,
+                self.box_at(0, 0, SIDEBAR_WIDTH_PX, height),
+                self.palette.canvas,
+            );
             let icon = LoadImageW(
                 GetModuleHandleW(null()),
-                resource_id(1),
+                resource_id(ICON_RESOURCE_ID),
                 IMAGE_ICON,
                 self.s(36),
                 self.s(36),
@@ -993,10 +1347,18 @@ impl AppState {
                 DestroyIcon(icon);
             }
             self.label(dc, "Mo", 68, 30, 120, self.palette.text, 2);
-            self.label(dc, "让表达更自然", 20, 76, 180, self.palette.muted, 1);
             self.label(
                 dc,
-                "Mo 墨 · 开发版",
+                &self.tr(TextKey::BrandTagline),
+                20,
+                76,
+                180,
+                self.palette.muted,
+                1,
+            );
+            self.label(
+                dc,
+                &self.tr(TextKey::DevelopmentBrand),
                 20,
                 height - 82,
                 180,
@@ -1005,7 +1367,7 @@ impl AppState {
             );
             self.label(
                 dc,
-                "轻盈表达 · 自在输入",
+                &self.tr(TextKey::BrandSubtitle),
                 20,
                 height - 54,
                 180,
@@ -1014,7 +1376,12 @@ impl AppState {
             );
             fill(
                 dc,
-                self.box_at(212, height - 72, client.right * 96 / self.dpi - 212, 1),
+                self.box_at(
+                    SIDEBAR_WIDTH_PX,
+                    height - FOOTER_HEIGHT_PX,
+                    client.right * BASE_DPI_I32 / self.dpi - SIDEBAR_WIDTH_PX,
+                    1,
+                ),
                 self.palette.border,
             );
             self.text(
@@ -1023,7 +1390,7 @@ impl AppState {
                 self.box_at(
                     352,
                     height - 60,
-                    (client.right * 96 / self.dpi - 648).max(100),
+                    (client.right * BASE_DPI_I32 / self.dpi - 648).max(100),
                     48,
                 ),
                 self.palette.muted,
@@ -1077,7 +1444,7 @@ impl AppState {
         }
     }
     unsafe fn candidate_preview(&self, dc: HDC, bounds: RECT, palette: Palette, vertical: bool) {
-        let width = (bounds.right - bounds.left) * 96 / self.dpi;
+        let width = (bounds.right - bounds.left) * BASE_DPI_I32 / self.dpi;
         unsafe {
             rounded(
                 dc,
@@ -1089,13 +1456,17 @@ impl AppState {
             let saved = SaveDC(dc);
             OffsetViewportOrgEx(dc, bounds.left, bounds.top, null_mut());
             self.label(dc, "chun feng", 12, 8, width - 90, palette.text, 0);
-            self.label(dc, "中 · Mo", width - 68, 8, 56, palette.muted, 1);
+            self.label(
+                dc,
+                &self.tr(TextKey::CandidateMode),
+                width - 68,
+                8,
+                56,
+                palette.muted,
+                1,
+            );
             let count = if !vertical && width < 300 { 2 } else { 5 };
-            for (index, text) in ["春风", "春峰", "淳风", "春丰", "春锋"]
-                .into_iter()
-                .take(count)
-                .enumerate()
-            {
+            for (index, text) in PREVIEW_CANDIDATES.into_iter().take(count).enumerate() {
                 let (x, y, item_width) = if vertical {
                     (12, 44 + index as i32 * 36, width - 24)
                 } else {
@@ -1148,8 +1519,12 @@ impl AppState {
             OffsetViewportOrgEx(dc, 0, -self.s(self.scroll), null_mut());
             let w = self.content_width;
             match self.page {
-                0 => {
-                    self.heading(dc, "常用设置", "把常用选项放在手边，让每一次输入都顺手。");
+                PAGE_GENERAL => {
+                    self.heading(
+                        dc,
+                        &self.tr(TextKey::General),
+                        &self.tr(TextKey::GeneralSubtitle),
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 104, w - 48, 216),
@@ -1157,9 +1532,27 @@ impl AppState {
                         self.palette.border,
                         self.s(12),
                     );
-                    self.label(dc, "输入习惯", 48, 120, w - 96, self.palette.text, 3);
-                    self.setting_row(dc, "输入方案", "全拼或常用双拼方案", 156);
-                    self.setting_row(dc, "输出文字", "按阅读习惯选择简体或繁体", 236);
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::InputHabits),
+                        48,
+                        120,
+                        w - 96,
+                        self.palette.text,
+                        3,
+                    );
+                    self.setting_row(
+                        dc,
+                        &self.tr(TextKey::InputScheme),
+                        &self.tr(TextKey::InputSchemeHelp),
+                        156,
+                    );
+                    self.setting_row(
+                        dc,
+                        &self.tr(TextKey::OutputCharacters),
+                        &self.tr(TextKey::OutputCharactersHelp),
+                        236,
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 344, w - 48, 232),
@@ -1167,17 +1560,30 @@ impl AppState {
                         self.palette.border,
                         self.s(12),
                     );
-                    self.label(dc, "候选与表达", 48, 360, w - 96, self.palette.text, 3);
-                    self.setting_row(dc, "候选注释", "展开候选时显示拼音等辅助信息", 408);
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::CandidatesSection),
+                        48,
+                        360,
+                        w - 96,
+                        self.palette.text,
+                        3,
+                    );
                     self.setting_row(
                         dc,
-                        "Emoji 候选",
-                        "中文输入时联想表情；手动面板独立可用",
+                        &self.tr(TextKey::Comments),
+                        &self.tr(TextKey::CommentsHelp),
+                        408,
+                    );
+                    self.setting_row(
+                        dc,
+                        &self.tr(TextKey::Emoji),
+                        &self.tr(TextKey::EmojiHelp),
                         488,
                     );
                     self.label(
                         dc,
-                        "输入方案将在当前输入结束后生效。",
+                        &self.tr(TextKey::InputChangeNotice),
                         24,
                         592,
                         w - 48,
@@ -1185,8 +1591,12 @@ impl AppState {
                         1,
                     );
                 }
-                1 => {
-                    self.heading(dc, "外观与皮肤", "选一种喜欢的样子，输入依然轻盈。");
+                PAGE_APPEARANCE => {
+                    self.heading(
+                        dc,
+                        &self.tr(TextKey::Appearance),
+                        &self.tr(TextKey::AppearanceSubtitle),
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 96, w - 48, 56),
@@ -1194,8 +1604,20 @@ impl AppState {
                         self.palette.canvas,
                         self.s(12),
                     );
-                    self.label(dc, "设置界面主题", 36, 110, 180, self.palette.text, 0);
-                    let columns = if w < 720 { 2 } else { 3 };
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::WindowTheme),
+                        36,
+                        110,
+                        180,
+                        self.palette.text,
+                        0,
+                    );
+                    let columns = if w < NARROW_LAYOUT_BREAKPOINT_PX {
+                        2
+                    } else {
+                        3
+                    };
                     let preview_y = 168 + (6 / columns) * 152 + 8;
                     rounded(
                         dc,
@@ -1204,7 +1626,15 @@ impl AppState {
                         self.palette.canvas,
                         self.s(12),
                     );
-                    self.label(dc, "实时预览", 36, preview_y + 8, 160, self.palette.text, 0);
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::LivePreview),
+                        36,
+                        preview_y + 8,
+                        160,
+                        self.palette.text,
+                        0,
+                    );
                     let palette =
                         skin_palette(self.draft.appearance.skin as u8, self.draft.appearance);
                     self.candidate_preview(
@@ -1214,8 +1644,12 @@ impl AppState {
                         false,
                     );
                 }
-                2 => {
-                    self.heading(dc, "隐私与学习", "你可以决定，输入习惯如何被记住。");
+                PAGE_PRIVACY => {
+                    self.heading(
+                        dc,
+                        &self.tr(TextKey::Privacy),
+                        &self.tr(TextKey::PrivacySubtitle),
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 104, w - 48, 104),
@@ -1229,10 +1663,18 @@ impl AppState {
                         include_bytes!("../../../assets/ui/shield.mask"),
                         self.palette.muted,
                     );
-                    self.label(dc, "学习，留在本机", 84, 124, w - 132, self.palette.text, 3);
                     self.label(
                         dc,
-                        "本地学习帮助候选排序；隐私模式会暂停学习。",
+                        &self.tr(TextKey::LocalLearningTitle),
+                        84,
+                        124,
+                        w - 132,
+                        self.palette.text,
+                        3,
+                    );
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::LocalLearningHelp),
                         48,
                         160,
                         w - 96,
@@ -1246,9 +1688,27 @@ impl AppState {
                         self.palette.border,
                         self.s(12),
                     );
-                    self.label(dc, "学习偏好", 48, 252, w - 96, self.palette.text, 3);
-                    self.setting_row(dc, "本地学习", "允许 Mo 记住在本机的选词习惯", 308);
-                    self.setting_row(dc, "隐私模式", "暂停学习，不改变本地学习开关的选择", 388);
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::LearningPreferences),
+                        48,
+                        252,
+                        w - 96,
+                        self.palette.text,
+                        3,
+                    );
+                    self.setting_row(
+                        dc,
+                        &self.tr(TextKey::Learning),
+                        &self.tr(TextKey::LearningHelp),
+                        308,
+                    );
+                    self.setting_row(
+                        dc,
+                        &self.tr(TextKey::PrivacyMode),
+                        &self.tr(TextKey::PrivacyHelp),
+                        388,
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 496, w - 48, 96),
@@ -1258,7 +1718,7 @@ impl AppState {
                     );
                     self.label(
                         dc,
-                        "暂时不想被记住？",
+                        &self.tr(TextKey::PrivacyCallout),
                         44,
                         508,
                         w - 88,
@@ -1267,7 +1727,7 @@ impl AppState {
                     );
                     self.label(
                         dc,
-                        "关闭隐私模式后，会按原来的本地学习设置继续。",
+                        &self.tr(TextKey::PrivacyResumeNotice),
                         44,
                         546,
                         w - 88,
@@ -1276,7 +1736,11 @@ impl AppState {
                     );
                 }
                 _ => {
-                    self.heading(dc, "自定义皮肤", "从喜欢的颜色开始，打造自己的输入气泡。");
+                    self.heading(
+                        dc,
+                        &self.tr(TextKey::CustomSkin),
+                        &self.tr(TextKey::CustomSkinSubtitle),
+                    );
                     rounded(
                         dc,
                         self.box_at(24, 140, 284, 350),
@@ -1284,10 +1748,34 @@ impl AppState {
                         self.palette.canvas,
                         self.s(12),
                     );
-                    self.label(dc, "我的皮肤", 44, 150, 240, self.palette.text, 3);
-                    self.label(dc, "圆角", 44, 330, 100, self.palette.text, 0);
-                    self.label(dc, "候选字号", 44, 378, 110, self.palette.text, 0);
-                    let narrow = w < 720;
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::MySkin),
+                        44,
+                        150,
+                        240,
+                        self.palette.text,
+                        3,
+                    );
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::CornerRadius),
+                        44,
+                        330,
+                        100,
+                        self.palette.text,
+                        0,
+                    );
+                    self.label(
+                        dc,
+                        &self.tr(TextKey::CandidateFontSize),
+                        44,
+                        378,
+                        110,
+                        self.palette.text,
+                        0,
+                    );
+                    let narrow = w < NARROW_LAYOUT_BREAKPOINT_PX;
                     let x = if narrow { 24 } else { 332 };
                     let y = if narrow { 504 } else { 140 };
                     let width = if narrow { w - 48 } else { w - 356 };
@@ -1300,7 +1788,7 @@ impl AppState {
                     );
                     self.label(
                         dc,
-                        "我的皮肤 · 预览",
+                        &self.tr(TextKey::MySkinPreview),
                         x + 16,
                         y + 20,
                         width - 32,
@@ -1315,7 +1803,7 @@ impl AppState {
                     );
                     self.label(
                         dc,
-                        "装饰留在边缘，候选始终清晰。",
+                        &self.tr(TextKey::SkinPreviewHelp),
                         x + 16,
                         y + 320,
                         width - 32,
@@ -1331,14 +1819,18 @@ impl AppState {
         let id = item.CtlID as usize;
         let dc = item.hDC;
         let bounds = item.rcItem;
-        let width = (bounds.right - bounds.left) * 96 / self.dpi;
-        let height = (bounds.bottom - bounds.top) * 96 / self.dpi;
+        let width = (bounds.right - bounds.left) * BASE_DPI_I32 / self.dpi;
+        let height = (bounds.bottom - bounds.top) * BASE_DPI_I32 / self.dpi;
         let pressed = item.itemState & ODS_SELECTED != 0;
         let disabled = item.itemState & ODS_DISABLED != 0;
-        let selected = (200..=202).contains(&id)
-            && (if self.page == 3 { 1 } else { self.page }) == id as i32 - 200;
-        let theme_selected =
-            (210..=212).contains(&id) && self.draft.appearance.window_theme as usize == id - 210;
+        let selected = (ID_NAV_GENERAL..=ID_NAV_PRIVACY).contains(&id)
+            && (if self.page == PAGE_CUSTOM_SKIN {
+                PAGE_APPEARANCE
+            } else {
+                self.page
+            }) == NAVIGATION_PAGES[id - ID_NAV_GENERAL];
+        let theme_selected = (ID_THEME_SYSTEM..=ID_THEME_DARK).contains(&id)
+            && self.draft.appearance.window_theme as usize == id - ID_THEME_SYSTEM;
         let primary = id == ID_SAVE;
         unsafe {
             if [ID_SCHEME, ID_CHARACTER, ID_RADIUS, ID_FONT, ID_LAYOUT].contains(&id) {
@@ -1348,23 +1840,20 @@ impl AppState {
                     item.itemID
                 };
                 let text = match id {
-                    ID_SCHEME => ["全拼", "自然码双拼", "小鹤双拼", "微软双拼", "搜狗双拼"]
+                    ID_SCHEME => SCHEME_LABELS
                         .get(index as usize)
-                        .copied()
-                        .unwrap_or("")
-                        .into(),
-                    ID_CHARACTER => ["简体中文", "繁体中文"]
+                        .map(|key| self.tr(*key).to_string())
+                        .unwrap_or_default(),
+                    ID_CHARACTER => CHARACTER_LABELS
                         .get(index as usize)
-                        .copied()
-                        .unwrap_or("")
-                        .into(),
-                    ID_RADIUS => format!("{} px", index + 8),
-                    ID_FONT => format!("{} px", index + 12),
-                    ID_LAYOUT => ["紧凑横排", "竖排候选"]
+                        .map(|key| self.tr(*key).to_string())
+                        .unwrap_or_default(),
+                    ID_RADIUS => format!("{} px", index + u32::from(MIN_CANDIDATE_RADIUS_PX)),
+                    ID_FONT => format!("{} px", index + u32::from(MIN_CANDIDATE_FONT_SIZE_PX)),
+                    ID_LAYOUT => LAYOUT_LABELS
                         .get(index as usize)
-                        .copied()
-                        .unwrap_or("")
-                        .into(),
+                        .map(|key| self.tr(*key).to_string())
+                        .unwrap_or_default(),
                     _ => String::new(),
                 };
                 fill(
@@ -1391,8 +1880,8 @@ impl AppState {
                     0,
                     DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
                 );
-            } else if (220..=225).contains(&id) {
-                let index = (id - 219) as u8;
+            } else if (ID_SKIN_FIRST..=ID_SKIN_CUSTOM).contains(&id) {
+                let index = (id - ID_SKIN_FIRST + CandidateSkin::Paper as usize) as u8;
                 let palette = skin_palette(index, self.draft.appearance);
                 let border = if self.draft.appearance.skin as u8 == index {
                     self.palette.accent
@@ -1400,20 +1889,27 @@ impl AppState {
                     self.palette.border
                 };
                 rounded(dc, bounds, self.palette.background, border, self.s(12));
-                let titles = ["纸白", "夜墨", "薄荷", "暮霞", "墨竹", "自定义皮肤"];
-                let descriptions = [
-                    "干净、轻盈",
-                    "深色、专注",
-                    "清爽、柔和",
-                    "温暖、细腻",
-                    "东方、留白",
-                    "把喜欢的配色带进输入",
+                let titles = [
+                    &self.tr(TextKey::PaperSkin),
+                    &self.tr(TextKey::MidnightSkin),
+                    &self.tr(TextKey::MintSkin),
+                    &self.tr(TextKey::DuskSkin),
+                    &self.tr(TextKey::BambooSkin),
+                    &self.tr(TextKey::CustomSkin),
                 ];
-                if id != 225 {
+                let descriptions = [
+                    &self.tr(TextKey::PaperDescription),
+                    &self.tr(TextKey::MidnightDescription),
+                    &self.tr(TextKey::MintDescription),
+                    &self.tr(TextKey::DuskDescription),
+                    &self.tr(TextKey::BambooDescription),
+                    &self.tr(TextKey::CustomDescription),
+                ];
+                if id != ID_SKIN_CUSTOM {
                     self.candidate_preview(dc, self.box_at(12, 12, width - 24, 78), palette, false);
                     self.label(
                         dc,
-                        titles[id - 220],
+                        titles[id - ID_SKIN_FIRST],
                         12,
                         100,
                         width / 2,
@@ -1422,7 +1918,7 @@ impl AppState {
                     );
                     self.label(
                         dc,
-                        descriptions[id - 220],
+                        descriptions[id - ID_SKIN_FIRST],
                         width / 2,
                         100,
                         width / 2 - 12,
@@ -1498,7 +1994,7 @@ impl AppState {
                     self.palette.accent
                 } else if selected || theme_selected || pressed {
                     self.palette.soft
-                } else if (200..=202).contains(&id) {
+                } else if (ID_NAV_GENERAL..=ID_NAV_PRIVACY).contains(&id) {
                     self.palette.canvas
                 } else {
                     self.palette.background
@@ -1511,7 +2007,7 @@ impl AppState {
                         self.palette.accent
                     } else if selected {
                         self.palette.soft
-                    } else if (200..=202).contains(&id) {
+                    } else if (ID_NAV_GENERAL..=ID_NAV_PRIVACY).contains(&id) {
                         self.palette.canvas
                     } else {
                         self.palette.border
@@ -1519,23 +2015,46 @@ impl AppState {
                     self.s(8),
                 );
                 let text = match id {
-                    200 => "输   常用设置".into(),
-                    201 => "色   外观与皮肤".into(),
-                    202 => "隐   隐私与学习".into(),
-                    ID_SAVE => "保存更改".into(),
-                    ID_RESTORE => "恢复默认".into(),
-                    ID_RELOAD => "重新读取".into(),
-                    210 => "跟随系统".into(),
-                    211 => "浅色".into(),
-                    212 => "深色".into(),
-                    ID_BACKGROUND => {
-                        format!("背景颜色    #{:06X}", self.draft.appearance.background)
-                    }
-                    ID_ACCENT => format!("强调颜色    #{:06X}", self.draft.appearance.accent),
-                    ID_TEXT => format!("文字颜色    #{:06X}", self.draft.appearance.text),
-                    ID_IMPORT => "导入本地皮肤".into(),
-                    ID_EXPORT => "导出当前皮肤".into(),
-                    ID_BACK => "‹ 返回皮肤".into(),
+                    ID_NAV_GENERAL => self.render_text(
+                        TextKey::GeneralNavigation,
+                        &[("label", &self.tr(TextKey::General))],
+                    ),
+                    ID_NAV_APPEARANCE => self.render_text(
+                        TextKey::AppearanceNavigation,
+                        &[("label", &self.tr(TextKey::Appearance))],
+                    ),
+                    ID_NAV_PRIVACY => self.render_text(
+                        TextKey::PrivacyNavigation,
+                        &[("label", &self.tr(TextKey::Privacy))],
+                    ),
+                    ID_LANGUAGE => self.tr(TextKey::LanguageButton).to_string(),
+                    ID_SAVE => self.tr(TextKey::Save).to_string(),
+                    ID_RESTORE => self.tr(TextKey::Restore).to_string(),
+                    ID_RELOAD => self.tr(TextKey::Reload).to_string(),
+                    ID_THEME_SYSTEM => self.tr(TextKey::SystemTheme).to_string(),
+                    ID_THEME_LIGHT => self.tr(TextKey::LightTheme).to_string(),
+                    ID_THEME_DARK => self.tr(TextKey::DarkTheme).to_string(),
+                    ID_BACKGROUND => self.render_text(
+                        TextKey::BackgroundColorValue,
+                        &[(
+                            "color",
+                            &format!("{:06X}", self.draft.appearance.background),
+                        )],
+                    ),
+                    ID_ACCENT => self.render_text(
+                        TextKey::AccentColorValue,
+                        &[("color", &format!("{:06X}", self.draft.appearance.accent))],
+                    ),
+                    ID_TEXT => self.render_text(
+                        TextKey::TextColorValue,
+                        &[("color", &format!("{:06X}", self.draft.appearance.text))],
+                    ),
+                    ID_IMPORT => self.tr(TextKey::ImportSkin).to_string(),
+                    ID_EXPORT => self.tr(TextKey::ExportSkin).to_string(),
+                    ID_BACK => self.render_text(
+                        TextKey::BackToSkinsNavigation,
+                        &[("label", &self.tr(TextKey::BackToSkins))],
+                    ),
                     _ => String::new(),
                 };
                 self.text(
@@ -1596,7 +2115,8 @@ unsafe fn window_inner(window: HWND, message: u32, wparam: WPARAM, lparam: LPARA
     }
     if message == WM_MEASUREITEM {
         let measure = unsafe { &mut *(lparam as *mut MEASUREITEMSTRUCT) };
-        measure.itemHeight = unsafe { GetDpiForWindow(window) }.max(96) * 34 / 96;
+        measure.itemHeight =
+            unsafe { GetDpiForWindow(window) }.max(BASE_DPI) * COMBO_ITEM_HEIGHT_PX / BASE_DPI;
         return 1;
     }
     if UI_MUTATING.with(|flag| flag.get()) {
@@ -1719,22 +2239,26 @@ unsafe fn window_inner(window: HWND, message: u32, wparam: WPARAM, lparam: LPARA
         }
         WM_COMMAND => {
             unsafe {
-                state.command(wparam & 0xffff, ((wparam >> 16) & 0xffff) as u16);
+                state.command(
+                    wparam & WORD_MASK,
+                    ((wparam >> WORD_SHIFT_BITS) & WORD_MASK) as u16,
+                );
             }
             0
         }
         WM_MOUSEWHEEL => {
-            state.scroll -= ((wparam >> 16) as u16 as i16 as i32 / 120) * 56;
+            state.scroll -= ((wparam >> WORD_SHIFT_BITS) as u16 as i16 as i32 / WHEEL_DELTA as i32)
+                * SCROLL_STEP_PX;
             unsafe {
                 state.layout();
             }
             0
         }
         WM_VSCROLL => {
-            let code = (wparam & 0xffff) as i32;
+            let code = (wparam & WORD_MASK) as i32;
             state.scroll += match code {
-                SB_LINEUP => -32,
-                SB_LINEDOWN => 32,
+                SB_LINEUP => -SCROLL_LINE_PX,
+                SB_LINEDOWN => SCROLL_LINE_PX,
                 SB_PAGEUP => -state.viewport_height,
                 SB_PAGEDOWN => state.viewport_height,
                 _ => 0,
@@ -1754,7 +2278,7 @@ unsafe fn window_inner(window: HWND, message: u32, wparam: WPARAM, lparam: LPARA
             0
         }
         WM_DPICHANGED => {
-            state.dpi = (wparam & 0xffff) as i32;
+            state.dpi = (wparam & WORD_MASK) as i32;
             let suggested = unsafe { &*(lparam as *const RECT) };
             unsafe {
                 state.refresh_style();
@@ -1772,7 +2296,7 @@ unsafe fn window_inner(window: HWND, message: u32, wparam: WPARAM, lparam: LPARA
             0
         }
         WM_SETTINGCHANGE | WM_SYSCOLORCHANGE | WM_THEMECHANGED | WM_APP_RESTYLE => {
-            state.dpi = unsafe { GetDpiForWindow(window) }.max(96) as i32;
+            state.dpi = unsafe { GetDpiForWindow(window) }.max(BASE_DPI) as i32;
             unsafe {
                 state.refresh_style();
                 state.layout();
@@ -1789,8 +2313,12 @@ unsafe fn window_inner(window: HWND, message: u32, wparam: WPARAM, lparam: LPARA
                     &mut monitor,
                 );
             }
-            info.ptMinTrackSize.x = state.s(900).min(monitor.rcWork.right - monitor.rcWork.left);
-            info.ptMinTrackSize.y = state.s(520).min(monitor.rcWork.bottom - monitor.rcWork.top);
+            info.ptMinTrackSize.x = state
+                .s(MIN_WINDOW_WIDTH_PX)
+                .min(monitor.rcWork.right - monitor.rcWork.left);
+            info.ptMinTrackSize.y = state
+                .s(MIN_WINDOW_HEIGHT_PX)
+                .min(monitor.rcWork.bottom - monitor.rcWork.top);
             0
         }
         WM_DESTROY => {
@@ -1841,15 +2369,51 @@ unsafe extern "system" fn viewport_proc(
     }))
     .unwrap_or(0)
 }
+#[derive(Debug)]
+struct StartupOptions {
+    preview: Option<std::path::PathBuf>,
+    locale: Option<UiLocale>,
+}
+fn parse_startup_options(
+    arguments: impl IntoIterator<Item = std::ffi::OsString>,
+) -> io::Result<StartupOptions> {
+    let mut arguments = arguments.into_iter();
+    let mut preview = None;
+    let mut selected_locale = None;
+    while let Some(argument) = arguments.next() {
+        match argument.to_str() {
+            Some("--preview-dir") if preview.is_none() => {
+                preview =
+                    Some(std::path::PathBuf::from(arguments.next().ok_or_else(
+                        || io::Error::other("missing preview directory"),
+                    )?));
+            }
+            Some("--language") if selected_locale.is_none() => {
+                let value = arguments
+                    .next()
+                    .ok_or_else(|| io::Error::other("missing UI language"))?;
+                selected_locale = Some(
+                    value
+                        .to_str()
+                        .ok_or_else(|| io::Error::other("invalid UI language"))?
+                        .parse::<UiLocale>()
+                        .map_err(io::Error::other)?,
+                );
+            }
+            _ => return Err(io::Error::other("invalid settings arguments")),
+        }
+    }
+    Ok(StartupOptions {
+        preview,
+        locale: selected_locale,
+    })
+}
+
 pub fn run() -> io::Result<()> {
-    let args: Vec<_> = std::env::args_os().collect();
-    let preview = if args.len() == 3 && args[1] == "--preview-dir" {
-        Some(std::path::PathBuf::from(&args[2]))
-    } else if args.len() == 1 {
-        None
-    } else {
-        return Err(io::Error::other("invalid settings arguments"));
-    };
+    let StartupOptions {
+        preview,
+        locale: selected_locale,
+    } = parse_startup_options(std::env::args_os().skip(1))?;
     if preview.as_ref().is_some_and(|path| !path.is_dir()) {
         return Err(io::Error::other("preview directory must exist"));
     }
@@ -1858,7 +2422,16 @@ pub fn run() -> io::Result<()> {
     } else {
         mo_windows_platform::runtime_roots()?.local_app_data
     };
-    let mut state = Box::new(AppState::new(SettingsController::open(root)));
+    let controller = SettingsController::open(root);
+    let profile = controller
+        .path()
+        .parent()
+        .ok_or_else(|| io::Error::other("missing profile directory"))?;
+    let locale = selected_locale
+        .or_else(|| UiLocale::from_profile(profile).ok().flatten())
+        .unwrap_or_default();
+    let catalog = UiTextCatalog::from_profile(locale, profile).map_err(io::Error::other)?;
+    let mut state = Box::new(AppState::new(controller, catalog));
     unsafe {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let instance = GetModuleHandleW(null());
@@ -1877,7 +2450,7 @@ pub fn run() -> io::Result<()> {
                 lpfnWndProc: procedure,
                 hInstance: instance,
                 hCursor: LoadCursorW(null_mut(), IDC_ARROW),
-                hIcon: LoadIconW(instance, resource_id(1)),
+                hIcon: LoadIconW(instance, resource_id(ICON_RESOURCE_ID)),
                 lpszClassName: class_name.as_ptr(),
                 ..std::mem::zeroed()
             };
@@ -1891,14 +2464,16 @@ pub fn run() -> io::Result<()> {
             MonitorFromPoint(POINT { x: 0, y: 0 }, MONITOR_DEFAULTTOPRIMARY),
             &mut monitor,
         );
-        let system_dpi = GetDpiForSystem().max(96) as i32;
+        let system_dpi = GetDpiForSystem().max(BASE_DPI) as i32;
         state.dpi = system_dpi;
-        let width = (1116 * system_dpi / 96).min(monitor.rcWork.right - monitor.rcWork.left);
-        let height = (760 * system_dpi / 96).min(monitor.rcWork.bottom - monitor.rcWork.top);
+        let width = (WINDOW_WIDTH_PX * system_dpi / BASE_DPI_I32)
+            .min(monitor.rcWork.right - monitor.rcWork.left);
+        let height = (WINDOW_HEIGHT_PX * system_dpi / BASE_DPI_I32)
+            .min(monitor.rcWork.bottom - monitor.rcWork.top);
         let window = CreateWindowExW(
             WS_EX_CONTROLPARENT,
             wide(CLASS).as_ptr(),
-            wide("Mo 墨 · 设置").as_ptr(),
+            wide(&state.tr(TextKey::WindowTitle)).as_ptr(),
             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             monitor.rcWork.left + (monitor.rcWork.right - monitor.rcWork.left - width) / 2,
             monitor.rcWork.top + (monitor.rcWork.bottom - monitor.rcWork.top - height) / 2,
@@ -1914,21 +2489,21 @@ pub fn run() -> io::Result<()> {
         }
         if let Some(path) = preview {
             for (page, name) in [
-                (0, "settings-general"),
-                (1, "settings-appearance"),
-                (2, "settings-privacy"),
-                (3, "settings-custom"),
+                (PAGE_GENERAL, "settings-general"),
+                (PAGE_APPEARANCE, "settings-appearance"),
+                (PAGE_PRIVACY, "settings-privacy"),
+                (PAGE_CUSTOM_SKIN, "settings-custom"),
             ] {
                 state.page = page;
                 state.scroll = 0;
-                if page == 1 {
+                if page == PAGE_APPEARANCE {
                     state.draft.appearance.skin = CandidateSkin::Mint;
                 }
                 state.sync_controls();
                 state.layout();
                 capture(&state, &path.join(format!("{name}.bmp")))?;
             }
-            state.page = 1;
+            state.page = PAGE_APPEARANCE;
             state.draft.appearance.window_theme = Theme::Dark;
             state.refresh_style();
             state.layout();
@@ -1940,14 +2515,41 @@ pub fn run() -> io::Result<()> {
                 null_mut(),
                 0,
                 0,
-                900,
-                540,
+                MIN_WINDOW_WIDTH_PX,
+                PREVIEW_SMALL_HEIGHT_PX,
                 SWP_NOZORDER | SWP_NOACTIVATE,
             );
-            state.page = 0;
-            state.scroll = 100;
+            state.page = PAGE_GENERAL;
+            state.scroll = PREVIEW_INITIAL_SCROLL_PX;
             state.layout();
             capture(&state, &path.join("settings-small.bmp"))?;
+            let original_locale = state.catalog.locale();
+            state.command(ID_LANGUAGE, BN_CLICKED as u16);
+            if state.catalog.locale() != original_locale.next() {
+                return Err(io::Error::other("preview language switch failed"));
+            }
+            let mut native_caption = [0_u16; mo_settings_app::text_catalog::MAX_TEXT_BYTES + 1];
+            let length = GetWindowTextW(
+                state.control(ID_LANGUAGE),
+                native_caption.as_mut_ptr(),
+                native_caption.len() as i32,
+            );
+            let caption =
+                String::from_utf16(&native_caption[..length as usize]).map_err(io::Error::other)?;
+            if caption != state.tr(TextKey::LanguageButton).as_ref() {
+                return Err(io::Error::other(
+                    "preview language accessibility caption did not update",
+                ));
+            }
+            capture(&state, &path.join("settings-language-switch.bmp"))?;
+            std::fs::write(
+                path.join("language-switch-state.txt"),
+                format!(
+                    "before={}\nafter={}\ncaption_updated=true\n",
+                    original_locale.as_str(),
+                    state.catalog.locale().as_str()
+                ),
+            )?;
             DestroyWindow(window);
             return Ok(());
         }
@@ -1980,13 +2582,13 @@ pub fn run() -> io::Result<()> {
                         (&mut bounds as *mut RECT).cast::<POINT>(),
                         2,
                     );
-                    let top = bounds.top * 96 / state.dpi;
-                    let bottom = bounds.bottom * 96 / state.dpi;
+                    let top = bounds.top * BASE_DPI_I32 / state.dpi;
+                    let bottom = bounds.bottom * BASE_DPI_I32 / state.dpi;
                     if top < 0 {
-                        state.scroll += top - 8;
+                        state.scroll += top - KEYBOARD_FOCUS_MARGIN_PX;
                         state.layout();
                     } else if bottom > state.viewport_height {
-                        state.scroll += bottom - state.viewport_height + 8;
+                        state.scroll += bottom - state.viewport_height + KEYBOARD_FOCUS_MARGIN_PX;
                         state.layout();
                     }
                 }
@@ -2013,7 +2615,7 @@ unsafe fn capture(state: &AppState, path: &std::path::Path) -> io::Result<()> {
     info.bmiHeader.biWidth = width;
     info.bmiHeader.biHeight = -height;
     info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biBitCount = BMP_BITS_PER_PIXEL;
     info.bmiHeader.biCompression = BI_RGB;
     let mut pixels = null_mut();
     let dc = unsafe { CreateCompatibleDC(null_mut()) };
@@ -2035,7 +2637,7 @@ unsafe fn capture(state: &AppState, path: &std::path::Path) -> io::Result<()> {
         let old = SelectObject(dc, bitmap);
         state.paint_root(dc);
         let saved = SaveDC(dc);
-        SetViewportOrgEx(dc, state.s(212), 0, null_mut());
+        SetViewportOrgEx(dc, state.s(SIDEBAR_WIDTH_PX), 0, null_mut());
         IntersectClipRect(
             dc,
             0,
@@ -2046,7 +2648,7 @@ unsafe fn capture(state: &AppState, path: &std::path::Path) -> io::Result<()> {
         state.paint_content(dc);
         RestoreDC(dc, saved);
         for control in &state.controls {
-            if control.page != -1 && control.page != state.page {
+            if control.page != PAGE_GLOBAL && control.page != state.page {
                 continue;
             }
             let mut bounds: RECT = std::mem::zeroed();
@@ -2054,8 +2656,14 @@ unsafe fn capture(state: &AppState, path: &std::path::Path) -> io::Result<()> {
             let mut origin = POINT { x: 0, y: 0 };
             MapWindowPoints(control.handle, state.window, &mut origin, 1);
             let saved = SaveDC(dc);
-            if control.page >= 0 {
-                IntersectClipRect(dc, state.s(212), 0, width, state.s(state.viewport_height));
+            if control.page != PAGE_GLOBAL {
+                IntersectClipRect(
+                    dc,
+                    state.s(SIDEBAR_WIDTH_PX),
+                    0,
+                    width,
+                    state.s(state.viewport_height),
+                );
             }
             SetViewportOrgEx(dc, origin.x, origin.y, null_mut());
             if [ID_SCHEME, ID_CHARACTER, ID_RADIUS, ID_FONT, ID_LAYOUT].contains(&control.id) {
@@ -2096,18 +2704,21 @@ unsafe fn capture(state: &AppState, path: &std::path::Path) -> io::Result<()> {
             RestoreDC(dc, saved);
         }
         GdiFlush();
-        let data = std::slice::from_raw_parts(pixels as *const u8, (width * height * 4) as usize);
-        let mut output = Vec::with_capacity(data.len() + 54);
+        let data = std::slice::from_raw_parts(
+            pixels as *const u8,
+            (width * height) as usize * BMP_BYTES_PER_PIXEL,
+        );
+        let mut output = Vec::with_capacity(data.len() + BMP_PIXEL_OFFSET);
         output.extend(b"BM");
-        output.extend(((data.len() + 54) as u32).to_le_bytes());
-        output.extend([0; 4]);
-        output.extend(54u32.to_le_bytes());
-        output.extend(40u32.to_le_bytes());
+        output.extend(((data.len() + BMP_PIXEL_OFFSET) as u32).to_le_bytes());
+        output.extend([0; BMP_RESERVED_BYTES]);
+        output.extend((BMP_PIXEL_OFFSET as u32).to_le_bytes());
+        output.extend((BMP_INFO_HEADER_BYTES as u32).to_le_bytes());
         output.extend(width.to_le_bytes());
         output.extend((-height).to_le_bytes());
         output.extend(1u16.to_le_bytes());
-        output.extend(32u16.to_le_bytes());
-        output.extend([0; 24]);
+        output.extend(BMP_BITS_PER_PIXEL.to_le_bytes());
+        output.extend([0; BMP_INFO_UNUSED_BYTES]);
         output.extend(data);
         let result = std::fs::write(path, output);
         SelectObject(dc, old);
@@ -2121,7 +2732,12 @@ pub fn show_fatal_error(error: &io::Error) {
         MessageBoxW(
             null_mut(),
             wide(&error.to_string()).as_ptr(),
-            wide("Mo 设置无法启动").as_ptr(),
+            wide(
+                &UiTextCatalog::bundled(UiLocale::default())
+                    .map(|catalog| catalog.get(TextKey::FatalStartupTitle))
+                    .unwrap_or_else(|_| Arc::from(FATAL_TITLE_FALLBACK)),
+            )
+            .as_ptr(),
             MB_OK | MB_ICONERROR,
         );
     }
@@ -2176,7 +2792,7 @@ unsafe fn draw_svg_mask(dc: HDC, slot: RECT, bytes: &[u8], tint: u32) {
     info.bmiHeader.biWidth = size;
     info.bmiHeader.biHeight = -size;
     info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biBitCount = BMP_BITS_PER_PIXEL;
     info.bmiHeader.biCompression = BI_RGB;
     let source = unsafe { CreateCompatibleDC(dc) };
     let mut pixels = null_mut();
@@ -2224,5 +2840,37 @@ unsafe fn draw_svg_mask(dc: HDC, slot: RECT, bytes: &[u8], tint: u32) {
         SelectObject(source, old);
         DeleteObject(bitmap);
         DeleteDC(source);
+    }
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::*;
+    fn parse(values: &[&str]) -> io::Result<StartupOptions> {
+        parse_startup_options(values.iter().map(std::ffi::OsString::from))
+    }
+    #[test]
+    fn language_and_preview_options_are_independent() {
+        let options =
+            parse(&["--language", "en-US", "--preview-dir", "synthetic preview"]).unwrap();
+        assert_eq!(options.locale, Some(UiLocale::EnUs));
+        assert_eq!(
+            options.preview,
+            Some(std::path::PathBuf::from("synthetic preview"))
+        );
+        assert!(parse(&[]).unwrap().locale.is_none());
+    }
+    #[test]
+    fn malformed_or_duplicate_options_fail_before_window_creation() {
+        for arguments in [
+            vec!["--language"],
+            vec!["--preview-dir"],
+            vec!["--language", "../en-US"],
+            vec!["--language", "zh-CN", "--language", "en-US"],
+            vec!["--preview-dir", "a", "--preview-dir", "b"],
+            vec!["--unknown"],
+        ] {
+            assert!(parse(&arguments).is_err());
+        }
     }
 }

@@ -4,6 +4,8 @@
 //! transport-neutral frame and payload codec; it does not claim that any
 //! particular Windows transport or AppContainer ACL has been validated.
 
+#![forbid(unsafe_code)]
+
 mod codec;
 mod frame;
 mod message;
@@ -25,5 +27,10 @@ pub use message::{
     MIN_NEGOTIATED_PAYLOAD_LEN, MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN, PresentationSettings,
     PresentationSnapshot, SetEmoji, SettingsOrigin, SettingsSnapshot, Snapshot, SymbolAction,
     Theme,
+};
+pub use message::{
+    MAX_CANDIDATE_FONT_SIZE_PX, MAX_CANDIDATE_PAGE_SIZE, MAX_CANDIDATE_RADIUS_PX,
+    MAX_CANDIDATE_SKIN_ID, MAX_RGB_COLOR, MIN_CANDIDATE_FONT_SIZE_PX, MIN_CANDIDATE_PAGE_SIZE,
+    MIN_CANDIDATE_RADIUS_PX, PRESENTATION_PAGE_HEADER_LEN, SETTINGS_SNAPSHOT_PAYLOAD_LEN,
 };
 pub use version::{CURRENT_VERSION, ProtocolVersion, VersionRange, negotiate_version};

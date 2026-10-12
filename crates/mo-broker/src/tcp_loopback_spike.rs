@@ -12,6 +12,8 @@ use mo_ipc::{FrameError, read_frame, write_frame};
 
 use crate::BrokerConnection;
 
+const DIAGNOSTIC_STREAM_IO_TIMEOUT: Duration = Duration::from_secs(2);
+
 static GENERATION_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub fn bind(address: SocketAddr) -> io::Result<TcpListener> {
@@ -45,8 +47,8 @@ pub fn serve_listener(listener: TcpListener, accept_once: bool) -> io::Result<()
 }
 
 pub fn serve_stream(mut stream: TcpStream) -> io::Result<()> {
-    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
-    stream.set_write_timeout(Some(Duration::from_secs(2)))?;
+    stream.set_read_timeout(Some(DIAGNOSTIC_STREAM_IO_TIMEOUT))?;
+    stream.set_write_timeout(Some(DIAGNOSTIC_STREAM_IO_TIMEOUT))?;
     stream.set_nodelay(true)?;
     let mut broker = BrokerConnection::new(next_generation());
     loop {

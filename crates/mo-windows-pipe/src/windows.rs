@@ -52,6 +52,8 @@ const ERROR_PIPE_BUSY_CODE: i32 = 231;
 pub const MAX_PIPE_SLOTS: usize = 16;
 const STREAM_IO_TIMEOUT: Duration = Duration::from_secs(2);
 const CANCELLATION_DRAIN_MS: u32 = 1000;
+const MAX_ENDPOINT_BYTES: usize = 96;
+const PIPE_RETRY_INTERVAL: Duration = Duration::from_millis(1);
 
 /// Process-local, one-way shutdown signal. No named event or peer-controlled
 /// command. `Arc<File>` keeps the kernel event alive throughout every wait.
@@ -174,7 +176,7 @@ impl PipeAddress {
     /// Builds an address under the AppContainer-compatible `LOCAL` pipe prefix.
     pub fn new(endpoint: &str) -> io::Result<Self> {
         if endpoint.is_empty()
-            || endpoint.len() > 96
+            || endpoint.len() > MAX_ENDPOINT_BYTES
             || !endpoint
                 .bytes()
                 .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
@@ -472,7 +474,7 @@ impl PipeClient {
                                 "timed out waiting for the named-pipe Broker",
                             ));
                         }
-                        std::thread::sleep(Duration::from_millis(1));
+                        std::thread::sleep(PIPE_RETRY_INTERVAL);
                         continue;
                     }
                     Some(ERROR_SEM_TIMEOUT_CODE) => {
@@ -512,7 +514,7 @@ impl PipeClient {
                         "timed out waiting for the named-pipe Broker",
                     ));
                 }
-                std::thread::sleep(Duration::from_millis(1));
+                std::thread::sleep(PIPE_RETRY_INTERVAL);
                 continue;
             }
             return Err(error);

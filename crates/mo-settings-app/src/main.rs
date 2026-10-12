@@ -4,14 +4,18 @@
 mod windows_app;
 
 #[cfg(windows)]
-fn main() {
-    if let Err(error) = windows_app::run() {
-        windows_app::show_fatal_error(&error);
+fn main() -> std::process::ExitCode {
+    match windows_app::run() {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            windows_app::show_fatal_error(&error);
+            std::process::ExitCode::FAILURE
+        }
     }
 }
 
 #[cfg(not(windows))]
-fn main() {
+fn main() -> std::process::ExitCode {
     eprintln!("mo-settings currently supports Windows only");
-    std::process::exit(1);
+    std::process::ExitCode::FAILURE
 }

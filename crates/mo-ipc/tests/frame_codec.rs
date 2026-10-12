@@ -306,3 +306,39 @@ fn detailed_candidate_snapshot_preserves_annotations_without_changing_legacy_cod
         legacy
     );
 }
+
+// Literal fixtures deliberately stay independent of implementation constants.
+#[test]
+fn v1_header_layout_matches_independent_little_endian_fixture() {
+    let frame = Frame::new(
+        ProtocolVersion { major: 1, minor: 0 },
+        MessageKind::Ping,
+        0,
+        0x0807_0605_0403_0201,
+        0x1817_1615_1413_1211,
+        0x2827_2625_2423_2221,
+        Vec::new(),
+    )
+    .unwrap();
+    let golden: [u8; 48] = [
+        b'M', b'O', b'I', b'P', 48, 0, 1, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2,
+        3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 21, 22, 23, 24, 33, 34, 35, 36, 37, 38, 39, 40,
+    ];
+    assert_eq!(frame.encode().unwrap(), golden);
+    assert_eq!(Frame::decode(&golden).unwrap(), frame);
+}
+
+#[test]
+fn payload_crc32_matches_ieee_check_vector() {
+    let frame = Frame::new(
+        CURRENT_VERSION,
+        MessageKind::Ping,
+        0,
+        1,
+        0,
+        1,
+        b"123456789".to_vec(),
+    )
+    .unwrap();
+    assert_eq!(frame.header.payload_crc32, 0xcbf4_3926);
+}

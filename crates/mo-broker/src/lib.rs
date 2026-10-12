@@ -3,6 +3,8 @@
 //! The TCP module remains diagnostic-only. On Windows, `windows_named_pipe`
 //! connects the state machine to Mo's authenticated local transport.
 
+#![forbid(unsafe_code)]
+
 mod engine_service;
 mod latency;
 mod lifecycle;

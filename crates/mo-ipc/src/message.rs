@@ -9,34 +9,102 @@ pub const FEATURE_SESSION_SETTINGS_ACK: u64 = 1 << 3;
 pub const FEATURE_CANDIDATE_DETAILS: u64 = 1 << 4;
 pub const FEATURE_CANDIDATE_PRESENTATION: u64 = 1 << 5;
 pub const FEATURE_SYMBOL_ACTIONS: u64 = 1 << 6;
-pub const MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN: usize = MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN + 8;
+/// Page presence, u32 page number, previous/next flags, and u8 highlight ordinal.
+pub const PRESENTATION_PAGE_HEADER_LEN: usize = 8;
+/// Revision plus ten one-byte settings fields in wire format v1.
+pub const SETTINGS_SNAPSHOT_PAYLOAD_LEN: usize = 18;
+/// Wire format v1 sentinel for an absent highlighted candidate.
+const NO_HIGHLIGHTED_CANDIDATE: u8 = u8::MAX;
+// These are wire contracts, kept independent of the settings crate. Broker tests
+// compare their acceptance boundaries with persisted settings and UI limits.
+pub const MIN_CANDIDATE_PAGE_SIZE: u8 = 3;
+/// Inclusive maximum candidates per configured page.
+pub const MAX_CANDIDATE_PAGE_SIZE: u8 = 9;
+pub const MIN_CANDIDATE_RADIUS_PX: u8 = 8;
+/// Inclusive maximum corner radius in logical pixels.
+pub const MAX_CANDIDATE_RADIUS_PX: u8 = 20;
+pub const MIN_CANDIDATE_FONT_SIZE_PX: u8 = 12;
+/// Inclusive maximum candidate font size in logical pixels.
+pub const MAX_CANDIDATE_FONT_SIZE_PX: u8 = 24;
+pub const MAX_RGB_COLOR: u32 = 0x00ff_ffff;
+pub const MAX_CANDIDATE_SKIN_ID: u8 = 6;
+pub const MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN: usize =
+    MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN + PRESENTATION_PAGE_HEADER_LEN;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum SettingsOrigin {
-    Defaults,
-    Stored,
+    Defaults = 0,
+    Stored = 1,
+}
+impl TryFrom<u8> for SettingsOrigin {
+    type Error = CodecError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            tag if tag == Self::Defaults as u8 => Ok(Self::Defaults),
+            tag if tag == Self::Stored as u8 => Ok(Self::Stored),
+            _ => Err(CodecError::InvalidValue("unknown settings origin")),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum InputScheme {
-    FullPinyin,
-    DoublePinyinNatural,
-    DoublePinyinFlypy,
-    DoublePinyinMicrosoft,
-    DoublePinyinSogou,
+    FullPinyin = 0,
+    DoublePinyinNatural = 1,
+    DoublePinyinFlypy = 2,
+    DoublePinyinMicrosoft = 3,
+    DoublePinyinSogou = 4,
+}
+impl TryFrom<u8> for InputScheme {
+    type Error = CodecError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            tag if tag == Self::FullPinyin as u8 => Ok(Self::FullPinyin),
+            tag if tag == Self::DoublePinyinNatural as u8 => Ok(Self::DoublePinyinNatural),
+            tag if tag == Self::DoublePinyinFlypy as u8 => Ok(Self::DoublePinyinFlypy),
+            tag if tag == Self::DoublePinyinMicrosoft as u8 => Ok(Self::DoublePinyinMicrosoft),
+            tag if tag == Self::DoublePinyinSogou as u8 => Ok(Self::DoublePinyinSogou),
+            _ => Err(CodecError::InvalidValue("unknown input scheme")),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum CharacterSet {
-    Simplified,
-    Traditional,
+    Simplified = 0,
+    Traditional = 1,
+}
+impl TryFrom<u8> for CharacterSet {
+    type Error = CodecError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            tag if tag == Self::Simplified as u8 => Ok(Self::Simplified),
+            tag if tag == Self::Traditional as u8 => Ok(Self::Traditional),
+            _ => Err(CodecError::InvalidValue("unknown character set")),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum Theme {
-    System,
-    Light,
-    Dark,
+    System = 0,
+    Light = 1,
+    Dark = 2,
+}
+impl TryFrom<u8> for Theme {
+    type Error = CodecError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            tag if tag == Self::System as u8 => Ok(Self::System),
+            tag if tag == Self::Light as u8 => Ok(Self::Light),
+            tag if tag == Self::Dark as u8 => Ok(Self::Dark),
+            _ => Err(CodecError::InvalidValue("unknown settings theme")),
+        }
+    }
 }
 
 /// Fixed, bounded projection of Mo settings. Engine preferences are included
@@ -61,27 +129,11 @@ impl PayloadCodec for SettingsSnapshot {
         self.validate()?;
         let mut encoder = Encoder::new();
         encoder.put_u64(self.revision);
-        encoder.put_u8(match self.origin {
-            SettingsOrigin::Defaults => 0,
-            SettingsOrigin::Stored => 1,
-        });
-        encoder.put_u8(match self.input_scheme {
-            InputScheme::FullPinyin => 0,
-            InputScheme::DoublePinyinNatural => 1,
-            InputScheme::DoublePinyinFlypy => 2,
-            InputScheme::DoublePinyinMicrosoft => 3,
-            InputScheme::DoublePinyinSogou => 4,
-        });
-        encoder.put_u8(match self.character_set {
-            CharacterSet::Simplified => 0,
-            CharacterSet::Traditional => 1,
-        });
+        encoder.put_u8(self.origin as u8);
+        encoder.put_u8(self.input_scheme as u8);
+        encoder.put_u8(self.character_set as u8);
         encoder.put_u8(self.candidate_page_size);
-        encoder.put_u8(match self.theme {
-            Theme::System => 0,
-            Theme::Light => 1,
-            Theme::Dark => 2,
-        });
+        encoder.put_u8(self.theme as u8);
         encoder.put_bool(self.show_comments);
         encoder.put_bool(self.emoji);
         encoder.put_bool(self.local_learning);
@@ -94,31 +146,11 @@ impl PayloadCodec for SettingsSnapshot {
         let mut decoder = Decoder::new(payload);
         let value = Self {
             revision: decoder.get_u64()?,
-            origin: match decoder.get_u8()? {
-                0 => SettingsOrigin::Defaults,
-                1 => SettingsOrigin::Stored,
-                _ => return Err(CodecError::InvalidValue("unknown settings origin")),
-            },
-            input_scheme: match decoder.get_u8()? {
-                0 => InputScheme::FullPinyin,
-                1 => InputScheme::DoublePinyinNatural,
-                2 => InputScheme::DoublePinyinFlypy,
-                3 => InputScheme::DoublePinyinMicrosoft,
-                4 => InputScheme::DoublePinyinSogou,
-                _ => return Err(CodecError::InvalidValue("unknown input scheme")),
-            },
-            character_set: match decoder.get_u8()? {
-                0 => CharacterSet::Simplified,
-                1 => CharacterSet::Traditional,
-                _ => return Err(CodecError::InvalidValue("unknown character set")),
-            },
+            origin: SettingsOrigin::try_from(decoder.get_u8()?)?,
+            input_scheme: InputScheme::try_from(decoder.get_u8()?)?,
+            character_set: CharacterSet::try_from(decoder.get_u8()?)?,
             candidate_page_size: decoder.get_u8()?,
-            theme: match decoder.get_u8()? {
-                0 => Theme::System,
-                1 => Theme::Light,
-                2 => Theme::Dark,
-                _ => return Err(CodecError::InvalidValue("unknown settings theme")),
-            },
+            theme: Theme::try_from(decoder.get_u8()?)?,
             show_comments: decoder.get_bool()?,
             emoji: decoder.get_bool()?,
             local_learning: decoder.get_bool()?,
@@ -138,7 +170,8 @@ impl SettingsSnapshot {
                 "settings revision must be non-zero",
             ));
         }
-        if !(3..=9).contains(&self.candidate_page_size) {
+        if !(MIN_CANDIDATE_PAGE_SIZE..=MAX_CANDIDATE_PAGE_SIZE).contains(&self.candidate_page_size)
+        {
             return Err(CodecError::InvalidValue(
                 "candidate page size is outside the product range",
             ));
@@ -164,10 +197,22 @@ pub struct CandidateAction {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
 pub enum CandidateActionKind {
-    Select,
-    PreviousPage,
-    NextPage,
+    Select = 0,
+    PreviousPage = 1,
+    NextPage = 2,
+}
+impl TryFrom<u8> for CandidateActionKind {
+    type Error = CodecError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            tag if tag == Self::Select as u8 => Ok(Self::Select),
+            tag if tag == Self::PreviousPage as u8 => Ok(Self::PreviousPage),
+            tag if tag == Self::NextPage as u8 => Ok(Self::NextPage),
+            _ => Err(CodecError::InvalidValue("unknown candidate action")),
+        }
+    }
 }
 
 impl PayloadCodec for CandidateAction {
@@ -175,11 +220,7 @@ impl PayloadCodec for CandidateAction {
         self.validate()?;
         let mut encoder = Encoder::new();
         encoder.put_u64(self.expected_revision);
-        encoder.put_u8(match self.action {
-            CandidateActionKind::Select => 0,
-            CandidateActionKind::PreviousPage => 1,
-            CandidateActionKind::NextPage => 2,
-        });
+        encoder.put_u8(self.action as u8);
         encoder.put_u32(self.index);
         Ok(encoder.finish())
     }
@@ -187,12 +228,7 @@ impl PayloadCodec for CandidateAction {
     fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
         let mut decoder = Decoder::new(payload);
         let expected_revision = decoder.get_u64()?;
-        let action = match decoder.get_u8()? {
-            0 => CandidateActionKind::Select,
-            1 => CandidateActionKind::PreviousPage,
-            2 => CandidateActionKind::NextPage,
-            _ => return Err(CodecError::InvalidValue("unknown candidate action")),
-        };
+        let action = CandidateActionKind::try_from(decoder.get_u8()?)?;
         let index = decoder.get_u32()?;
         decoder.finish()?;
         let value = Self {
@@ -236,16 +272,17 @@ pub const MAX_ERROR_MESSAGE_BYTES: usize = 512;
 // revision + handled + composition + optional commit + candidate count +
 // every length-prefixed candidate. A peer advertising less cannot safely
 // receive every response permitted by this protocol version.
-pub const MIN_NEGOTIATED_PAYLOAD_LEN: usize = 8
-    + 1
-    + (4 + MAX_COMPOSITION_BYTES)
-    + (1 + 4 + MAX_COMMIT_BYTES)
-    + 2
-    + MAX_CANDIDATES * (4 + MAX_CANDIDATE_BYTES);
+pub const MIN_NEGOTIATED_PAYLOAD_LEN: usize = std::mem::size_of::<u64>()
+    + std::mem::size_of::<u8>()
+    + (std::mem::size_of::<u32>() + MAX_COMPOSITION_BYTES)
+    + (std::mem::size_of::<u8>() + std::mem::size_of::<u32>() + MAX_COMMIT_BYTES)
+    + std::mem::size_of::<u16>()
+    + MAX_CANDIDATES * (std::mem::size_of::<u32>() + MAX_CANDIDATE_BYTES);
 
 pub const MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN: usize = MIN_NEGOTIATED_PAYLOAD_LEN
     + MAX_CANDIDATES
-        * ((1 + 4 + MAX_CANDIDATE_COMMENT_BYTES) + (1 + 4 + MAX_CANDIDATE_LABEL_BYTES));
+        * ((std::mem::size_of::<u8>() + std::mem::size_of::<u32>() + MAX_CANDIDATE_COMMENT_BYTES)
+            + (std::mem::size_of::<u8>() + std::mem::size_of::<u32>() + MAX_CANDIDATE_LABEL_BYTES));
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Hello {
@@ -581,7 +618,7 @@ impl PayloadCodec for PresentationSnapshot {
         encoder.put_u32(page.number);
         encoder.put_bool(page.has_previous);
         encoder.put_bool(page.has_next);
-        encoder.put_u8(page.highlighted.unwrap_or(255));
+        encoder.put_u8(page.highlighted.unwrap_or(NO_HIGHLIGHTED_CANDIDATE));
         let mut bytes = encoder.finish();
         bytes.extend(self.snapshot.encode_payload()?);
         Ok(bytes)
@@ -589,7 +626,7 @@ impl PayloadCodec for PresentationSnapshot {
     fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
         let mut decoder = Decoder::new(
             payload
-                .get(..8)
+                .get(..PRESENTATION_PAGE_HEADER_LEN)
                 .ok_or(CodecError::InvalidValue("missing page header"))?,
         );
         let present = decoder.get_bool()?;
@@ -598,16 +635,18 @@ impl PayloadCodec for PresentationSnapshot {
         let has_next = decoder.get_bool()?;
         let index = decoder.get_u8()?;
         decoder.finish()?;
-        if !present && (number != 0 || has_previous || has_next || index != 255) {
+        if !present
+            && (number != 0 || has_previous || has_next || index != NO_HIGHLIGHTED_CANDIDATE)
+        {
             return Err(CodecError::InvalidValue("noncanonical absent page"));
         }
         let value = Self {
-            snapshot: DetailedSnapshot::decode_payload(&payload[8..])?,
+            snapshot: DetailedSnapshot::decode_payload(&payload[PRESENTATION_PAGE_HEADER_LEN..])?,
             page: present.then_some(CandidatePage {
                 number,
                 has_previous,
                 has_next,
-                highlighted: (index != 255).then_some(index),
+                highlighted: (index != NO_HIGHLIGHTED_CANDIDATE).then_some(index),
             }),
         };
         value.validate()?;
@@ -658,12 +697,12 @@ pub struct PresentationSettings {
 }
 impl PayloadCodec for PresentationSettings {
     fn encode_payload(&self) -> Result<Vec<u8>, CodecError> {
-        if self.skin > 6
-            || self.background > 0xffffff
-            || self.accent > 0xffffff
-            || self.text > 0xffffff
-            || !(8..=20).contains(&self.radius)
-            || !(12..=24).contains(&self.font_size)
+        if self.skin > MAX_CANDIDATE_SKIN_ID
+            || self.background > MAX_RGB_COLOR
+            || self.accent > MAX_RGB_COLOR
+            || self.text > MAX_RGB_COLOR
+            || !(MIN_CANDIDATE_RADIUS_PX..=MAX_CANDIDATE_RADIUS_PX).contains(&self.radius)
+            || !(MIN_CANDIDATE_FONT_SIZE_PX..=MAX_CANDIDATE_FONT_SIZE_PX).contains(&self.font_size)
         {
             return Err(CodecError::InvalidValue("invalid appearance settings"));
         }
@@ -682,10 +721,10 @@ impl PayloadCodec for PresentationSettings {
     fn decode_payload(payload: &[u8]) -> Result<Self, CodecError> {
         let settings = SettingsSnapshot::decode_payload(
             payload
-                .get(..18)
+                .get(..SETTINGS_SNAPSHOT_PAYLOAD_LEN)
                 .ok_or(CodecError::InvalidValue("missing settings"))?,
         )?;
-        let mut decoder = Decoder::new(&payload[18..]);
+        let mut decoder = Decoder::new(&payload[SETTINGS_SNAPSHOT_PAYLOAD_LEN..]);
         let value = Self {
             settings,
             skin: decoder.get_u8()?,

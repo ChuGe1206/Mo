@@ -1,5 +1,9 @@
 //! Non-UI controller for Mo's native Windows settings frontend.
 
+#![forbid(unsafe_code)]
+
+pub mod text_catalog;
+
 use std::fmt;
 use std::path::{Path, PathBuf};
 

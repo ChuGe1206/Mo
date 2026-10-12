@@ -7,6 +7,12 @@ use std::time::{Duration, Instant};
 use mo_domain::{EngineCommand, EngineSnapshot, SessionOptions, SessionToken};
 use mo_engine::{EngineActor, EngineBackend};
 
+// Internal Actor watchdogs, distinct from the frontend's 50/400 ms IPC budgets.
+const ENGINE_STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const ENGINE_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+const THREAD_JOIN_POLL_INTERVAL: Duration = Duration::from_millis(1);
+
 #[derive(Clone, Copy)]
 struct EngineBudgets {
     startup: Duration,
@@ -17,9 +23,9 @@ struct EngineBudgets {
 impl Default for EngineBudgets {
     fn default() -> Self {
         Self {
-            startup: Duration::from_secs(30),
-            request: Duration::from_secs(5),
-            shutdown: Duration::from_secs(5),
+            startup: ENGINE_STARTUP_TIMEOUT,
+            request: ENGINE_REQUEST_TIMEOUT,
+            shutdown: ENGINE_SHUTDOWN_TIMEOUT,
         }
     }
 }
@@ -216,7 +222,7 @@ fn join_with_budget(thread: JoinHandle<()>, budget: Duration) -> io::Result<()> 
         if Instant::now() >= deadline {
             crate::lifecycle::fail_stop();
         }
-        thread::sleep(Duration::from_millis(1));
+        thread::sleep(THREAD_JOIN_POLL_INTERVAL);
     }
     thread
         .join()

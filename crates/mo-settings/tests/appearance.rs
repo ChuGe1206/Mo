@@ -54,3 +54,18 @@ fn imported_skin_accepts_only_bounded_data_and_preserves_unicode_free_contract()
         assert!(Appearance::decode_skin(bad.as_bytes()).is_err());
     }
 }
+
+#[test]
+fn skin_import_size_guard_rejects_only_above_the_byte_limit() {
+    // Invalid synthetic header distinguishes the size guard from format parsing.
+    let mut bytes = vec![b'x'; mo_settings::MAX_SKIN_BYTES];
+    assert_eq!(
+        Appearance::decode_skin(&bytes),
+        Err(mo_settings::SettingsError::InvalidHeader)
+    );
+    bytes.push(b'x');
+    assert_eq!(
+        Appearance::decode_skin(&bytes),
+        Err(mo_settings::SettingsError::TooLarge)
+    );
+}

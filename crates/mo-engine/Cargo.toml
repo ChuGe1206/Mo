@@ -9,3 +9,5 @@ description = "Deterministic engine actor and backend contract for Mo"
 [dependencies]
 mo-domain = { path = "../mo-domain" }
 
+[lints]
+workspace = true

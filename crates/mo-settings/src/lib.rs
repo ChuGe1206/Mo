@@ -12,6 +12,33 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Maximum accepted settings file size, including the header.
 pub const MAX_SETTINGS_BYTES: usize = 16 * 1024;
+/// Data-only skin import limit, including its header.
+pub const MAX_SKIN_BYTES: usize = 1024;
+/// Inclusive candidate-page bounds supported by the settings format.
+pub const MIN_CANDIDATE_PAGE_SIZE: u8 = 3;
+/// Inclusive maximum candidates per configured page.
+pub const MAX_CANDIDATE_PAGE_SIZE: u8 = 9;
+/// Product default number of candidates per page.
+pub const DEFAULT_CANDIDATE_PAGE_SIZE: u8 = 5;
+/// Logical pixels at the candidate window's baseline DPI.
+pub const MIN_CANDIDATE_RADIUS_PX: u8 = 8;
+/// Inclusive maximum corner radius in logical pixels.
+pub const MAX_CANDIDATE_RADIUS_PX: u8 = 20;
+/// Default corner radius in logical pixels.
+pub const DEFAULT_CANDIDATE_RADIUS_PX: u8 = 12;
+/// Logical pixels, independent of the settings window's font sizes.
+pub const MIN_CANDIDATE_FONT_SIZE_PX: u8 = 12;
+/// Inclusive maximum candidate font size in logical pixels.
+pub const MAX_CANDIDATE_FONT_SIZE_PX: u8 = 24;
+/// Default candidate font size in logical pixels.
+pub const DEFAULT_CANDIDATE_FONT_SIZE_PX: u8 = 16;
+/// RGB24 data; the high byte must remain zero.
+pub const MAX_RGB_COLOR: u32 = 0x00ff_ffff;
+const DEFAULT_SKIN_BACKGROUND_RGB: u32 = MAX_RGB_COLOR;
+const DEFAULT_SKIN_ACCENT_RGB: u32 = 0x0017_6d5e;
+const DEFAULT_SKIN_TEXT_RGB: u32 = 0x0025_352f;
+const RGB_HEX_DIGITS: usize = 6;
+const HEX_RADIX: u32 = 16;
 
 /// Returns the fixed installed settings file beneath an OS-resolved
 /// `FOLDERID_LocalAppData` root. The caller must supply that trusted root rather
@@ -187,22 +214,22 @@ impl Default for Appearance {
         Self {
             window_theme: Theme::System,
             skin: CandidateSkin::FollowTheme,
-            background: 0xffffff,
-            accent: 0x176d5e,
-            text: 0x25352f,
-            radius: 12,
-            font_size: 16,
+            background: DEFAULT_SKIN_BACKGROUND_RGB,
+            accent: DEFAULT_SKIN_ACCENT_RGB,
+            text: DEFAULT_SKIN_TEXT_RGB,
+            radius: DEFAULT_CANDIDATE_RADIUS_PX,
+            font_size: DEFAULT_CANDIDATE_FONT_SIZE_PX,
             vertical: false,
         }
     }
 }
 impl Appearance {
     pub fn validate(&self) -> Result<(), SettingsError> {
-        if self.background > 0xffffff
-            || self.accent > 0xffffff
-            || self.text > 0xffffff
-            || !(8..=20).contains(&self.radius)
-            || !(12..=24).contains(&self.font_size)
+        if self.background > MAX_RGB_COLOR
+            || self.accent > MAX_RGB_COLOR
+            || self.text > MAX_RGB_COLOR
+            || !(MIN_CANDIDATE_RADIUS_PX..=MAX_CANDIDATE_RADIUS_PX).contains(&self.radius)
+            || !(MIN_CANDIDATE_FONT_SIZE_PX..=MAX_CANDIDATE_FONT_SIZE_PX).contains(&self.font_size)
         {
             return Err(SettingsError::InvalidValue("appearance"));
         }
@@ -216,7 +243,7 @@ impl Appearance {
         ))
     }
     pub fn decode_skin(bytes: &[u8]) -> Result<Self, SettingsError> {
-        if bytes.len() > 1024 {
+        if bytes.len() > MAX_SKIN_BYTES {
             return Err(SettingsError::TooLarge);
         }
         let value = std::str::from_utf8(bytes).map_err(|_| SettingsError::InvalidUtf8)?;
@@ -270,10 +297,10 @@ impl Appearance {
     }
 }
 fn parse_rgb(value: &str) -> Result<u32, SettingsError> {
-    if value.len() != 6 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+    if value.len() != RGB_HEX_DIGITS || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return Err(SettingsError::InvalidValue("color"));
     }
-    u32::from_str_radix(value, 16).map_err(|_| SettingsError::InvalidValue("color"))
+    u32::from_str_radix(value, HEX_RADIX).map_err(|_| SettingsError::InvalidValue("color"))
 }
 const APPEARANCE_FIELDS: [&str; 8] = [
     "window_theme",
@@ -375,7 +402,7 @@ impl Default for Settings {
         Self {
             input_scheme: InputScheme::FullPinyin,
             character_set: CharacterSet::Simplified,
-            candidate_page_size: 5,
+            candidate_page_size: DEFAULT_CANDIDATE_PAGE_SIZE,
             show_comments: true,
             emoji: true,
             local_learning: true,
@@ -394,7 +421,8 @@ impl Settings {
     }
 
     pub fn validate(&self) -> Result<(), SettingsError> {
-        if !(3..=9).contains(&self.candidate_page_size) {
+        if !(MIN_CANDIDATE_PAGE_SIZE..=MAX_CANDIDATE_PAGE_SIZE).contains(&self.candidate_page_size)
+        {
             return Err(SettingsError::InvalidValue("candidate_page_size"));
         }
         self.appearance.validate()

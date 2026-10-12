@@ -22,6 +22,8 @@ use crate::engine_service::{EngineClient, EngineService};
 use crate::settings_service::SettingsService;
 use crate::startup_latency::{Phase, Span};
 
+const WORKER_SHUTDOWN_POLL_INTERVAL: Duration = Duration::from_millis(5);
+
 pub const DEFAULT_ENDPOINT: &str = "Broker.v1";
 pub const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(2);
 pub const FRAME_ASSEMBLY_TIMEOUT: Duration = Duration::from_secs(2);
@@ -179,7 +181,7 @@ where
                                     }
                                     // A rejected/slow client consumes only its own slot.
                                     // The retained listener prevents a namespace gap.
-                                    thread::sleep(Duration::from_millis(5));
+                                    thread::sleep(WORKER_SHUTDOWN_POLL_INTERVAL);
                                 }
                             }
                         }

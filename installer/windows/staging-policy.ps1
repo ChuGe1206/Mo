@@ -69,7 +69,8 @@ function Resolve-MoPinnedSourceInput(
 # Explicit source/asset inputs used by Rust include_bytes!, RC and icon compilation.
 function Get-MoStageUiSourceNames {
     $names = @('assets/icons/mo-app-icon.ico', 'third_party/figma-sds-MIT.txt',
-        'third_party/design-assets-20261011.md')
+        'third_party/design-assets-20261011.md',
+        'assets/ui/text/zh-CN.mo', 'assets/ui/text/en-US.mo')
     foreach ($name in @('previous', 'next', 'expand', 'collapse', 'close', 'smile', 'shield', 'add')) {
         $names += "assets/ui/$name.svg", "assets/ui/$name.mask"
     }

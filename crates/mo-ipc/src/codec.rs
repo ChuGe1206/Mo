@@ -78,7 +78,7 @@ impl<'a> Decoder<'a> {
     }
 
     pub fn get_u8(&mut self) -> Result<u8, CodecError> {
-        Ok(self.take(1)?[0])
+        Ok(self.take(std::mem::size_of::<u8>())?[0])
     }
 
     pub fn get_bool(&mut self) -> Result<bool, CodecError> {
@@ -91,19 +91,25 @@ impl<'a> Decoder<'a> {
 
     pub fn get_u16(&mut self) -> Result<u16, CodecError> {
         Ok(u16::from_le_bytes(
-            self.take(2)?.try_into().expect("fixed slice"),
+            self.take(std::mem::size_of::<u16>())?
+                .try_into()
+                .expect("fixed slice"),
         ))
     }
 
     pub fn get_u32(&mut self) -> Result<u32, CodecError> {
         Ok(u32::from_le_bytes(
-            self.take(4)?.try_into().expect("fixed slice"),
+            self.take(std::mem::size_of::<u32>())?
+                .try_into()
+                .expect("fixed slice"),
         ))
     }
 
     pub fn get_u64(&mut self) -> Result<u64, CodecError> {
         Ok(u64::from_le_bytes(
-            self.take(8)?.try_into().expect("fixed slice"),
+            self.take(std::mem::size_of::<u64>())?
+                .try_into()
+                .expect("fixed slice"),
         ))
     }
 

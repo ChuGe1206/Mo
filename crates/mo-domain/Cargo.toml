@@ -8,3 +8,5 @@ description = "Platform-neutral domain types for the Mo input method"
 
 [dependencies]
 
+[lints]
+workspace = true

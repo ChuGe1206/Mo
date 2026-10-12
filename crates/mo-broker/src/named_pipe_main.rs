@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 #[cfg(windows)]
 fn main() -> std::io::Result<()> {
     use mo_broker::windows_runtime::{StartupMode, parse_startup};

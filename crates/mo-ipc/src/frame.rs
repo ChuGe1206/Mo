@@ -3,6 +3,23 @@ use std::io::{self, Read, Write};
 
 use crate::ProtocolVersion;
 
+// Field ranges of the fixed little-endian v1 header. Both directions use these
+// names; independent wire fixtures continue to assert the literal byte layout.
+mod header_fields {
+    use std::ops::Range;
+    pub const MAGIC: Range<usize> = 0..4;
+    pub const HEADER_LENGTH: Range<usize> = 4..6;
+    pub const VERSION_MAJOR: Range<usize> = 6..8;
+    pub const VERSION_MINOR: Range<usize> = 8..10;
+    pub const KIND: Range<usize> = 10..12;
+    pub const FLAGS: Range<usize> = 12..16;
+    pub const PAYLOAD_LENGTH: Range<usize> = 16..20;
+    pub const PAYLOAD_CRC32: Range<usize> = 20..24;
+    pub const CONNECTION_GENERATION: Range<usize> = 24..32;
+    pub const SESSION_TOKEN: Range<usize> = 32..40;
+    pub const REQUEST_ID: Range<usize> = 40..48;
+}
+
 pub const MAGIC: [u8; 4] = *b"MOIP";
 pub const HEADER_LEN: usize = 48;
 pub const MAX_PAYLOAD_LEN: usize = 64 * 1024;
@@ -41,25 +58,25 @@ impl TryFrom<u16> for MessageKind {
 
     fn try_from(value: u16) -> Result<Self, FrameError> {
         match value {
-            1 => Ok(Self::Hello),
-            2 => Ok(Self::HelloAck),
-            3 => Ok(Self::OpenSession),
-            4 => Ok(Self::OpenSessionAck),
-            5 => Ok(Self::KeyEvent),
-            6 => Ok(Self::Snapshot),
-            7 => Ok(Self::CloseSession),
-            8 => Ok(Self::CloseSessionAck),
-            9 => Ok(Self::Error),
-            10 => Ok(Self::Ping),
-            11 => Ok(Self::Pong),
-            12 => Ok(Self::CandidateAction),
-            13 => Ok(Self::GetSettings),
-            14 => Ok(Self::SettingsSnapshot),
-            15 => Ok(Self::DetailedSnapshot),
-            16 => Ok(Self::PresentationSnapshot),
-            17 => Ok(Self::SymbolAction),
-            18 => Ok(Self::PresentationSettings),
-            19 => Ok(Self::SetEmoji),
+            tag if tag == Self::Hello as u16 => Ok(Self::Hello),
+            tag if tag == Self::HelloAck as u16 => Ok(Self::HelloAck),
+            tag if tag == Self::OpenSession as u16 => Ok(Self::OpenSession),
+            tag if tag == Self::OpenSessionAck as u16 => Ok(Self::OpenSessionAck),
+            tag if tag == Self::KeyEvent as u16 => Ok(Self::KeyEvent),
+            tag if tag == Self::Snapshot as u16 => Ok(Self::Snapshot),
+            tag if tag == Self::CloseSession as u16 => Ok(Self::CloseSession),
+            tag if tag == Self::CloseSessionAck as u16 => Ok(Self::CloseSessionAck),
+            tag if tag == Self::Error as u16 => Ok(Self::Error),
+            tag if tag == Self::Ping as u16 => Ok(Self::Ping),
+            tag if tag == Self::Pong as u16 => Ok(Self::Pong),
+            tag if tag == Self::CandidateAction as u16 => Ok(Self::CandidateAction),
+            tag if tag == Self::GetSettings as u16 => Ok(Self::GetSettings),
+            tag if tag == Self::SettingsSnapshot as u16 => Ok(Self::SettingsSnapshot),
+            tag if tag == Self::DetailedSnapshot as u16 => Ok(Self::DetailedSnapshot),
+            tag if tag == Self::PresentationSnapshot as u16 => Ok(Self::PresentationSnapshot),
+            tag if tag == Self::SymbolAction as u16 => Ok(Self::SymbolAction),
+            tag if tag == Self::PresentationSettings as u16 => Ok(Self::PresentationSettings),
+            tag if tag == Self::SetEmoji as u16 => Ok(Self::SetEmoji),
             other => Err(FrameError::UnknownMessageKind(other)),
         }
     }
@@ -93,45 +110,78 @@ impl FrameHeader {
     }
 
     fn encode_into(&self, output: &mut [u8; HEADER_LEN]) {
-        output[0..4].copy_from_slice(&MAGIC);
-        output[4..6].copy_from_slice(&(HEADER_LEN as u16).to_le_bytes());
-        output[6..8].copy_from_slice(&self.version.major.to_le_bytes());
-        output[8..10].copy_from_slice(&self.version.minor.to_le_bytes());
-        output[10..12].copy_from_slice(&(self.kind as u16).to_le_bytes());
-        output[12..16].copy_from_slice(&self.flags.to_le_bytes());
-        output[16..20].copy_from_slice(&self.payload_len.to_le_bytes());
-        output[20..24].copy_from_slice(&self.payload_crc32.to_le_bytes());
-        output[24..32].copy_from_slice(&self.connection_generation.to_le_bytes());
-        output[32..40].copy_from_slice(&self.session_token.to_le_bytes());
-        output[40..48].copy_from_slice(&self.request_id.to_le_bytes());
+        output[header_fields::MAGIC].copy_from_slice(&MAGIC);
+        output[header_fields::HEADER_LENGTH].copy_from_slice(&(HEADER_LEN as u16).to_le_bytes());
+        output[header_fields::VERSION_MAJOR].copy_from_slice(&self.version.major.to_le_bytes());
+        output[header_fields::VERSION_MINOR].copy_from_slice(&self.version.minor.to_le_bytes());
+        output[header_fields::KIND].copy_from_slice(&(self.kind as u16).to_le_bytes());
+        output[header_fields::FLAGS].copy_from_slice(&self.flags.to_le_bytes());
+        output[header_fields::PAYLOAD_LENGTH].copy_from_slice(&self.payload_len.to_le_bytes());
+        output[header_fields::PAYLOAD_CRC32].copy_from_slice(&self.payload_crc32.to_le_bytes());
+        output[header_fields::CONNECTION_GENERATION]
+            .copy_from_slice(&self.connection_generation.to_le_bytes());
+        output[header_fields::SESSION_TOKEN].copy_from_slice(&self.session_token.to_le_bytes());
+        output[header_fields::REQUEST_ID].copy_from_slice(&self.request_id.to_le_bytes());
     }
 
     fn decode(input: &[u8; HEADER_LEN]) -> Result<Self, FrameError> {
         let mut magic = [0_u8; 4];
-        magic.copy_from_slice(&input[0..4]);
+        magic.copy_from_slice(&input[header_fields::MAGIC]);
         if magic != MAGIC {
             return Err(FrameError::InvalidMagic(magic));
         }
 
-        let declared_header_len = u16::from_le_bytes([input[4], input[5]]);
+        let declared_header_len = u16::from_le_bytes(
+            input[header_fields::HEADER_LENGTH]
+                .try_into()
+                .expect("fixed slice"),
+        );
         if usize::from(declared_header_len) != HEADER_LEN {
             return Err(FrameError::InvalidHeaderLength(declared_header_len));
         }
 
         let header = Self {
             version: ProtocolVersion {
-                major: u16::from_le_bytes([input[6], input[7]]),
-                minor: u16::from_le_bytes([input[8], input[9]]),
+                major: u16::from_le_bytes(
+                    input[header_fields::VERSION_MAJOR]
+                        .try_into()
+                        .expect("fixed slice"),
+                ),
+                minor: u16::from_le_bytes(
+                    input[header_fields::VERSION_MINOR]
+                        .try_into()
+                        .expect("fixed slice"),
+                ),
             },
-            kind: MessageKind::try_from(u16::from_le_bytes([input[10], input[11]]))?,
-            flags: u32::from_le_bytes(input[12..16].try_into().expect("fixed slice")),
-            payload_len: u32::from_le_bytes(input[16..20].try_into().expect("fixed slice")),
-            payload_crc32: u32::from_le_bytes(input[20..24].try_into().expect("fixed slice")),
-            connection_generation: u64::from_le_bytes(
-                input[24..32].try_into().expect("fixed slice"),
+            kind: MessageKind::try_from(u16::from_le_bytes(
+                input[header_fields::KIND].try_into().expect("fixed slice"),
+            ))?,
+            flags: u32::from_le_bytes(input[header_fields::FLAGS].try_into().expect("fixed slice")),
+            payload_len: u32::from_le_bytes(
+                input[header_fields::PAYLOAD_LENGTH]
+                    .try_into()
+                    .expect("fixed slice"),
             ),
-            session_token: u64::from_le_bytes(input[32..40].try_into().expect("fixed slice")),
-            request_id: u64::from_le_bytes(input[40..48].try_into().expect("fixed slice")),
+            payload_crc32: u32::from_le_bytes(
+                input[header_fields::PAYLOAD_CRC32]
+                    .try_into()
+                    .expect("fixed slice"),
+            ),
+            connection_generation: u64::from_le_bytes(
+                input[header_fields::CONNECTION_GENERATION]
+                    .try_into()
+                    .expect("fixed slice"),
+            ),
+            session_token: u64::from_le_bytes(
+                input[header_fields::SESSION_TOKEN]
+                    .try_into()
+                    .expect("fixed slice"),
+            ),
+            request_id: u64::from_le_bytes(
+                input[header_fields::REQUEST_ID]
+                    .try_into()
+                    .expect("fixed slice"),
+            ),
         };
         header.validate()?;
         Ok(header)
@@ -265,12 +315,13 @@ fn verify_checksum(header: &FrameHeader, payload: &[u8]) -> Result<(), FrameErro
 }
 
 fn crc32(bytes: &[u8]) -> u32 {
-    let mut crc = 0xffff_ffff_u32;
+    const CRC32_IEEE_REFLECTED_POLYNOMIAL: u32 = 0xedb8_8320;
+    let mut crc = u32::MAX;
     for &byte in bytes {
         crc ^= u32::from(byte);
-        for _ in 0..8 {
+        for _ in 0..u8::BITS {
             let mask = 0_u32.wrapping_sub(crc & 1);
-            crc = (crc >> 1) ^ (0xedb8_8320 & mask);
+            crc = (crc >> 1) ^ (CRC32_IEEE_REFLECTED_POLYNOMIAL & mask);
         }
     }
     !crc
