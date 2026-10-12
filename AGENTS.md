@@ -31,6 +31,20 @@ data. Record cleanup time and reclaimed space; do not rebuild solely to warm the
 
 Follow `.editorconfig`: UTF-8, final newline, four spaces for Rust, TOML, C++, headers, and WiX; two spaces for JSON/YAML. Rust uses edition 2024 and `rustfmt.toml` (100-column width). Keep crate names in `mo-*` form, Rust modules in `snake_case`, and PowerShell tests named `test-*.ps1`. Treat Clippy warnings as errors.
 
+## Development Quality Contract
+
+Follow README.md's "开发质量规范（项目执行标准）" for every change. Name semantic
+numeric limits, budgets, layout dimensions and protocol field ranges with their
+purpose and units. Keep constants at the contract owner and verify independent
+settings/wire bounds with cross-component tests. Rust settings UI text belongs in the typed
+zh-CN/en-US resource catalogs; add matching keys, validated placeholders and
+bounded data-only overrides. Preserve wire bytes, settings compatibility and
+50/400 ms deadlines during refactors. Explain unsafe invariants and retain
+failures in evidence. All Rust crates inherit workspace lints; keep unsafe_code
+forbidden at safe crate entry points. Run fmt, strict Clippy (default and the
+latency-trace feature), workspace tests and relevant native/script checks.
+Review affected UI languages/layouts and document any unverified acceptance.
+
 ## Testing Guidelines
 
 Add unit or integration tests near changed Rust code and policy tests for changed scripts or installer rules. Use synthetic data; never place real keystrokes, candidate text, clipboard contents, or passwords in logs or fixtures. No numeric coverage threshold is specified. Run relevant targeted checks and workspace checks; use Windows smoke scripts for native or IPC changes.

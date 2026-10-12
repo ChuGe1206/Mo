@@ -4,6 +4,18 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-12 质量规范与设置多语言
+
+- README 新增项目开发标准与提交审核清单；AGENTS 引用同一入口。
+- [审查记录](CODE-QUALITY-20261012.md)、[ADR 0061](../adr/0061-settings-text-catalogs-and-quality-contract.md)：
+  外观/IPC/超时等语义常量、typed 页面/协议编码、lint 继承及失败退出码已整理。
+  设置文案集中为 97 键中英文资源，支持有界局部覆盖和当前窗口即时语言切换。
+- 190 运行时＋1 doc、fmt、默认/诊断 strict Clippy、71 项 staging 政策、
+  双架构 fake IPC/pool/TSF/fault 通过。中英文各 7 幅合成原生预览，双向标题切换通过。
+  完成后空闲 cargo clean 再释放 1.37 GiB/8,435 文件，保留封存材料。
+- 本轮源码尚未进入 VM 0.0.14.0；C++ 候选文案及历史细节布局继续单独维护，
+  安装态 UI、多 DPI/高对比度/辅助工具待验收。真实首键负向证据与 G2/G3 保持。
+
 ## 2026-10-12 开发包与 VM 目录
 
 - [目录/缓存与开发包记录](WIN10-WORKSPACE-20261012.md)：统一后续测试至 C:/MoDev；

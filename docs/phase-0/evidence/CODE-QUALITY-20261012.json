@@ -1,0 +1,288 @@
+{
+  "format_version": 1,
+  "recorded_utc": "2026-10-12T04:37:29.879823+00:00",
+  "code_commit": "1ba45c26c95f1310843eed00b829c17cf172f3d4",
+  "previous_commit": "32c9648",
+  "environment": {
+    "os": "Windows 10 22H2 build 19045",
+    "rust": "1.97.1",
+    "native": "VS2022 / MSBuild x64 and Win32"
+  },
+  "verification": {
+    "fmt_check": "passed",
+    "default_workspace_clippy": "passed (tool console)",
+    "latency_trace_workspace_clippy": "passed (tool console)",
+    "workspace_runtime_passed": 190,
+    "compile_fail_docs_passed": 1,
+    "ignored_owned_writer_child_entrypoints": 1,
+    "final_settings_tests_passed": 20,
+    "staging_policy_tests_passed": 71,
+    "stage_ui_inputs": 21,
+    "final_fake_smoke_architectures": [
+      "x64",
+      "Win32"
+    ],
+    "broker_crashes_per_architecture": 2
+  },
+  "source_files": [
+    {
+      "path": "assets/ui/text/en-US.mo",
+      "bytes": 3827,
+      "sha256": "EBC99C516B60A594F12C4D3C0EC73BB4DE3FEC2A136079776E7BDCEEB725300D"
+    },
+    {
+      "path": "assets/ui/text/zh-CN.mo",
+      "bytes": 3706,
+      "sha256": "B1AE6EA90BDEE80EB85F239F6F5D30E14022B9CD21B3544890A35FE26ACDF00A"
+    },
+    {
+      "path": "crates/mo-broker/Cargo.toml",
+      "bytes": 652,
+      "sha256": "6B41DE4E142AA316AE8731825FD31740F78DB5E28CECBF7680F5F1DC21434CB1"
+    },
+    {
+      "path": "crates/mo-broker/src/engine_service.rs",
+      "bytes": 17520,
+      "sha256": "A0999E9B5C5FFD6606CBD65ED2DE4409D37735111723A7BB1D460143E5169B54"
+    },
+    {
+      "path": "crates/mo-broker/src/lib.rs",
+      "bytes": 730,
+      "sha256": "EB00B0C6FB11D16497D006E07F48910165C1A4DEE75A5E272058B43B67930F75"
+    },
+    {
+      "path": "crates/mo-broker/src/main.rs",
+      "bytes": 1661,
+      "sha256": "3C3301C90F18F985C76D08B637C755F3B0D6C8425A30FE622D6531138D28CDD8"
+    },
+    {
+      "path": "crates/mo-broker/src/named_pipe_main.rs",
+      "bytes": 2042,
+      "sha256": "96C92EAD70C56A0003A4FEEBFDBDE025C3FCFA5E802C1C92191B3F199967B7D0"
+    },
+    {
+      "path": "crates/mo-broker/src/tcp_loopback_spike.rs",
+      "bytes": 2940,
+      "sha256": "7E115348248A447A5EB1088D044F5DA991C6286A097BA74527099D125AAD61F0"
+    },
+    {
+      "path": "crates/mo-broker/src/windows_named_pipe.rs",
+      "bytes": 31327,
+      "sha256": "4EF19C3A33D5B18114016B35641D25CFAE3545839AB0F1C31FA65EE6B48DDA16"
+    },
+    {
+      "path": "crates/mo-broker/tests/settings_contract.rs",
+      "bytes": 3776,
+      "sha256": "D1EAC4864D792A17F1A3AD2947796AF955DF2303640AD74461454B8B4F38C1EF"
+    },
+    {
+      "path": "crates/mo-domain/Cargo.toml",
+      "bytes": 221,
+      "sha256": "ED7D5843EEDD98BC74D037F9042A1BD17D351A8EDA76AB01EAD288358C8D93FE"
+    },
+    {
+      "path": "crates/mo-engine/Cargo.toml",
+      "bytes": 260,
+      "sha256": "CCC59E8BEB75AAF2E80FCD6046F91EF662FDE27ADD1C2704D00C928BD70C71C8"
+    },
+    {
+      "path": "crates/mo-ipc/Cargo.toml",
+      "bytes": 250,
+      "sha256": "B488CB42499FFC59E960A53BB6994FBF841583368ED8C02FEA5FE8E89D8E95E3"
+    },
+    {
+      "path": "crates/mo-ipc/src/codec.rs",
+      "bytes": 6233,
+      "sha256": "203CF853C44537884C873681656742B0AB29F6FAB6AE7E4B0E8B2366998DF3BC"
+    },
+    {
+      "path": "crates/mo-ipc/src/frame.rs",
+      "bytes": 14410,
+      "sha256": "8DAAA55A5BEC3BF089F59DBA120C54EFC5F025FCC13ADEB6BBB5ACAD779F47D8"
+    },
+    {
+      "path": "crates/mo-ipc/src/lib.rs",
+      "bytes": 1829,
+      "sha256": "DFA1FA5FE81D9010FE1BBEC6520885BAE51094263685CC634FB409C342BD2FD6"
+    },
+    {
+      "path": "crates/mo-ipc/src/message.rs",
+      "bytes": 27410,
+      "sha256": "605A7FA7D762237EBF19190DEFF1D7B1234F6F58B6AB23EEBA1973FEC370D421"
+    },
+    {
+      "path": "crates/mo-ipc/tests/frame_codec.rs",
+      "bytes": 10485,
+      "sha256": "5273874E4410C3DF55DF45A6655D46F6D16087BAA0AFDDE8A16A7E8936BC177D"
+    },
+    {
+      "path": "crates/mo-settings-app/src/lib.rs",
+      "bytes": 16613,
+      "sha256": "78C4E4CE211110AA9E9980C2DF4EE37A892B014901D5D4E8A3FAC8EDB9C118B6"
+    },
+    {
+      "path": "crates/mo-settings-app/src/main.rs",
+      "bytes": 521,
+      "sha256": "D16282E8DDF76F219AEB9F39AE118AFE552AB43D862B5CCB2CFA6B2939EE455F"
+    },
+    {
+      "path": "crates/mo-settings-app/src/text_catalog.rs",
+      "bytes": 15950,
+      "sha256": "07593A94EF915BECD5BD3D6AB2CF2B146933C7D3CD960FF108CA0BBDEF3C2746"
+    },
+    {
+      "path": "crates/mo-settings-app/src/windows_app.rs",
+      "bytes": 102963,
+      "sha256": "46023A35326FB83DF13DAA6AA5DDFBD27F85A111B42A4E23AD26D084997A28A3"
+    },
+    {
+      "path": "crates/mo-settings-app/tests/text_catalog.rs",
+      "bytes": 9975,
+      "sha256": "6FA90C92810F29E150871BA7D19EEE3F9839F80ED35473FFA3C1747A6586A7AF"
+    },
+    {
+      "path": "crates/mo-settings/src/lib.rs",
+      "bytes": 54759,
+      "sha256": "F1CE21C74D3D280DAB77BAB9BA80851671B550D5DED9AA7392342EDE5D800D3F"
+    },
+    {
+      "path": "crates/mo-settings/tests/appearance.rs",
+      "bytes": 2479,
+      "sha256": "F693A35DA0A48EB4833A195B0DED79E25F97F2B872169818B7FECDCA6C38D84B"
+    },
+    {
+      "path": "crates/mo-windows-pipe/src/windows.rs",
+      "bytes": 62427,
+      "sha256": "DBDEF0E1D68683DCA4BE396C84012ED261E2AC96C21EB372F3706B6DB856CCDA"
+    },
+    {
+      "path": "installer/windows/staging-policy.ps1",
+      "bytes": 29690,
+      "sha256": "5E6D558562F72C2644710A73A9DDE307A87A8DCC9DFD2DE78F8B0FFB86ABBF2A"
+    },
+    {
+      "path": "installer/windows/test-staging.ps1",
+      "bytes": 18451,
+      "sha256": "C62AD9942E36ECA93E4A5AC2B1AA31E122391329736193592D5906042DD3EF1B"
+    }
+  ],
+  "logs": [
+    {
+      "path": "build/quality-20261012/workspace-tests.log",
+      "bytes": 21200,
+      "sha256": "42606BCC5316A16254EC7326BF06885674EAD6349998104FE79C8C4007FB8B06"
+    },
+    {
+      "path": "build/quality-20261012/settings-final.log",
+      "bytes": 2363,
+      "sha256": "113E3E29D8BCE807FDDE231099893FA8DAFB83726CC2BB4208CB47ACD8CCEF7C"
+    },
+    {
+      "path": "build/quality-20261012/settings-clippy-final.log",
+      "bytes": 397,
+      "sha256": "D806E3E0A7CD417521BE435CE62D5BD1E5F566A28BB56102C7E11DA8CEA89812"
+    },
+    {
+      "path": "build/quality-20261012/staging-policy.log",
+      "bytes": 2975,
+      "sha256": "C047934E638190FE63DEA5C29C8CA24CEBB4956EEC68E8A7B01E197FAA1971B0"
+    },
+    {
+      "path": "build/quality-20261012/tip-broker-smoke-final.log",
+      "bytes": 20629,
+      "sha256": "A2B91D25EC02FE43D3DF559806C0FE80874A516FEDC88B652166F664283A1877"
+    },
+    {
+      "path": "build/quality-20261012/cargo-clean.log",
+      "bytes": 39,
+      "sha256": "CECFA4B71DECE510B28F90241F8939515A3B74BD0A2B0D1ADC0C39E9720FD59A"
+    },
+    {
+      "path": "build/quality-20261012/cargo-clean-receipt.json",
+      "bytes": 398,
+      "sha256": "AAB1F06CFD07CDE8D7070C2B8F975B26AAA65E121EEEA4775DDE9C1A94BE2981"
+    }
+  ],
+  "preview_state": [
+    {
+      "locale": "zh-CN",
+      "bmp_count": 7,
+      "receipt": {
+        "path": "build/quality-20261012/preview-v2-zh-CN/language-switch-state.txt",
+        "bytes": 46,
+        "sha256": "356DBE6ED7220B44B66CD9F831B86536C2DEFE3DF91C41401977B91D7E17B933"
+      },
+      "state": "before=zh-CN\nafter=en-US\ncaption_updated=true\n"
+    },
+    {
+      "locale": "en-US",
+      "bmp_count": 7,
+      "receipt": {
+        "path": "build/quality-20261012/preview-v2-en-US/language-switch-state.txt",
+        "bytes": 46,
+        "sha256": "FA410C39B84154D504877974AA217D830D49F171B8EF5778A275D10EF0E2FBDD"
+      },
+      "state": "before=en-US\nafter=zh-CN\ncaption_updated=true\n"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "docs/design/previews/mo-localized-en-US-settings-custom-20261012.png",
+      "bytes": 46506,
+      "sha256": "C9E99EB9060AD3DC2317867A7AFF6F22DE3DF6CD6CA3B97A0E673A203F8E320C"
+    },
+    {
+      "path": "docs/design/previews/mo-localized-en-US-settings-dark-20261012.png",
+      "bytes": 59021,
+      "sha256": "39553F738F6F48ACB5118E67F154522FB7327BD13667BF65D0EEDDB3C5985AD2"
+    },
+    {
+      "path": "docs/design/previews/mo-localized-en-US-settings-general-20261012.png",
+      "bytes": 44045,
+      "sha256": "2F0CAC8EC27E1640624180E637153E8B24100A28191CE0FB81BF0827871FCB16"
+    },
+    {
+      "path": "docs/design/previews/mo-localized-en-US-settings-privacy-20261012.png",
+      "bytes": 42941,
+      "sha256": "DF85210D5D079FDA776F55177BE10A95A42C78DB872DDD93A3DC1DD4D1E4A06A"
+    },
+    {
+      "path": "docs/design/previews/mo-localized-en-US-settings-small-20261012.png",
+      "bytes": 32774,
+      "sha256": "0AC1BA1491EA1086BA91A43C6CDF6AC47BBED1B26063DDF35607DCD5B9E87030"
+    },
+    {
+      "path": "docs/design/previews/mo-localized-zh-CN-settings-general-20261012.png",
+      "bytes": 51546,
+      "sha256": "C7CB2408EC562D849D015CAA4090AE2D4EAF10B002EBFC2C9398D0A2AD43F3EC"
+    }
+  ],
+  "limits": {
+    "catalog_bytes": 32768,
+    "text_bytes": 512,
+    "startup_preference_bytes": 128,
+    "bundled_text_keys": 97,
+    "locale_switch_lifetime": "current window only"
+  },
+  "not_validated": [
+    "installed new language package",
+    "multiple physical DPI",
+    "OS high contrast switching",
+    "assistive tools",
+    "ordinary application UI/keyboard matrix",
+    "real librime first-key stability"
+  ],
+  "guest_installed_version": "0.0.14.0 (does not contain this source change)",
+  "g2_g3_unchanged": true,
+  "cache_cleanup": {
+    "format_version": 1,
+    "completed_utc": "2026-10-12T04:39:08.2832327Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "before_bytes": 1467881415,
+    "after_bytes": 0,
+    "reclaimed_logical_bytes": 1467881415,
+    "active_tasks": 0,
+    "exit_code": 0,
+    "preserved": "build packages, stages, runtimes, evidence and user data; Cargo download cache"
+  }
+}

@@ -16,3 +16,6 @@
 assets/ui/*.svg -text
 assets/ui/*.mask binary
 third_party/figma-sds-MIT.txt -text
+
+# Mo versioned UI catalogs are UTF-8 text, not gettext binary catalogs.
+assets/ui/text/*.mo text eol=lf
