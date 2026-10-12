@@ -82,8 +82,25 @@ const CARD_GAP_PX: i32 = 16;
 const SCROLL_STEP_PX: i32 = 56;
 const COMBO_ITEM_HEIGHT_PX: u32 = 34;
 const ICON_RESOURCE_ID: u16 = 1;
-const FONT_COUNT: usize = 5;
-const BODY_FONT_INDEX: usize = 0;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(usize)]
+enum FontRole {
+    Body,
+    Caption,
+    Heading,
+    Section,
+    Candidate,
+}
+impl FontRole {
+    const ALL: [Self; 5] = [
+        Self::Body,
+        Self::Caption,
+        Self::Heading,
+        Self::Section,
+        Self::Candidate,
+    ];
+}
+const FONT_COUNT: usize = FontRole::ALL.len();
 const BODY_FONT_SIZE_PX: i32 = 14;
 const CAPTION_FONT_SIZE_PX: i32 = 12;
 const HEADING_FONT_SIZE_PX: i32 = 24;
@@ -154,7 +171,97 @@ const ID_EXPORT: usize = 126;
 const ID_BACK: usize = 127;
 const ID_LAYOUT: usize = 128;
 const ID_LANGUAGE: usize = 129;
-const LANGUAGE_BUTTON_TOP_PX: i32 = 302;
+// Shared chrome geometry in logical pixels. Controls and painting consume the
+// same records so footer/navigation changes cannot silently drift apart.
+struct SidebarLayout {
+    navigation: RECT,
+    navigation_stride: i32,
+    language: RECT,
+    icon: RECT,
+    brand: RECT,
+    caption_left: i32,
+    caption_width: i32,
+    tagline_top: i32,
+    development_bottom: i32,
+    subtitle_bottom: i32,
+}
+const SIDEBAR: SidebarLayout = SidebarLayout {
+    navigation: rect(16, 122, 180, 44),
+    navigation_stride: 52,
+    language: rect(16, 302, 180, 36),
+    icon: rect(20, 26, 36, 36),
+    brand: rect(68, 30, 120, 28),
+    caption_left: 20,
+    caption_width: 180,
+    tagline_top: 76,
+    development_bottom: 82,
+    subtitle_bottom: 54,
+};
+struct FooterLayout {
+    restore_left: i32,
+    restore_width: i32,
+    button_width: i32,
+    button_gap: i32,
+    right_inset: i32,
+    button_bottom: i32,
+    button_height: i32,
+    status_left_gap: i32,
+    status_right_gap: i32,
+    status_bottom: i32,
+    status_height: i32,
+    minimum_status_width: i32,
+}
+const FOOTER: FooterLayout = FooterLayout {
+    restore_left: SIDEBAR_WIDTH_PX + PAGE_PADDING_PX,
+    restore_width: 110,
+    button_width: 120,
+    button_gap: 12,
+    right_inset: PAGE_PADDING_PX,
+    button_bottom: 56,
+    button_height: 40,
+    status_left_gap: 6,
+    status_right_gap: 20,
+    status_bottom: 60,
+    status_height: 48,
+    minimum_status_width: 100,
+};
+impl FooterLayout {
+    fn save(&self, width: i32, height: i32) -> RECT {
+        rect(
+            width - self.right_inset - self.button_width,
+            height - self.button_bottom,
+            self.button_width,
+            self.button_height,
+        )
+    }
+    fn reload(&self, width: i32, height: i32) -> RECT {
+        let save = self.save(width, height);
+        rect(
+            save.left - self.button_gap - self.button_width,
+            save.top,
+            self.button_width,
+            self.button_height,
+        )
+    }
+    fn restore(&self, height: i32) -> RECT {
+        rect(
+            self.restore_left,
+            height - self.button_bottom,
+            self.restore_width,
+            self.button_height,
+        )
+    }
+    fn status(&self, width: i32, height: i32) -> RECT {
+        let left = self.restore_left + self.restore_width + self.status_left_gap;
+        let available = self.reload(width, height).left - self.status_right_gap - left;
+        rect(
+            left,
+            height - self.status_bottom,
+            available.max(self.minimum_status_width),
+            self.status_height,
+        )
+    }
+}
 const SCHEME_LABELS: [TextKey; 5] = [
     TextKey::FullPinyin,
     TextKey::NaturalPinyin,
@@ -196,7 +303,7 @@ fn resource_id(id: u16) -> *const u16 {
 fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(Some(0)).collect()
 }
-fn rect(x: i32, y: i32, width: i32, height: i32) -> RECT {
+const fn rect(x: i32, y: i32, width: i32, height: i32) -> RECT {
     RECT {
         left: x,
         top: y,
@@ -371,22 +478,24 @@ impl AppState {
             }
             self.background = CreateSolidBrush(self.palette.background);
             let old_fonts = self.fonts;
-            for (index, size) in [
-                BODY_FONT_SIZE_PX,
-                CAPTION_FONT_SIZE_PX,
-                HEADING_FONT_SIZE_PX,
-                SECTION_FONT_SIZE_PX,
-                self.draft.appearance.font_size as i32,
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                self.fonts[index] = CreateFontW(
+            for role in FontRole::ALL {
+                let size = match role {
+                    FontRole::Body => BODY_FONT_SIZE_PX,
+                    FontRole::Caption => CAPTION_FONT_SIZE_PX,
+                    FontRole::Heading => HEADING_FONT_SIZE_PX,
+                    FontRole::Section => SECTION_FONT_SIZE_PX,
+                    FontRole::Candidate => i32::from(self.draft.appearance.font_size),
+                };
+                self.fonts[role as usize] = CreateFontW(
                     -self.s(size),
                     0,
                     0,
                     0,
-                    if index == 2 { 500 } else { 400 },
+                    if role == FontRole::Heading {
+                        FW_MEDIUM as i32
+                    } else {
+                        FW_NORMAL as i32
+                    },
                     0,
                     0,
                     0,
@@ -402,7 +511,7 @@ impl AppState {
                 SendMessageW(
                     control.handle,
                     WM_SETFONT,
-                    self.fonts[BODY_FONT_INDEX] as usize,
+                    self.fonts[FontRole::Body as usize] as usize,
                     1,
                 );
             }
@@ -654,7 +763,12 @@ impl AppState {
             return Err(io::Error::last_os_error());
         }
         unsafe {
-            SendMessageW(handle, WM_SETFONT, self.fonts[BODY_FONT_INDEX] as usize, 0);
+            SendMessageW(
+                handle,
+                WM_SETFONT,
+                self.fonts[FontRole::Body as usize] as usize,
+                0,
+            );
         }
         self.controls.push(Control { handle, page, id });
         Ok(())
@@ -792,12 +906,16 @@ impl AppState {
         for control in &self.controls {
             let id = control.id;
             let logical = match id {
-                ID_NAV_GENERAL..=ID_NAV_PRIVACY => {
-                    rect(16, 122 + (id as i32 - ID_NAV_GENERAL as i32) * 52, 180, 44)
-                }
-                ID_RESTORE => rect(236, height - 56, 110, 40),
-                ID_RELOAD => rect(width - 276, height - 56, 120, 40),
-                ID_SAVE => rect(width - 144, height - 56, 120, 40),
+                ID_NAV_GENERAL..=ID_NAV_PRIVACY => rect(
+                    SIDEBAR.navigation.left,
+                    SIDEBAR.navigation.top
+                        + (id as i32 - ID_NAV_GENERAL as i32) * SIDEBAR.navigation_stride,
+                    SIDEBAR.navigation.right - SIDEBAR.navigation.left,
+                    SIDEBAR.navigation.bottom - SIDEBAR.navigation.top,
+                ),
+                ID_RESTORE => FOOTER.restore(height),
+                ID_RELOAD => FOOTER.reload(width, height),
+                ID_SAVE => FOOTER.save(width, height),
                 ID_SCHEME => rect(w - 244, 156, 196, 200),
                 ID_CHARACTER => rect(w - 244, 236, 196, 120),
                 ID_COMMENTS => rect(w - 96, 410, 48, 32),
@@ -819,7 +937,7 @@ impl AppState {
                         136,
                     )
                 }
-                ID_LANGUAGE => rect(16, LANGUAGE_BUTTON_TOP_PX, 180, 36),
+                ID_LANGUAGE => SIDEBAR.language,
                 ID_BACK => rect(24, 88, 120, 32),
                 ID_BACKGROUND => rect(44, 182, 240, 40),
                 ID_ACCENT => rect(44, 230, 240, 40),
@@ -1268,10 +1386,18 @@ unsafe fn rounded(dc: HDC, bounds: RECT, color: u32, border: u32, radius: i32) {
     }
 }
 impl AppState {
-    unsafe fn text(&self, dc: HDC, text: &str, bounds: RECT, color: u32, font: usize, flags: u32) {
+    unsafe fn text(
+        &self,
+        dc: HDC,
+        text: &str,
+        bounds: RECT,
+        color: u32,
+        font: FontRole,
+        flags: u32,
+    ) {
         let mut bounds = bounds;
         unsafe {
-            let old = SelectObject(dc, self.fonts[font]);
+            let old = SelectObject(dc, self.fonts[font as usize]);
             let previous = SetTextColor(dc, color);
             let background = SetBkMode(dc, TRANSPARENT as i32);
             DrawTextW(
@@ -1298,7 +1424,7 @@ impl AppState {
         y: i32,
         width: i32,
         color: u32,
-        font: usize,
+        font: FontRole,
     ) {
         unsafe {
             self.text(
@@ -1328,51 +1454,59 @@ impl AppState {
                 GetModuleHandleW(null()),
                 resource_id(ICON_RESOURCE_ID),
                 IMAGE_ICON,
-                self.s(36),
-                self.s(36),
+                self.s(SIDEBAR.icon.right - SIDEBAR.icon.left),
+                self.s(SIDEBAR.icon.bottom - SIDEBAR.icon.top),
                 LR_DEFAULTCOLOR,
             );
             if !icon.is_null() {
                 DrawIconEx(
                     dc,
-                    self.s(20),
-                    self.s(26),
+                    self.s(SIDEBAR.icon.left),
+                    self.s(SIDEBAR.icon.top),
                     icon,
-                    self.s(36),
-                    self.s(36),
+                    self.s(SIDEBAR.icon.right - SIDEBAR.icon.left),
+                    self.s(SIDEBAR.icon.bottom - SIDEBAR.icon.top),
                     0,
                     null_mut(),
                     DI_NORMAL,
                 );
                 DestroyIcon(icon);
             }
-            self.label(dc, "Mo", 68, 30, 120, self.palette.text, 2);
+            self.label(
+                dc,
+                "Mo",
+                SIDEBAR.brand.left,
+                SIDEBAR.brand.top,
+                SIDEBAR.brand.right - SIDEBAR.brand.left,
+                self.palette.text,
+                FontRole::Heading,
+            );
             self.label(
                 dc,
                 &self.tr(TextKey::BrandTagline),
-                20,
-                76,
-                180,
+                SIDEBAR.caption_left,
+                SIDEBAR.tagline_top,
+                SIDEBAR.caption_width,
                 self.palette.muted,
-                1,
+                FontRole::Caption,
             );
             self.label(
                 dc,
                 &self.tr(TextKey::DevelopmentBrand),
-                20,
-                height - 82,
-                180,
+                SIDEBAR.caption_left,
+                height - SIDEBAR.development_bottom,
+                SIDEBAR.caption_width,
                 self.palette.muted,
-                1,
+                FontRole::Caption,
             );
             self.label(
                 dc,
                 &self.tr(TextKey::BrandSubtitle),
-                20,
-                height - 54,
-                180,
+                SIDEBAR.caption_left,
+                height - SIDEBAR.subtitle_bottom,
+                SIDEBAR.caption_width,
                 self.palette.muted,
-                1,
+                FontRole::Caption,
             );
             fill(
                 dc,
@@ -1387,14 +1521,17 @@ impl AppState {
             self.text(
                 dc,
                 &self.status,
-                self.box_at(
-                    352,
-                    height - 60,
-                    (client.right * BASE_DPI_I32 / self.dpi - 648).max(100),
-                    48,
-                ),
+                {
+                    let status = FOOTER.status(client.right * BASE_DPI_I32 / self.dpi, height);
+                    self.box_at(
+                        status.left,
+                        status.top,
+                        status.right - status.left,
+                        status.bottom - status.top,
+                    )
+                },
                 self.palette.muted,
-                1,
+                FontRole::Caption,
                 DT_LEFT | DT_WORDBREAK,
             );
         }
@@ -1408,7 +1545,7 @@ impl AppState {
                 24,
                 self.content_width - 48,
                 self.palette.text,
-                2,
+                FontRole::Heading,
             );
             self.label(
                 dc,
@@ -1417,7 +1554,7 @@ impl AppState {
                 62,
                 self.content_width - 48,
                 self.palette.muted,
-                1,
+                FontRole::Caption,
             );
         }
     }
@@ -1430,7 +1567,7 @@ impl AppState {
                 y,
                 self.content_width - 330,
                 self.palette.text,
-                0,
+                FontRole::Body,
             );
             self.label(
                 dc,
@@ -1439,7 +1576,7 @@ impl AppState {
                 y + 28,
                 self.content_width - 330,
                 self.palette.muted,
-                1,
+                FontRole::Caption,
             );
         }
     }
@@ -1455,7 +1592,15 @@ impl AppState {
             );
             let saved = SaveDC(dc);
             OffsetViewportOrgEx(dc, bounds.left, bounds.top, null_mut());
-            self.label(dc, "chun feng", 12, 8, width - 90, palette.text, 0);
+            self.label(
+                dc,
+                "chun feng",
+                12,
+                8,
+                width - 90,
+                palette.text,
+                FontRole::Body,
+            );
             self.label(
                 dc,
                 &self.tr(TextKey::CandidateMode),
@@ -1463,7 +1608,7 @@ impl AppState {
                 8,
                 56,
                 palette.muted,
-                1,
+                FontRole::Caption,
             );
             let count = if !vertical && width < 300 { 2 } else { 5 };
             for (index, text) in PREVIEW_CANDIDATES.into_iter().take(count).enumerate() {
@@ -1497,11 +1642,11 @@ impl AppState {
                         palette.text
                     },
                     if width < 300 {
-                        0
+                        FontRole::Body
                     } else if self.draft.appearance.skin == CandidateSkin::Custom {
-                        4
+                        FontRole::Candidate
                     } else {
-                        3
+                        FontRole::Section
                     },
                 );
             }
@@ -1539,7 +1684,7 @@ impl AppState {
                         120,
                         w - 96,
                         self.palette.text,
-                        3,
+                        FontRole::Section,
                     );
                     self.setting_row(
                         dc,
@@ -1567,7 +1712,7 @@ impl AppState {
                         360,
                         w - 96,
                         self.palette.text,
-                        3,
+                        FontRole::Section,
                     );
                     self.setting_row(
                         dc,
@@ -1588,7 +1733,7 @@ impl AppState {
                         592,
                         w - 48,
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                     );
                 }
                 PAGE_APPEARANCE => {
@@ -1611,7 +1756,7 @@ impl AppState {
                         110,
                         180,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     let columns = if w < NARROW_LAYOUT_BREAKPOINT_PX {
                         2
@@ -1633,7 +1778,7 @@ impl AppState {
                         preview_y + 8,
                         160,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     let palette =
                         skin_palette(self.draft.appearance.skin as u8, self.draft.appearance);
@@ -1670,7 +1815,7 @@ impl AppState {
                         124,
                         w - 132,
                         self.palette.text,
-                        3,
+                        FontRole::Section,
                     );
                     self.label(
                         dc,
@@ -1679,7 +1824,7 @@ impl AppState {
                         160,
                         w - 96,
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                     );
                     rounded(
                         dc,
@@ -1695,7 +1840,7 @@ impl AppState {
                         252,
                         w - 96,
                         self.palette.text,
-                        3,
+                        FontRole::Section,
                     );
                     self.setting_row(
                         dc,
@@ -1723,7 +1868,7 @@ impl AppState {
                         508,
                         w - 88,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     self.label(
                         dc,
@@ -1732,7 +1877,7 @@ impl AppState {
                         546,
                         w - 88,
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                     );
                 }
                 _ => {
@@ -1755,7 +1900,7 @@ impl AppState {
                         150,
                         240,
                         self.palette.text,
-                        3,
+                        FontRole::Section,
                     );
                     self.label(
                         dc,
@@ -1764,7 +1909,7 @@ impl AppState {
                         330,
                         100,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     self.label(
                         dc,
@@ -1773,7 +1918,7 @@ impl AppState {
                         378,
                         110,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     let narrow = w < NARROW_LAYOUT_BREAKPOINT_PX;
                     let x = if narrow { 24 } else { 332 };
@@ -1793,7 +1938,7 @@ impl AppState {
                         y + 20,
                         width - 32,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     self.candidate_preview(
                         dc,
@@ -1808,7 +1953,7 @@ impl AppState {
                         y + 320,
                         width - 32,
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                     );
                 }
             }
@@ -1877,7 +2022,7 @@ impl AppState {
                     } else {
                         self.palette.text
                     },
-                    0,
+                    FontRole::Body,
                     DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
                 );
             } else if (ID_SKIN_FIRST..=ID_SKIN_CUSTOM).contains(&id) {
@@ -1914,7 +2059,7 @@ impl AppState {
                         100,
                         width / 2,
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                     );
                     self.label(
                         dc,
@@ -1923,7 +2068,7 @@ impl AppState {
                         100,
                         width / 2 - 12,
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                     );
                 } else {
                     draw_svg_mask(
@@ -1937,7 +2082,7 @@ impl AppState {
                         titles[5],
                         self.box_at(12, 62, width - 24, 28),
                         self.palette.text,
-                        0,
+                        FontRole::Body,
                         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
                     );
                     self.text(
@@ -1945,7 +2090,7 @@ impl AppState {
                         descriptions[5],
                         self.box_at(12, 94, width - 24, 28),
                         self.palette.muted,
-                        1,
+                        FontRole::Caption,
                         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
                     );
                 }
@@ -2070,7 +2215,7 @@ impl AppState {
                     } else {
                         self.palette.text
                     },
-                    0,
+                    FontRole::Body,
                     DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
                 );
             }
@@ -2844,7 +2989,7 @@ unsafe fn draw_svg_mask(dc: HDC, slot: RECT, bytes: &[u8], tint: u32) {
 }
 
 #[cfg(test)]
-mod startup_tests {
+mod tests {
     use super::*;
     fn parse(values: &[&str]) -> io::Result<StartupOptions> {
         parse_startup_options(values.iter().map(std::ffi::OsString::from))
@@ -2872,5 +3017,37 @@ mod startup_tests {
         ] {
             assert!(parse(&arguments).is_err());
         }
+    }
+    fn dimensions(bounds: RECT) -> (i32, i32, i32, i32) {
+        (
+            bounds.left,
+            bounds.top,
+            bounds.right - bounds.left,
+            bounds.bottom - bounds.top,
+        )
+    }
+    #[test]
+    fn shared_footer_preserves_independent_legacy_geometry() {
+        // Golden coordinates precede this refactor, independent of its fields.
+        assert_eq!(dimensions(FOOTER.restore(760)), (236, 704, 110, 40));
+        assert_eq!(dimensions(FOOTER.reload(900, 760)), (624, 704, 120, 40));
+        assert_eq!(dimensions(FOOTER.save(900, 760)), (756, 704, 120, 40));
+        assert_eq!(dimensions(FOOTER.status(900, 760)), (352, 700, 252, 48));
+    }
+    #[test]
+    fn footer_actions_and_status_do_not_overlap_at_supported_widths() {
+        for width in MIN_WINDOW_WIDTH_PX..=WINDOW_WIDTH_PX * 2 {
+            let restore = FOOTER.restore(MIN_WINDOW_HEIGHT_PX);
+            let status = FOOTER.status(width, MIN_WINDOW_HEIGHT_PX);
+            let reload = FOOTER.reload(width, MIN_WINDOW_HEIGHT_PX);
+            let save = FOOTER.save(width, MIN_WINDOW_HEIGHT_PX);
+            assert!(restore.right < status.left);
+            assert!(status.right < reload.left);
+            assert!(reload.right < save.left);
+            assert!(save.right <= width);
+        }
+        let final_navigation_bottom = SIDEBAR.navigation.bottom
+            + (NAVIGATION_PAGES.len() as i32 - 1) * SIDEBAR.navigation_stride;
+        assert!(final_navigation_bottom < SIDEBAR.language.top);
     }
 }
