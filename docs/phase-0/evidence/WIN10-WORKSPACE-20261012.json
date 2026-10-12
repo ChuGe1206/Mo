@@ -24,11 +24,23 @@
   },
   "guest": {
     "running": true,
-    "migration_verified": false,
+    "migration_verified": true,
     "new_install_verified": false,
     "remote_control": "computer-use captures timed out; blank-password guestcontrol rejected",
     "tool_shared": "MoEvidence/WorkspaceTools-v1",
-    "upgrade_shared": "MoEvidence/Package0140-v1/kit"
+    "upgrade_shared": "MoEvidence/Package0140-v1/kit",
+    "migration_verification_basis": "Returned guest journal and user confirmation; no independent guest filesystem enumeration",
+    "migration_receipt": {
+      "path": "docs/phase-0/evidence/WIN10-WORKSPACE-MIGRATION-20261012.json",
+      "sha256": "38E4F666D2BAC8C8367DBAD3BED10BE4D014DFFF21B612C3C3C8F11576FCB792",
+      "created_utc": "2026-10-12T03:03:03.8575917Z",
+      "moved_count": 17,
+      "all_states_moved": true,
+      "failure": null,
+      "source_sha256": "AE6A363F86407A74A69E59C3F22795202B1FD571320070A5AD930B6B08741926",
+      "source_shared_path": "MoEvidence/WorkspaceGuest-v1/migration-d2b82d831df14ff89ea0df38544a6917.json",
+      "transformation": "UTF-8 without BOM, LF, two-space JSON indentation; all values preserved"
+    }
   },
   "package": {
     "format": 3,
@@ -91,7 +103,7 @@
     },
     {
       "path": "docs/phase-0/WIN10-WORKSPACE-20261012.md",
-      "sha256_lf": "753742C3C07BA3D03432B9B2CDDDEE9A6BFDC126AB3152419ECDC3F398A78100"
+      "sha256_lf": "A9946E56F8EA8A5E463F2DA16859BC1B0C97B45040A0D193470C2B5AC8471E63"
     }
   ],
   "upgrade_pair": {

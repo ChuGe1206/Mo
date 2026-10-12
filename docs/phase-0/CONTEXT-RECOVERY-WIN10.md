@@ -11,12 +11,17 @@ mo-cargo 已建立；有活动构建/测试时跳过，保留封存材料。
 新目录约定 C:/MoDev/Packages、Evidence、Archive/Legacy、Manifests。
 整理工具的 PS7/WinPS5.1 各十项合成检查通过，源快照资源策略 71 项通过。
 VM 从 saved 恢复，原生捕获仍超时，VBox 自带截图可读；无密码 guestcontrol
-受账户限制拒绝。已请求用户执行 MoEvidence/WorkspaceTools-v1 工具，回执返回
-WorkspaceGuest-v1。收到回执前不声称客机迁移完成，不用 UI 代敲终端命令。
+受账户限制拒绝。用户于 2026-10-12 确认已整理；WorkspaceGuest-v1 回执核验通过，
+17 个来源/归档路径符合严格规则且全部 moved，completed=true、failure=null。
+回执字段副本见 evidence/WIN10-WORKSPACE-MIGRATION-20261012.json，原文件保留在共享目录。结论依据工具回执
+与用户确认，没有独立枚举客机文件系统；仍不用 UI 代敲终端命令。
 
 0.0.14.0 fresh stage 已构建，MIT 声明嵌入 TIP；实际 MSI/Burn/ICE 通过。
 真实 stage golden/准备/Actor 通过，x64 fault N 47 ms 未消费失败，
 Win32 fault 未执行；不扩大复跑、不改变 50/400 ms 或 G2/G3。
+共享 Package0140-v1/kit 再次完整核验通过。已请求用户在普通权限 64-bit PowerShell
+运行 0.0.11.0 → 0.0.14.0 升级入口并回传 ChangedUpgradeGuest0140-v1；
+尚无该升级回执，不能声明已安装。
 
 
 ## 最新交接：2026-10-12

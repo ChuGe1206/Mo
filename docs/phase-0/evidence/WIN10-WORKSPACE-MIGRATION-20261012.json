@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "kind": "mo-vm-workspace-migration",
+  "created_utc": "2026-10-12T03:03:03.8575917Z",
+  "workspace": "C:\\MoDev",
+  "completed": true,
+  "moves": [
+    {
+      "source": "C:\\MoDesktopEvidence0100",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoDesktopEvidence0100",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoDesktopEvidence0110",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoDesktopEvidence0110",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoEvidence",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoEvidence",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoEvidence0910",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoEvidence0910",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoEvidence0911",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoEvidence0911",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoEvidence099",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoEvidence099",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoEvidenceV3",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoEvidenceV3",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKit",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKit",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKit0110",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKit0110",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKit0910",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKit0910",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKit0911",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKit0911",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKit099",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKit099",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoKitV3",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoKitV3",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoMatrix0100",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoMatrix0100",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoMatrixEvidence0100",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoMatrixEvidence0100",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoMsi099",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoMsi099",
+      "state": "moved"
+    },
+    {
+      "source": "C:\\MoProbe",
+      "destination": "C:\\MoDev\\Archive\\Legacy\\MoProbe",
+      "state": "moved"
+    }
+  ],
+  "failure": null
+}

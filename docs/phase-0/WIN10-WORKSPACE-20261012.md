@@ -34,7 +34,13 @@ computer-use 技能禁止通过界面代敲终端命令，因此已请求用户�
 
 工具已复制到共享 MoEvidence/WorkspaceTools-v1，带三文件 SHA256 manifest。
 成功时迁移回执回传 MoEvidence/WorkspaceGuest-v1。
-**未收到回执前，不声明客机目录已整理或已验证。**
+2026-10-12 用户确认已整理，共享目录已收到迁移回执。
+核验 format/kind、完成标记、空失败字段及全部路径/状态：17 个旧目录均为 moved，
+目标严格位于 C:/MoDev/Archive/Legacy，来源/目标无重复。
+[回执记录](evidence/WIN10-WORKSPACE-MIGRATION-20261012.json) 按仓库 JSON 格式保存，字段值未改；
+共享目录保留原文件，两份 SHA256 及格式转换均记入证据清单。回执创建时间为
+2026-10-12 11:03:03（Asia/Shanghai）。这项结论依据客机工具回执与用户确认，
+尚未独立枚举客机文件系统；不代表新安装或界面验收已通过。
 
 ## Cargo 缓存
 
@@ -59,7 +65,7 @@ stage manifest：5FB9D6E12A1D68FEC97AB78AF94BE0E34F39AC463658BBED1AECD4955B6FB54
 x64 fault 首键 N 47 ms 未消费失败，没有执行到 Win32 fault，不重复此回归。
 47 ms 不能据此当作超过 50 ms，根因未定。G2/G3 及历史负向结果保留。
 
-本机没有执行安装器，客机安装、目录整理和真实宿主仍需要回执。
+本机没有执行安装器。客机目录整理回执已核验；0.0.14.0 升级及真实宿主仍待回执。
 升级 kit 仅接受已验证的 0.0.11.0 基线；不同安装版本将被 driver 拒绝。
 
 ### 目录整理命令（虚拟机 PowerShell）
@@ -72,7 +78,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\vboxsvr\MoEvidence\Wo
 ### 配套升级入口（虚拟机的普通权限 64-bit PowerShell）
 
 关闭 Mo 设置和测试 Broker，保留原默认输入法及已启用但未活动的 Mo。
-先确认上一步目录已整理；下列包和证据目录须尚未存在。
+目录整理回执已核验。2026-10-12 再次通过共享 kit 的完整文件哈希与合同检查；
+已请求用户在客机执行以下升级入口，下列包和证据目录须尚未存在。
 UAC 由用户处理，driver 会核对 VM sentinel、当前安装版本及升级后全部载荷/设置状态。
 
 ```powershell
