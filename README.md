@@ -143,13 +143,15 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 2026-10-12 密度修订：[紧凑设计](docs/design/MO-DENSE-UI-20261012.md)、
 [Win10 证据与 0.0.16.0 包](docs/phase-0/WIN10-DENSE-UI-20261012.md)。
 默认正文完整显示当前页，空间不足自动换行，详情用于注释；设置窗收紧为 960×620。
-0.0.16.0 开发包已准备，VM 当前仍为 0.0.15.0，待旧 TIP 宿主卸载后实际升级。
+Win10 VM 已完成 0.0.15.0→0.0.16.0 实际升级，载荷、权限、设置和默认输入法保全通过；
+[安装态证据](docs/phase-0/WIN10-INSTALLED-0160-20261012.md)包含中英文各 7 幅预览及像素核验。
 
 默认完整候选、可选当前页详情、独立 Emoji/颜文字面板，以及三页原生设置和五款皮肤已实现。
 自定义配色/字号/圆角/布局支持数据文件导入导出；应用图标已嵌入二进制。
 [实现与截图](docs/design/MO-NATIVE-UI-20261012.md)、
 [协议和升级边界](docs/adr/0060-compact-candidates-symbols-and-skins.md)。
-新设置、Broker、TIP 须配套升级；Win10 VM 已完成 0.0.15.0 变更载荷升级验证。
+新设置、Broker、TIP 须配套升级；升级工具的只读管理员宿主复核见
+[ADR 0063](docs/adr/0063-read-only-elevated-tip-host-inspection.md)。
 升级前请保存文档并关闭加载 Mo 的应用；升级后仍运行的旧进程可能保留旧 DLL，
 继续显示旧候选皮肤。保存后重开应用；shell 仍持有旧 DLL 时，保存全部工作后注销。
 [旧宿主排查与升级检查](docs/phase-0/WIN10-TIP-HOST-0150-EVIDENCE.md)。

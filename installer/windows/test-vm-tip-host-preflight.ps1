@@ -13,6 +13,14 @@ function Run-ScanCase([string]$Mode, [int]$Loaded, [int]$Failed, [int]$Unknown, 
     $script:fixtureMode = $Mode
     $script:moduleQueries = 0
     $script:disposed = 0
+    function Get-MoVmHostProtectionLevel {
+        param([int]$ProcessId)
+        if ($script:fixtureMode -ceq 'protected-query-error') { throw 'synthetic protection error' }
+        if ($script:fixtureMode -cin @('protected-unsigned', 'protected-signed')) { return [uint32]3 }
+        if ($script:fixtureMode -ceq 'protected-other') { return [uint32]2 }
+        return [uint32]4294967294
+    }
+    function Test-MoVmInstalledTipsUnsigned { return $script:fixtureMode -ceq 'protected-unsigned' }
     function Get-CimInstance {
         [CmdletBinding()]param([string]$ClassName, [string]$Filter)
         if ($ClassName -cne 'Win32_Process' -or $Filter -cne 'SessionId=17') { throw 'Wrong scan scope.' }
@@ -36,7 +44,7 @@ function Run-ScanCase([string]$Mode, [int]$Loaded, [int]$Failed, [int]$Unknown, 
         if ($Id -eq $PID) { return [pscustomobject]@{ SessionId = $script:fixtureSessionId } }
         if ($Id -ne $script:fixtureProcessId) { throw 'Unexpected module query.' }
         $script:moduleQueries++
-        if ($script:fixtureMode -ceq 'module-error') { throw 'synthetic modules unavailable' }
+        if ($script:fixtureMode -cin @('module-error','protected-unsigned','protected-signed','protected-other','protected-query-error')) { throw 'synthetic modules unavailable' }
         $modules = @([pscustomobject]@{ ModuleName = 'unrelated.dll'; ModuleMemorySize = 4096 })
         if ($script:fixtureMode -ceq 'empty-modules') { $modules = @() }
         if ($script:fixtureMode -cin @('loaded-x64', 'loaded-x86')) {
@@ -79,6 +87,10 @@ Run-ScanCase 'loaded-x64' 1 0 0 $true
 Run-ScanCase 'loaded-x86' 1 0 0 $true
 Run-ScanCase 'module-error' 0 1 0 $true
 Run-ScanCase 'empty-modules' 0 1 0 $true
+Run-ScanCase 'protected-unsigned' 0 0 0 $false
+Run-ScanCase 'protected-signed' 0 1 0 $true
+Run-ScanCase 'protected-other' 0 1 0 $true
+Run-ScanCase 'protected-query-error' 0 1 0 $true
 Run-ScanCase 'other-owner' 0 0 0 $false
 Run-ScanCase 'unknown-owner' 0 0 1 $false
 Run-ScanCase 'owner-error' 0 0 1 $false

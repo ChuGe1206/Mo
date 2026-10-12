@@ -34,6 +34,8 @@ $copies = [ordered]@{
     'changed-upgrade-policy.ps1' = (Join-Path $PSScriptRoot 'changed-upgrade-policy.ps1')
     'initialize-disposable-vm.ps1' = (Join-Path $PSScriptRoot 'initialize-disposable-vm.ps1')
     'run-vm-changed-payload-upgrade.ps1' = (Join-Path $PSScriptRoot 'run-vm-changed-payload-upgrade.ps1')
+    'tip-host-inspection.ps1' = (Join-Path $PSScriptRoot 'tip-host-inspection.ps1')
+    'inspect-vm-tip-hosts.ps1' = (Join-Path $PSScriptRoot 'inspect-vm-tip-hosts.ps1')
 }
 foreach ($file in $copies.Values) {
     $null = Assert-MoPlainPath $file

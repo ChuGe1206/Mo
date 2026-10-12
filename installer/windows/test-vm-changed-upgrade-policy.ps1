@@ -41,7 +41,7 @@ try {
         'mo-setup-base-unsigned.exe','mo-setup-upgrade-unsigned.exe',
         'base-stage.json','upgrade-stage.json','base-linked.json','upgrade-linked.json',
         'linked-upgrade-pair-evidence.json','mo-tip-registrar.exe','vm-test-policy.ps1',
-        'changed-upgrade-policy.ps1','initialize-disposable-vm.ps1','run-vm-changed-payload-upgrade.ps1'
+        'changed-upgrade-policy.ps1','initialize-disposable-vm.ps1','run-vm-changed-payload-upgrade.ps1','tip-host-inspection.ps1','inspect-vm-tip-hosts.ps1'
     )
     foreach ($name in $fileNames) {
         "synthetic-$name" | Set-Content (Join-Path $kitRoot $name) -Encoding utf8NoBOM

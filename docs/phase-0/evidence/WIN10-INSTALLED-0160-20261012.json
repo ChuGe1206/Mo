@@ -1,0 +1,230 @@
+{
+  "format": 1,
+  "kind": "mo-win10-installed-upgrade-0160",
+  "date": "2026-10-12",
+  "development_only": true,
+  "base_version": "0.0.15.0",
+  "installed_version": "0.0.16.0",
+  "exit_code": 0,
+  "upgrade_completed": true,
+  "kit_directory": "build/mo-vm-changed-upgrade-kit-0150-0160-v3",
+  "kit_manifest_sha256": "309EEBF0F3A5A47366358DAA43B3842960D9EF21D1916A594A7738AEC3AA199C",
+  "bundle_sha256": "7C43C98505E22652AAF7BA588ED0A682D7CE3FFD970AFF04550CC59225BF0B54",
+  "payload_verified": true,
+  "install_tree_security_audited": true,
+  "settings_preserved": true,
+  "default_override_unchanged": true,
+  "final_state_verified": true,
+  "host_audit": {
+    "scope": "identified-current-user-current-session",
+    "checked_utc": "2026-10-12T12:36:48.6722610Z",
+    "scanned_process_count": 51,
+    "loaded_host_count": 0,
+    "failed_process_count": 0,
+    "unresolved_owner_count": 0,
+    "antimalware_light_unsigned_tip_exclusions": 1,
+    "elevated_read_only": true,
+    "installer_initiator_elevated": false
+  },
+  "installed_ui": {
+    "binary_sha256": "7DF128CEEC6FAAA81C4E67D064758FC333AAC720AA07E6AC92B9A1193B6B9053",
+    "languages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "preview_count": 14,
+    "pixel_comparisons": [
+      {
+        "language": "zh-CN",
+        "file": "settings-appearance.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-custom.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-dark.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-general.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-language-switch.bmp",
+        "width": 784,
+        "height": 501,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-privacy.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-small.bmp",
+        "width": 784,
+        "height": 501,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-appearance.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-custom.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-dark.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-general.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-language-switch.bmp",
+        "width": 784,
+        "height": 501,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-privacy.bmp",
+        "width": 944,
+        "height": 581,
+        "pixels_identical": true
+      },
+      {
+        "language": "en-US",
+        "file": "settings-small.bmp",
+        "width": 784,
+        "height": 501,
+        "pixels_identical": true
+      }
+    ],
+    "synthetic_profile_only": true
+  },
+  "tests": {
+    "host_preflight_per_shell": 14,
+    "host_inspection_per_shell": 26,
+    "upgrade_transaction_per_shell": 22,
+    "kit_policy_ps7": 34,
+    "ci_registered": true,
+    "remote_ci_verified": false
+  },
+  "not_executed": [
+    "desktop_input",
+    "loaded_tip_upgrade_matrix",
+    "post_upgrade_reboot",
+    "real_rime_first_key",
+    "physical_multi_dpi",
+    "system_high_contrast"
+  ],
+  "negative_history": [
+    "build/win10-evidence-clean-v1/Package0160-v2",
+    "build/win10-evidence-clean-v1/Package0160-v3/host-bridge-evidence"
+  ],
+  "evidence": [
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/upgrade-evidence-v1/upgrade-state.json",
+      "size": 5442,
+      "sha256": "79FF62B1ED224B85CCCDDC182B037A903C312BE7A0BDAA57EB0525961475DBAE"
+    },
+    {
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v3/vm-changed-upgrade-kit.json",
+      "size": 2983,
+      "sha256": "309EEBF0F3A5A47366358DAA43B3842960D9EF21D1916A594A7738AEC3AA199C"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/installed-ui-evidence-v1/receipt.json",
+      "size": 557,
+      "sha256": "83B06B6DB6FC3831C46A97CFBA01532A6F02B87097848FB722D5BBE3B8E9E50D"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/host-bridge-evidence-v4/bridge-result.json",
+      "size": 1149,
+      "sha256": "B51C3E495FDF6F0FBB74F4A2C10313DDFBABC7D3355EA239F64192C9495F218F"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/upgrade-evidence-v1/upgrade.log",
+      "size": 16095,
+      "sha256": "0CA9535D01A81E2C62A73C2E1CDF4DEC3886BB32DCEF93A951D2A48168DE2971"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/upgrade-evidence-v1/upgrade_000_MoMachinePackage.log",
+      "size": 671762,
+      "sha256": "317C2EE66E09DBD595B08F060AFC96951B0822EC62B271EFA6F726F1FB92DF69"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0160-v3/upgrade-evidence-v1/tip-host-elevated-audit.json",
+      "size": 1149,
+      "sha256": "7EC1356D8BF2071FB00ACE03AB258C7028622D6F1087E4B0CDA3132C57CE3F08"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/host-inspection-adapter-ps7-v2.log",
+      "size": 748,
+      "sha256": "98C49F5027ED10170C484C93AA837255D4FD9158A82C427316656E64039FDB4C"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/host-inspection-adapter-ps5-v2.log",
+      "size": 748,
+      "sha256": "98C49F5027ED10170C484C93AA837255D4FD9158A82C427316656E64039FDB4C"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/test-vm-tip-host-preflight.ps1.ps7-v2.log",
+      "size": 524,
+      "sha256": "BA68C5D42075B23ADDCACC604C8E4694E2B0453C3246B06086E3329BB6CB9E76"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/test-vm-tip-host-preflight.ps1.ps5-v2.log",
+      "size": 542,
+      "sha256": "90CB8504B2E0285EC4F6B6D0A7031867AB6AA38EBF67E24AC5E78C7D07875B0B"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/test-vm-changed-upgrade-policy.ps1.ps7-v2.log",
+      "size": 1624,
+      "sha256": "34F9C14ABAD92EB9FE7CDF2474B383810ED633415821A0B10FD948193C6E6437"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/test-vm-changed-upgrade-transaction.ps1.ps7-v2.log",
+      "size": 578,
+      "sha256": "B2EEADB32C634B393A00BB3CAA6AB6498EA0D0C227D1F844AEED7B94E96CC624"
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/test-vm-changed-upgrade-transaction.ps1.ps5-v2.log",
+      "size": 578,
+      "sha256": "B2EEADB32C634B393A00BB3CAA6AB6498EA0D0C227D1F844AEED7B94E96CC624"
+    }
+  ]
+}

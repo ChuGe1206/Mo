@@ -82,6 +82,8 @@ function Assert-MoVmSettingsPreserved([object]$Before, [object]$After) {
 # Metadata only: never inspect document text, window titles or command lines.
 # Ownership/module access can be restricted; this is explicitly a scoped scan,
 # not proof that no TIP exists in another account/session or protected process.
+. (Join-Path $PSScriptRoot 'tip-host-inspection.ps1')
+
 function Get-MoVmCurrentUserTipHostScan {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     try { $ownerSid = $identity.User.Value } finally { $identity.Dispose() }
@@ -90,6 +92,7 @@ function Get-MoVmCurrentUserTipHostScan {
     $failed = [Collections.Generic.List[int]]::new()
     $unknownOwner = [Collections.Generic.List[int]]::new()
     $scannedCount = 0
+    $protected = [Collections.Generic.List[object]]::new()
     foreach ($entry in @(Get-CimInstance Win32_Process -Filter ("SessionId={0}" -f $sessionId) -ErrorAction Stop)) {
         try {
             $owner = Invoke-CimMethod -InputObject $entry -MethodName GetOwnerSid -ErrorAction Stop
@@ -118,7 +121,16 @@ function Get-MoVmCurrentUserTipHostScan {
                 }
             }
         } catch {
-            $failed.Add([int]$entry.ProcessId)
+            $excluded = $false
+            try {
+                $level = Get-MoVmHostProtectionLevel ([int]$entry.ProcessId)
+                if ($level -eq $script:MoAntimalwareProtectionLevel -and (Test-MoVmInstalledTipsUnsigned)) {
+                    $protected.Add([pscustomobject]@{ process_id = [int]$entry.ProcessId
+                        protection_level = $level; installed_tips_unsigned = $true })
+                    $excluded = $true
+                }
+            } catch { $excluded = $false }
+            if (-not $excluded) { $failed.Add([int]$entry.ProcessId) }
         } finally {
             if ($null -ne $process) { $process.Dispose() }
         }
@@ -129,12 +141,21 @@ function Get-MoVmCurrentUserTipHostScan {
         loaded_hosts = @($loaded.ToArray())
         failed_process_ids = @($failed.ToArray())
         unresolved_owner_process_ids = @($unknownOwner.ToArray())
+        protected_hosts = @($protected.ToArray())
     }
 }
 
 function Assert-MoVmNoObservedTipHosts([object]$Scan) {
     if ($Scan.scope -cne 'identified-current-user-current-session') {
         throw 'Unexpected TIP host scan scope.'
+    }
+    if ($null -ne $Scan.PSObject.Properties['protected_hosts']) {
+        foreach ($entry in @($Scan.protected_hosts)) {
+            if ($entry.protection_level -ne $script:MoAntimalwareProtectionLevel -or
+                $entry.installed_tips_unsigned -isnot [bool] -or -not $entry.installed_tips_unsigned) {
+                throw 'Invalid protected-host exclusion.'
+            }
+        }
     }
     if (@($Scan.loaded_hosts).Count) {
         $hosts = @($Scan.loaded_hosts | ForEach-Object {
@@ -178,7 +199,7 @@ function Assert-MoVmChangedUpgradeKit([string]$KitRoot) {
         'base-stage.json', 'upgrade-stage.json', 'base-linked.json', 'upgrade-linked.json',
         'linked-upgrade-pair-evidence.json', 'mo-tip-registrar.exe', 'vm-test-policy.ps1',
         'changed-upgrade-policy.ps1', 'initialize-disposable-vm.ps1',
-        'run-vm-changed-payload-upgrade.ps1'
+        'run-vm-changed-payload-upgrade.ps1', 'tip-host-inspection.ps1', 'inspect-vm-tip-hosts.ps1'
     )
     $entries = @(Get-ChildItem -LiteralPath $root -Force)
     if (@($entries | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count -or
