@@ -45,7 +45,7 @@ function Assert-ProductState([string]$Code, [int]$Expected) {
 
 New-Item -ItemType Directory -Path $evidence | Out-Null
 $result = [ordered]@{
-    format = 2; kind = 'mo-vm-changed-payload-upgrade-evidence'; development_only = $true
+    format = 3; kind = 'mo-vm-changed-payload-upgrade-evidence'; development_only = $true
     vm_id = $sentinel.vm_id; completed = $false; installer_invocation_attempted = $false; exit_code = $null
     base_version = $kit.base_version; upgrade_version = $kit.upgrade_version
     base_bundle_sha256 = $kit.base_bundle_sha256; upgrade_bundle_sha256 = $kit.upgrade_bundle_sha256
@@ -55,11 +55,14 @@ $result = [ordered]@{
     base_payload_verified = $false; upgrade_payload_verified = $false
     install_tree_security_audited = $false; settings_preserved = $false; default_override_unchanged = $false
     loaded_tip_matrix_executed = $false; desktop_input_executed = $false; reboot_executed = $false
+    tip_host_scan = $null
     failure = $null; final_state = $null; final_state_verified = $false
     final_state_failure = $null; logs = $null
 }
 $operations = [ordered]@{
     Preflight = {
+        $result.tip_host_scan = Get-MoVmCurrentUserTipHostScan
+        Assert-MoVmNoObservedTipHosts $result.tip_host_scan
         if (@(Get-Process -Name 'mo-broker', 'mo-settings' -ErrorAction SilentlyContinue).Count) {
             throw 'Close Mo Broker and settings before this unloaded-process upgrade test.'
         }

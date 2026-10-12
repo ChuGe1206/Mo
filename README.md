@@ -144,6 +144,9 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 [实现与截图](docs/design/MO-NATIVE-UI-20261012.md)、
 [协议和升级边界](docs/adr/0060-compact-candidates-symbols-and-skins.md)。
 新设置、Broker、TIP 须配套升级；Win10 VM 已完成 0.0.15.0 变更载荷升级验证。
+升级前请保存文档并关闭加载 Mo 的应用；升级后仍运行的旧进程可能保留旧 DLL，
+继续显示旧候选皮肤。保存后重开应用；shell 仍持有旧 DLL 时，保存全部工作后注销。
+[旧宿主排查与升级检查](docs/phase-0/WIN10-TIP-HOST-0150-EVIDENCE.md)。
 最新设置文案资源、中英切换与常量整理已配套进入新包；实际安装 EXE 的合成
 呈现通过。安装态真实宿主、完整 UI 交互和首键问题仍待完成；
 [0.0.15.0 记录](docs/phase-0/WIN10-LOCALIZED-0150-EVIDENCE.md)、

@@ -76,6 +76,12 @@ jobs:
       - name: Test changed payload VM kit and execution guards
         shell: pwsh
         run: ./installer/windows/test-vm-changed-upgrade-policy.ps1
+      - name: Test loaded TIP host preflight on PowerShell 7
+        shell: pwsh
+        run: ./installer/windows/test-vm-tip-host-preflight.ps1
+      - name: Test loaded TIP host preflight on Windows PowerShell 5.1
+        shell: powershell
+        run: ./installer/windows/test-vm-tip-host-preflight.ps1
       - name: Test VM upgrade transaction success and failure paths
         shell: pwsh
         run: ./installer/windows/test-vm-changed-upgrade-transaction.ps1

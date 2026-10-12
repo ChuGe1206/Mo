@@ -352,8 +352,9 @@ Win10 VM. Use its original non-elevated user and 64-bit PowerShell 5.1:
 
 The guest driver requires the exact base MSI installed, new MSI absent, Mo
 enabled but inactive, and the existing Installed finalizer receipt. Finish
-settings writes and close Mo Broker/settings before running it; it does not
-stop processes. The VM user handles Burn's UAC request.
+settings writes and close Mo Broker/settings and applications loading Mo TIP
+before running it; it does not stop processes. Save unsaved documents first.
+A shell retaining TIP may require signing out after saving work. The VM user handles Burn's UAC request.
 
 The driver checks the base tree before installation and the upgrade tree
 afterwards, with machine COM/profile/finalizer, ACL, exact MSI states, unchanged
@@ -371,7 +372,8 @@ installed trees, tampering, paths/settings and pre-execution refusals.
 
 ### Upgrade transaction completion and final audit
 
-The changed upgrade driver's evidence is now format 2. Completion requires the
+The changed upgrade driver's evidence is now format 3 (historical format 2
+receipts remain unchanged). Completion requires the
 final registrar read to match Installed in addition to all upgrade checks.
 A final read error or state mismatch leaves completed=false and
 final_state_verified=false. The observed state is retained when it can be read;
@@ -393,3 +395,29 @@ Two cases extract the actual driver's operation bodies and run them through
 in-memory adapters to check product states, distinct payload contracts and
 synchronous Burn arguments. They do not execute an installer or prove a VM
 transaction succeeded.
+
+### Loaded TIP preflight (format 3)
+
+Before invoking Burn, the driver records `tip_host_scan`. The read-only scan
+uses CIM ownership metadata to select identified processes of the initiating
+user in the current session, then reads their module metadata. Observed
+`mo-tip.dll` hosts are refused even when their module filename points at the
+new installed file: a filename/disk hash cannot identify an old mapped image.
+Module access failures in identified current-user processes also refuse this
+test. Review those processes; the driver never terminates them or elevates
+itself to bypass access restrictions.
+
+Processes with unresolved ownership are separately recorded and excluded;
+other users/sessions are outside the scope. A successful scoped scan does not
+prove global absence or establish loaded-TIP upgrade acceptance. Process
+creation after the scan remains a race; the actual loaded-TIP/reboot matrix is
+still required. No document text, window titles, command lines or credentials
+are collected. Host records contain only PID, executable basename and mapped
+module size. This change applies to newly prepared kits; sealed old kits and
+historical evidence are preserved.
+
+`test-vm-tip-host-preflight.ps1` covers ownership isolation, unreadable/empty
+module inventories, unknown ownership, inventory failure, case-insensitive DLL
+matching, metadata fields and handle disposal. The transaction test additionally
+runs the production preflight body and verifies zero installer invocations
+when a TIP host is observed. Both tests are CI gates on PS7 and WinPS5.1.

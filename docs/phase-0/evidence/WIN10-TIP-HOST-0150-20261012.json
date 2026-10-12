@@ -1,0 +1,107 @@
+{
+  "format": 1,
+  "kind": "mo-tip-host-readonly-preflight",
+  "checked_utc": "2026-10-12T07:17:46.7314724Z",
+  "scan": {
+    "scope": "identified-current-user-current-session",
+    "scanned_process_count": 44,
+    "loaded_hosts": [
+      {
+        "process_id": 4760,
+        "process_name": "explorer",
+        "module_memory_bytes": 229376
+      },
+      {
+        "process_id": 8092,
+        "process_name": "conhost",
+        "module_memory_bytes": 229376
+      },
+      {
+        "process_id": 868,
+        "process_name": "notepad",
+        "module_memory_bytes": 229376
+      },
+      {
+        "process_id": 2584,
+        "process_name": "msedge",
+        "module_memory_bytes": 372736
+      },
+      {
+        "process_id": 8428,
+        "process_name": "notepad",
+        "module_memory_bytes": 372736
+      }
+    ],
+    "failed_process_ids": [
+      2528,
+      4356,
+      4456
+    ],
+    "unresolved_owner_process_ids": [
+      528,
+      584,
+      804,
+      1000,
+      9800
+    ]
+  },
+  "refused": true,
+  "refusal": "Mo TIP is still loaded: explorer (PID 4760), conhost (PID 8092), notepad (PID 868), msedge (PID 2584), notepad (PID 8428). Save documents and close affected apps; sign out if the shell holds it. Do not force-close unsaved documents.",
+  "installer_invoked": false,
+  "processes_stopped": false,
+  "document_text_read": false,
+  "raw_receipt": {
+    "path": "build/win10-evidence-clean-v1/TipHostPreflight0150-v1/guest-tip-hosts.json",
+    "sha256": "27d2ec5f6c570544263a91cc67c484b5413ca0a6ee6b912e0e226264a5f64bf6"
+  },
+  "pe_size_of_image_reference": {
+    "0.0.11.0_x64": 229376,
+    "0.0.15.0_x64": 372736
+  },
+  "old_notepad_started_utc": "2026-10-04T02:43:38.8517758Z",
+  "original_unsaved_document_preserved": true,
+  "settings": {
+    "candidate_skin": 5,
+    "skin_vertical": false
+  },
+  "desktop_input_executed": false,
+  "ui_automation_failure": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "coordinate input geometry is unavailable"
+  ],
+  "verification": {
+    "ps7_preflight_cases": 10,
+    "winps51_preflight_cases": 10,
+    "ps7_transaction_cases": 22,
+    "winps51_transaction_cases": 22,
+    "remote_ci_result": "pending",
+    "ps7_upgrade_kit_policy_cases": 34,
+    "logs": [
+      {
+        "path": "build/quality-layout-20261012/tip-preflight-final-ps7.log",
+        "sha256": "c3a40603d910f04fdbfd6413d9d2adb9e8eb4ad3c6fdc8a016b30e0758175405",
+        "size": 426
+      },
+      {
+        "path": "build/quality-layout-20261012/upgrade-transaction-final-ps7.log",
+        "sha256": "b2eeadb32c634b393a00bb3caa6ab6498ea0d0c227d1f844aeed7b94e96cc624",
+        "size": 578
+      },
+      {
+        "path": "build/quality-layout-20261012/upgrade-policy-final-ps7.log",
+        "sha256": "34f9c14abad92eb9fe7cdf2474b383810ed633415821a0b10fd948193c6e6437",
+        "size": 1624
+      },
+      {
+        "path": "build/quality-layout-20261012/tip-preflight-final-winps51.log",
+        "sha256": "b045f5ce51e3788e312a5d68c0e9bb6f5fdad04cd6c9a421e0c6e871591803e0",
+        "size": 444
+      },
+      {
+        "path": "build/quality-layout-20261012/upgrade-transaction-final-winps51.log",
+        "sha256": "b2eeadb32c634b393a00bb3caa6ab6498ea0d0c227d1f844aeed7b94e96cc624",
+        "size": 578
+      }
+    ]
+  }
+}

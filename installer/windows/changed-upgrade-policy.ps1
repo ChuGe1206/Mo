@@ -78,6 +78,79 @@ function Assert-MoVmSettingsPreserved([object]$Before, [object]$After) {
         $Before.sha256 -cne $After.sha256) { throw 'Upgrade changed the user settings file.' }
 }
 
+
+# Metadata only: never inspect document text, window titles or command lines.
+# Ownership/module access can be restricted; this is explicitly a scoped scan,
+# not proof that no TIP exists in another account/session or protected process.
+function Get-MoVmCurrentUserTipHostScan {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    try { $ownerSid = $identity.User.Value } finally { $identity.Dispose() }
+    $sessionId = (Get-Process -Id $PID).SessionId
+    $loaded = [Collections.Generic.List[object]]::new()
+    $failed = [Collections.Generic.List[int]]::new()
+    $unknownOwner = [Collections.Generic.List[int]]::new()
+    $scannedCount = 0
+    foreach ($entry in @(Get-CimInstance Win32_Process -Filter ("SessionId={0}" -f $sessionId) -ErrorAction Stop)) {
+        try {
+            $owner = Invoke-CimMethod -InputObject $entry -MethodName GetOwnerSid -ErrorAction Stop
+            if ($owner.ReturnValue -ne 0 -or [string]::IsNullOrWhiteSpace($owner.Sid)) {
+                $unknownOwner.Add([int]$entry.ProcessId)
+                continue
+            }
+            if ($owner.Sid -ne $ownerSid) { continue }
+        } catch {
+            $unknownOwner.Add([int]$entry.ProcessId)
+            continue
+        }
+        $process = $null
+        try {
+            $process = Get-Process -Id $entry.ProcessId -ErrorAction Stop
+            $modules = @($process.Modules)
+            if (-not $modules.Count) { throw 'Empty module inventory.' }
+            $scannedCount++
+            foreach ($module in $modules) {
+                if ($module.ModuleName -ieq 'mo-tip.dll') {
+                    $loaded.Add([pscustomobject]@{
+                        process_id = $process.Id
+                        process_name = $process.ProcessName
+                        module_memory_bytes = $module.ModuleMemorySize
+                    })
+                }
+            }
+        } catch {
+            $failed.Add([int]$entry.ProcessId)
+        } finally {
+            if ($null -ne $process) { $process.Dispose() }
+        }
+    }
+    return [pscustomobject]@{
+        scope = 'identified-current-user-current-session'
+        scanned_process_count = $scannedCount
+        loaded_hosts = @($loaded.ToArray())
+        failed_process_ids = @($failed.ToArray())
+        unresolved_owner_process_ids = @($unknownOwner.ToArray())
+    }
+}
+
+function Assert-MoVmNoObservedTipHosts([object]$Scan) {
+    if ($Scan.scope -cne 'identified-current-user-current-session') {
+        throw 'Unexpected TIP host scan scope.'
+    }
+    if (@($Scan.loaded_hosts).Count) {
+        $hosts = @($Scan.loaded_hosts | ForEach-Object {
+            '{0} (PID {1})' -f $_.process_name, $_.process_id
+        }) -join ', '
+        throw "Mo TIP is still loaded: $hosts. Save documents and close affected apps; sign out if the shell holds it. Do not force-close unsaved documents."
+    }
+    if (@($Scan.failed_process_ids).Count) {
+        throw ('Cannot inspect current-user TIP hosts: PID ' + ($Scan.failed_process_ids -join ', ') +
+            '. Review these processes before this upgrade test.')
+    }
+    if (@($Scan.unresolved_owner_process_ids).Count) {
+        Write-Warning 'TIP scan excludes processes with unresolved ownership; it cannot prove global absence.'
+    }
+}
+
 function Assert-MoVmChangedUpgradeKit([string]$KitRoot) {
     $root = Assert-MoVmPlainDosPath $KitRoot
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Upgrade kit must be a directory.' }

@@ -159,11 +159,22 @@ foreach ($case in @(
 }
 # Exercise the actual entry-point operation bodies through in-memory adapters.
 # The entry point itself is never run past its VM guard on this host.
-function Run-ProductionAdapterCase([bool]$FailFinal) {
+function Run-ProductionAdapterCase([bool]$FailFinal, [bool]$LoadedTip = $false) {
     $script:productionInstalled = $false
     $script:productionStatusReads = 0
     $script:productionFailFinal = $FailFinal
     $script:productionInstallCalls = 0
+    $script:productionLoadedTip = $LoadedTip
+    function Get-MoVmCurrentUserTipHostScan {
+        $hosts = @()
+        if ($script:productionLoadedTip) {
+            $hosts = @([pscustomobject]@{ process_id = 42; process_name = 'synthetic-host'; module_memory_bytes = 4096 })
+        }
+        return [pscustomobject]@{
+            scope = 'identified-current-user-current-session'; scanned_process_count = 1
+            loaded_hosts = $hosts; failed_process_ids = @(); unresolved_owner_process_ids = @()
+        }
+    }
     $kit = [pscustomobject]@{ base_product_code = 'synthetic-base'; upgrade_product_code = 'synthetic-upgrade' }
     $baseContract = 'synthetic-base-contract'
     $upgradeContract = 'synthetic-upgrade-contract'
@@ -244,6 +255,17 @@ function Run-ProductionAdapterCase([bool]$FailFinal) {
     $adapterResult = [ordered]@{}
     $caught = $null
     try { Invoke-MoVmChangedUpgradeTransaction $adapterResult $productionOperations } catch { $caught = $_ }
+    if ($LoadedTip) {
+        if ($null -eq $caught -or $caught.Exception.Message -notmatch 'Mo TIP is still loaded' -or
+            $script:productionInstallCalls -ne 0 -or $script:productionStatusReads -ne 1 -or
+            $adapterResult.installer_invocation_attempted -or $adapterResult.completed -or
+            @($adapterResult.tip_host_scan.loaded_hosts).Count -ne 1) {
+            throw 'Loaded TIP was not refused before installer invocation or its observation was lost.'
+        }
+        $script:testCount++
+        Write-Host 'PASS production loaded TIP refusal'
+        return
+    }
     if ($script:productionInstallCalls -ne 1 -or $script:productionStatusReads -ne 3) {
         throw 'Wrong production invocation or final read count.'
     }
@@ -260,6 +282,7 @@ function Run-ProductionAdapterCase([bool]$FailFinal) {
 }
 Run-ProductionAdapterCase $false
 Run-ProductionAdapterCase $true
+Run-ProductionAdapterCase $false $true
 
 $script:invalidInstallCalled = $false
 $badOperations = [ordered]@{ Install = { $script:invalidInstallCalled = $true; return 0 } }
