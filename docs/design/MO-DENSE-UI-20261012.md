@@ -35,7 +35,19 @@
 
 所有 UI 保持文本、Auto Layout、组件实例及变量绑定，没有整页截图填充。
 Figma 使用可用的 Noto Sans SC，原生使用 Microsoft YaHei UI；字体度量、系统下拉控件和标题栏
-不是像素一致。Figma 五词为 300×56，原生客机为 299×60，目标是完整内容及密度一致。
+不是像素一致。用户随后确认原生截图布局；Figma 五词实例已修正为与参考相同的 299×60，
+头部固定 28、正文 26、底部 6；六种皮肤的 Compact 主组件同步修正。
+预编辑行工具栏、页号、首选绿底及五词同排保持可编辑约束。
 可选详情现显示当前页六词，Emoji 网格均分列宽；首轮溢出已经截图核验并修复。
 
 [布局合同](../adr/0062-full-page-candidates-and-dense-settings.md) · [测试和包证据](../phase-0/WIN10-DENSE-UI-20261012.md)
+
+## 用户截图确认后的同步
+
+- [299×60 确认实例](https://www.figma.com/design/pFUWDZYKrLw9dxdNQ4XanU/Mo?node-id=207-1556)。
+- 结构核验：五条候选均在同一行；最后条目右边界 287，等于正文容器宽 287。
+- 去除 Compact 的额外阴影；圆角、间距、行高复用变量，新增页号标签宽度变量。
+- 评审板保持 355 个可编辑节点（含隐藏实例子节点）、75 个组件实例、零图像填充。
+- Figma 缺少 Microsoft YaHei UI，沿用 Noto Sans SC；尺寸/排列核验通过，
+  不宣称字体栅格与 Windows GDI 截图逐像素一致。
+- [同步回执](../phase-0/evidence/FIGMA-CANDIDATE-REFERENCE-20261012.json)。本次没有 Rust/原生源码变更、重新构建或覆盖已封存包。
