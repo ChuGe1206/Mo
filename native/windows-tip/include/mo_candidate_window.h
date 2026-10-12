@@ -27,6 +27,7 @@ public:
     void ReportSettingsFailure() noexcept;
 
 private:
+    friend struct CandidateWindowFixture; // Synthetic renderer/geometry regression only.
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM) noexcept;
     void Paint() noexcept;
     void Render(HDC dc) noexcept;
@@ -56,9 +57,6 @@ private:
     std::uint64_t revision_ = 0;
     ActionCallback callback_ = nullptr;
     void* context_ = nullptr;
-    int row_height_ = 38;
-    int header_height_ = 44;
-    int footer_height_ = 36;
     int padding_ = 12;
     int gap_ = 4;
     int radius_ = 12;
@@ -76,6 +74,14 @@ private:
     int view_ = 0; // Compact, expanded candidates, symbols.
     int category_ = 0;
     int compact_count_ = 0;
+    int compact_line_count_ = 0;
+    int compact_scroll_px_ = 0;
+    int compact_height_ = 0;
+    int page_label_width_ = 0;
+    RECT page_label_rect_{};
+    std::array<RECT, 32> compact_label_rects_{};
+    std::array<RECT, 32> compact_text_rects_{};
+    std::array<RECT, 32> compact_comment_rects_{};
     int symbol_count_ = 0;
     bool symbols_supported_ = false;
     bool quick_settings_supported_ = false;

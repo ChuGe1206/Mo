@@ -57,9 +57,9 @@ unsafe extern "system" fn invalidate_child(window: HWND, _: LPARAM) -> i32 {
 // contain raw numbers. Layout dimensions below are logical pixels at BASE_DPI.
 const BASE_DPI: u32 = 96;
 const BASE_DPI_I32: i32 = BASE_DPI as i32;
-const WINDOW_WIDTH_PX: i32 = 1116;
-const WINDOW_HEIGHT_PX: i32 = 760;
-const MIN_WINDOW_WIDTH_PX: i32 = 900;
+const WINDOW_WIDTH_PX: i32 = 960;
+const WINDOW_HEIGHT_PX: i32 = 620;
+const MIN_WINDOW_WIDTH_PX: i32 = 800;
 const MIN_WINDOW_HEIGHT_PX: i32 = 520;
 const PREVIEW_SMALL_HEIGHT_PX: i32 = 540;
 const PREVIEW_INITIAL_SCROLL_PX: i32 = 100;
@@ -68,19 +68,19 @@ const SCROLL_LINE_PX: i32 = 32;
 const WORD_SHIFT_BITS: u32 = u16::BITS;
 const WORD_MASK: usize = u16::MAX as usize;
 const FATAL_TITLE_FALLBACK: &str = "Mo settings could not start";
-const SIDEBAR_WIDTH_PX: i32 = 212;
-const FOOTER_HEIGHT_PX: i32 = 72;
-const INITIAL_CONTENT_WIDTH_PX: i32 = 888;
+const SIDEBAR_WIDTH_PX: i32 = 164;
+const FOOTER_HEIGHT_PX: i32 = 60;
+const INITIAL_CONTENT_WIDTH_PX: i32 = WINDOW_WIDTH_PX - SIDEBAR_WIDTH_PX;
 const MIN_CONTENT_WIDTH_PX: i32 = 400;
 const MIN_VIEWPORT_HEIGHT_PX: i32 = 120;
-const CONTENT_HEIGHT_PX: i32 = 644;
-const NARROW_LAYOUT_BREAKPOINT_PX: i32 = 720;
-const NARROW_SKINS_CONTENT_HEIGHT_PX: i32 = 810;
-const NARROW_CUSTOM_CONTENT_HEIGHT_PX: i32 = 1000;
-const PAGE_PADDING_PX: i32 = 24;
-const CARD_GAP_PX: i32 = 16;
+const CONTENT_HEIGHT_PX: i32 = 512;
+const NARROW_LAYOUT_BREAKPOINT_PX: i32 = 600;
+const NARROW_SKINS_CONTENT_HEIGHT_PX: i32 = 620;
+const NARROW_CUSTOM_CONTENT_HEIGHT_PX: i32 = 848;
+const PAGE_PADDING_PX: i32 = 20;
+const CARD_GAP_PX: i32 = 12;
 const SCROLL_STEP_PX: i32 = 56;
-const COMBO_ITEM_HEIGHT_PX: u32 = 34;
+const COMBO_ITEM_HEIGHT_PX: u32 = 28;
 const ICON_RESOURCE_ID: u16 = 1;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(usize)]
@@ -103,7 +103,7 @@ impl FontRole {
 const FONT_COUNT: usize = FontRole::ALL.len();
 const BODY_FONT_SIZE_PX: i32 = 14;
 const CAPTION_FONT_SIZE_PX: i32 = 12;
-const HEADING_FONT_SIZE_PX: i32 = 24;
+const HEADING_FONT_SIZE_PX: i32 = 22;
 const SECTION_FONT_SIZE_PX: i32 = 16;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum SettingsPage {
@@ -186,14 +186,14 @@ struct SidebarLayout {
     subtitle_bottom: i32,
 }
 const SIDEBAR: SidebarLayout = SidebarLayout {
-    navigation: rect(16, 122, 180, 44),
-    navigation_stride: 52,
-    language: rect(16, 302, 180, 36),
-    icon: rect(20, 26, 36, 36),
-    brand: rect(68, 30, 120, 28),
-    caption_left: 20,
-    caption_width: 180,
-    tagline_top: 76,
+    navigation: rect(12, 104, 140, 36),
+    navigation_stride: 44,
+    language: rect(12, 256, 140, 32),
+    icon: rect(16, 22, 30, 30),
+    brand: rect(56, 22, 96, 28),
+    caption_left: 16,
+    caption_width: 136,
+    tagline_top: 62,
     development_bottom: 82,
     subtitle_bottom: 54,
 };
@@ -213,16 +213,16 @@ struct FooterLayout {
 }
 const FOOTER: FooterLayout = FooterLayout {
     restore_left: SIDEBAR_WIDTH_PX + PAGE_PADDING_PX,
-    restore_width: 110,
+    restore_width: 120,
     button_width: 120,
-    button_gap: 12,
+    button_gap: 8,
     right_inset: PAGE_PADDING_PX,
-    button_bottom: 56,
-    button_height: 40,
-    status_left_gap: 6,
-    status_right_gap: 20,
-    status_bottom: 60,
-    status_height: 48,
+    button_bottom: 46,
+    button_height: 32,
+    status_left_gap: 8,
+    status_right_gap: 16,
+    status_bottom: 50,
+    status_height: 40,
     minimum_status_width: 100,
 };
 impl FooterLayout {
@@ -262,6 +262,79 @@ impl FooterLayout {
         )
     }
 }
+// Dense layout values are logical pixels; fonts retain their readable sizes.
+const CARD_INSET_PX: i32 = 16;
+const CARD_RADIUS_PX: i32 = 8;
+const HEADING_TOP_PX: i32 = 16;
+const SUBTITLE_TOP_PX: i32 = 48;
+const ROW_HELP_OFFSET_PX: i32 = 24;
+const ROW_HELP_HEIGHT_PX: i32 = 36;
+const ROW_CONTROL_WIDTH_PX: i32 = 176;
+const ROW_CONTROL_RIGHT_PX: i32 = PAGE_PADDING_PX + CARD_INSET_PX;
+const ROW_TEXT_CONTROL_GAP_PX: i32 = 20;
+const GENERAL_NOTICE_TOP_PX: i32 = 460;
+const THEME_TOP_PX: i32 = 84;
+const THEME_HEIGHT_PX: i32 = 44;
+const THEME_BUTTON_WIDTH_PX: i32 = 84;
+const THEME_BUTTON_GAP_PX: i32 = 4;
+const SKIN_GRID_TOP_PX: i32 = 140;
+const SKIN_TILE_HEIGHT_PX: i32 = 104;
+const SKIN_TILE_STRIDE_PX: i32 = 116;
+const LIVE_PREVIEW_HEIGHT_PX: i32 = 100;
+const SKIN_TILE_PREVIEW_COUNT: usize = 2;
+const PREVIEW_TOOLBAR_TEXT: &str = "‹ 1 ›  ⌄  ☺";
+const PREVIEW_INSET_PX: i32 = 6;
+const PREVIEW_HEADER_PX: i32 = 28;
+const PREVIEW_ITEM_GAP_PX: i32 = 3;
+const PREVIEW_ROW_MIN_PX: i32 = 26;
+const PREVIEW_TEXT_VERTICAL_INSET_PX: i32 = 2;
+const PREVIEW_MIN_WIDTH_PX: i32 = 176;
+const PREVIEW_TOOLBAR_WIDTH_PX: i32 = 80;
+const PREVIEW_TOOLBAR_RIGHT_PX: i32 = PREVIEW_TOOLBAR_WIDTH_PX + PREVIEW_INSET_PX;
+const PREVIEW_HEADER_RESERVED_PX: i32 = PREVIEW_TOOLBAR_RIGHT_PX + 10;
+const PRIVACY_INTRO_TOP_PX: i32 = 84;
+const PRIVACY_INTRO_HEIGHT_PX: i32 = 84;
+const PRIVACY_CALLOUT_TOP_PX: i32 = 368;
+const PRIVACY_CALLOUT_HEIGHT_PX: i32 = 84;
+const CUSTOM_FORM_TOP_PX: i32 = 120;
+const CUSTOM_FORM_HEIGHT_PX: i32 = 324;
+const CUSTOM_PREVIEW_NARROW_TOP_PX: i32 = 456;
+const CUSTOM_FILES_TOP_PX: i32 = 452;
+const CUSTOM_FILES_NARROW_TOP_PX: i32 = 792;
+const CUSTOM_CONTROL_LEFT_PX: i32 = 40;
+const CUSTOM_CONTROL_WIDTH_PX: i32 = 240;
+const CUSTOM_COLOR_FIRST_TOP_PX: i32 = 164;
+const CUSTOM_CONTROL_STRIDE_PX: i32 = 44;
+const CUSTOM_RADIUS_TOP_PX: i32 = 296;
+const CUSTOM_FONT_TOP_PX: i32 = 340;
+const CUSTOM_LAYOUT_TOP_PX: i32 = 384;
+struct SettingsRowsLayout {
+    top: i32,
+    height: i32,
+    title_offset: i32,
+    row_offset: i32,
+    row_stride: i32,
+}
+impl SettingsRowsLayout {
+    const fn row_y(&self, index: i32) -> i32 {
+        self.top + self.row_offset + index * self.row_stride
+    }
+}
+const GENERAL_INPUT_ROWS: SettingsRowsLayout = SettingsRowsLayout {
+    top: 84,
+    height: 176,
+    title_offset: 12,
+    row_offset: 44,
+    row_stride: 60,
+};
+const GENERAL_CANDIDATE_ROWS: SettingsRowsLayout = SettingsRowsLayout {
+    top: 272,
+    ..GENERAL_INPUT_ROWS
+};
+const PRIVACY_PREFERENCE_ROWS: SettingsRowsLayout = SettingsRowsLayout {
+    top: 180,
+    ..GENERAL_INPUT_ROWS
+};
 const SCHEME_LABELS: [TextKey; 5] = [
     TextKey::FullPinyin,
     TextKey::NaturalPinyin,
@@ -916,41 +989,93 @@ impl AppState {
                 ID_RESTORE => FOOTER.restore(height),
                 ID_RELOAD => FOOTER.reload(width, height),
                 ID_SAVE => FOOTER.save(width, height),
-                ID_SCHEME => rect(w - 244, 156, 196, 200),
-                ID_CHARACTER => rect(w - 244, 236, 196, 120),
-                ID_COMMENTS => rect(w - 96, 410, 48, 32),
-                ID_EMOJI => rect(w - 96, 490, 48, 32),
-                ID_LEARNING => rect(w - 96, 310, 48, 32),
-                ID_PRIVACY => rect(w - 96, 390, 48, 32),
-                ID_THEME_SYSTEM..=ID_THEME_DARK => rect(
-                    w - 316 + (id as i32 - ID_THEME_SYSTEM as i32) * 96,
-                    108,
-                    92,
+                ID_SCHEME => rect(
+                    w - ROW_CONTROL_RIGHT_PX - ROW_CONTROL_WIDTH_PX,
+                    GENERAL_INPUT_ROWS.row_y(0),
+                    ROW_CONTROL_WIDTH_PX,
+                    200,
+                ),
+                ID_CHARACTER => rect(
+                    w - ROW_CONTROL_RIGHT_PX - ROW_CONTROL_WIDTH_PX,
+                    GENERAL_INPUT_ROWS.row_y(1),
+                    ROW_CONTROL_WIDTH_PX,
+                    120,
+                ),
+                ID_COMMENTS => rect(
+                    w - ROW_CONTROL_RIGHT_PX - 48,
+                    GENERAL_CANDIDATE_ROWS.row_y(0),
+                    48,
                     32,
+                ),
+                ID_EMOJI => rect(
+                    w - ROW_CONTROL_RIGHT_PX - 48,
+                    GENERAL_CANDIDATE_ROWS.row_y(1),
+                    48,
+                    32,
+                ),
+                ID_LEARNING => rect(
+                    w - ROW_CONTROL_RIGHT_PX - 48,
+                    PRIVACY_PREFERENCE_ROWS.row_y(0),
+                    48,
+                    32,
+                ),
+                ID_PRIVACY => rect(
+                    w - ROW_CONTROL_RIGHT_PX - 48,
+                    PRIVACY_PREFERENCE_ROWS.row_y(1),
+                    48,
+                    32,
+                ),
+                ID_THEME_SYSTEM..=ID_THEME_DARK => rect(
+                    w - ROW_CONTROL_RIGHT_PX - 3 * THEME_BUTTON_WIDTH_PX - 2 * THEME_BUTTON_GAP_PX
+                        + (id as i32 - ID_THEME_SYSTEM as i32)
+                            * (THEME_BUTTON_WIDTH_PX + THEME_BUTTON_GAP_PX),
+                    THEME_TOP_PX + 8,
+                    THEME_BUTTON_WIDTH_PX,
+                    28,
                 ),
                 ID_SKIN_FIRST..=ID_SKIN_CUSTOM => {
                     let index = id as i32 - ID_SKIN_FIRST as i32;
                     rect(
-                        24 + (index % columns) * (card_width + CARD_GAP_PX),
-                        168 + (index / columns) * 152,
+                        PAGE_PADDING_PX + (index % columns) * (card_width + CARD_GAP_PX),
+                        SKIN_GRID_TOP_PX + (index / columns) * SKIN_TILE_STRIDE_PX,
                         card_width,
-                        136,
+                        SKIN_TILE_HEIGHT_PX,
                     )
                 }
                 ID_LANGUAGE => SIDEBAR.language,
-                ID_BACK => rect(24, 88, 120, 32),
-                ID_BACKGROUND => rect(44, 182, 240, 40),
-                ID_ACCENT => rect(44, 230, 240, 40),
-                ID_TEXT => rect(44, 278, 240, 40),
-                ID_RADIUS => rect(160, 330, 124, 170),
-                ID_FONT => rect(160, 378, 124, 170),
-                ID_LAYOUT => rect(44, 430, 240, 100),
+                ID_BACK => rect(PAGE_PADDING_PX, 80, 120, 28),
+                ID_BACKGROUND => rect(
+                    CUSTOM_CONTROL_LEFT_PX,
+                    CUSTOM_COLOR_FIRST_TOP_PX,
+                    CUSTOM_CONTROL_WIDTH_PX,
+                    32,
+                ),
+                ID_ACCENT => rect(
+                    CUSTOM_CONTROL_LEFT_PX,
+                    CUSTOM_COLOR_FIRST_TOP_PX + CUSTOM_CONTROL_STRIDE_PX,
+                    CUSTOM_CONTROL_WIDTH_PX,
+                    32,
+                ),
+                ID_TEXT => rect(
+                    CUSTOM_CONTROL_LEFT_PX,
+                    CUSTOM_COLOR_FIRST_TOP_PX + 2 * CUSTOM_CONTROL_STRIDE_PX,
+                    CUSTOM_CONTROL_WIDTH_PX,
+                    32,
+                ),
+                ID_RADIUS => rect(156, CUSTOM_RADIUS_TOP_PX, 124, 170),
+                ID_FONT => rect(156, CUSTOM_FONT_TOP_PX, 124, 170),
+                ID_LAYOUT => rect(
+                    CUSTOM_CONTROL_LEFT_PX,
+                    CUSTOM_LAYOUT_TOP_PX,
+                    CUSTOM_CONTROL_WIDTH_PX,
+                    100,
+                ),
                 ID_IMPORT => rect(
                     24,
                     if w < NARROW_LAYOUT_BREAKPOINT_PX {
-                        904
+                        CUSTOM_FILES_NARROW_TOP_PX
                     } else {
-                        552
+                        CUSTOM_FILES_TOP_PX
                     },
                     140,
                     40,
@@ -958,9 +1083,9 @@ impl AppState {
                 ID_EXPORT => rect(
                     180,
                     if w < NARROW_LAYOUT_BREAKPOINT_PX {
-                        904
+                        CUSTOM_FILES_NARROW_TOP_PX
                     } else {
-                        552
+                        CUSTOM_FILES_TOP_PX
                     },
                     140,
                     40,
@@ -1481,14 +1606,18 @@ impl AppState {
                 self.palette.text,
                 FontRole::Heading,
             );
-            self.label(
+            self.text(
                 dc,
                 &self.tr(TextKey::BrandTagline),
-                SIDEBAR.caption_left,
-                SIDEBAR.tagline_top,
-                SIDEBAR.caption_width,
+                self.box_at(
+                    SIDEBAR.caption_left,
+                    SIDEBAR.tagline_top,
+                    SIDEBAR.caption_width,
+                    40,
+                ),
                 self.palette.muted,
                 FontRole::Caption,
+                DT_LEFT | DT_WORDBREAK,
             );
             self.label(
                 dc,
@@ -1499,14 +1628,18 @@ impl AppState {
                 self.palette.muted,
                 FontRole::Caption,
             );
-            self.label(
+            self.text(
                 dc,
                 &self.tr(TextKey::BrandSubtitle),
-                SIDEBAR.caption_left,
-                height - SIDEBAR.subtitle_bottom,
-                SIDEBAR.caption_width,
+                self.box_at(
+                    SIDEBAR.caption_left,
+                    height - SIDEBAR.subtitle_bottom,
+                    SIDEBAR.caption_width,
+                    40,
+                ),
                 self.palette.muted,
                 FontRole::Caption,
+                DT_LEFT | DT_WORDBREAK,
             );
             fill(
                 dc,
@@ -1541,113 +1674,206 @@ impl AppState {
             self.label(
                 dc,
                 title,
-                24,
-                24,
-                self.content_width - 48,
+                PAGE_PADDING_PX,
+                HEADING_TOP_PX,
+                self.content_width - 2 * PAGE_PADDING_PX,
                 self.palette.text,
                 FontRole::Heading,
             );
             self.label(
                 dc,
                 subtitle,
-                24,
-                62,
-                self.content_width - 48,
+                PAGE_PADDING_PX,
+                SUBTITLE_TOP_PX,
+                self.content_width - 2 * PAGE_PADDING_PX,
                 self.palette.muted,
                 FontRole::Caption,
             );
         }
     }
     unsafe fn setting_row(&self, dc: HDC, title: &str, description: &str, y: i32) {
+        let left = PAGE_PADDING_PX + CARD_INSET_PX;
+        let width = self.content_width
+            - ROW_CONTROL_RIGHT_PX
+            - ROW_CONTROL_WIDTH_PX
+            - ROW_TEXT_CONTROL_GAP_PX
+            - left;
         unsafe {
-            self.label(
-                dc,
-                title,
-                48,
-                y,
-                self.content_width - 330,
-                self.palette.text,
-                FontRole::Body,
-            );
-            self.label(
+            self.label(dc, title, left, y, width, self.palette.text, FontRole::Body);
+            self.text(
                 dc,
                 description,
-                48,
-                y + 28,
-                self.content_width - 330,
+                self.box_at(left, y + ROW_HELP_OFFSET_PX, width, ROW_HELP_HEIGHT_PX),
                 self.palette.muted,
                 FontRole::Caption,
+                DT_LEFT | DT_WORDBREAK,
             );
         }
     }
-    unsafe fn candidate_preview(&self, dc: HDC, bounds: RECT, palette: Palette, vertical: bool) {
-        let width = (bounds.right - bounds.left) * BASE_DPI_I32 / self.dpi;
+    unsafe fn settings_card(
+        &self,
+        dc: HDC,
+        layout: &SettingsRowsLayout,
+        title: TextKey,
+        rows: [(TextKey, TextKey); 2],
+    ) {
         unsafe {
             rounded(
                 dc,
-                bounds,
-                palette.background,
-                palette.border,
-                self.s(self.draft.appearance.radius as i32),
+                self.box_at(
+                    PAGE_PADDING_PX,
+                    layout.top,
+                    self.content_width - 2 * PAGE_PADDING_PX,
+                    layout.height,
+                ),
+                self.palette.background,
+                self.palette.border,
+                self.s(CARD_RADIUS_PX),
             );
+            self.label(
+                dc,
+                &self.tr(title),
+                PAGE_PADDING_PX + CARD_INSET_PX,
+                layout.top + layout.title_offset,
+                self.content_width - 2 * (PAGE_PADDING_PX + CARD_INSET_PX),
+                self.palette.text,
+                FontRole::Section,
+            );
+            for (index, (name, help)) in rows.into_iter().enumerate() {
+                self.setting_row(
+                    dc,
+                    &self.tr(name),
+                    &self.tr(help),
+                    layout.row_y(index as i32),
+                );
+            }
+        }
+    }
+    unsafe fn candidate_preview(
+        &self,
+        dc: HDC,
+        bounds: RECT,
+        palette: Palette,
+        vertical: bool,
+        sample_count: usize,
+    ) {
+        unsafe {
             let saved = SaveDC(dc);
             OffsetViewportOrgEx(dc, bounds.left, bounds.top, null_mut());
-            self.label(
+            let font = if sample_count == SKIN_TILE_PREVIEW_COUNT {
+                FontRole::Body
+            } else if self.draft.appearance.skin == CandidateSkin::Custom {
+                FontRole::Candidate
+            } else {
+                FontRole::Section
+            };
+            SelectObject(dc, self.fonts[font as usize]);
+            let mut metrics: TEXTMETRICW = std::mem::zeroed();
+            GetTextMetricsW(dc, &mut metrics);
+            let row_height = self
+                .s(PREVIEW_ROW_MIN_PX)
+                .max(metrics.tmHeight + 2 * self.s(PREVIEW_TEXT_VERTICAL_INSET_PX));
+            let inset = self.s(PREVIEW_INSET_PX);
+            let gap = self.s(PREVIEW_ITEM_GAP_PX);
+            let samples: Vec<_> = PREVIEW_CANDIDATES
+                .into_iter()
+                .take(sample_count)
+                .enumerate()
+                .map(|(index, text)| {
+                    let text = format!("{} {text}", index + 1);
+                    let encoded = wide(&text);
+                    let mut extent: SIZE = std::mem::zeroed();
+                    GetTextExtentPoint32W(
+                        dc,
+                        encoded.as_ptr(),
+                        (encoded.len() - 1) as i32,
+                        &mut extent,
+                    );
+                    (text, extent.cx + 2 * inset)
+                })
+                .collect();
+            let natural_width = if vertical {
+                samples.iter().map(|(_, width)| *width).max().unwrap_or(0)
+            } else {
+                samples.iter().map(|(_, width)| *width).sum::<i32>()
+                    + gap * (samples.len().saturating_sub(1) as i32)
+            };
+            let width = (bounds.right - bounds.left)
+                .min((natural_width + 2 * inset).max(self.s(PREVIEW_MIN_WIDTH_PX)));
+            let mut x = inset;
+            let mut y = self.s(PREVIEW_HEADER_PX);
+            let mut slots = Vec::with_capacity(samples.len());
+            for (index, (_, item_width)) in samples.iter().enumerate() {
+                let item_width = if vertical {
+                    width - 2 * inset
+                } else {
+                    *item_width
+                };
+                if index > 0 && (vertical || x + item_width > width - inset) {
+                    x = inset;
+                    y += row_height + gap;
+                }
+                slots.push(rect(x, y, item_width, row_height));
+                x += item_width + gap;
+            }
+            rounded(
+                dc,
+                rect(0, 0, width, y + row_height + inset),
+                palette.background,
+                palette.border,
+                self.s(CARD_RADIUS_PX),
+            );
+            self.text(
                 dc,
                 "chun feng",
-                12,
-                8,
-                width - 90,
+                rect(
+                    inset,
+                    0,
+                    width - self.s(PREVIEW_HEADER_RESERVED_PX),
+                    self.s(PREVIEW_HEADER_PX),
+                ),
                 palette.text,
-                FontRole::Body,
+                FontRole::Caption,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE,
             );
-            self.label(
+            self.text(
                 dc,
-                &self.tr(TextKey::CandidateMode),
-                width - 68,
-                8,
-                56,
+                PREVIEW_TOOLBAR_TEXT,
+                rect(
+                    width - self.s(PREVIEW_TOOLBAR_RIGHT_PX),
+                    0,
+                    self.s(PREVIEW_TOOLBAR_WIDTH_PX),
+                    self.s(PREVIEW_HEADER_PX),
+                ),
                 palette.muted,
                 FontRole::Caption,
+                DT_RIGHT | DT_VCENTER | DT_SINGLELINE,
             );
-            let count = if !vertical && width < 300 { 2 } else { 5 };
-            for (index, text) in PREVIEW_CANDIDATES.into_iter().take(count).enumerate() {
-                let (x, y, item_width) = if vertical {
-                    (12, 44 + index as i32 * 36, width - 24)
-                } else {
-                    (
-                        12 + index as i32 * ((width - 24) / count as i32),
-                        42,
-                        (width - 24) / count as i32 - 4,
-                    )
-                };
+            for (index, ((text, _), slot)) in samples.iter().zip(slots).enumerate() {
                 if index == 0 {
                     rounded(
                         dc,
-                        self.box_at(x, y, item_width, 32),
+                        slot,
                         palette.accent,
                         palette.accent,
-                        self.s(8),
+                        self.s(CARD_RADIUS_PX),
                     );
                 }
-                self.label(
+                self.text(
                     dc,
-                    &format!("{} {text}", index + 1),
-                    x + 8,
-                    y + 2,
-                    item_width - 8,
+                    text,
+                    RECT {
+                        left: slot.left + inset,
+                        right: slot.right - inset,
+                        ..slot
+                    },
                     if index == 0 {
                         palette.on_accent
                     } else {
                         palette.text
                     },
-                    if width < 300 {
-                        FontRole::Body
-                    } else if self.draft.appearance.skin == CandidateSkin::Custom {
-                        FontRole::Candidate
-                    } else {
-                        FontRole::Section
-                    },
+                    font,
+                    DT_LEFT | DT_VCENTER | DT_SINGLELINE,
                 );
             }
             RestoreDC(dc, saved);
@@ -1670,68 +1896,30 @@ impl AppState {
                         &self.tr(TextKey::General),
                         &self.tr(TextKey::GeneralSubtitle),
                     );
-                    rounded(
+                    self.settings_card(
                         dc,
-                        self.box_at(24, 104, w - 48, 216),
-                        self.palette.background,
-                        self.palette.border,
-                        self.s(12),
+                        &GENERAL_INPUT_ROWS,
+                        TextKey::InputHabits,
+                        [
+                            (TextKey::InputScheme, TextKey::InputSchemeHelp),
+                            (TextKey::OutputCharacters, TextKey::OutputCharactersHelp),
+                        ],
                     );
-                    self.label(
+                    self.settings_card(
                         dc,
-                        &self.tr(TextKey::InputHabits),
-                        48,
-                        120,
-                        w - 96,
-                        self.palette.text,
-                        FontRole::Section,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::InputScheme),
-                        &self.tr(TextKey::InputSchemeHelp),
-                        156,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::OutputCharacters),
-                        &self.tr(TextKey::OutputCharactersHelp),
-                        236,
-                    );
-                    rounded(
-                        dc,
-                        self.box_at(24, 344, w - 48, 232),
-                        self.palette.background,
-                        self.palette.border,
-                        self.s(12),
-                    );
-                    self.label(
-                        dc,
-                        &self.tr(TextKey::CandidatesSection),
-                        48,
-                        360,
-                        w - 96,
-                        self.palette.text,
-                        FontRole::Section,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::Comments),
-                        &self.tr(TextKey::CommentsHelp),
-                        408,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::Emoji),
-                        &self.tr(TextKey::EmojiHelp),
-                        488,
+                        &GENERAL_CANDIDATE_ROWS,
+                        TextKey::CandidatesSection,
+                        [
+                            (TextKey::Comments, TextKey::CommentsHelp),
+                            (TextKey::Emoji, TextKey::EmojiHelp),
+                        ],
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::InputChangeNotice),
-                        24,
-                        592,
-                        w - 48,
+                        PAGE_PADDING_PX,
+                        GENERAL_NOTICE_TOP_PX,
+                        w - 2 * PAGE_PADDING_PX,
                         self.palette.muted,
                         FontRole::Caption,
                     );
@@ -1744,7 +1932,12 @@ impl AppState {
                     );
                     rounded(
                         dc,
-                        self.box_at(24, 96, w - 48, 56),
+                        self.box_at(
+                            PAGE_PADDING_PX,
+                            THEME_TOP_PX,
+                            w - 2 * PAGE_PADDING_PX,
+                            THEME_HEIGHT_PX,
+                        ),
                         self.palette.canvas,
                         self.palette.canvas,
                         self.s(12),
@@ -1753,7 +1946,7 @@ impl AppState {
                         dc,
                         &self.tr(TextKey::WindowTheme),
                         36,
-                        110,
+                        THEME_TOP_PX + 8,
                         180,
                         self.palette.text,
                         FontRole::Body,
@@ -1763,10 +1956,16 @@ impl AppState {
                     } else {
                         3
                     };
-                    let preview_y = 168 + (6 / columns) * 152 + 8;
+                    let preview_y =
+                        SKIN_GRID_TOP_PX + (6 / columns) * SKIN_TILE_STRIDE_PX + CARD_GAP_PX;
                     rounded(
                         dc,
-                        self.box_at(24, preview_y, w - 48, 120),
+                        self.box_at(
+                            PAGE_PADDING_PX,
+                            preview_y,
+                            w - 2 * PAGE_PADDING_PX,
+                            LIVE_PREVIEW_HEIGHT_PX,
+                        ),
                         self.palette.canvas,
                         self.palette.canvas,
                         self.s(12),
@@ -1775,7 +1974,7 @@ impl AppState {
                         dc,
                         &self.tr(TextKey::LivePreview),
                         36,
-                        preview_y + 8,
+                        preview_y + 4,
                         160,
                         self.palette.text,
                         FontRole::Body,
@@ -1784,9 +1983,10 @@ impl AppState {
                         skin_palette(self.draft.appearance.skin as u8, self.draft.appearance);
                     self.candidate_preview(
                         dc,
-                        self.box_at(36, preview_y + 36, w - 72, 76),
+                        self.box_at(32, preview_y + 32, w - 64, 62),
                         palette,
                         false,
+                        PREVIEW_CANDIDATES.len(),
                     );
                 }
                 PAGE_PRIVACY => {
@@ -1797,85 +1997,81 @@ impl AppState {
                     );
                     rounded(
                         dc,
-                        self.box_at(24, 104, w - 48, 104),
+                        self.box_at(
+                            PAGE_PADDING_PX,
+                            PRIVACY_INTRO_TOP_PX,
+                            w - 2 * PAGE_PADDING_PX,
+                            PRIVACY_INTRO_HEIGHT_PX,
+                        ),
                         self.palette.soft,
                         self.palette.soft,
-                        self.s(12),
+                        self.s(CARD_RADIUS_PX),
                     );
                     draw_svg_mask(
                         dc,
-                        self.box_at(48, 128, 24, 24),
+                        self.box_at(
+                            PAGE_PADDING_PX + CARD_INSET_PX,
+                            PRIVACY_INTRO_TOP_PX + 12,
+                            24,
+                            24,
+                        ),
                         include_bytes!("../../../assets/ui/shield.mask"),
                         self.palette.muted,
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::LocalLearningTitle),
-                        84,
-                        124,
-                        w - 132,
+                        PAGE_PADDING_PX + 52,
+                        PRIVACY_INTRO_TOP_PX + 8,
+                        w - 2 * PAGE_PADDING_PX - 68,
                         self.palette.text,
                         FontRole::Section,
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::LocalLearningHelp),
-                        48,
-                        160,
-                        w - 96,
+                        PAGE_PADDING_PX + CARD_INSET_PX,
+                        PRIVACY_INTRO_TOP_PX + 44,
+                        w - 2 * (PAGE_PADDING_PX + CARD_INSET_PX),
                         self.palette.muted,
                         FontRole::Caption,
                     );
-                    rounded(
+                    self.settings_card(
                         dc,
-                        self.box_at(24, 232, w - 48, 240),
-                        self.palette.background,
-                        self.palette.border,
-                        self.s(12),
-                    );
-                    self.label(
-                        dc,
-                        &self.tr(TextKey::LearningPreferences),
-                        48,
-                        252,
-                        w - 96,
-                        self.palette.text,
-                        FontRole::Section,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::Learning),
-                        &self.tr(TextKey::LearningHelp),
-                        308,
-                    );
-                    self.setting_row(
-                        dc,
-                        &self.tr(TextKey::PrivacyMode),
-                        &self.tr(TextKey::PrivacyHelp),
-                        388,
+                        &PRIVACY_PREFERENCE_ROWS,
+                        TextKey::LearningPreferences,
+                        [
+                            (TextKey::Learning, TextKey::LearningHelp),
+                            (TextKey::PrivacyMode, TextKey::PrivacyHelp),
+                        ],
                     );
                     rounded(
                         dc,
-                        self.box_at(24, 496, w - 48, 96),
+                        self.box_at(
+                            PAGE_PADDING_PX,
+                            PRIVACY_CALLOUT_TOP_PX,
+                            w - 2 * PAGE_PADDING_PX,
+                            PRIVACY_CALLOUT_HEIGHT_PX,
+                        ),
                         self.palette.canvas,
                         self.palette.canvas,
-                        self.s(12),
+                        self.s(CARD_RADIUS_PX),
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::PrivacyCallout),
-                        44,
-                        508,
-                        w - 88,
+                        PAGE_PADDING_PX + CARD_INSET_PX,
+                        PRIVACY_CALLOUT_TOP_PX + 8,
+                        w - 2 * (PAGE_PADDING_PX + CARD_INSET_PX),
                         self.palette.text,
                         FontRole::Body,
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::PrivacyResumeNotice),
-                        44,
-                        546,
-                        w - 88,
+                        PAGE_PADDING_PX + CARD_INSET_PX,
+                        PRIVACY_CALLOUT_TOP_PX + 44,
+                        w - 2 * (PAGE_PADDING_PX + CARD_INSET_PX),
                         self.palette.muted,
                         FontRole::Caption,
                     );
@@ -1888,7 +2084,12 @@ impl AppState {
                     );
                     rounded(
                         dc,
-                        self.box_at(24, 140, 284, 350),
+                        self.box_at(
+                            PAGE_PADDING_PX,
+                            CUSTOM_FORM_TOP_PX,
+                            284,
+                            CUSTOM_FORM_HEIGHT_PX,
+                        ),
                         self.palette.canvas,
                         self.palette.canvas,
                         self.s(12),
@@ -1897,7 +2098,7 @@ impl AppState {
                         dc,
                         &self.tr(TextKey::MySkin),
                         44,
-                        150,
+                        CUSTOM_FORM_TOP_PX + 12,
                         240,
                         self.palette.text,
                         FontRole::Section,
@@ -1906,7 +2107,7 @@ impl AppState {
                         dc,
                         &self.tr(TextKey::CornerRadius),
                         44,
-                        330,
+                        CUSTOM_RADIUS_TOP_PX,
                         100,
                         self.palette.text,
                         FontRole::Body,
@@ -1915,18 +2116,31 @@ impl AppState {
                         dc,
                         &self.tr(TextKey::CandidateFontSize),
                         44,
-                        378,
+                        CUSTOM_FONT_TOP_PX,
                         110,
                         self.palette.text,
                         FontRole::Body,
                     );
                     let narrow = w < NARROW_LAYOUT_BREAKPOINT_PX;
-                    let x = if narrow { 24 } else { 332 };
-                    let y = if narrow { 504 } else { 140 };
-                    let width = if narrow { w - 48 } else { w - 356 };
+                    let x = if narrow { PAGE_PADDING_PX } else { 316 };
+                    let y = if narrow {
+                        CUSTOM_PREVIEW_NARROW_TOP_PX
+                    } else {
+                        CUSTOM_FORM_TOP_PX
+                    };
+                    let width = if narrow {
+                        w - 2 * PAGE_PADDING_PX
+                    } else {
+                        w - 336
+                    };
+                    let preview_height = if self.draft.appearance.vertical {
+                        CUSTOM_FORM_HEIGHT_PX
+                    } else {
+                        260
+                    };
                     rounded(
                         dc,
-                        self.box_at(x, y, width, 360),
+                        self.box_at(x, y, width, preview_height),
                         self.palette.soft,
                         self.palette.soft,
                         self.s(12),
@@ -1945,12 +2159,13 @@ impl AppState {
                         self.box_at(x + 16, y + 64, width - 32, 238),
                         skin_palette(6, self.draft.appearance),
                         self.draft.appearance.vertical,
+                        PREVIEW_CANDIDATES.len(),
                     );
                     self.label(
                         dc,
                         &self.tr(TextKey::SkinPreviewHelp),
                         x + 16,
-                        y + 320,
+                        y + preview_height - 36,
                         width - 32,
                         self.palette.muted,
                         FontRole::Caption,
@@ -2051,12 +2266,18 @@ impl AppState {
                     &self.tr(TextKey::CustomDescription),
                 ];
                 if id != ID_SKIN_CUSTOM {
-                    self.candidate_preview(dc, self.box_at(12, 12, width - 24, 78), palette, false);
+                    self.candidate_preview(
+                        dc,
+                        self.box_at(8, 6, width - 16, 58),
+                        palette,
+                        false,
+                        SKIN_TILE_PREVIEW_COUNT,
+                    );
                     self.label(
                         dc,
                         titles[id - ID_SKIN_FIRST],
                         12,
-                        100,
+                        70,
                         width / 2,
                         self.palette.text,
                         FontRole::Body,
@@ -2065,7 +2286,7 @@ impl AppState {
                         dc,
                         descriptions[id - ID_SKIN_FIRST],
                         width / 2,
-                        100,
+                        70,
                         width / 2 - 12,
                         self.palette.muted,
                         FontRole::Caption,
@@ -2073,14 +2294,14 @@ impl AppState {
                 } else {
                     draw_svg_mask(
                         dc,
-                        self.box_at(width / 2 - 12, 20, 24, 24),
+                        self.box_at(width / 2 - 12, 12, 24, 24),
                         include_bytes!("../../../assets/ui/add.mask"),
                         self.palette.muted,
                     );
                     self.text(
                         dc,
                         titles[5],
-                        self.box_at(12, 62, width - 24, 28),
+                        self.box_at(12, 42, width - 24, 28),
                         self.palette.text,
                         FontRole::Body,
                         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
@@ -2088,7 +2309,7 @@ impl AppState {
                     self.text(
                         dc,
                         descriptions[5],
-                        self.box_at(12, 94, width - 24, 28),
+                        self.box_at(12, 70, width - 24, 28),
                         self.palette.muted,
                         FontRole::Caption,
                         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
@@ -3027,12 +3248,38 @@ mod tests {
         )
     }
     #[test]
-    fn shared_footer_preserves_independent_legacy_geometry() {
-        // Golden coordinates precede this refactor, independent of its fields.
-        assert_eq!(dimensions(FOOTER.restore(760)), (236, 704, 110, 40));
-        assert_eq!(dimensions(FOOTER.reload(900, 760)), (624, 704, 120, 40));
-        assert_eq!(dimensions(FOOTER.save(900, 760)), (756, 704, 120, 40));
-        assert_eq!(dimensions(FOOTER.status(900, 760)), (352, 700, 252, 48));
+    fn dense_footer_matches_independent_geometry() {
+        // Independent expected geometry for the intentionally dense settings chrome.
+        assert_eq!(dimensions(FOOTER.restore(760)), (184, 714, 120, 32));
+        assert_eq!(dimensions(FOOTER.reload(900, 760)), (632, 714, 120, 32));
+        assert_eq!(dimensions(FOOTER.save(900, 760)), (760, 714, 120, 32));
+        assert_eq!(dimensions(FOOTER.status(900, 760)), (312, 710, 304, 40));
+    }
+    #[test]
+    fn dense_content_rows_keep_help_and_controls_inside_cards() {
+        assert_eq!(GENERAL_INPUT_ROWS.row_y(0), 128);
+        assert_eq!(GENERAL_INPUT_ROWS.row_y(1), 188);
+        for layout in [
+            &GENERAL_INPUT_ROWS,
+            &GENERAL_CANDIDATE_ROWS,
+            &PRIVACY_PREFERENCE_ROWS,
+        ] {
+            assert!(layout.row_y(0) > layout.top + layout.title_offset + 28);
+            assert!(
+                layout.row_y(1) + ROW_HELP_OFFSET_PX + ROW_HELP_HEIGHT_PX
+                    <= layout.top + layout.height
+            );
+            assert!(layout.row_stride >= ROW_HELP_OFFSET_PX + ROW_HELP_HEIGHT_PX);
+        }
+        const {
+            assert!(
+                GENERAL_INPUT_ROWS.top + GENERAL_INPUT_ROWS.height < GENERAL_CANDIDATE_ROWS.top
+            );
+            assert!(
+                GENERAL_CANDIDATE_ROWS.top + GENERAL_CANDIDATE_ROWS.height < GENERAL_NOTICE_TOP_PX
+            );
+            assert!(GENERAL_NOTICE_TOP_PX + ROW_HELP_HEIGHT_PX < CONTENT_HEIGHT_PX);
+        }
     }
     #[test]
     fn footer_actions_and_status_do_not_overlap_at_supported_widths() {

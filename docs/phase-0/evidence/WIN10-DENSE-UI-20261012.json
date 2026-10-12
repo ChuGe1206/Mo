@@ -1,0 +1,247 @@
+{
+  "format": 1,
+  "kind": "mo-dense-ui-synthetic-validation",
+  "development_only": true,
+  "installed_version": "0.0.15.0",
+  "prepared_version": "0.0.16.0",
+  "installed_upgrade_executed": false,
+  "rust_passed_including_doc": 194,
+  "rust_ignored": 1,
+  "source_snapshot_changed_files_match": [
+    "assets/ui/text/en-US.mo",
+    "assets/ui/text/zh-CN.mo",
+    "crates/mo-settings-app/src/windows_app.rs",
+    "native/windows-tip/include/mo_candidate_window.h",
+    "native/windows-tip/probe/abi_probe.cpp",
+    "native/windows-tip/probe/candidate_preview.cpp",
+    "native/windows-tip/src/mo_candidate_window.cpp"
+  ],
+  "source_snapshot_file_count": 123,
+  "stage_file_count": 138,
+  "checks": [
+    {
+      "path": "build/dense-ui-20261012-v1/fmt-complete.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "size": 0
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/clippy-complete.log",
+      "sha256": "D53B9BDE11CDF1CA62E33A036F36D1328D458137A690112A9D1B9CA4110EFA87",
+      "size": 181
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/clippy-trace-complete.log",
+      "sha256": "4C2E60520679C557860D310B8F36CB4278AA7297CC41646E75C9688A2A4C599A",
+      "size": 73
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/workspace-complete.log",
+      "sha256": "7169A266CE49AB5A2B3A7129C0C09863A4A1D520CF3E38CBD11453FBAB8E7951",
+      "size": 21143
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/tip-broker-complete.log",
+      "sha256": "37C9B43FD969CABF6975910F1E6B88DDDFA4C126D51870AF0BFE2FEB7FDACE84",
+      "size": 28904
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/ui-assets-final.log",
+      "sha256": "DA09E8A2EB63BEC6FC22554A001493004B84AC6C63189A1C4B48E178DE9C69C9",
+      "size": 86
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/stage-0160-v1.log",
+      "sha256": "D9877DA850586E8C1DE038CB577250F68FE2D82B4EA467FCE335113C11EE90D8",
+      "size": 33456
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/installer-0160.log",
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF",
+      "size": 317
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/pair-0160.log",
+      "sha256": "5197394B6C5D855BE0362B4B21D8F21600D8BC122DA47ECFCA8406E836496BFB",
+      "size": 109
+    },
+    {
+      "path": "build/dense-ui-20261012-v1/kit-0160.log",
+      "sha256": "183272E7EA75D6098797166D507973BBEE34A93D14FF4673ED2422FC83EA1F84",
+      "size": 259
+    }
+  ],
+  "figma": {
+    "file_key": "pFUWDZYKrLw9dxdNQ4XanU",
+    "reviews": {
+      "settings": "216:388",
+      "candidates": "207:1552"
+    },
+    "font_note": "Noto Sans SC in Figma; Microsoft YaHei UI in native",
+    "ledger_sha256": "049A585C82F1763860237415480DFF49263FD0DAC5DB032020AC62F15F313C9D"
+  },
+  "vm_candidate": {
+    "exit": 0,
+    "files": 19
+  },
+  "vm_settings": [
+    {
+      "files": 7,
+      "done": true,
+      "language": "zh-CN",
+      "exit": 0
+    },
+    {
+      "files": 7,
+      "done": true,
+      "language": "en-US",
+      "exit": 0
+    }
+  ],
+  "host_preflight": {
+    "checked_utc": "2026-10-12T09:28:42.2009150Z",
+    "installer_executed": false,
+    "reason": "Mo TIP is still loaded: explorer (PID 4760), conhost (PID 8092), notepad (PID 868), notepad (PID 8428), msedge (PID 8108). Save documents and close affected apps; sign out if the shell holds it. Do not force-close unsaved documents.",
+    "scan": {
+      "scope": "identified-current-user-current-session",
+      "scanned_process_count": 44,
+      "loaded_hosts": [
+        {
+          "process_id": 4760,
+          "process_name": "explorer",
+          "module_memory_bytes": 229376
+        },
+        {
+          "process_id": 8092,
+          "process_name": "conhost",
+          "module_memory_bytes": 229376
+        },
+        {
+          "process_id": 868,
+          "process_name": "notepad",
+          "module_memory_bytes": 229376
+        },
+        {
+          "process_id": 8428,
+          "process_name": "notepad",
+          "module_memory_bytes": 372736
+        },
+        {
+          "process_id": 8108,
+          "process_name": "msedge",
+          "module_memory_bytes": 372736
+        }
+      ],
+      "failed_process_ids": [
+        2528,
+        4356,
+        4456
+      ],
+      "unresolved_owner_process_ids": [
+        528,
+        584,
+        804,
+        1000,
+        9800
+      ]
+    },
+    "decision": "refused"
+  },
+  "linked_installer": {
+    "format": 3,
+    "development_only": true,
+    "install_executed": false,
+    "build_flavor": "DevelopmentTest",
+    "fault_injection_included": true,
+    "wix_version": "4.0.6+73c89738",
+    "product_version": "0.0.16.0",
+    "msi_product_code": "{B11D4998-2CC4-469D-B0A6-072A05499D14}",
+    "msi_upgrade_code": "{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}",
+    "bundle_id": "{6FB41364-2B16-4976-B589-357F18F8BBF1}",
+    "bundle_upgrade_code": "{E08C0321-3F73-4D39-BC28-E7DF02C5134E}",
+    "known_link_warning": "WIX1140: per-user Bundle does not register a dependency on its per-machine MSI",
+    "msi_ice_validated": true,
+    "stage_manifest_sha256": "51BE363D5789DED1D18BCBE26DBAE712244C52207F505C0C8C9E06A2FD53855B",
+    "msi_sha256": "AD2F37A312FE623670790AAAE959911AD0499DFAD7BA0250A1970E79355A01D1",
+    "bundle_sha256": "7C43C98505E22652AAF7BA588ED0A682D7CE3FFD970AFF04550CC59225BF0B54"
+  },
+  "upgrade_pair": {
+    "format": 3,
+    "kind": "mo-linked-changed-payload-upgrade-pair",
+    "development_only": true,
+    "install_executed": false,
+    "build_flavor": "DevelopmentTest",
+    "fault_injection_included": true,
+    "base_version": "0.0.15.0",
+    "upgrade_version": "0.0.16.0",
+    "msi_upgrade_code": "{8245E1F5-8BC4-4D41-BA9C-65F30CEBCB32}",
+    "bundle_upgrade_code": "{E08C0321-3F73-4D39-BC28-E7DF02C5134E}",
+    "base_product_code": "{0F443280-96F1-408B-BB81-2857BEFD0FF8}",
+    "upgrade_product_code": "{B11D4998-2CC4-469D-B0A6-072A05499D14}",
+    "base_bundle_id": "{AC9F1040-E264-4EB6-9DB1-6A9C403C840C}",
+    "upgrade_bundle_id": "{6FB41364-2B16-4976-B589-357F18F8BBF1}",
+    "base_bundle_sha256": "8BE501B067CAF8B2B475182799EA864E0504CD68A8E5F930A8F4FA459E56D12B",
+    "upgrade_bundle_sha256": "7C43C98505E22652AAF7BA588ED0A682D7CE3FFD970AFF04550CC59225BF0B54",
+    "base_stage_manifest_sha256": "BC0F521B67BF46B7C08F2EC9A6A2151B33CAA4C9B0BDE43E2D2FD80269DBCF48",
+    "upgrade_stage_manifest_sha256": "51BE363D5789DED1D18BCBE26DBAE712244C52207F505C0C8C9E06A2FD53855B",
+    "base_linked_evidence_sha256": "6A9C721E1729E9366CD44EEB2D6A6EF4AC4B9A90B98D3F0EADB62C295657AAC6",
+    "upgrade_linked_evidence_sha256": "5B2E11DD9866D89DDC64873FE2737EB9B4A2D441AC9D9D8A8410A12783F6116F"
+  },
+  "synthetic_only": true,
+  "real_rime_first_key_rerun": false,
+  "failure_history": [
+    "Clippy constant assertions were converted to compile-time assertions.",
+    "Win10 standalone dynamic CRT settings preview failed with 0xC0000135; static CRT release passed.",
+    "An over-limit 1200-byte synthetic candidate was rejected; the scroll boundary fixture now uses the allowed 512-byte maximum.",
+    "Figma fixed emoji columns initially overflowed; confirmed equal-width columns now fit.",
+    "Cargo fmt hit a temporary source mapping lock during concurrent compilation; rerun after completion passed.",
+    "Pair artifact succeeded; an outer stale LASTEXITCODE check incorrectly reported failure.",
+    "Kit was created at its output root; an incorrect /kit copy source failed, then corrected without replacing sealed files."
+  ],
+  "artifacts": [
+    {
+      "path": "docs/design/previews/mo-win10-dense-nihao-20261012.png",
+      "size": 4411,
+      "sha256": "AEB77CCCB662EFE5FCE3949B006FD50337183B1CE16E255DECBC274439A5E404"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-dense-scroll-20261012.png",
+      "size": 2222,
+      "sha256": "1B9008B228CD3177E8C1953F7A147396BB65DCA0CC5EF7CE148EAF87055E7C3C"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-dense-settings-appearance-20261012.png",
+      "size": 50639,
+      "sha256": "546D3ACB7567A2A05B4159C4BE8781BDFDB4DC1C532D6051A5E7DF1E3B84D3C8"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-dense-settings-en-small-20261012.png",
+      "size": 28931,
+      "sha256": "25B1D9D34011DB37579AE3639F349FD45DA6C151B41E489961753DE19FEDAEB5"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-dense-settings-general-20261012.png",
+      "size": 38921,
+      "sha256": "A1E1F8202904B0449C4261DAE5E373374696484F347DCE7768B2E279967B4F44"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-dense-wrap-20261012.png",
+      "size": 4569,
+      "sha256": "CCE88EB691D66E2E8D887EDD09ED16E07490507793973FCDD1E0981E4243BC68"
+    }
+  ],
+  "cargo_cleanup": {
+    "checked_utc": "2026-10-12T09:37:37.9574244Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "active_project_tasks": 0,
+    "before_files": 5960,
+    "after_files": 0,
+    "before_logical_bytes": 1191069223,
+    "after_logical_bytes": 0,
+    "reclaimed_logical_bytes": 1191069223,
+    "disk_free_before": 34536751104,
+    "disk_free_after": 35640000512,
+    "build_preserved": true,
+    "download_cache_preserved": true,
+    "rebuild_for_cache_warmup": false
+  }
+}

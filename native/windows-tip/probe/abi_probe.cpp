@@ -1364,7 +1364,8 @@ bool WaitForCandidateWindow(bool visible, ITfTextInputProcessorEx* service,
     return false;
 }
 
-bool ClickCandidateWindow(int item) noexcept {
+enum class CandidateProbeTarget { FirstCandidate, PreviousPage, NextPage, Symbols, FirstSymbol };
+bool ClickCandidateWindow(CandidateProbeTarget item) noexcept {
     const HWND window = CandidateWindowForCurrentThread();
     if (window == nullptr) { return false; }
     const auto styles = GetWindowLongPtrW(window, GWL_EXSTYLE);
@@ -1374,20 +1375,19 @@ bool ClickCandidateWindow(int item) noexcept {
     }
     RECT client{}; GetClientRect(window, &client);
     const int dpi = static_cast<int>(GetDpiForWindow(window));
-    if (item < 32) {
-        const LPARAM expand = MAKELPARAM(client.right - MulDiv(58, dpi, 96), MulDiv(56, dpi, 96));
-        // Start from compact or already expanded, with predictable grid slots.
-        if (client.bottom == MulDiv(86, dpi, 96)) {
-            SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, expand);
-            SendMessageW(window, WM_LBUTTONUP, 0, expand);
-            GetClientRect(window, &client);
-        }
+    // Independent 96-DPI acceptance points for this owned fixture's first two pages.
+    // Selecting the first candidate must work directly, without opening details.
+    constexpr int kFirstCandidateX = 12, kFirstCandidateY = 41;
+    constexpr int kPreviousRightInset = 101, kNextRightInset = 65, kSymbolsRightInset = 17;
+    constexpr int kHeaderCenterY = 14, kFirstSymbolX = 42, kFirstSymbolY = 118;
+    int x = MulDiv(kFirstCandidateX, dpi, 96), y = MulDiv(kFirstCandidateY, dpi, 96);
+    if (item == CandidateProbeTarget::FirstSymbol) {
+        x = MulDiv(kFirstSymbolX, dpi, 96); y = MulDiv(kFirstSymbolY, dpi, 96);
+    } else if (item != CandidateProbeTarget::FirstCandidate) {
+        const int right = item == CandidateProbeTarget::PreviousPage ? kPreviousRightInset
+            : item == CandidateProbeTarget::NextPage ? kNextRightInset : kSymbolsRightInset;
+        x = client.right - MulDiv(right, dpi, 96); y = MulDiv(kHeaderCenterY, dpi, 96);
     }
-    const int cell_width = (client.right - MulDiv(40, dpi, 96)) / 3;
-    const int x = item >= 100 ? MulDiv(42, dpi, 96) : item >= 32 ? client.right - MulDiv(122 - (item - 32) * 32, dpi, 96)
-        : MulDiv(24, dpi, 96) + (item % 3) * (cell_width + MulDiv(8, dpi, 96));
-    const int y = item >= 100 ? MulDiv(176, dpi, 96) : item >= 32 ? MulDiv(56, dpi, 96)
-        : MulDiv(128 + (item / 3) * 64, dpi, 96);
     const HWND original_focus = GetFocus();
     const LPARAM position = MAKELPARAM(x, y);
     SendMessageW(window, WM_LBUTTONDOWN, MK_LBUTTON, position);
@@ -1717,9 +1717,9 @@ int probe_broker_input(
                     ReportCandidateState(service, L"stale-press-invariants");
                     keys_succeeded = false; break;
                 }
-                if (!ClickCandidateWindow(33) || !WaitForCandidateWindow(true, service, L"next-page")
-                    || !ClickCandidateWindow(32) || !WaitForCandidateWindow(true, service, L"previous-page")
-                    || !ClickCandidateWindow(0)) {
+                if (!ClickCandidateWindow(CandidateProbeTarget::NextPage) || !WaitForCandidateWindow(true, service, L"next-page")
+                    || !ClickCandidateWindow(CandidateProbeTarget::PreviousPage) || !WaitForCandidateWindow(true, service, L"previous-page")
+                    || !ClickCandidateWindow(CandidateProbeTarget::FirstCandidate)) {
                     std::wcerr << L"Candidate mouse paging/selection failed\n";
                     ReportCandidateState(service, L"mouse-page-selection-invariants");
                     keys_succeeded = false; break;
@@ -1794,7 +1794,7 @@ int probe_broker_input(
                 }
             }
             edit_store->DeferLocks(true);
-            const bool queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+            const bool queued = ClickCandidateWindow(CandidateProbeTarget::FirstCandidate) && edit_store->has_deferred_lock();
             edit_store->DeferLocks(false);
             const bool advanced = queued && SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, 'A');
             edit_store->GrantDeferredLock();
@@ -1815,7 +1815,7 @@ int probe_broker_input(
                 }
             }
             edit_store->DeferLocks(true);
-            const bool focus_queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+            const bool focus_queued = ClickCandidateWindow(CandidateProbeTarget::FirstCandidate) && edit_store->has_deferred_lock();
             edit_store->DeferLocks(false);
             result = direct_key_sink->OnSetFocus(FALSE);
             edit_store->GrantDeferredLock();
@@ -1832,7 +1832,7 @@ int probe_broker_input(
                     keys_succeeded = false; break;
                 }
             }
-            if (!keys_succeeded || !ClickCandidateWindow(0) || !WaitForCandidateWindow(false, service, L"focus-regain-selection")) {
+            if (!keys_succeeded || !ClickCandidateWindow(CandidateProbeTarget::FirstCandidate) || !WaitForCandidateWindow(false, service, L"focus-regain-selection")) {
                 std::wcerr << L"Candidate selection did not recover after focus regain\n";
                 ReportCandidateState(service, L"focus-recovery-invariants");
                 outcome = 1; break;
@@ -1858,7 +1858,7 @@ int probe_broker_input(
             }
             if (termination_case == 1) {
                 edit_store->DeferLocks(true);
-                const bool queued = ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+                const bool queued = ClickCandidateWindow(CandidateProbeTarget::FirstCandidate) && edit_store->has_deferred_lock();
                 edit_store->DeferLocks(false);
                 if (!queued) {
                     std::wcerr << L"Owner termination probe did not defer candidate action\n";
@@ -1934,10 +1934,10 @@ int probe_broker_input(
                 if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) { keys_succeeded = false; break; }
             }
             const auto composing_text = edit_store->text();
-            if (!keys_succeeded || !ClickCandidateWindow(35)
+            if (!keys_succeeded || !ClickCandidateWindow(CandidateProbeTarget::Symbols)
                 || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)
                 || edit_store->text() != composing_text || !WaitForCandidateWindow(true, service, L"emoji-escape-preserves-input")
-                || !ClickCandidateWindow(35) || !ClickCandidateWindow(100)
+                || !ClickCandidateWindow(CandidateProbeTarget::Symbols) || !ClickCandidateWindow(CandidateProbeTarget::FirstSymbol)
                 || !WaitForCandidateWindow(false, service, L"emoji-tsf-commit")) {
                 std::wcerr << L"Emoji panel/Esc/TSF edit-lock commit failed\n"; outcome = 1; break;
             }
@@ -1958,7 +1958,7 @@ int probe_broker_input(
                         }
                     }
                     edit_store->DeferLocks(true);
-                    keys_succeeded = keys_succeeded && ClickCandidateWindow(0) && edit_store->has_deferred_lock();
+                    keys_succeeded = keys_succeeded && ClickCandidateWindow(CandidateProbeTarget::FirstCandidate) && edit_store->has_deferred_lock();
                 }
                 const auto before_fault = edit_store->text();
                 if (!keys_succeeded || !CoordinateBrokerFault(fault_prefix, L"stop", cycle)) {
