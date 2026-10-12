@@ -243,5 +243,127 @@
     "build_preserved": true,
     "download_cache_preserved": true,
     "rebuild_for_cache_warmup": false
-  }
+  },
+  "sealed_stage_settings_preview": {
+    "receipt": {
+      "binary_sha256": "7DF128CEEC6FAAA81C4E67D064758FC333AAC720AA07E6AC92B9A1193B6B9053",
+      "cases": [
+        {
+          "files": 7,
+          "done": true,
+          "language": "zh-CN",
+          "exit": 0
+        },
+        {
+          "files": 7,
+          "done": true,
+          "language": "en-US",
+          "exit": 0
+        }
+      ]
+    },
+    "images": [
+      {
+        "language": "zh-CN",
+        "file": "settings-appearance.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-custom.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-dark.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-general.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-language-switch.bmp",
+        "pixels_equal": true,
+        "width": 784,
+        "height": 501
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-privacy.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "zh-CN",
+        "file": "settings-small.bmp",
+        "pixels_equal": true,
+        "width": 784,
+        "height": 501
+      },
+      {
+        "language": "en-US",
+        "file": "settings-appearance.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "en-US",
+        "file": "settings-custom.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "en-US",
+        "file": "settings-dark.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "en-US",
+        "file": "settings-general.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "en-US",
+        "file": "settings-language-switch.bmp",
+        "pixels_equal": true,
+        "width": 784,
+        "height": 501
+      },
+      {
+        "language": "en-US",
+        "file": "settings-privacy.bmp",
+        "pixels_equal": true,
+        "width": 944,
+        "height": 581
+      },
+      {
+        "language": "en-US",
+        "file": "settings-small.bmp",
+        "pixels_equal": true,
+        "width": 784,
+        "height": 501
+      }
+    ],
+    "binary_matches_stage": true,
+    "installed_binary": false
+  },
+  "standalone_candidate_binary_sha256": "88C26D98C49510486248883F955C7D09C7C1C950DCEDA2D82B240DF727A15A3E"
 }
