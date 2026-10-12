@@ -145,7 +145,9 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 [协议和升级边界](docs/adr/0060-compact-candidates-symbols-and-skins.md)。
 新设置、Broker、TIP 须配套升级；Win10 VM 已完成 0.0.14.0 变更载荷升级验证，
 [升级证据](docs/phase-0/WIN10-PACKAGED-0140-EVIDENCE.md)。安装态 UI/真实宿主和首键问题仍待完成。
-最新设置文案资源、中英切换与常量整理已在源码实施，尚未进入 VM 的 0.0.14.0 包；
+最新设置文案资源、中英切换与常量整理已配套生成 0.0.15.0 开发包，
+Win10 合成呈现已通过，实际升级待完成（VM 当前仍为 0.0.14.0）；
+[0.0.15.0 记录](docs/phase-0/WIN10-LOCALIZED-0150-EVIDENCE.md)、
 [质量审查记录](docs/phase-0/CODE-QUALITY-20261012.md)、
 [语言资源合同](docs/adr/0061-settings-text-catalogs-and-quality-contract.md)。
 

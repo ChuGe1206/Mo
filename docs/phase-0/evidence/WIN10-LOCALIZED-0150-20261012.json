@@ -1,0 +1,168 @@
+{
+  "format_version": 1,
+  "recorded_utc": "2026-10-12T05:43:05.733463+00:00",
+  "source_commit": "cf13a1a3f906bd269beafcb20f66f07212bcfee6",
+  "source": {
+    "path": "crates/mo-settings-app/src/windows_app.rs",
+    "bytes": 109271,
+    "sha256": "49735BFBD851791FD864E5AF63BFDD393E2C463318FAA8B2152978C60DF7B594"
+  },
+  "stage": {
+    "path": "build/mo-windows-stage-localized-0150-v2/stage/mo-stage.json",
+    "bytes": 24163,
+    "sha256": "BC0F521B67BF46B7C08F2EC9A6A2151B33CAA4C9B0BDE43E2D2FD80269DBCF48"
+  },
+  "linked": {
+    "path": "build/mo-linked-win10-localized-0150-v2/verification/linked-installer-evidence.json",
+    "bytes": 886,
+    "sha256": "6A9C721E1729E9366CD44EEB2D6A6EF4AC4B9A90B98D3F0EADB62C295657AAC6"
+  },
+  "kit": {
+    "path": "build/mo-vm-changed-upgrade-kit-0140-0150-v2/vm-changed-upgrade-kit.json",
+    "bytes": 2688,
+    "sha256": "6A96EEB92D0FF3588C616523BE293A79E54434F08586AC88C0F24E860B9473B4"
+  },
+  "build_receipt": {
+    "path": "build/mo-windows-stage-localized-0150-v2/stage/evidence/build-receipt.json",
+    "bytes": 20358,
+    "sha256": "EB629F4BC14F3B9963B0034AC2C2456C5EE13DB37850B36ED514387E63B88E1F"
+  },
+  "verification": {
+    "runtime_tests_passed": 192,
+    "doc_tests_passed": 1,
+    "strict_clippy_default": "passed",
+    "strict_clippy_latency_trace": "passed",
+    "fmt": "passed",
+    "pixel_identical_previews": 14,
+    "stage_payload_files": 132,
+    "stage_total_inventory_entries": 138,
+    "snapshotted_source_files": 123,
+    "data_runtime_entries_unchanged_from_0140": 127,
+    "msi_ice": "passed",
+    "native_release_architectures": [
+      "x64",
+      "Win32"
+    ]
+  },
+  "guest_preview": {
+    "path": "build/win10-evidence-clean-v1/PreviewGuest0150-v2/preview-receipt.json",
+    "bytes": 1668,
+    "sha256": "02AD7240AA97A714A6799AF9FB0E28B82B758AD216ACD2D9159B9D4983297422"
+  },
+  "logs": [
+    {
+      "path": "build/quality-layout-20261012/workspace-tests.log",
+      "bytes": 17583,
+      "sha256": "3095F3238EE477BF0DACBFC731875E10C2A710615B3E8265A46C92443D00E1D2"
+    },
+    {
+      "path": "build/quality-layout-20261012/workspace-tests-v2.log",
+      "bytes": 20968,
+      "sha256": "CA92FFA8179AFAE7A376E1ACF759E0BF9A949E4CDA05D4A73E5826462CBB5D16"
+    },
+    {
+      "path": "build/quality-layout-20261012/clippy-default-v2.log",
+      "bytes": 181,
+      "sha256": "2CC30E6408B4DBD84B769718B6178BFE5484E00B57712FD7EB65F1BFBE96BE12"
+    },
+    {
+      "path": "build/quality-layout-20261012/clippy-trace-v2.log",
+      "bytes": 73,
+      "sha256": "43410AA8ED1FA7C260A09D7C4B02F6D1376AB1CD49664B6C0D161D6D80FAA534"
+    },
+    {
+      "path": "build/quality-layout-20261012/stage-0150.log",
+      "bytes": 34012,
+      "sha256": "D1C82BF0DEE8632BC9BCFE82C74075DB5FC926BEE83E137AFC0F7C76D25BCD50"
+    },
+    {
+      "path": "build/quality-layout-20261012/linked-0150.log",
+      "bytes": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    {
+      "path": "build/quality-layout-20261012/stage-0150-v2.log",
+      "bytes": 34012,
+      "sha256": "C0FCB99F62335A3EBFCF5E5EA1CEC98CA408F9BF10416A64E06BDBC0DDA77495"
+    },
+    {
+      "path": "build/quality-layout-20261012/linked-0150-v2.log",
+      "bytes": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    {
+      "path": "build/quality-layout-20261012/pixel-comparison.json",
+      "bytes": 2101,
+      "sha256": "056BFAA02F45DFF8C7F5C13C6642D63B1045B6EB1D31AD263488FC68DE1FE4AE"
+    },
+    {
+      "path": "build/quality-layout-20261012/guest-preview.ps1",
+      "bytes": 4435,
+      "sha256": "FA2F5D234585405B99EABD8B294983ED687DAE56C4633F8A8CF2D71F1E41167D"
+    },
+    {
+      "path": "build/quality-layout-20261012/guest-preview.log",
+      "bytes": 1670,
+      "sha256": "1D10226E06D8966E365D78AB81C52F0815C005BC21F7ECFE24AF54EBA4C42470"
+    },
+    {
+      "path": "build/quality-layout-20261012/guest-kit-prepared.log",
+      "bytes": 159,
+      "sha256": "FE7A779D5C42CF414F038A32219FAA0E6A50103DE624922EF8F9A574E3025E23"
+    },
+    {
+      "path": "build/quality-layout-20261012/cargo-clean.log",
+      "bytes": 41,
+      "sha256": "E7DBB41FDC678EAEE6C71F5E0C0087C0E95D8BCBF7DED4957EBA96102B735A94"
+    },
+    {
+      "path": "build/quality-layout-20261012/cargo-clean-receipt.json",
+      "bytes": 409,
+      "sha256": "5705C592BF2D124055291A74F30ED3EF1F056C4193718F3156D20522D1B33AA2"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "docs/design/previews/mo-win10-0150-en-US-settings-general-20261012.png",
+      "bytes": 32582,
+      "sha256": "63BB32C8803C4042EF4518C66281CE3EDCBA5FA1C2CEBEECEBECB2C338FE65D0"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-0150-en-US-settings-small-20261012.png",
+      "bytes": 26665,
+      "sha256": "AE2F42ED6E0B6E56C21DFA2C2DDB90CD3EA5F76F7596DB24FA09C10E688F44CB"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-0150-startup-override-settings-general-20261012.png",
+      "bytes": 32644,
+      "sha256": "280757A859C04DEFC009CF0B3663419391BE58519AD881396B71C30BB0A8FECD"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-0150-zh-CN-settings-custom-20261012.png",
+      "bytes": 43345,
+      "sha256": "0115615A5BCF0D594254FE1B22BCA4D0B22DCAE5C6BE68ABC06EBF93C2BC21D4"
+    }
+  ],
+  "retained_negative": "First golden layout test rejected a 4 px status offset. Fixed source uses a 6 px gap; v1 stage/package remain historical and are not selected for upgrade.",
+  "installed_guest_version": "0.0.14.0",
+  "upgrade_executed": false,
+  "remaining": [
+    "close live settings safely",
+    "manual installer UAC",
+    "actual upgraded installation audit",
+    "ordinary input hosts and installed UI",
+    "physical DPI/OS high contrast/assistive tools"
+  ],
+  "g2_g3_unchanged": true,
+  "cache_cleanup": {
+    "format": 1,
+    "completed_utc": "2026-10-12T05:44:30.2216853Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "before_bytes": 804224070,
+    "after_bytes": 0,
+    "reclaimed_logical_bytes": 804224070,
+    "active_tasks": 0,
+    "exit_code": 0,
+    "preserved": "sealed build packages, stage, runtime, evidence, guest binaries and user data; Cargo download cache"
+  }
+}

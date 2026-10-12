@@ -4,6 +4,18 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-12 设置布局与 Win10 0.0.15.0
+
+- [本轮证据](WIN10-LOCALIZED-0150-EVIDENCE.md)：字体选择 typed、侧栏/底部布局记录复用；
+  首轮 4 px 偏移由独立 golden 捕获并修正，失败及 v1 包保留；使用 v2 快照。
+- 192 运行时＋1 doc、fmt、两套 strict Clippy 通过；实际 release 本机 14 幅预览
+  与原版本逐像素一致。Win10 客机四组语言/启动偏好/CLI 优先级/文案覆盖呈现通过，
+  原设置和已安装二进制不变。
+- 0.0.15.0 fresh release/双架构 ABI/132-file payload、MSI/Burn/ICE 和升级 kit 通过，
+  已放入 C:/MoDev/Packages/0.0.15.0；仍为 unsigned DevelopmentTest。
+  新安装未执行，VM 当前 0.0.14.0；待保留并关闭设置、切回原输入法和用户确认 UAC。
+  首键负向结果、50/400 ms 与 G2/G3 保持。
+
 ## 2026-10-12 质量规范与设置多语言
 
 - README 新增项目开发标准与提交审核清单；AGENTS 引用同一入口。

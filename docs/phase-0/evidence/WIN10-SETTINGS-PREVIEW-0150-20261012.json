@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "kind": "mo-guest-localized-settings-preview",
+  "completed": true,
+  "completed_utc": "2026-10-12T05:35:59.0272412Z",
+  "settings_sha256": "1677BDE1EDC32CA7848636CFEDA5A90C4EA67CAD25C997807F2AC87E98D7F859",
+  "installed_binary_unchanged": true,
+  "real_settings_unchanged": true,
+  "installer_executed": false,
+  "cases": [
+    {
+      "name": "zh-CN",
+      "exit_code": 0,
+      "before": "zh-CN",
+      "bmp_count": 7,
+      "caption_updated": true,
+      "engine_settings_created": false
+    },
+    {
+      "name": "en-US",
+      "exit_code": 0,
+      "before": "en-US",
+      "bmp_count": 7,
+      "caption_updated": true,
+      "engine_settings_created": false
+    },
+    {
+      "name": "startup-override",
+      "exit_code": 0,
+      "before": "en-US",
+      "bmp_count": 7,
+      "caption_updated": true,
+      "engine_settings_created": false
+    },
+    {
+      "name": "cli-priority",
+      "exit_code": 0,
+      "before": "zh-CN",
+      "bmp_count": 7,
+      "caption_updated": true,
+      "engine_settings_created": false
+    }
+  ]
+}
