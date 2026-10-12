@@ -11,7 +11,8 @@
   17 个旧目录已移入 Archive/Legacy，全部路径/状态核验通过。
 - 默认 Cargo target 已清理 20338 文件/3.1 GiB；每日 03:00 条件检查并在空闲时清理。
 - 新 0.0.14.0 fresh release/双架构/132-file stage、实际 MSI/Burn 反解和 ICE 通过；
-  是 unsigned DevelopmentTest，尚未执行客机安装。实际资源 golden/准备/Actor 通过，
+  是 unsigned DevelopmentTest；[实际客机升级](WIN10-PACKAGED-0140-EVIDENCE.md) 已完成，
+  exit 0、载荷/权限/设置/默认输入法及最终状态通过。实际资源 golden/准备/Actor 通过，
   x64 fault 首键 N 47 ms 未消费失败，Win32 fault 未到达，不升级 G2/G3。
 
 
@@ -25,7 +26,7 @@
   真实两架构 IPC/表情/pool 通过，x64 基本 TSF 独立复验通过，
   x64 fault N 62 ms 和 Win32 TSF N 16 ms 未消费仍为负向结果，未定位根因。
 - 新外观文件不能由旧版 Broker/设置应用读取，须配套升级。UI 截图仅合成数据；
-  后续已生成 0.0.14.0 开发包（见上节），VM 升级回执仍待取得；
+  后续已生成并成功升级 VM 至 0.0.14.0（见上节）；
   多 DPI/OS 高对比度和安装态真实应用待验证。
   不调整 50/400 ms，不升级 G2/G3；历史阶段记录保留。
 

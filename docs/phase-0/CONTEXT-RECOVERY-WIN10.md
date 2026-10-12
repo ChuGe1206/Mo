@@ -14,14 +14,16 @@ VM 从 saved 恢复，原生捕获仍超时，VBox 自带截图可读；无密�
 受账户限制拒绝。用户于 2026-10-12 确认已整理；WorkspaceGuest-v1 回执核验通过，
 17 个来源/归档路径符合严格规则且全部 moved，completed=true、failure=null。
 回执字段副本见 evidence/WIN10-WORKSPACE-MIGRATION-20261012.json，原文件保留在共享目录。结论依据工具回执
-与用户确认，没有独立枚举客机文件系统；仍不用 UI 代敲终端命令。
+与用户确认；凭据通道恢复后也直接核验 17 个旧来源不存在、归档目标存在。
 
 0.0.14.0 fresh stage 已构建，MIT 声明嵌入 TIP；实际 MSI/Burn/ICE 通过。
 真实 stage golden/准备/Actor 通过，x64 fault N 47 ms 未消费失败，
 Win32 fault 未执行；不扩大复跑、不改变 50/400 ms 或 G2/G3。
 共享 Package0140-v1/kit 再次完整核验通过。已请求用户在普通权限 64-bit PowerShell
 运行 0.0.11.0 → 0.0.14.0 升级入口并回传 ChangedUpgradeGuest0140-v1；
-尚无该升级回执，不能声明已安装。
+现已收到并核验升级回执：用户确认 UAC 后 exit 0，载荷/ACL/机器 COM、设置/
+默认输入法保全和最终 Installed 状态通过，两份安装日志哈希一致。当前 VM 已安装
+0.0.14.0，见 WIN10-PACKAGED-0140-EVIDENCE.md；真实桌面/loaded-TIP/重启未执行。
 
 
 ## 最新交接：2026-10-12

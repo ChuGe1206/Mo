@@ -1,0 +1,46 @@
+{
+  "format": 2,
+  "kind": "mo-vm-changed-payload-upgrade-evidence",
+  "development_only": true,
+  "vm_id": "a43fc65eef274711b44708fcefaabcc8",
+  "completed": true,
+  "installer_invocation_attempted": true,
+  "exit_code": 0,
+  "base_version": "0.0.11.0",
+  "upgrade_version": "0.0.14.0",
+  "base_bundle_sha256": "25B1B2BA8DBCAA8904830F38E0303147FB5D208760611A84F09836414502E978",
+  "upgrade_bundle_sha256": "E161175B81FF405C5C81813869CD61457C32DA0087608AD0A1A648B82795DFB4",
+  "base_stage_manifest_sha256": "2D796DC212348F760470B8CE2A547B02943C8EAE4377306CED388D077E476B7B",
+  "upgrade_stage_manifest_sha256": "5FB9D6E12A1D68FEC97AB78AF94BE0E34F39AC463658BBED1AECD4955B6FB546",
+  "kit_manifest_sha256": "B4623BADF9D1FBCEFEAB01894CF6FCE2A6C5C54853CD84C7447A8568312BB83F",
+  "base_payload_verified": true,
+  "upgrade_payload_verified": true,
+  "install_tree_security_audited": true,
+  "settings_preserved": true,
+  "default_override_unchanged": true,
+  "loaded_tip_matrix_executed": false,
+  "desktop_input_executed": false,
+  "reboot_executed": false,
+  "failure": null,
+  "final_state": {
+    "profile.enabled": "true",
+    "profile.registered": "true",
+    "com.x86": "missing",
+    "user.finalizer.transaction": "mo-user-finalizer-install-v1-disabled",
+    "com.x64": "missing",
+    "profile.active": "false",
+    "user.finalizer": "v1"
+  },
+  "final_state_verified": true,
+  "final_state_failure": null,
+  "logs": {
+    "upgrade.log": {
+      "size": 16283,
+      "sha256": "2AA46787BC87A913E9FDDB8521F62ED72AEEDF51C510D743894C401554CEE135"
+    },
+    "upgrade_000_MoMachinePackage.log": {
+      "size": 677424,
+      "sha256": "2F7500C15E8AD193B902A86DAD963D6FC6B9847FFD139CB91FD841DE0570F573"
+    }
+  }
+}

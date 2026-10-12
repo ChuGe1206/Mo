@@ -25,11 +25,11 @@
   "guest": {
     "running": true,
     "migration_verified": true,
-    "new_install_verified": false,
-    "remote_control": "computer-use captures timed out; blank-password guestcontrol rejected",
+    "new_install_verified": true,
+    "remote_control": "Authenticated VirtualBox guestcontrol restored; guest PowerShell uses non-elevated token; UAC confirmed manually by user",
     "tool_shared": "MoEvidence/WorkspaceTools-v1",
     "upgrade_shared": "MoEvidence/Package0140-v1/kit",
-    "migration_verification_basis": "Returned guest journal and user confirmation; no independent guest filesystem enumeration",
+    "migration_verification_basis": "Returned guest journal, user confirmation, and direct guest filesystem checks: all 17 sources absent and archive destinations present",
     "migration_receipt": {
       "path": "docs/phase-0/evidence/WIN10-WORKSPACE-MIGRATION-20261012.json",
       "sha256": "38E4F666D2BAC8C8367DBAD3BED10BE4D014DFFF21B612C3C3C8F11576FCB792",
@@ -40,7 +40,16 @@
       "source_sha256": "AE6A363F86407A74A69E59C3F22795202B1FD571320070A5AD930B6B08741926",
       "source_shared_path": "MoEvidence/WorkspaceGuest-v1/migration-d2b82d831df14ff89ea0df38544a6917.json",
       "transformation": "UTF-8 without BOM, LF, two-space JSON indentation; all values preserved"
-    }
+    },
+    "upgrade_receipt": {
+      "path": "docs/phase-0/evidence/WIN10-UPGRADE-0140-20261012.json",
+      "sha256": "CA5C92F26A28B4C651FA0B887EF97B6F27CB7DB27D1FF1AFFD03AD12ED5B0188",
+      "source_sha256": "C441180DDF0525B9C18F489C8399B3AEB94C1A61D0003DC6DEA5123574E1C11C",
+      "source_shared_path": "MoEvidence/ChangedUpgradeGuest0140-v1/upgrade-state.json",
+      "logs_verified": 2,
+      "transformation": "UTF-8 without BOM, LF, two-space indentation; values preserved"
+    },
+    "installed_version": "0.0.14.0"
   },
   "package": {
     "format": 3,
@@ -103,7 +112,7 @@
     },
     {
       "path": "docs/phase-0/WIN10-WORKSPACE-20261012.md",
-      "sha256_lf": "A9946E56F8EA8A5E463F2DA16859BC1B0C97B45040A0D193470C2B5AC8471E63"
+      "sha256_lf": "E1CFEB906C314F43D4A1EDC904F926771DC4AE5C19EA03FA6BE451DF61582474"
     }
   ],
   "upgrade_pair": {
