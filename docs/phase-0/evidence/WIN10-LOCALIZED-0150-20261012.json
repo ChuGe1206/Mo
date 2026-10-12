@@ -42,7 +42,8 @@
     "native_release_architectures": [
       "x64",
       "Win32"
-    ]
+    ],
+    "installed_guest_pixel_identical_previews": 7
   },
   "guest_preview": {
     "path": "build/win10-evidence-clean-v1/PreviewGuest0150-v2/preview-receipt.json",
@@ -119,6 +120,56 @@
       "path": "build/quality-layout-20261012/cargo-clean-receipt.json",
       "bytes": 409,
       "sha256": "5705C592BF2D124055291A74F30ED3EF1F056C4193718F3156D20522D1B33AA2"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/ChangedUpgradeGuest0150-v2/upgrade.log",
+      "bytes": 16284,
+      "sha256": "8401AEF54869D3CAB6BE30FA19750BA7E49B13504B83D24012852BB237DB75B5"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/ChangedUpgradeGuest0150-v2/upgrade_000_MoMachinePackage.log",
+      "bytes": 677204,
+      "sha256": "32F86BF0624500E78C2078F3BAD44472C4B4B228A30380D7F7D644AE72A55342"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/UpgradeLaunchGuest0150-v2/stderr.txt",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/UpgradeLaunchGuest0150-v2/stdout.txt",
+      "bytes": 103,
+      "sha256": "3E9623F7BB8B02B30007EF4367AEC3D20030A36CA1B19FD5068E9A1F68CBE2A1"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/UpgradeLaunchGuest0150-v2/launch-state.json",
+      "bytes": 202,
+      "sha256": "86AD3F77550B3F01399F17995E909AC9708716C1DFFB92FD644CA93DF23469E4"
+    },
+    {
+      "path": "build/quality-layout-20261012/upgrade-launch.log",
+      "bytes": 48,
+      "sha256": "0BD77D2702D2C5BA3E9DD842CC0AF38A8C19CC42B4BE5D89D2F87C88D6FDFE58"
+    },
+    {
+      "path": "build/quality-layout-20261012/upgrade-progress-1.log",
+      "bytes": 1108,
+      "sha256": "238DA72A8EC08B8020E746EAB6892F3BB08FF8BD8DF7E01987A9FFEBDA66961A"
+    },
+    {
+      "path": "build/quality-layout-20261012/upgrade-receipt-return.log",
+      "bytes": 2290,
+      "sha256": "956674FB9438322CB9440D96AA9C2C6B646403019436E024AFAD5A0479EC3D93"
+    },
+    {
+      "path": "build/quality-layout-20261012/installed-preview.log",
+      "bytes": 58,
+      "sha256": "D929D447328AE472B96F627D1661E85098886D8CD4B080B9D8CE839FB50CA750"
+    },
+    {
+      "path": "build/quality-layout-20261012/installed-preview-comparison.json",
+      "bytes": 526,
+      "sha256": "040246BE3BECE970BFA01C515588107DD8FCB061614D83137C1B396B7264D30F"
     }
   ],
   "screenshots": [
@@ -141,17 +192,27 @@
       "path": "docs/design/previews/mo-win10-0150-zh-CN-settings-custom-20261012.png",
       "bytes": 43345,
       "sha256": "0115615A5BCF0D594254FE1B22BCA4D0B22DCAE5C6BE68ABC06EBF93C2BC21D4"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-installed-0150-settings-general-20261012.png",
+      "bytes": 39296,
+      "sha256": "C7F7D2A2126D39E8EE9DFEC2E2EAA9A50B399D5A048D2D95445E5BC19FA9DC7E"
+    },
+    {
+      "path": "docs/design/previews/mo-win10-installed-0150-settings-language-switch-20261012.png",
+      "bytes": 26419,
+      "sha256": "F498C10977F7BF5D10FA89341AE1EA8E3CB90F510F7D818DF1FDA77A1F7EB308"
     }
   ],
   "retained_negative": "First golden layout test rejected a 4 px status offset. Fixed source uses a 6 px gap; v1 stage/package remain historical and are not selected for upgrade.",
-  "installed_guest_version": "0.0.14.0",
-  "upgrade_executed": false,
+  "installed_guest_version": "0.0.15.0",
+  "upgrade_executed": true,
   "remaining": [
-    "close live settings safely",
-    "manual installer UAC",
-    "actual upgraded installation audit",
-    "ordinary input hosts and installed UI",
-    "physical DPI/OS high contrast/assistive tools"
+    "ordinary input hosts and installed UI interactions",
+    "physical DPI/OS high contrast/assistive tools",
+    "loaded-TIP upgrade matrix",
+    "reboot/login",
+    "real librime first-key stability"
   ],
   "g2_g3_unchanged": true,
   "cache_cleanup": {
@@ -164,5 +225,26 @@
     "active_tasks": 0,
     "exit_code": 0,
     "preserved": "sealed build packages, stage, runtime, evidence, guest binaries and user data; Cargo download cache"
+  },
+  "upgrade_receipt": {
+    "path": "build/win10-evidence-clean-v1/ChangedUpgradeGuest0150-v2/upgrade-state.json",
+    "bytes": 2293,
+    "sha256": "373DDA66088B9247B22D4F5A7C837BEFBA2B808B6D3538629AFBD3DF8BFC1A48"
+  },
+  "upgrade_receipt_copy": {
+    "path": "docs/phase-0/evidence/WIN10-UPGRADE-0150-20261012.json",
+    "bytes": 1710,
+    "sha256": "4195E22C991AA61BAC253DC9ABFCBC74B3AE7A052C092E7528443E8CBA632CAC"
+  },
+  "installed_preview_receipt": {
+    "path": "build/win10-evidence-clean-v1/InstalledPreviewGuest0150-v2/installed-preview-receipt.json",
+    "bytes": 380,
+    "sha256": "6B1E25E0ECDF49E76287157429061DC71AF03D20F7CBB391BE38775E639DCB41"
+  },
+  "retained_launch_channel_result": {
+    "guestcontrol_exit": 20,
+    "driver_started": true,
+    "restarted": false,
+    "installer_exit": 0
   }
 }

@@ -58,16 +58,49 @@ C:/MoDev/Evidence/Preview0150-v2，回传到 MoEvidence/PreviewGuest0150-v2。
 804,224,070 逻辑字节 → 0（767 MiB）。保留封存 stage/包、运行库和测试证据，
 没有清理 Cargo 下载源缓存或为预热缓存重建；原始 UTC 回执绑定于清单。
 
-## 升级边界与下一步
+## 0.0.14.0 → 0.0.15.0 实际升级
 
-当前 VM 仍安装 0.0.14.0。本轮验证是 release 设置呈现和升级包准备，未执行新安装器。
-客机原有 Mo 设置窗口/Broker 仍在运行；先由用户保留未保存修改并关闭设置，
-切回原输入法，再停止经过身份核验的闲置 Broker。用户需手动确认安装器 UAC：
-computer-use 技能禁止操作 Windows 安全提示，不修改安全策略来绕过。
+用户确认已保存/关闭设置并切回原输入法后，读取 profile.active=false，核验闲置
+Broker 的 Program Files 路径和 0.0.14.0 载荷哈希，停止并等待退出。随后从普通权限
+64-bit PowerShell 发起既有 kit 的唯一升级，未代操作安全提示或修改安全策略。
 
-实际升级使用 C:/MoDev/Packages/0.0.15.0/run-vm-changed-payload-upgrade.ps1，
-证据使用新目录 C:/MoDev/Evidence/Upgrade0150-v2。完成后核验全部载荷、ACL、
-机器 COM、设置和默认输入法保全、最终状态及安装日志，再推进安装态 UI/真实宿主。
+升级材料为 C:/MoDev/Packages/0.0.15.0，客机证据为
+C:/MoDev/Evidence/Upgrade0150-v2，返回到 MoEvidence/ChangedUpgradeGuest0150-v2。
+
+| 升级检查 | 结果 |
+| --- | --- |
+| 0.0.14.0 基线/载荷/ACL/机器 COM | 通过 |
+| 新安装器 | exit 0 |
+| 新 0.0.15.0 载荷/ACL/机器双视图 COM | 通过 |
+| 原 settings-v1.mo 和默认输入法 | 保持不变 |
+| 最终 Installed 状态 | final_state_verified=true；failure/final_state_failure=null |
+| 两份安装日志 | 回传 size/SHA256 与客机回执匹配 |
+| 包/kit/基线/升级身份 | 回执与封存 kit 一致，独立复核通过 |
+
+[升级回执字段副本](evidence/WIN10-UPGRADE-0150-20261012.json)。
+HKCU com.x64/com.x86 为 missing 符合机器级 COM 合同；机器双视图另有审计通过。
+
+启动 guestcontrol 命令曾返回 20，但客机 launch-state 和唯一 driver 仍在运行；
+随后该 driver 完整成功。启动通道非零输出保留，不重复安装、不据此推断 VM 性能。
+原始 launch 输出及 stdout/stderr 绑定到证据清单。
+
+## 已安装设置程序呈现
+
+从 C:/Program Files/Mo/bin/mo-settings.exe 启动合成 --preview-dir，核验安装 EXE
+SHA256 等于新 stage。中文启动、英文切换、原生 caption 更新及 7 幅截图通过。
+真实设置在检查前后不变；与先前同一客机 staged 预览 7/7 逐像素一致。
+这项验证来自实际安装文件，但 profile 和候选仍为合成数据。
+
+[安装态合成回执](evidence/WIN10-INSTALLED-PREVIEW-0150-20261012.json)。
+
+![已安装设置](../design/previews/mo-win10-installed-0150-settings-general-20261012.png)
+![已安装程序语言切换](../design/previews/mo-win10-installed-0150-settings-language-switch-20261012.png)
+
+## 边界与下一步
+
+当前 VM 已安装 0.0.15.0，原设置窗口及测试 Broker 已关闭。本轮没有执行真实桌面
+输入、loaded-TIP 升级或重启；合成截图不能代替普通用户窗口的完整交互验收。
+下一步集中 Win10 普通应用的候选翻页、表情上屏/Esc、设置保存与即时重绘。
 
 没有新增真实 librime 首键复跑；历史负向结果与 50/400 ms、G2/G3 保持。
 物理 DPI、OS 高对比度、辅助工具、完整键盘/鼠标/宿主及 loaded-TIP 矩阵尚未验收。
