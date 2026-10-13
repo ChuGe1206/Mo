@@ -8,6 +8,7 @@
 #include <vector>
 #include "mo_latency_diagnostics.h"
 #include "mo_deadline.h"
+#include "mo_preedit_positions.h"
 
 namespace mo::windows_tip {
 
@@ -77,6 +78,7 @@ struct BrokerSnapshot final {
     bool symbols_supported = false;
     bool quick_settings_supported = false;
     std::string composition;
+    std::optional<CompositionPositions> positions;
     std::optional<std::string> commit;
     std::vector<std::string> candidates;
     std::vector<std::optional<std::string>> candidate_comments;
@@ -144,6 +146,7 @@ private:
     bool candidate_actions_supported_ = false;
     bool candidate_details_supported_ = false;
     bool candidate_presentation_supported_ = false;
+    bool composition_positions_supported_ = false;
     bool symbols_supported_ = false;
     bool presentation_settings_supported_ = false;
     bool quick_settings_supported_ = false;

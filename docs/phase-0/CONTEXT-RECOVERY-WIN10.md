@@ -3,7 +3,19 @@
 更新：2026-10-13。用户优先验证 Win10；其当前主机也是 Win10。虚拟机已准备，
 凭据通道已恢复；密码不写入源码、日志或交接文档。
 
-## 2026-10-13 续测（最新入口）
+## 2026-10-13 输入修复与 0170 v2（最新入口）
+
+- [修复记录](WIN10-PREEDIT-0170-20261013.md)与 ADR 0064：OEM/Shift/系统键隔离，协商位置 metadata，
+  TSF caret、候选光标/分段、翻页 tooltip 已实现。四 Rust 门禁及双架构 fake TSF/IPC/fault 通过。
+- Win10 renderer 20 BMP、exit 0、299×60。0170 v2 fresh stage/MSI/Burn/ICE、pair/kit 已通过；
+  guest C:/MoDev/Packages/0.0.17.0-v2 已复制并全哈希核验。
+- 当前安装仍 0160；用户保存并重启请求待回复，旧真实 Broker 仍在，未发起安装。
+  回复后扫描，再通过普通权限 driver 升级；审计和安装 UAC 必须用户处理。
+- 唯一 kit：build/mo-vm-changed-upgrade-kit-0160-0170-v2；共享 Package0170-v2。
+  v1 保留不用于升级。实际 Rime/记事本修复未验收，G2/G3、50/400 ms 不变。
+- 默认 target 于 09:23 清为 0，释放约 1.45 GiB 逻辑空间，封存包/证据保持。
+
+## 2026-10-13 续测
 
 - [本轮记录](WIN10-CONTINUATION-20261013.md)：实际安装 DLL 双架构基础 ABI 通过，保留真实 Broker。
 - 用户确认完整候选、鼠标翻页、笑脸面板和 Esc；键盘编辑光标、翻页说明和标点残留待修复。

@@ -295,6 +295,15 @@ bool Run(HWND owner, const std::filesystem::path& output) {
     RECT nihao{}; GetClientRect(window, &nihao);
     if (nihao.right > MulDiv(340, dpi, 96) || nihao.bottom > MulDiv(64, dpi, 96)) { return FixtureFailure(__LINE__); }
     if (!output.empty() && !Capture(window, output / L"nihao-full-page.bmp")) { return FixtureFailure(__LINE__); }
+    snapshot.positions = CompositionPositions{2, 0, 2};
+    Utf16CompositionPositions utf16;
+    if (!ToUtf16CompositionPositions("a😀墨", CompositionPositions{5, 1, 8}, &utf16)
+        || utf16.cursor_units != 3 || utf16.selection_start_units != 1 || utf16.selection_end_units != 4
+        || ToUtf16CompositionPositions("a😀墨", CompositionPositions{2, 0, 1}, &utf16)) { return FixtureFailure(__LINE__); }
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions, &settings) || !CandidateWindowFixture::FullCompactPage(candidate)) { return FixtureFailure(__LINE__); }
+    if (!output.empty() && !Capture(window, output / L"preedit-middle-caret.bmp")) { return FixtureFailure(__LINE__); }
+    snapshot.positions.reset();
     if (!CandidateWindowFixture::NarrowWorkArea(candidate, 240)
         || !CandidateWindowFixture::FullCompactPage(candidate)) { return FixtureFailure(__LINE__); }
     RECT narrow{}; GetClientRect(window, &narrow);

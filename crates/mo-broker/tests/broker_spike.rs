@@ -1176,3 +1176,219 @@ fn presentation_capability_requires_details_and_sufficient_payload() {
         );
     }
 }
+
+#[test]
+fn oem_punctuation_and_shifted_digits_reach_the_engine_as_printable_symbols() {
+    let mut connection = BrokerConnection::new(130);
+    hello(&mut connection, 1);
+    let token = open(&mut connection, 2);
+    let mut request = 3;
+    for (virtual_key, plain, shifted) in [
+        (0xba, ';', ':'),
+        (0xbb, '=', '+'),
+        (0xbc, ',', '<'),
+        (0xbd, '-', '_'),
+        (0xbe, '.', '>'),
+        (0xbf, '/', '?'),
+        (0xc0, '`', '~'),
+        (0xdb, '[', '{'),
+        (0xdc, '\\', '|'),
+        (0xdd, ']', '}'),
+        (0xde, '\'', '"'),
+        (0x31, '1', '!'),
+    ] {
+        for (modifiers, expected) in [(0, plain), (1, shifted)] {
+            let event = KeyEvent {
+                virtual_key,
+                scan_code: 0,
+                modifiers,
+                key_down: true,
+                repeat: false,
+            };
+            connection
+                .handle(frame(
+                    MessageKind::KeyEvent,
+                    130,
+                    token,
+                    request,
+                    event.encode_payload().unwrap(),
+                ))
+                .unwrap();
+            request += 1;
+            let key = connection
+                .engine()
+                .backend()
+                .events()
+                .iter()
+                .rev()
+                .find_map(|event| {
+                    if let FakeEvent::CommandApplied {
+                        command: EngineCommand::Key(key),
+                        ..
+                    } = event
+                    {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            assert_eq!(key.keycode, u32::from(expected));
+            assert_eq!(key.text, Some(expected));
+        }
+    }
+}
+
+#[test]
+fn composition_positions_are_negotiated_and_follow_cursor_and_punctuation() {
+    use mo_ipc::{
+        CompositionSnapshot, FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION,
+        FEATURE_COMPOSITION_POSITIONS, HelloAck, MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN,
+    };
+    let full = FEATURE_KEY_EVENTS
+        | FEATURE_CANDIDATE_DETAILS
+        | FEATURE_CANDIDATE_PRESENTATION
+        | FEATURE_COMPOSITION_POSITIONS;
+    for (features, limit, expected_kind, positions_enabled) in [
+        (
+            full,
+            MAX_PAYLOAD_LEN as u32,
+            MessageKind::CompositionSnapshot,
+            true,
+        ),
+        (
+            full,
+            MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN as u32,
+            MessageKind::PresentationSnapshot,
+            false,
+        ),
+        (
+            FEATURE_KEY_EVENTS | FEATURE_COMPOSITION_POSITIONS,
+            MAX_PAYLOAD_LEN as u32,
+            MessageKind::Snapshot,
+            false,
+        ),
+    ] {
+        let mut connection = BrokerConnection::new(131);
+        let hello = Hello {
+            supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+            features,
+            max_payload_len: limit,
+        };
+        let response = connection
+            .handle(frame(
+                MessageKind::Hello,
+                0,
+                0,
+                1,
+                hello.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let ack = HelloAck::decode_payload(&response.payload).unwrap();
+        assert_eq!(
+            ack.features & FEATURE_COMPOSITION_POSITIONS != 0,
+            positions_enabled
+        );
+        let token = open(&mut connection, 2);
+        for (index, key) in [0x4d, 0x4e, 0x25, 0x27, 0xbe].into_iter().enumerate() {
+            let event = KeyEvent {
+                virtual_key: key,
+                scan_code: 0,
+                modifiers: 0,
+                key_down: true,
+                repeat: false,
+            };
+            let response = connection
+                .handle(frame(
+                    MessageKind::KeyEvent,
+                    131,
+                    token,
+                    index as u64 + 3,
+                    event.encode_payload().unwrap(),
+                ))
+                .unwrap();
+            assert_eq!(response.header.kind, expected_kind);
+            if positions_enabled {
+                let snapshot = CompositionSnapshot::decode_payload(&response.payload).unwrap();
+                if index == 2 {
+                    assert_eq!(snapshot.positions.unwrap().cursor_utf8_bytes, 1);
+                }
+                if index == 3 {
+                    assert_eq!(snapshot.positions.unwrap().cursor_utf8_bytes, 2);
+                }
+                if index == 4 {
+                    assert!(snapshot.positions.is_none());
+                    assert_eq!(
+                        snapshot.presentation.snapshot.commit.as_deref(),
+                        Some("mn.")
+                    );
+                    assert!(snapshot.presentation.snapshot.composition.is_empty());
+                    assert!(snapshot.presentation.snapshot.candidates.is_empty());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn system_keys_and_unknown_virtual_keys_are_not_inferred_as_text() {
+    let mut connection = BrokerConnection::new(132);
+    hello(&mut connection, 1);
+    let token = open(&mut connection, 2);
+    for (index, (virtual_key, keysym)) in [
+        (0x70, 0xffbe),
+        (0x87, 0xffd5),
+        (0x2c, 0xff61),
+        (0x2d, 0xff63),
+        (0x10, 0xffe1),
+        (0xa1, 0xffe2),
+        (0x90, 0),
+        (0xe5, 0),
+        (0x20, 0),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let expected = if virtual_key == 0x20 { 0x20 } else { keysym };
+        let key = KeyEvent {
+            virtual_key,
+            scan_code: 0,
+            modifiers: 0,
+            key_down: true,
+            repeat: false,
+        };
+        let response = connection
+            .handle(frame(
+                MessageKind::KeyEvent,
+                132,
+                token,
+                index as u64 + 3,
+                key.encode_payload().unwrap(),
+            ))
+            .unwrap();
+        let snapshot = Snapshot::decode_payload(&response.payload).unwrap();
+        assert!(!snapshot.handled);
+        assert!(snapshot.composition.is_empty());
+        assert!(snapshot.commit.is_none());
+        let event = connection
+            .engine()
+            .backend()
+            .events()
+            .iter()
+            .rev()
+            .find_map(|event| {
+                if let FakeEvent::CommandApplied {
+                    command: EngineCommand::Key(key),
+                    ..
+                } = event
+                {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(event.keycode, expected);
+        assert_eq!(event.text, None);
+    }
+}

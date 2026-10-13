@@ -38,6 +38,9 @@ constexpr int kMaxInlineCommentWidthPx = 72;
 constexpr int kToolbarButtonPx = 22;
 constexpr int kToolbarGapPx = 2;
 constexpr int kHeaderTextGapPx = 12;
+constexpr int kPreeditCaretWidthPx = 1;
+constexpr int kPreeditSegmentUnderlinePx = 2;
+constexpr int kPreeditTextInsetPx = 2;
 constexpr int kToolbarTopPx = (kCompactHeaderPx - kToolbarButtonPx) / 2;
 constexpr int kPageLabelMinWidthPx = 12;
 constexpr int kPageLabelPaddingPx = 4;
@@ -161,7 +164,7 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
             tooltip_ = CreateWindowExW(WS_EX_TOPMOST | WS_EX_NOACTIVATE, TOOLTIPS_CLASSW, nullptr,
                 WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, 0, 0, 0, 0, window_, nullptr, module_, nullptr);
             if (tooltip_ != nullptr) {
-                const wchar_t* labels[] = {L"上一页", L"下一页", L"展开或收起候选", L"打开表情面板",
+                const wchar_t* labels[] = {L"上一页 · PageUp / -", L"下一页 · PageDown / =", L"展开或收起候选", L"打开表情面板",
                     L"联想表情：保存偏好，当前输入结束后生效"};
                 for (int i = 0; i < 5; ++i) {
                     TOOLINFOW tool{}; tool.cbSize = sizeof(tool); tool.uFlags = TTF_SUBCLASS;
@@ -220,6 +223,12 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
         if (!symbols_supported_ && view_ == 2) { view_ = 0; }
         page_ = snapshot.page;
         preference_error_ = false;
+        preedit_positions_.reset();
+        if (snapshot.positions.has_value()) {
+            Utf16CompositionPositions checked;
+            if (!ToUtf16CompositionPositions(snapshot.composition, *snapshot.positions, &checked)) { return false; }
+            preedit_positions_ = checked;
+        }
         preedit_ = std::move(preedit);
         rows_ = std::move(rows);
         revision_ = snapshot.revision;
@@ -259,6 +268,7 @@ void CandidateWindow::Destroy() noexcept {
     font_dpi_ = 0;
     rows_.clear();
     preedit_.clear();
+    preedit_positions_.reset();
 }
 
 bool CandidateWindow::panel_open() const noexcept {
@@ -509,7 +519,37 @@ void CandidateWindow::Render(HDC dc) noexcept {
     const int previous_mode = SetBkMode(dc, TRANSPARENT);
     const COLORREF previous_color = GetTextColor(dc);
     const bool vertical = view_ == 0 && appearance_.vertical;
-    Draw(dc, preedit_, {padding_, Scale(2), ToolbarRect(0).left - Scale(kHeaderTextGapPx), Scale(26)}, palette.text);
+    const RECT preedit_box{padding_, Scale(kPreeditTextInsetPx),
+        ToolbarRect(0).left - Scale(kHeaderTextGapPx), Scale(kCompactHeaderPx - kPreeditTextInsetPx)};
+    if (!preedit_positions_.has_value()) {
+        Draw(dc, preedit_, preedit_box, palette.text);
+    } else {
+        const auto positions = *preedit_positions_;
+        const auto width_at = [this, dc](std::size_t units) {
+            SIZE size{};
+            GetTextExtentPoint32W(dc, preedit_.data(), static_cast<int>(units), &size);
+            return size.cx;
+        };
+        const int cursor_x = width_at(positions.cursor_units);
+        const int available = std::max(0L, preedit_box.right - preedit_box.left);
+        const int scroll = std::max(0, cursor_x - available + Scale(kPreeditTextInsetPx));
+        TEXTMETRICW metrics{}; GetTextMetricsW(dc, &metrics);
+        const int top = preedit_box.top + (preedit_box.bottom - preedit_box.top - metrics.tmHeight) / 2;
+        const int saved = SaveDC(dc);
+        if (saved != 0) {
+            IntersectClipRect(dc, preedit_box.left, preedit_box.top, preedit_box.right, preedit_box.bottom);
+            SetTextColor(dc, palette.text);
+            TextOutW(dc, preedit_box.left - scroll, top, preedit_.data(), static_cast<int>(preedit_.size()));
+            const int caret = preedit_box.left - scroll + cursor_x;
+            Fill(dc, {caret, top, caret + Scale(kPreeditCaretWidthPx), top + metrics.tmHeight}, palette.pressed);
+            if (positions.selection_start_units != positions.selection_end_units) {
+                Fill(dc, {preedit_box.left - scroll + width_at(positions.selection_start_units),
+                    top + metrics.tmHeight - Scale(kPreeditSegmentUnderlinePx),
+                    preedit_box.left - scroll + width_at(positions.selection_end_units), top + metrics.tmHeight}, palette.pressed);
+            }
+            RestoreDC(dc, saved);
+        }
+    }
     SelectObject(dc, caption_font_);
     if (page_.has_value()) {
         Draw(dc, std::to_wstring(static_cast<std::uint64_t>(page_->number) + 1), page_label_rect_, palette.footer_text);

@@ -1001,8 +1001,11 @@ private:
         } else {
             result = UpdateComposition(context, edit_cookie, text, applied);
         }
+        if (SUCCEEDED(result)) { StoreCandidateSnapshot(snapshot); }
+        if (SUCCEEDED(result) && !snapshot.composition.empty() && snapshot.positions.has_value()) {
+            result = SetPreeditCaret(context, edit_cookie, snapshot);
+        }
         if (SUCCEEDED(result)) {
-            StoreCandidateSnapshot(snapshot);
             RefreshCandidateAnchor(context, edit_cookie, snapshot);
         }
         else { candidate_window_.Hide(); }
@@ -1192,6 +1195,38 @@ private:
         else if (pending_engine_settings_ && active_range_ == nullptr) {
             settings_change_window_.ScheduleRefresh();
         }
+        return result;
+    }
+
+    HRESULT SetPreeditCaret(ITfContext* context, TfEditCookie cookie,
+        const mo::windows_tip::BrokerSnapshot& snapshot) noexcept {
+        mo::windows_tip::Utf16CompositionPositions positions;
+        if (!snapshot.positions.has_value()
+            || !mo::windows_tip::ToUtf16CompositionPositions(snapshot.composition, *snapshot.positions, &positions)
+            || positions.cursor_units > static_cast<std::size_t>(std::numeric_limits<LONG>::max())
+            || composition_context_.Get() != context || active_range_ == nullptr) { return E_INVALIDARG; }
+        const auto identity = CaptureCandidateIdentity(snapshot.revision);
+        if (!CheckCandidateIdentity(identity)) { return TF_E_DISCONNECTED; }
+        ComPtr<ITfRange> caret;
+        HRESULT result = identity.range->Clone(caret.GetAddressOf());
+        if (FAILED(result)) { return result; }
+        if (!CheckCandidateIdentity(identity)) { return TF_E_DISCONNECTED; }
+        LONG moved = 0;
+        const LONG offset = static_cast<LONG>(positions.cursor_units);
+        result = caret->ShiftStart(cookie, offset, &moved, nullptr);
+        if (FAILED(result)) { return result; }
+        if (!CheckCandidateIdentity(identity)) { return TF_E_DISCONNECTED; }
+        if (moved != offset) { return TF_E_INVALIDPOS; }
+        result = caret->Collapse(cookie, TF_ANCHOR_START);
+        if (FAILED(result)) { return result; }
+        if (!CheckCandidateIdentity(identity)) { return TF_E_DISCONNECTED; }
+        // Selection stays collapsed: librime's active segment is visual metadata,
+        // not a host text selection. This RW cookie belongs to the current edit.
+        TF_SELECTION selection{};
+        selection.range = caret.Get(); selection.style.ase = TF_AE_NONE;
+        selection.style.fInterimChar = FALSE;
+        result = context->SetSelection(cookie, 1, &selection);
+        if (SUCCEEDED(result) && !CheckCandidateIdentity(identity)) { return TF_E_DISCONNECTED; }
         return result;
     }
 

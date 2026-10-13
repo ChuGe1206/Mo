@@ -53,6 +53,7 @@ private:
         std::wstring comment;
     };
     std::wstring preedit_;
+    std::optional<Utf16CompositionPositions> preedit_positions_;
     std::vector<Row> rows_;
     std::uint64_t revision_ = 0;
     ActionCallback callback_ = nullptr;

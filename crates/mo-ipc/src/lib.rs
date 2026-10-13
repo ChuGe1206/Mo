@@ -7,11 +7,16 @@
 #![forbid(unsafe_code)]
 
 mod codec;
+mod composition_snapshot;
 mod frame;
 mod message;
 mod version;
 
 pub use codec::{CodecError, Decoder, Encoder, PayloadCodec};
+pub use composition_snapshot::{
+    COMPOSITION_POSITION_HEADER_BYTES, CompositionPositions, CompositionSnapshot,
+    FEATURE_COMPOSITION_POSITIONS, MIN_COMPOSITION_SNAPSHOT_PAYLOAD_LEN,
+};
 pub use frame::{
     FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, FrameHeader, HEADER_LEN, MAGIC, MAX_FRAME_LEN,
     MAX_PAYLOAD_LEN, MessageKind, read_frame, write_frame,

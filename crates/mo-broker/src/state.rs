@@ -18,6 +18,10 @@ use mo_ipc::{
     VersionRange, negotiate_version,
 };
 
+use mo_ipc::{
+    CompositionPositions, CompositionSnapshot, FEATURE_COMPOSITION_POSITIONS,
+    MIN_COMPOSITION_SNAPSHOT_PAYLOAD_LEN,
+};
 use mo_ipc::{FEATURE_PRESENTATION_SETTINGS, FEATURE_QUICK_SETTINGS, SetEmoji};
 
 use crate::engine_service::EngineClient;
@@ -258,7 +262,8 @@ where
                 | FEATURE_CANDIDATE_PRESENTATION
                 | FEATURE_SYMBOL_ACTIONS
                 | FEATURE_SETTINGS_SNAPSHOT
-                | FEATURE_SESSION_SETTINGS_ACK);
+                | FEATURE_SESSION_SETTINGS_ACK
+                | FEATURE_COMPOSITION_POSITIONS);
         if hello.max_payload_len < MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN as u32 {
             self.negotiated_features &= !FEATURE_CANDIDATE_DETAILS;
         }
@@ -267,6 +272,11 @@ where
             || hello.max_payload_len < MIN_PRESENTATION_SNAPSHOT_PAYLOAD_LEN as u32
         {
             self.negotiated_features &= !FEATURE_CANDIDATE_PRESENTATION;
+        }
+        if self.negotiated_features & FEATURE_CANDIDATE_PRESENTATION == 0
+            || hello.max_payload_len < MIN_COMPOSITION_SNAPSHOT_PAYLOAD_LEN as u32
+        {
+            self.negotiated_features &= !FEATURE_COMPOSITION_POSITIONS;
         }
         if self.negotiated_features & FEATURE_CANDIDATE_ACTIONS == 0 {
             self.negotiated_features &= !FEATURE_SYMBOL_ACTIONS;
@@ -521,6 +531,23 @@ where
         };
         let revision = engine_snapshot.revision.get();
         let handled = engine_snapshot.handled;
+        let positions = engine_snapshot
+            .composition
+            .as_ref()
+            .map(|c| {
+                // The wire encoder independently checks the 4 KiB text limit.
+                Ok::<_, mo_ipc::CodecError>(CompositionPositions {
+                    cursor_utf8_bytes: u32::try_from(c.cursor().get())
+                        .map_err(|_| mo_ipc::CodecError::InvalidValue("cursor offset too large"))?,
+                    selection_start_utf8_bytes: u32::try_from(c.selection().start.get()).map_err(
+                        |_| mo_ipc::CodecError::InvalidValue("selection offset too large"),
+                    )?,
+                    selection_end_utf8_bytes: u32::try_from(c.selection().end.get()).map_err(
+                        |_| mo_ipc::CodecError::InvalidValue("selection offset too large"),
+                    )?,
+                })
+            })
+            .transpose()?;
         let composition = engine_snapshot
             .composition
             .map(|composition| composition.preedit().to_owned())
@@ -555,14 +582,25 @@ where
                     has_next: page.has_next,
                     highlighted: page.highlighted.and_then(|index| u8::try_from(index).ok()),
                 });
-                (
-                    MessageKind::PresentationSnapshot,
-                    PresentationSnapshot {
-                        snapshot: detailed,
-                        page,
-                    }
-                    .encode_payload()?,
-                )
+                let presentation = PresentationSnapshot {
+                    snapshot: detailed,
+                    page,
+                };
+                if self.negotiated_features & FEATURE_COMPOSITION_POSITIONS != 0 {
+                    (
+                        MessageKind::CompositionSnapshot,
+                        CompositionSnapshot {
+                            presentation,
+                            positions,
+                        }
+                        .encode_payload()?,
+                    )
+                } else {
+                    (
+                        MessageKind::PresentationSnapshot,
+                        presentation.encode_payload()?,
+                    )
+                }
             } else {
                 (MessageKind::DetailedSnapshot, detailed.encode_payload()?)
             }
@@ -1314,20 +1352,65 @@ fn normalize_key_event(event: WireKeyEvent) -> DomainKeyEvent {
 }
 
 fn normalized_keycode(virtual_key: u32, modifiers: KeyModifiers) -> u32 {
+    // Windows VK_OEM symbols for the supported US-style Chinese keyboard.
+    // Records are (virtual-key encoding, unshifted keysym, shifted keysym).
+    const OEM_PUNCTUATION: &[(u32, char, char)] = &[
+        (0xba, ';', ':'),
+        (0xbb, '=', '+'),
+        (0xbc, ',', '<'),
+        (0xbd, '-', '_'),
+        (0xbe, '.', '>'),
+        (0xbf, '/', '?'),
+        (0xc0, '`', '~'),
+        (0xdb, '[', '{'),
+        (0xdc, '\\', '|'),
+        (0xdd, ']', '}'),
+        (0xde, '\'', '"'),
+    ];
+    if let Some((_, plain, shifted)) = OEM_PUNCTUATION
+        .iter()
+        .find(|(key, _, _)| *key == virtual_key)
+    {
+        return u32::from(if modifiers.contains(KeyModifiers::SHIFT) {
+            *shifted
+        } else {
+            *plain
+        });
+    }
+    const SHIFTED_DIGITS: &[u8; 10] = b")!@#$%^&*(";
+    if (u32::from(b'0')..=u32::from(b'9')).contains(&virtual_key)
+        && modifiers.contains(KeyModifiers::SHIFT)
+    {
+        return u32::from(SHIFTED_DIGITS[(virtual_key - u32::from(b'0')) as usize]);
+    }
     match virtual_key {
-        0x08 => 0xff08, // XK_BackSpace
-        0x09 => 0xff09, // XK_Tab
-        0x0d => 0xff0d, // XK_Return
-        0x1b => 0xff1b, // XK_Escape
-        0x21 => 0xff55, // XK_Page_Up
-        0x22 => 0xff56, // XK_Page_Down
-        0x23 => 0xff57, // XK_End
-        0x24 => 0xff50, // XK_Home
-        0x25 => 0xff51, // XK_Left
-        0x26 => 0xff52, // XK_Up
-        0x27 => 0xff53, // XK_Right
-        0x28 => 0xff54, // XK_Down
-        0x2e => 0xffff, // XK_Delete
+        0x20 => 0x20, // XK_space; control semantics, not inferred text
+        0x30..=0x39 => virtual_key,
+        0x70..=0x87 => 0xffbe + (virtual_key - 0x70), // XK_F1..XK_F24
+        0x10 | 0xa0 => 0xffe1,                        // XK_Shift_L
+        0xa1 => 0xffe2,                               // XK_Shift_R
+        0x11 | 0xa2 => 0xffe3,                        // XK_Control_L
+        0xa3 => 0xffe4,                               // XK_Control_R
+        0x12 | 0xa4 => 0xffe9,                        // XK_Alt_L
+        0xa5 => 0xffea,                               // XK_Alt_R
+        0x14 => 0xffe5,                               // XK_Caps_Lock
+        0x2c => 0xff61,                               // XK_Print
+        0x2d => 0xff63,                               // XK_Insert
+        0x5b => 0xffeb,                               // XK_Super_L
+        0x5c => 0xffec,                               // XK_Super_R
+        0x08 => 0xff08,                               // XK_BackSpace
+        0x09 => 0xff09,                               // XK_Tab
+        0x0d => 0xff0d,                               // XK_Return
+        0x1b => 0xff1b,                               // XK_Escape
+        0x21 => 0xff55,                               // XK_Page_Up
+        0x22 => 0xff56,                               // XK_Page_Down
+        0x23 => 0xff57,                               // XK_End
+        0x24 => 0xff50,                               // XK_Home
+        0x25 => 0xff51,                               // XK_Left
+        0x26 => 0xff52,                               // XK_Up
+        0x27 => 0xff53,                               // XK_Right
+        0x28 => 0xff54,                               // XK_Down
+        0x2e => 0xffff,                               // XK_Delete
         0x41..=0x5a => {
             let uppercase = modifiers.contains(KeyModifiers::SHIFT)
                 ^ modifiers.contains(KeyModifiers::CAPS_LOCK);
@@ -1337,7 +1420,8 @@ fn normalized_keycode(virtual_key: u32, modifiers: KeyModifiers) -> u32 {
                 virtual_key + u32::from(b'a' - b'A')
             }
         }
-        _ => virtual_key,
+        // Unsupported VKs must not collide with printable ASCII keysyms.
+        _ => 0, // XK_NoSymbol: leave unsupported input to the host.
     }
 }
 
@@ -1349,8 +1433,7 @@ fn infer_ascii_text(keycode: u32, state: KeyState, modifiers: KeyModifiers) -> O
     }
 
     match keycode {
-        0x61..=0x7a | 0x41..=0x5a => char::from_u32(keycode),
-        0x30..=0x39 if !modifiers.contains(KeyModifiers::SHIFT) => char::from_u32(keycode),
+        0x21..=0x7e => char::from_u32(keycode),
         _ => None,
     }
 }

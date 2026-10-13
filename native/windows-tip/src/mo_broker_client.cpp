@@ -142,6 +142,9 @@ constexpr std::uint64_t kCandidatePresentationFeature = 32ULL;
 constexpr std::uint64_t kSymbolActionsFeature = 64ULL;
 constexpr std::uint64_t kPresentationSettingsFeature = 128ULL;
 constexpr std::uint64_t kQuickSettingsFeature = 256ULL;
+constexpr std::uint64_t kCompositionPositionsFeature = 512ULL;
+constexpr std::uint32_t kCompositionPositionHeaderBytes = 13;
+constexpr std::uint32_t kPresentationPageHeaderBytes = 8;
 constexpr std::uint64_t kCandidateDetailsFeature = 16ULL;
 constexpr DWORD kClientPipeAccess = 0x0012019bUL;
 constexpr std::size_t kMaximumWindowsPathLength = 32768;
@@ -182,6 +185,7 @@ enum class MessageKind : std::uint16_t {
     SymbolAction = 17,
     PresentationSettings = 18,
     SetEmoji = 19,
+    CompositionSnapshot = 20,
 };
 
 struct Frame final {
@@ -692,10 +696,21 @@ private:
 };
 
 bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapshot) {
-    const bool presentation = frame.kind == MessageKind::PresentationSnapshot;
+    const bool position_snapshot = frame.kind == MessageKind::CompositionSnapshot;
+    const bool presentation = position_snapshot || frame.kind == MessageKind::PresentationSnapshot;
     const bool detailed = presentation || frame.kind == MessageKind::DetailedSnapshot;
     if (!detailed && frame.kind != MessageKind::Snapshot) { return false; }
     PayloadReader reader(frame.payload);
+    std::optional<mo::windows_tip::CompositionPositions> positions;
+    if (position_snapshot) {
+        Byte present = 0;
+        mo::windows_tip::CompositionPositions value;
+        if (!reader.U8(&present) || present > 1 || !reader.U32(&value.cursor_utf8_bytes)
+            || !reader.U32(&value.selection_start_utf8_bytes) || !reader.U32(&value.selection_end_utf8_bytes)
+            || (present == 0 && (value.cursor_utf8_bytes != 0 || value.selection_start_utf8_bytes != 0
+                || value.selection_end_utf8_bytes != 0))) { return false; }
+        if (present != 0) { positions = value; }
+    }
     std::optional<mo::windows_tip::CandidatePage> page;
     if (presentation) {
         Byte present = 0, previous = 0, next = 0, highlighted = 255;
@@ -751,6 +766,12 @@ bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapsho
             || (page->highlighted.has_value() && *page->highlighted >= candidate_count)))) {
         return false;
     }
+    if (position_snapshot) {
+        mo::windows_tip::Utf16CompositionPositions checked;
+        if (composition.empty() != !positions.has_value()
+            || (positions.has_value() && !mo::windows_tip::ToUtf16CompositionPositions(composition, *positions, &checked))) { return false; }
+    }
+    snapshot->positions = positions;
     snapshot->page = page;
     snapshot->revision = revision;
     snapshot->handled = handled != 0;
@@ -846,7 +867,7 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             kKeyEventsFeature | kCandidateActionsFeature | kSettingsSnapshotFeature
             | kSessionSettingsAckFeature | kCandidateDetailsFeature
             | kCandidatePresentationFeature | kSymbolActionsFeature
-            | kPresentationSettingsFeature | kQuickSettingsFeature);
+            | kPresentationSettingsFeature | kQuickSettingsFeature | kCompositionPositionsFeature);
         AppendU32(&hello.payload, static_cast<std::uint32_t>(kMaximumPayloadLength));
 
         Frame hello_ack;
@@ -872,6 +893,12 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             (GetU64(hello_ack.payload.data() + 4) & kCandidateDetailsFeature) != 0;
         candidate_presentation_supported_ =
             (GetU64(hello_ack.payload.data() + 4) & kCandidatePresentationFeature) != 0;
+        composition_positions_supported_ = (GetU64(hello_ack.payload.data() + 4) & kCompositionPositionsFeature) != 0;
+        if (composition_positions_supported_ && (!candidate_presentation_supported_
+            || GetU32(hello_ack.payload.data() + 12) < kMinimumDetailedSnapshotPayloadLength
+                + kPresentationPageHeaderBytes + kCompositionPositionHeaderBytes)) {
+            last_connect_error_ = ERROR_INVALID_DATA; Reset(); return false;
+        }
         symbols_supported_ = (GetU64(hello_ack.payload.data() + 4) & kSymbolActionsFeature) != 0;
         if ((candidate_presentation_supported_ && (!candidate_details_supported_
                 || GetU32(hello_ack.payload.data() + 12) < kMinimumDetailedSnapshotPayloadLength + 8))
@@ -977,7 +1004,8 @@ bool BrokerClient::SendKeyUntil(
 
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
+        if (!Exchange(pipe_, request, composition_positions_supported_ ? MessageKind::CompositionSnapshot
+                : candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
                 : candidate_details_supported_ ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
@@ -1027,7 +1055,8 @@ bool BrokerClient::SendCandidateAction(
         AppendU32(&request.payload, index);
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
+        if (!Exchange(pipe_, request, composition_positions_supported_ ? MessageKind::CompositionSnapshot
+                : candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
                 : candidate_details_supported_ ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
             || response.session_token != session_token_
@@ -1229,6 +1258,7 @@ void BrokerClient::Reset() noexcept {
     candidate_actions_supported_ = false;
     candidate_details_supported_ = false;
     candidate_presentation_supported_ = false;
+    composition_positions_supported_ = false;
     symbols_supported_ = false;
     presentation_settings_supported_ = false;
     quick_settings_supported_ = false;

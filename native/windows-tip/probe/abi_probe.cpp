@@ -473,6 +473,8 @@ class EditTextStore final : public ITextStoreACP, public ITfContextOwnerComposit
 public:
     explicit EditTextStore(HWND window) noexcept : window_(window) {}
     const std::wstring& text() const noexcept { return text_; }
+    LONG selection_start() const noexcept { return selection_start_; }
+    LONG selection_end() const noexcept { return selection_end_; }
     void NotifyLayoutChanged() noexcept {
         if (sink_ != nullptr) { sink_->OnLayoutChange(TS_LC_CHANGE, 1); }
     }
@@ -1736,6 +1738,24 @@ int probe_broker_input(
             break;
         }
 
+        if (!registered && !rime_ice) {
+            const auto prefix = edit_store->text();
+            for (const char key : std::string("ABC")) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) { keys_succeeded = false; break; }
+            }
+            for (const auto& step : std::array<std::pair<WPARAM, LONG>, 4>{{{VK_LEFT, 2}, {VK_RIGHT, 3}, {VK_HOME, 0}, {VK_END, 3}}}) {
+                if (!keys_succeeded || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, step.first)
+                    || edit_store->selection_start() != static_cast<LONG>(prefix.size()) + step.second
+                    || edit_store->selection_end() != edit_store->selection_start()) {
+                    std::wcerr << L"Preedit caret did not follow engine position\n"; outcome = 1; break;
+                }
+            }
+            if (outcome != 0 || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_NEXT)
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_PRIOR)
+                || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_ESCAPE)
+                || edit_store->text() != prefix) { outcome = 1; break; }
+            std::wcout << L"Mo TIP preedit caret and keyboard paging probe passed.\n";
+        }
         if (!registered) {
             // Invalidate layout INSIDE GetTextExt, after it measured the old
             // geometry. The suspended read must not resurrect that stale view.
@@ -1929,6 +1949,16 @@ int probe_broker_input(
             std::wcout << L"Mo TIP TSF owner termination/recovery probe passed.\n";
         }
         if (outcome != 0) { break; }
+        if (!registered && !rime_ice) {
+            for (const char key : std::string("ABC")) {
+                if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) { keys_succeeded = false; break; }
+            }
+            if (!keys_succeeded || !SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, VK_OEM_PERIOD)
+                || !WaitForCandidateWindow(false, service, L"punctuation-commit")) { outcome = 1; break; }
+            expected += L"abc.";
+            if (edit_store->text() != expected) { std::wcerr << L"Punctuation commit duplicated text or left preedit\n"; outcome = 1; break; }
+            std::wcout << L"Mo TIP punctuation completion probe passed.\n";
+        }
         if (!registered) {
             for (const char key : input) {
                 if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, static_cast<WPARAM>(key))) { keys_succeeded = false; break; }

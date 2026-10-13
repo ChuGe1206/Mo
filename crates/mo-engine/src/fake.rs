@@ -3,7 +3,7 @@ use std::fmt;
 
 use mo_domain::{
     Candidate, Composition, EngineCommand, EngineOutput, EngineStatus, KeyModifiers, KeyState,
-    SessionOptions,
+    SessionOptions, TextRange, Utf8ByteOffset,
 };
 
 use crate::EngineBackend;
@@ -66,6 +66,7 @@ pub struct FakeBackend {
 pub struct FakeSession {
     id: u64,
     preedit: String,
+    cursor_utf8_bytes: usize,
     page: u32,
     schema_id: String,
     options: BTreeMap<String, bool>,
@@ -116,8 +117,16 @@ impl FakeBackend {
         EngineOutput {
             handled,
             commit,
-            composition: (!session.preedit.is_empty())
-                .then(|| Composition::from_preedit(session.preedit.clone())),
+            composition: (!session.preedit.is_empty()).then(|| {
+                // All fake edits and cursor moves operate at char boundaries.
+                let cursor = Utf8ByteOffset::new(session.cursor_utf8_bytes);
+                Composition::try_new(
+                    session.preedit.clone(),
+                    cursor,
+                    TextRange::new(cursor, cursor),
+                )
+                .expect("fake session maintains UTF-8 cursor boundaries")
+            }),
             candidates,
             page: (!session.preedit.is_empty()).then_some(mo_domain::CandidatePage {
                 number: session.page,
@@ -153,6 +162,7 @@ impl EngineBackend for FakeBackend {
         Ok(FakeSession {
             id,
             preedit: String::new(),
+            cursor_utf8_bytes: 0,
             page: 0,
             schema_id: options.schema_id.unwrap_or_else(|| "mo.fake".to_owned()),
             options: options.options,
@@ -181,11 +191,59 @@ impl EngineBackend for FakeBackend {
                 {
                     match event.keycode {
                         0xff08 if !session.preedit.is_empty() => {
-                            session.preedit.pop();
+                            if session.cursor_utf8_bytes != 0 {
+                                let previous = session.preedit[..session.cursor_utf8_bytes]
+                                    .char_indices()
+                                    .next_back()
+                                    .map_or(0, |(index, _)| index);
+                                session.preedit.drain(previous..session.cursor_utf8_bytes);
+                                session.cursor_utf8_bytes = previous;
+                            }
                             handled = true;
                         }
                         0xff1b if !session.preedit.is_empty() => {
                             session.preedit.clear();
+                            handled = true;
+                        }
+                        0xff51 if !session.preedit.is_empty() => {
+                            session.cursor_utf8_bytes = session.preedit
+                                [..session.cursor_utf8_bytes]
+                                .char_indices()
+                                .next_back()
+                                .map_or(0, |(index, _)| index);
+                            handled = true;
+                        }
+                        0xff53 if !session.preedit.is_empty() => {
+                            session.cursor_utf8_bytes += session.preedit
+                                [session.cursor_utf8_bytes..]
+                                .chars()
+                                .next()
+                                .map_or(0, char::len_utf8);
+                            handled = true;
+                        }
+                        0xff50 if !session.preedit.is_empty() => {
+                            session.cursor_utf8_bytes = 0;
+                            handled = true;
+                        }
+                        0xff57 if !session.preedit.is_empty() => {
+                            session.cursor_utf8_bytes = session.preedit.len();
+                            handled = true;
+                        }
+                        0xff55 | 0xff56 if !session.preedit.is_empty() => {
+                            session.page = if event.keycode == 0xff55 {
+                                session.page.saturating_sub(1)
+                            } else {
+                                session.page.saturating_add(1)
+                            };
+                            handled = true;
+                        }
+                        0x2c | 0x2e | 0x21 if !session.preedit.is_empty() => {
+                            // Synthetic punctuation commit exercises TSF completion without real input.
+                            let mut text = std::mem::take(&mut session.preedit);
+                            text.push(
+                                char::from_u32(event.keycode).expect("matched ASCII punctuation"),
+                            );
+                            commit = Some(text);
                             handled = true;
                         }
                         0x20 if !session.preedit.is_empty() => {
@@ -194,12 +252,13 @@ impl EngineBackend for FakeBackend {
                         }
                         _ => {
                             if let Some(character) = event.text {
-                                session.preedit.push(character);
+                                session.preedit.insert(session.cursor_utf8_bytes, character);
+                                session.cursor_utf8_bytes += character.len_utf8();
                                 handled = true;
                             }
                         }
                     }
-                    if handled {
+                    if handled && !matches!(event.keycode, 0xff55 | 0xff56) {
                         session.page = 0;
                     }
                 }
@@ -243,6 +302,9 @@ impl EngineBackend for FakeBackend {
             }
         }
 
+        if session.preedit.is_empty() {
+            session.cursor_utf8_bytes = 0;
+        }
         Ok(Self::output(session, handled, commit))
     }
 

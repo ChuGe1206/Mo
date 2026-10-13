@@ -1,0 +1,164 @@
+{
+  "format": 1,
+  "kind": "mo-preedit-key-routing-validation",
+  "date": "2026-10-13",
+  "development_only": true,
+  "installed_version": "0.0.16.0",
+  "prepared_version": "0.0.17.0",
+  "installed_upgrade_executed": false,
+  "final_package_revision": "v2",
+  "rust_passed_including_doc": 199,
+  "rust_ignored": 1,
+  "source_snapshot_file_count": 126,
+  "source_snapshot_changed_files_match": [
+    "crates/mo-broker/src/state.rs",
+    "crates/mo-broker/tests/broker_spike.rs",
+    "crates/mo-engine/src/fake.rs",
+    "crates/mo-ipc/src/frame.rs",
+    "crates/mo-ipc/src/lib.rs",
+    "crates/mo-ipc/src/composition_snapshot.rs",
+    "crates/mo-ipc/tests/composition_positions.rs",
+    "native/windows-tip/include/mo_broker_client.h",
+    "native/windows-tip/include/mo_candidate_window.h",
+    "native/windows-tip/include/mo_preedit_positions.h",
+    "native/windows-tip/probe/abi_probe.cpp",
+    "native/windows-tip/probe/candidate_preview.cpp",
+    "native/windows-tip/src/mo_broker_client.cpp",
+    "native/windows-tip/src/mo_candidate_window.cpp",
+    "native/windows-tip/src/mo_tip.cpp"
+  ],
+  "wire_feature_bit": 9,
+  "wire_message_kind": 20,
+  "wire_position_header_bytes": 13,
+  "old_snapshot_bytes_preserved": true,
+  "key_and_activation_deadlines_ms": [
+    50,
+    400
+  ],
+  "win10_candidate_bmps": 20,
+  "win10_candidate_exit": 0,
+  "default_candidate_pixels": [
+    299,
+    60
+  ],
+  "native_architectures": [
+    "x64",
+    "Win32"
+  ],
+  "fake_tsf_caret_and_punctuation_passed": true,
+  "fault_restarts_per_architecture": 2,
+  "bundle_sha256": "FF1756B67CA6FD9E7E66B70645CAB6EC3D7A2F34548A6D1DF9F4F8FF20ABCF90",
+  "guest_kit_sha256": "819A52C2C6BE706C631DB98656816058FF6B1F8282F55B4B1CCB7F29EA30B48F",
+  "pending": [
+    "save/restart VM to unload TIP",
+    "actual 0160 to 0170 upgrade",
+    "real Rime document caret and punctuation",
+    "non-US OEM layouts",
+    "physical multi-DPI and high contrast",
+    "G2/G3 and real first-key latency"
+  ],
+  "cache_cleanup": {
+    "checked_utc": "2026-10-13T01:23:14.4633086Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "active_project_tasks": 0,
+    "before_files": 8821,
+    "after_files": 0,
+    "before_logical_bytes": 1556304517,
+    "after_logical_bytes": 0,
+    "reclaimed_logical_bytes": 1556304517,
+    "disk_free_before": 32130646016,
+    "disk_free_after": 33504055296,
+    "sealed_build_preserved": true,
+    "download_cache_preserved": true,
+    "cache_warmup_rebuild": false
+  },
+  "evidence": [
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-fmt-v2-final.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-clippy-v2-final.log",
+      "size": 169,
+      "sha256": "B91CEE5B968EBDCEB228BDBB515F749473394C342F4375F3F73D6243D882FB59"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-clippy-trace-v2-final.log",
+      "size": 169,
+      "sha256": "CFD2CC0CBEF7D8EC85D4EE5A3AE966C97A26A11E1A78C054721E18A0D8D8060B"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-workspace-v2-final.log",
+      "size": 21657,
+      "sha256": "1E9D0F6727188AA32166736E00E72DFC80D78C4F016E1C3003C5B912B604E776"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-broker-smoke-v3-final.log",
+      "size": 20815,
+      "sha256": "E8C27AD5D846BD0D0E6C21851F4BB00B7D4BCD742A63D919108E94B7A7FB3293"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/preedit-ui-assets-final.log",
+      "size": 86,
+      "sha256": "DA09E8A2EB63BEC6FC22554A001493004B84AC6C63189A1C4B48E178DE9C69C9"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/stage-0170-v2.log",
+      "size": 33728,
+      "sha256": "EE2DB621E3A468C0D61C0D5D90991EFD0811D5487D391803EBAEF795166BAF3A"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/installer-0170-v2.log",
+      "size": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/pair-0160-0170-v2.log",
+      "size": 109,
+      "sha256": "DFB093B6B9874E9025B2119DEA933A1EE8931ECFD9B06497DAD24E73B61441B7"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/kit-0160-0170-v2.log",
+      "size": 259,
+      "sha256": "2B99EFAC007FE32FF0F044944FE45299C40BF8BC1D8B1AF429B218D62E3EA8BA"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/cargo-clean-receipt.json",
+      "size": 502,
+      "sha256": "D8A0F44CDDECE79450F47534DF0E9900AAAA388B501128FCE5991A2CA6DB090C"
+    },
+    {
+      "path": "build/mo-windows-stage-preedit-0170-v2/stage/evidence/build-receipt.json",
+      "size": 20865,
+      "sha256": "A99CAA5C66D30FF2A8D5DBE6311AB83F5252522B10F82367CAB0982540D66D6B"
+    },
+    {
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v2/vm-changed-upgrade-kit.json",
+      "size": 2983,
+      "sha256": "819A52C2C6BE706C631DB98656816058FF6B1F8282F55B4B1CCB7F29EA30B48F"
+    },
+    {
+      "path": "build/mo-linked-win10-preedit-0170-v2/verification/linked-installer-evidence.json",
+      "size": 886,
+      "sha256": "540B2A5DC40AA4F7E4556257C0C6BE5F55FECAD57823BD697290C64779628D81"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0170-v2/guest-kit-receipt.json",
+      "size": 223,
+      "sha256": "6C3B9915F629932CECF39B210387CEE3FF99D541CE4B554DB156CD3A02FACA4B"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Preedit0170-20261013-v1/guest-evidence/receipt.json",
+      "size": 181,
+      "sha256": "B803D2F94B69E257576678D51337EE0D3C9C56D78F68F9D8A6CE172A43E2FE9B"
+    }
+  ],
+  "negative_history": [
+    "build/mo-windows-stage-preedit-0170-v1",
+    "build/mo-linked-win10-preedit-0170-v1",
+    "build/host-audit-quality-20261013-v1/preedit-check.log",
+    "build/host-audit-quality-20261013-v1/preedit-targeted-final.log",
+    "build/host-audit-quality-20261013-v1/preedit-broker-smoke.log"
+  ]
+}
