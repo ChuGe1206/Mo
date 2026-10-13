@@ -44,17 +44,12 @@ constexpr int kPreeditTextInsetPx = 2;
 constexpr int kToolbarTopPx = (kCompactHeaderPx - kToolbarButtonPx) / 2;
 constexpr int kPageLabelMinWidthPx = 12;
 constexpr int kPageLabelPaddingPx = 4;
-constexpr int kDetailsMaxRows = 4;
-constexpr int kDetailsFooterPx = 8;
+constexpr int kExpandedMaxWidthPx = 360;
+constexpr int kExpandedCommentGapPx = 2;
 constexpr int kMinWindowWidthPx = 176;
 constexpr int kPreferredMaxWidthPx = 720;
-constexpr int kPanelWidthPx = 480;
+constexpr int kSymbolPanelWidthPx = 480;
 constexpr int kPresetRadiusPx = 8;
-constexpr int kDetailsColumns = 3;
-constexpr int kDetailsTitleTopPx = 36;
-constexpr int kDetailsBodyTopPx = 64;
-constexpr int kDetailsRowPitchPx = 52;
-constexpr int kDetailsCellHeightPx = 48;
 constexpr int kSymbolTitleTopPx = 36;
 constexpr int kSymbolTabTopPx = 64;
 constexpr int kSymbolBodyTopPx = 100;
@@ -217,10 +212,10 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
         }
         work_ = monitor.rcWork;
         anchor_ = anchor;
-        if (preedit != preedit_) { view_ = 0; first_row_ = 0; compact_scroll_px_ = 0; }
+        if (preedit != preedit_) { view_ = View::Compact; first_row_ = 0; compact_scroll_px_ = 0; }
         symbols_supported_ = snapshot.symbols_supported;
         quick_settings_supported_ = snapshot.quick_settings_supported;
-        if (!symbols_supported_ && view_ == 2) { view_ = 0; }
+        if (!symbols_supported_ && view_ == View::Symbols) { view_ = View::Compact; }
         page_ = snapshot.page;
         preference_error_ = false;
         preedit_positions_.reset();
@@ -231,6 +226,8 @@ bool CandidateWindow::Update(HINSTANCE module, HWND owner, const RECT& anchor,
         }
         preedit_ = std::move(preedit);
         rows_ = std::move(rows);
+        if (view_ == View::Annotations && std::none_of(rows_.begin(), rows_.end(),
+                [](const Row& row) { return !row.comment.empty(); })) { view_ = View::Compact; }
         revision_ = snapshot.revision;
         first_row_ = std::clamp(first_row_, 0, std::max(0, static_cast<int>(rows_.size()) - 1));
         callback_ = callback;
@@ -248,7 +245,7 @@ void CandidateWindow::ResetPress() noexcept {
 }
 
 void CandidateWindow::Hide(bool reset_view) noexcept {
-    if (reset_view) { view_ = 0; first_row_ = 0; compact_scroll_px_ = 0; }
+    if (reset_view) { view_ = View::Compact; first_row_ = 0; compact_scroll_px_ = 0; }
     ResetPress();
     revision_ = 0;
     callback_ = nullptr;
@@ -272,11 +269,11 @@ void CandidateWindow::Destroy() noexcept {
 }
 
 bool CandidateWindow::panel_open() const noexcept {
-    return view_ != 0 && window_ != nullptr && IsWindowVisible(window_) != FALSE && revision_ != 0;
+    return view_ != View::Compact && window_ != nullptr && IsWindowVisible(window_) != FALSE && revision_ != 0;
 }
 bool CandidateWindow::ClosePanel() noexcept {
     if (!panel_open()) { return false; }
-    ResetPress(); view_ = 0; return Reflow();
+    ResetPress(); view_ = View::Compact; return Reflow();
 }
 void CandidateWindow::ReportSettingsFailure() noexcept {
     preference_error_ = true;
@@ -292,11 +289,15 @@ bool CandidateWindow::ActionEnabled(int item) const noexcept {
     if (item == kPreviousPage) { return page_.has_value() && page_->has_previous; }
     if (item == kNextPage) { return page_.has_value() && page_->has_next; }
     if (item == kSmile) { return symbols_supported_; }
+    if (item == kExpand) {
+        return view_ == View::Annotations || std::any_of(rows_.begin(), rows_.end(),
+            [](const Row& row) { return !row.comment.empty(); });
+    }
     if (item == 44) { return quick_settings_supported_; }
     return true;
 }
 bool CandidateWindow::Reflow() noexcept {
-    compact_rects_.fill(RECT{}); expanded_rects_.fill(RECT{}); symbol_rects_.fill(RECT{});
+    compact_rects_.fill(RECT{}); symbol_rects_.fill(RECT{});
     compact_label_rects_.fill(RECT{}); compact_text_rects_.fill(RECT{});
     compact_comment_rects_.fill(RECT{});
     compact_count_ = 0; symbol_count_ = 0; compact_line_count_ = 0;
@@ -310,6 +311,7 @@ bool CandidateWindow::Reflow() noexcept {
     const int row_min = std::max(Scale(kCompactRowMinPx),
         static_cast<int>(metrics.tmHeight) + 2 * Scale(kCandidateVerticalInsetPx));
     std::array<int, 32> text_widths{}, label_widths{}, comment_widths{};
+    const bool expanded = view_ == View::Annotations;
     int desired_width = 2 * padding_;
     for (std::size_t i = 0; i < rows_.size(); ++i) {
         SIZE text{}, label{}, comment{};
@@ -320,9 +322,13 @@ bool CandidateWindow::Reflow() noexcept {
         GetTextExtentPoint32W(dc, rows_[i].comment.data(), static_cast<int>(rows_[i].comment.size()), &comment);
         text_widths[i] = text.cx;
         label_widths[i] = std::min(static_cast<int>(label.cx), Scale(kMaxLabelWidthPx));
-        comment_widths[i] = std::min(static_cast<int>(comment.cx), Scale(kMaxInlineCommentWidthPx));
-        const int item_width = text_widths[i] + label_widths[i] + 2 * Scale(kCandidateInsetPx)
-            + Scale(kCandidateLabelGapPx) + (comment_widths[i] > 0 ? comment_widths[i] + Scale(kCandidateLabelGapPx) : 0);
+        comment_widths[i] = expanded ? static_cast<int>(comment.cx)
+            : std::min(static_cast<int>(comment.cx), Scale(kMaxInlineCommentWidthPx));
+        const int candidate_width = text_widths[i] + label_widths[i] + 2 * Scale(kCandidateInsetPx)
+            + Scale(kCandidateLabelGapPx);
+        const int item_width = expanded
+            ? std::max(candidate_width, comment_widths[i] + 2 * Scale(kCandidateInsetPx))
+            : candidate_width + (comment_widths[i] > 0 ? comment_widths[i] + Scale(kCandidateLabelGapPx) : 0);
         desired_width = appearance_.vertical ? std::max(desired_width, item_width + 2 * padding_)
             : desired_width + item_width + (i == 0 ? 0 : gap_);
     }
@@ -336,9 +342,11 @@ bool CandidateWindow::Reflow() noexcept {
     page_label_width_ = std::max(Scale(kPageLabelMinWidthPx), static_cast<int>(page_extent.cx) + Scale(kPageLabelPaddingPx));
     const int toolbar_width = 4 * Scale(kToolbarButtonPx) + 3 * Scale(kToolbarGapPx) + page_label_width_;
     const int header_width = static_cast<int>(preedit.cx) + toolbar_width + Scale(kHeaderTextGapPx) + 2 * padding_;
-    width_ = std::min(work_width, view_ == 0
-        ? std::min(Scale(kPreferredMaxWidthPx), std::max({desired_width, header_width, Scale(kMinWindowWidthPx)}))
-        : Scale(kPanelWidthPx));
+    // Expansion reveals annotations, not a fixed-width candidate grid. With no annotations
+    // the action is disabled; both candidate views share content measurement and scrolling.
+    width_ = std::min(work_width, view_ == View::Symbols ? Scale(kSymbolPanelWidthPx)
+        : std::min(Scale(expanded ? kExpandedMaxWidthPx : kPreferredMaxWidthPx),
+            std::max({desired_width, header_width, Scale(kMinWindowWidthPx)})));
     if (width_ < Scale(kMinWindowWidthPx)) {
         SelectObject(dc, old_font); ReleaseDC(window_, dc); return false;
     }
@@ -348,30 +356,44 @@ bool CandidateWindow::Reflow() noexcept {
     compact_line_count_ = 1;
     const int right = width_ - padding_;
     for (std::size_t i = 0; i < rows_.size(); ++i) {
-        const int comment_gap = comment_widths[i] > 0 ? Scale(kCandidateLabelGapPx) : 0;
+        const int comment_gap = !expanded && comment_widths[i] > 0 ? Scale(kCandidateLabelGapPx) : 0;
         const int inset = Scale(kCandidateInsetPx), label_gap = Scale(kCandidateLabelGapPx);
-        const int desired = text_widths[i] + label_widths[i] + 2 * inset + label_gap
-            + comment_gap + comment_widths[i];
+        const int candidate_width = text_widths[i] + label_widths[i] + 2 * inset + label_gap;
+        const int desired = expanded ? std::max(candidate_width, comment_widths[i] + 2 * inset)
+            : candidate_width + comment_gap + comment_widths[i];
         const int cell_width = appearance_.vertical ? right - padding_ : std::min(desired, right - padding_);
         if (x > padding_ && (appearance_.vertical || x + cell_width > right)) {
             x = padding_; y += line_height + gap_; line_height = row_min;
             ++compact_line_count_;
         }
         RECT text{x + inset + label_widths[i] + label_gap, y + Scale(kCandidateVerticalInsetPx),
-            x + cell_width - inset - comment_widths[i] - comment_gap, y + row_min - Scale(kCandidateVerticalInsetPx)};
+            x + cell_width - inset - (expanded ? 0 : comment_widths[i] + comment_gap),
+            y + row_min - Scale(kCandidateVerticalInsetPx)};
         // Very long single candidates wrap inside the work area. Auxiliary labels/comments may elide;
         // the selectable candidate never uses DT_END_ELLIPSIS or an arbitrary per-item width cap.
         SelectObject(dc, font_);
         RECT measured = text;
         DrawTextW(dc, rows_[i].text.data(), static_cast<int>(rows_[i].text.size()), &measured,
             DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
-        const int cell_height = std::max(row_min,
+        const int candidate_height = std::max(row_min,
             static_cast<int>(measured.bottom - measured.top) + 2 * Scale(kCandidateVerticalInsetPx));
-        text.bottom = text.top + cell_height - 2 * Scale(kCandidateVerticalInsetPx);
+        text.bottom = text.top + candidate_height - 2 * Scale(kCandidateVerticalInsetPx);
+        int cell_height = candidate_height;
+        RECT comment_box{};
+        if (expanded && !rows_[i].comment.empty()) {
+            const int comment_top = y + candidate_height + Scale(kExpandedCommentGapPx);
+            comment_box = {x + inset, comment_top, x + cell_width - inset, comment_top};
+            RECT comment_measure = comment_box;
+            SelectObject(dc, caption_font_);
+            DrawTextW(dc, rows_[i].comment.data(), static_cast<int>(rows_[i].comment.size()),
+                &comment_measure, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+            comment_box.bottom += comment_measure.bottom - comment_measure.top;
+            cell_height = static_cast<int>(comment_box.bottom) - y + Scale(kCandidateVerticalInsetPx);
+        }
         compact_rects_[i] = {x, y, x + cell_width, y + cell_height};
         compact_label_rects_[i] = {x + inset, y, x + inset + label_widths[i], y + row_min};
         compact_text_rects_[i] = text;
-        compact_comment_rects_[i] = {text.right + comment_gap, y,
+        compact_comment_rects_[i] = expanded ? comment_box : RECT{text.right + comment_gap, y,
             x + cell_width - inset, y + row_min};
         line_height = std::max(line_height, cell_height);
         ++compact_count_; x += cell_width + gap_;
@@ -388,20 +410,7 @@ bool CandidateWindow::Reflow() noexcept {
     }
     SelectObject(dc, old_font); ReleaseDC(window_, dc);
     int height = compact_height_;
-    visible_rows_ = 0;
-    if (view_ == 1) {
-        const int cell_width = (width_ - 2 * padding_ - (kDetailsColumns - 1) * gap_) / kDetailsColumns;
-        const int available = std::max(1, std::min(kDetailsMaxRows, (work_height - Scale(kDetailsBodyTopPx + kDetailsFooterPx)) / Scale(kDetailsRowPitchPx)));
-        first_row_ = std::clamp(first_row_, 0, std::max(0, static_cast<int>(rows_.size()) - available * kDetailsColumns));
-        for (int i = first_row_; i < static_cast<int>(rows_.size()) && visible_rows_ < available * kDetailsColumns; ++i) {
-            const int col = visible_rows_ % kDetailsColumns, row = visible_rows_ / kDetailsColumns;
-            const int left = padding_ + col * (cell_width + gap_);
-            const int top = Scale(kDetailsBodyTopPx) + row * Scale(kDetailsRowPitchPx);
-            expanded_rects_[static_cast<std::size_t>(i)] = {left, top, left + cell_width, top + Scale(kDetailsCellHeightPx)};
-            ++visible_rows_;
-        }
-        height = Scale(kDetailsBodyTopPx + kDetailsFooterPx) + ((visible_rows_ + kDetailsColumns - 1) / kDetailsColumns) * Scale(kDetailsRowPitchPx);
-    } else if (view_ == 2) {
+    if (view_ == View::Symbols) {
         const int cell_width = (width_ - 2 * padding_ - 7 * gap_) / 8;
         for (int i = 0; i < 28; ++i) {
             if ((category_ == 0 && i >= 24) || (category_ == 1 && kSymbols[i].category != 1)
@@ -439,7 +448,7 @@ bool CandidateWindow::Reflow() noexcept {
         for (int i = 0; i < 5; ++i) {
             TOOLINFOW tool{}; tool.cbSize = sizeof(tool); tool.hwnd = window_;
             tool.uId = static_cast<UINT_PTR>(i + 1);
-            tool.rect = i < 4 ? ToolbarRect(i) : view_ == 2
+            tool.rect = i < 4 ? ToolbarRect(i) : view_ == View::Symbols
                 ? RECT{width_ - padding_ - Scale(120), Scale(kSymbolTabTopPx), width_ - padding_, Scale(kSymbolTabTopPx + 28)} : RECT{};
             SendMessageW(tooltip_, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&tool));
         }
@@ -454,7 +463,7 @@ int CandidateWindow::HitTest(LPARAM position) const noexcept {
         const RECT box = ToolbarRect(i);
         if (PtInRect(&box, point)) { return ActionEnabled(kPreviousPage + i) ? kPreviousPage + i : -1; }
     }
-    if (view_ == 2) {
+    if (view_ == View::Symbols) {
         const RECT close{width_ - padding_ - Scale(28), Scale(kSymbolTitleTopPx), width_ - padding_, Scale(kSymbolTitleTopPx + 28)};
         if (PtInRect(&close, point)) { return kClose; }
         for (int i = 0; i < 4; ++i) {
@@ -471,9 +480,10 @@ int CandidateWindow::HitTest(LPARAM position) const noexcept {
         }
     }
     for (std::size_t i = 0; i < rows_.size(); ++i) {
-        if ((view_ == 0 && point.y >= Scale(kCompactHeaderPx)
-            && point.y < client.bottom - padding_ && PtInRect(&compact_rects_[i], point))
-            || (view_ == 1 && PtInRect(&expanded_rects_[i], point))) { return static_cast<int>(i); }
+        if (view_ != View::Symbols && point.y >= Scale(kCompactHeaderPx)
+            && point.y < client.bottom - padding_ && PtInRect(&compact_rects_[i], point)) {
+            return static_cast<int>(i);
+        }
     }
     return -1;
 }
@@ -518,7 +528,6 @@ void CandidateWindow::Render(HDC dc) noexcept {
     const HGDIOBJ previous_font = SelectObject(dc, body_font_ != nullptr ? body_font_ : GetStockObject(DEFAULT_GUI_FONT));
     const int previous_mode = SetBkMode(dc, TRANSPARENT);
     const COLORREF previous_color = GetTextColor(dc);
-    const bool vertical = view_ == 0 && appearance_.vertical;
     const RECT preedit_box{padding_, Scale(kPreeditTextInsetPx),
         ToolbarRect(0).left - Scale(kHeaderTextGapPx), Scale(kCompactHeaderPx - kPreeditTextInsetPx)};
     if (!preedit_positions_.has_value()) {
@@ -562,35 +571,7 @@ void CandidateWindow::Render(HDC dc) noexcept {
         else { RoundRect(dc, box.left, box.top, box.right, box.bottom, Scale(16), Scale(16)); }
         SelectObject(dc, old_pen); SelectObject(dc, old_brush); DeleteObject(brush);
     };
-    const auto row_draw = [&](int index, RECT box, bool expanded) {
-        if (box.right <= box.left) { return; }
-        const Row& row = rows_[static_cast<std::size_t>(index)];
-        const bool primary = pressed_item_ >= 0 && pressed_item_ < 32
-            ? pressed_item_ == index : page_.has_value() && page_->highlighted.has_value()
-                ? *page_->highlighted == index : index == 0;
-        if (primary) { rounded(box, palette.pressed); }
-        const COLORREF color = primary ? palette.pressed_text : palette.text;
-        const COLORREF secondary = primary ? palette.pressed_text : palette.footer_text;
-        SelectObject(dc, caption_font_);
-        RECT label{box.left + Scale(8), box.top, box.left + Scale(28), expanded && !vertical ? box.top + Scale(30) : box.bottom};
-        Draw(dc, row.label, label, secondary);
-        SelectObject(dc, font_);
-        RECT text{box.left + Scale(32), box.top, box.right - Scale(8), expanded && !vertical ? box.top + Scale(30) : box.bottom};
-        Draw(dc, row.text, text, color);
-        if (expanded && !row.comment.empty()) {
-            SelectObject(dc, caption_font_);
-            if (vertical) {
-                SelectObject(dc, font_);
-                SIZE extent{}; GetTextExtentPoint32W(dc, row.text.data(), static_cast<int>(row.text.size()), &extent);
-                SelectObject(dc, caption_font_);
-                const int left = box.left + Scale(40) + static_cast<int>(extent.cx);
-                if (left < box.right - Scale(8)) { Draw(dc, row.comment, {left, box.top, box.right - Scale(8), box.bottom}, secondary); }
-            } else {
-                Draw(dc, row.comment, {box.left + Scale(8), box.top + Scale(30), box.right - Scale(8), box.bottom}, secondary);
-            }
-        }
-    };
-    if (view_ == 0) {
+    if (view_ != View::Symbols) {
         const int saved = SaveDC(dc);
         IntersectClipRect(dc, padding_, Scale(kCompactHeaderPx), client.right - padding_, client.bottom - padding_);
         for (int i = 0; i < compact_count_; ++i) {
@@ -604,7 +585,14 @@ void CandidateWindow::Render(HDC dc) noexcept {
             const COLORREF secondary = primary ? palette.pressed_text : palette.footer_text;
             SelectObject(dc, caption_font_);
             Draw(dc, rows_[index].label, compact_label_rects_[index], secondary);
-            Draw(dc, rows_[index].comment, compact_comment_rects_[index], secondary);
+            if (view_ == View::Annotations) {
+                RECT comment = compact_comment_rects_[index];
+                SetTextColor(dc, secondary);
+                DrawTextW(dc, rows_[index].comment.data(), static_cast<int>(rows_[index].comment.size()),
+                    &comment, DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+            } else {
+                Draw(dc, rows_[index].comment, compact_comment_rects_[index], secondary);
+            }
             SelectObject(dc, font_); SetTextColor(dc, color);
             RECT text = compact_text_rects_[index];
             DrawTextW(dc, rows_[index].text.data(), static_cast<int>(rows_[index].text.size()), &text,
@@ -612,7 +600,7 @@ void CandidateWindow::Render(HDC dc) noexcept {
         }
         RestoreDC(dc, saved);
     }
-    const UiIcon icons[] = {UiIcon::Previous, UiIcon::Next, view_ == 1 ? UiIcon::Collapse : UiIcon::Expand, UiIcon::Smile};
+    const UiIcon icons[] = {UiIcon::Previous, UiIcon::Next, view_ == View::Annotations ? UiIcon::Collapse : UiIcon::Expand, UiIcon::Smile};
     for (int i = 0; i < 4; ++i) {
         RECT box = ToolbarRect(i);
         if (pressed_item_ == kPreviousPage + i) { rounded(box, palette.footer); }
@@ -626,15 +614,7 @@ void CandidateWindow::Render(HDC dc) noexcept {
         }
         DrawUiIcon(module_, dc, icons[i], box, color);
     }
-    if (view_ == 1) {
-        SelectObject(dc, body_font_);
-        Draw(dc, L"候选详情", {padding_, Scale(kDetailsTitleTopPx), width_ / 2, Scale(kDetailsTitleTopPx + 24)}, palette.text);
-        SelectObject(dc, caption_font_);
-        const std::wstring summary = L"当前页 · " + std::to_wstring(rows_.size()) + L" 项"
-            + (rows_.size() > static_cast<std::size_t>(visible_rows_) ? L" · 滚轮查看更多" : L"");
-        Draw(dc, summary, {width_ / 2, Scale(kDetailsTitleTopPx), width_ - padding_, Scale(kDetailsTitleTopPx + 24)}, palette.footer_text);
-        for (std::size_t i = 0; i < rows_.size(); ++i) { row_draw(static_cast<int>(i), expanded_rects_[i], true); }
-    } else if (view_ == 2) {
+    if (view_ == View::Symbols) {
         SelectObject(dc, body_font_);
         Draw(dc, L"表情与颜文字", {padding_, Scale(kSymbolTitleTopPx), width_ - Scale(60), Scale(kSymbolTitleTopPx + 28)}, palette.text);
         DrawUiIcon(module_, dc, UiIcon::Close, {width_ - padding_ - Scale(24), Scale(kSymbolTitleTopPx + 4),
@@ -721,9 +701,9 @@ LRESULT CALLBACK CandidateWindow::WindowProc(HWND window, UINT message,
         InvalidateRect(window, nullptr, FALSE);
         if (accepted) {
             if (item == kExpand || item == kSmile || item == kClose || (item >= 40 && item < 44)) {
-                if (item == kExpand) { self->view_ = self->view_ == 1 ? 0 : 1; }
-                else if (item == kSmile) { self->view_ = self->view_ == 2 ? 0 : 2; }
-                else if (item == kClose) { self->view_ = 0; }
+                if (item == kExpand) { self->view_ = self->view_ == View::Annotations ? View::Compact : View::Annotations; }
+                else if (item == kSmile) { self->view_ = self->view_ == View::Symbols ? View::Compact : View::Symbols; }
+                else if (item == kClose) { self->view_ = View::Compact; }
                 else { self->category_ = item - 40; }
                 self->first_row_ = 0; self->compact_scroll_px_ = 0;
                 self->Reflow(); return 0;
@@ -746,14 +726,11 @@ LRESULT CALLBACK CandidateWindow::WindowProc(HWND window, UINT message,
         return 0;
     case WM_MOUSEWHEEL:
         self->ResetPress();
-        if (self->view_ == 0) {
+        if (self->view_ != View::Symbols) {
             self->compact_scroll_px_ += (GET_WHEEL_DELTA_WPARAM(parameter) < 0 ? 1 : -1) * self->Scale(kCompactRowMinPx + kCandidateGapPx);
             self->Reflow();
-        } else if (self->view_ == 2) {
+        } else if (self->view_ == View::Symbols) {
             self->first_row_ += GET_WHEEL_DELTA_WPARAM(parameter) < 0 ? 1 : -1;
-            self->Reflow();
-        } else if (self->view_ == 1 && self->rows_.size() > static_cast<std::size_t>(self->visible_rows_)) {
-            self->first_row_ += (GET_WHEEL_DELTA_WPARAM(parameter) < 0 ? 1 : -1) * (self->view_ == 1 ? 3 : 1);
             self->Reflow();
         }
         return 0;

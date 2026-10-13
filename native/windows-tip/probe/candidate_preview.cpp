@@ -41,6 +41,33 @@ struct CandidateWindowFixture final {
         SelectObject(dc, old_font); ReleaseDC(value.window_, dc);
         return success;
     }
+    static bool FullExpandedComments(const CandidateWindow& value) {
+        if (value.view_ != CandidateWindow::View::Annotations || !FullCompactPage(value)) { return FixtureFailure(__LINE__); }
+        const HDC dc = GetDC(value.window_);
+        if (dc == nullptr) { return FixtureFailure(__LINE__); }
+        const auto old_font = SelectObject(dc, value.caption_font_);
+        bool success = true;
+        for (std::size_t i = 0; i < value.rows_.size(); ++i) {
+            if (value.rows_[i].comment.empty()) { continue; }
+            const RECT slot = value.compact_comment_rects_[i];
+            RECT measured = slot;
+            if (DrawTextW(dc, value.rows_[i].comment.data(), static_cast<int>(value.rows_[i].comment.size()),
+                    &measured, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX) <= 0
+                || measured.right > slot.right || measured.bottom > slot.bottom
+                || slot.top < value.compact_text_rects_[i].bottom
+                || slot.bottom > value.compact_rects_[i].bottom
+                || slot.right > value.width_ - value.padding_ || slot.left < value.padding_) {
+                success = false; break;
+            }
+        }
+        SelectObject(dc, old_font); ReleaseDC(value.window_, dc);
+        return success;
+    }
+    static bool ScrolledCommentEnd(const CandidateWindow& value) {
+        RECT client{};
+        return GetClientRect(value.window_, &client) && value.compact_scroll_px_ > 0
+            && value.compact_comment_rects_[0].bottom <= client.bottom - value.padding_;
+    }
     static bool ShortViewport(CandidateWindow& value) {
         value.work_.right = value.work_.left + value.Scale(240);
         value.work_.bottom = value.work_.top + value.Scale(100);
@@ -61,6 +88,9 @@ struct CandidateWindowFixture final {
 namespace {
 using namespace mo::windows_tip;
 enum class PreviewToolbar : int { Previous, Next, Details, Symbols };
+constexpr int kExpandedGoldenMaxWidthPx = 360;
+constexpr int kExpandedGoldenMaxHeightPx = 130;
+constexpr int kAnnotationScrollFixtureSteps = 200;
 constexpr int kFixtureTabCenterY = 78;
 constexpr int kFixtureFirstSymbolY = 118;
 constexpr int kFixtureEmojiToggleRightInsetPx = 22;
@@ -188,6 +218,11 @@ bool Run(HWND owner, const std::filesystem::path& output) {
         };
         if (!output.empty() && theme == CandidateTheme::Light) {
             ClickToolbar(window, candidate, PreviewToolbar::Details);
+            RECT expanded{}; GetClientRect(window, &expanded);
+            if (expanded.right > MulDiv(kExpandedGoldenMaxWidthPx, dpi, 96)
+                || expanded.bottom > MulDiv(kExpandedGoldenMaxHeightPx, dpi, 96)
+                || !CandidateWindowFixture::FullExpandedComments(candidate)
+                || GetFocus() != focus) { return FixtureFailure(__LINE__); }
             if (!Capture(window, output / L"expanded.bmp")) { return FixtureFailure(__LINE__); }
             ClickToolbar(window, candidate, PreviewToolbar::Symbols);
             if (!Capture(window, output / L"emoji.bmp")) { return FixtureFailure(__LINE__); }
@@ -295,6 +330,11 @@ bool Run(HWND owner, const std::filesystem::path& output) {
     RECT nihao{}; GetClientRect(window, &nihao);
     if (nihao.right > MulDiv(340, dpi, 96) || nihao.bottom > MulDiv(64, dpi, 96)) { return FixtureFailure(__LINE__); }
     if (!output.empty() && !Capture(window, output / L"nihao-full-page.bmp")) { return FixtureFailure(__LINE__); }
+    ClickToolbar(window, candidate, PreviewToolbar::Details);
+    RECT no_annotations{}; GetClientRect(window, &no_annotations);
+    if (candidate.panel_open() || !EqualRect(&nihao, &no_annotations)
+        || !CandidateWindowFixture::FullCompactPage(candidate)) { return FixtureFailure(__LINE__); }
+    if (!output.empty() && !Capture(window, output / L"nihao-no-expansion.bmp")) { return FixtureFailure(__LINE__); }
     snapshot.positions = CompositionPositions{2, 0, 2};
     Utf16CompositionPositions utf16;
     if (!ToUtf16CompositionPositions("a😀墨", CompositionPositions{5, 1, 8}, &utf16)
@@ -334,6 +374,28 @@ bool Run(HWND owner, const std::filesystem::path& output) {
     if (!CandidateWindowFixture::ScrolledCandidateEnd(candidate)
         || !CandidateWindowFixture::FullCompactPage(candidate) || GetFocus() != focus) { return FixtureFailure(__LINE__); }
     if (!output.empty() && !Capture(window, output / L"single-long-scroll-end.bmp")) { return FixtureFailure(__LINE__); }
+    // An annotation may exceed the entire work area: scrolling must reach its end,
+    // rather than truncating the comment or treating one oversized cell as one scroll step.
+    snapshot.composition = "annotation";
+    snapshot.candidates = {"合成候选"};
+    snapshot.candidate_comments = {std::string(512, 'a')};
+    settings.skin = 1; settings.font_size = 16;
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions, &settings)) { return FixtureFailure(__LINE__); }
+    ClickToolbar(window, candidate, PreviewToolbar::Details);
+    if (!CandidateWindowFixture::FullExpandedComments(candidate)
+        || !CandidateWindowFixture::ShortViewport(candidate)) { return FixtureFailure(__LINE__); }
+    for (int step = 0; step < kAnnotationScrollFixtureSteps; ++step) {
+        SendMessageW(window, WM_MOUSEWHEEL, MAKEWPARAM(0, -WHEEL_DELTA), 0);
+    }
+    if (!CandidateWindowFixture::ScrolledCommentEnd(candidate)
+        || !CandidateWindowFixture::FullExpandedComments(candidate)
+        || GetFocus() != focus) { return FixtureFailure(__LINE__); }
+    if (!output.empty() && !Capture(window, output / L"annotation-scroll-end.bmp")) { return FixtureFailure(__LINE__); }
+    // Changing the same preedit to a page without annotations collapses the panel.
+    snapshot.candidate_comments.clear();
+    if (!candidate.Update(module, owner, anchor, snapshot, CandidateTheme::Light,
+        true, Action, &actions, &settings) || candidate.panel_open()) { return FixtureFailure(__LINE__); }
     // Reusing the same DPI must not accumulate fonts, regions or brushes.
     const DWORD gdi_before = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
     for (int iteration = 0; iteration < 200; ++iteration) {

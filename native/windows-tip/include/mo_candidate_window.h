@@ -27,6 +27,7 @@ public:
     void ReportSettingsFailure() noexcept;
 
 private:
+    enum class View { Compact, Annotations, Symbols };
     friend struct CandidateWindowFixture; // Synthetic renderer/geometry regression only.
     static LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM) noexcept;
     void Paint() noexcept;
@@ -62,7 +63,6 @@ private:
     int gap_ = 4;
     int radius_ = 12;
     int font_dpi_ = 0;
-    int visible_rows_ = 0;
     int first_row_ = 0;
     int pressed_item_ = -1;
     std::uint64_t pressed_revision_ = 0;
@@ -72,7 +72,7 @@ private:
     RECT anchor_{};
     RECT work_{};
     int width_ = 560;
-    int view_ = 0; // Compact, expanded candidates, symbols.
+    View view_ = View::Compact;
     int category_ = 0;
     int compact_count_ = 0;
     int compact_line_count_ = 0;
@@ -90,7 +90,6 @@ private:
     InputScheme active_scheme_ = InputScheme::FullPinyin;
     std::optional<CandidatePage> page_;
     std::array<RECT, 32> compact_rects_{};
-    std::array<RECT, 32> expanded_rects_{};
     std::array<RECT, 28> symbol_rects_{};
     std::array<int, 28> symbol_indices_{};
     int Scale(int value) const noexcept { return MulDiv(value, font_dpi_ > 0 ? font_dpi_ : 96, 96); }

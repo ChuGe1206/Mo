@@ -3,7 +3,18 @@
 更新：2026-10-13。用户优先验证 Win10；其当前主机也是 Win10。虚拟机已准备，
 凭据通道已恢复；密码不写入源码、日志或交接文档。
 
-## 2026-10-13 输入修复与 0170 v2（最新入口）
+## 2026-10-13 紧凑注释展开0180（最新入口）
+
+- [本轮记录](WIN10-COMPACT-EXPANDED-0180-20261013.md)：无注释不展开，有注释完整换行，六词291×81。
+- Figma六款Expanded组件/实例同步，评审1553:1894；最终枚举源码22幅Win10预览通过。
+- 四Rust门禁199+1、固定1.97.1双架构原生/IPC/恢复通过。
+- 唯一stage expanded-0180-v3、linked expanded-0180-v3、kit0170-0180-v2；v2stage/v1kit不使用。
+- Guest C:/MoDev/Packages/0.0.18.0-v2已14文件核验，session1/Broker0/设置0；自主重启且用户处理桌面。
+- Upgrade0180-v2普通driver已发起，截图确认审计PowerShell UAC，等待用户点击；不得重复发起。
+  实际安装仍0170；回执将回传Package0180-v2/upgrade-evidence-v2。
+- 20:14默认target清零，释放约0.94GiB逻辑空间；封存包和证据保留。
+
+## 2026-10-13 输入修复与0170实际验收
 
 - [修复记录](WIN10-PREEDIT-0170-20261013.md)与 ADR 0064：OEM/Shift/系统键隔离，协商位置 metadata，
   TSF caret、候选光标/分段、翻页 tooltip 已实现。四 Rust 门禁及双架构 fake TSF/IPC/fault 通过。

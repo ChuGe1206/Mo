@@ -1,0 +1,179 @@
+{
+  "format": 1,
+  "kind": "mo-compact-expanded-candidate-validation",
+  "date": "2026-10-13",
+  "development_only": true,
+  "installed_version": "0.0.17.0",
+  "prepared_version": "0.0.18.0",
+  "installed_upgrade_completed": false,
+  "driver_started": true,
+  "audit_uac_visually_confirmed": true,
+  "installer_observed": false,
+  "rust_toolchain": "1.97.1",
+  "rust_passed_including_doc": 199,
+  "rust_ignored": 1,
+  "native_architectures": [
+    "x64",
+    "Win32"
+  ],
+  "native_strict_warnings": true,
+  "broker_fault_restarts_per_architecture": 2,
+  "source_inventory_count": 126,
+  "changed_source_hashes_match": true,
+  "candidate_view_is_named_enum": true,
+  "wire_and_settings_unchanged": true,
+  "deadlines_ms": [
+    50,
+    400
+  ],
+  "expanded_max_logical_width_px": 360,
+  "expanded_with_annotations_pixels": [
+    291,
+    81
+  ],
+  "no_annotations_pixels": [
+    299,
+    60
+  ],
+  "empty_expansion_disabled": true,
+  "full_annotation_wrapping_and_scrolling_passed": true,
+  "final_win10_previews": 22,
+  "enum_visual_equivalence_count": 22,
+  "enum_visual_equivalence_passed": true,
+  "figma_evidence": "docs/phase-0/evidence/FIGMA-COMPACT-EXPANDED-20261013.json",
+  "stage_directory": "build/mo-windows-stage-expanded-0180-v3/stage",
+  "installer_directory": "build/mo-linked-win10-expanded-0180-v3",
+  "kit_directory": "build/mo-vm-changed-upgrade-kit-0170-0180-v2",
+  "guest_kit_directory": "C:/MoDev/Packages/0.0.18.0-v2",
+  "upgrade_evidence_directory": "C:/MoDev/Evidence/Upgrade0180-v2",
+  "bundle_sha256": "47EA4494074CB9D5B6971982BE16EE80CF599FA47480D08339892C469EF40FDA",
+  "kit_manifest_sha256": "A36838B371C14781626C89FC5C9F055717573EFB400BFD8F649BFFDC59B05011",
+  "stage_manifest_sha256": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
+  "guest_kit_verified_files": 14,
+  "vm_reboot_executed": true,
+  "vm_boot_utc": "2026-10-13T12:06:56.5000000Z",
+  "cache_cleanup": {
+    "format": 1,
+    "checked_utc": "2026-10-13T12:14:12.0009479Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "active_project_tasks": 0,
+    "before_files": 5463,
+    "after_files": 0,
+    "reclaimed_logical_bytes": 1004029757,
+    "disk_free_before": 30797176832,
+    "disk_free_after": 31764721664,
+    "sealed_build_preserved": true,
+    "download_cache_preserved": true,
+    "cache_warmup_rebuild": false
+  },
+  "preserved_failures": [
+    "Initial prepare-stage used updated stable1.98.1 and was rejected; final explicitly pinned1.97.1",
+    "Initial installer invocation preceded completed stage; missing-path rejection retained",
+    "Enum migration missed symbols ternary numeric values; strict compiler rejected, final corrected",
+    "First Figma inventory exceeded20KiB return limit; read-only call narrowed",
+    "After reboot Guest Additions not ready, unreadable screenshot and guestcontrol20; user handled desktop; lightweight health and eventual copy receipt verified"
+  ],
+  "superseded_not_for_upgrade": [
+    "build/mo-windows-stage-expanded-0180-v2",
+    "build/mo-linked-win10-expanded-0180-v2",
+    "build/mo-vm-changed-upgrade-kit-0170-0180-v1",
+    "build/win10-evidence-clean-v1/Package0180-v1"
+  ],
+  "pending": [
+    "audit and installer UAC confirmation",
+    "actual0170 to0180 upgrade and installed expanded verification",
+    "physical multi-DPI,high contrast,non-US OEM,loaded host matrix,G2/G3"
+  ],
+  "evidence": [
+    {
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "path": "build/compact-expanded-20261013-v1/fmt.log",
+      "size": 0
+    },
+    {
+      "sha256": "60DE495DFD8811D8BB0AA3286786D7AFCF5B8F37DFED3DFD29302039937D1972",
+      "path": "build/compact-expanded-20261013-v1/clippy.log",
+      "size": 1144
+    },
+    {
+      "sha256": "6675B7D96DE35F276A8F9DAD17EFE50FEC751012B1D9E3A6C77882F05F0A8B2A",
+      "path": "build/compact-expanded-20261013-v1/clippy-trace.log",
+      "size": 169
+    },
+    {
+      "sha256": "0BCF359F5E61A94E262F47AA5BFDD63CA9E82EBE80324A7F27F6A2578BF866A7",
+      "path": "build/compact-expanded-20261013-v1/workspace-tests.log",
+      "size": 22631
+    },
+    {
+      "sha256": "462A202922A569463C65DFC2A41F641B2A89773964AC08C8300F205E8F10218A",
+      "path": "build/compact-expanded-20261013-v1/broker-smoke-v4-final.log",
+      "size": 32209
+    },
+    {
+      "sha256": "0CE6345332D16AFC24C31ADDEB75E561D0D71E3785E8FE13B7D463E7D688FD8A",
+      "path": "build/compact-expanded-20261013-v1/stage-0180-v3-final.log",
+      "size": 33873
+    },
+    {
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF",
+      "path": "build/compact-expanded-20261013-v1/installer-0180-v3-final.log",
+      "size": 317
+    },
+    {
+      "sha256": "6745C8DAC53DDDD6BF82B28DFB5BFDBE3749476A9EABF06EEC9049EDFC1882B0",
+      "path": "build/compact-expanded-20261013-v1/pair-0170-0180-v2-final.log",
+      "size": 109
+    },
+    {
+      "sha256": "5965877DE17824A39A6A75CA82A86AD5C16A5C97EA7AA463951C2B99CF70854D",
+      "path": "build/compact-expanded-20261013-v1/kit-0170-0180-v2-final.log",
+      "size": 259
+    },
+    {
+      "sha256": "40230245AB21650741C6AAF10EFF57F87F11F4ECCD5F10F0C1115697188E11AD",
+      "path": "build/compact-expanded-20261013-v1/cargo-clean-receipt.json",
+      "size": 450
+    },
+    {
+      "sha256": "7FB3AAF553B133C89C78D7967C037C120081B6BEF3BF8248C75E6DF745BE0966",
+      "path": "build/win10-evidence-clean-v1/CompactExpanded-20261013-v2/manifest.json",
+      "size": 622
+    },
+    {
+      "sha256": "407D22B933B6B6713B98B6246DE75F5F1F9EDA8B1C9CBCBD2B258F909E4FE416",
+      "path": "build/win10-evidence-clean-v1/CompactExpanded-20261013-v2/guest-evidence/receipt.json",
+      "size": 181
+    },
+    {
+      "sha256": "61B62B0B9DE243C120795D49AAFA45AEA5AB72E3CE667A89B50C104BA1E193A7",
+      "path": "build/win10-evidence-clean-v1/CompactExpanded-20261013-v2/visual-equivalence.json",
+      "size": 2848
+    },
+    {
+      "sha256": "34FC2ECEEDB5B2DA9DD7C290F0B2335CB722E931D535B85CE0D627E08A1EFE56",
+      "path": "build/win10-evidence-clean-v1/CompactExpanded-20261013-v2/vm-reboot-request.json",
+      "size": 328
+    },
+    {
+      "sha256": "658951334C9130DDE12B67611E0DCFF4BFB02EF2D748FA8F5FB9D55C721250CC",
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/guest-kit-receipt.json",
+      "size": 339
+    },
+    {
+      "sha256": "A36838B371C14781626C89FC5C9F055717573EFB400BFD8F649BFFDC59B05011",
+      "path": "build/mo-vm-changed-upgrade-kit-0170-0180-v2/vm-changed-upgrade-kit.json",
+      "size": 2983
+    },
+    {
+      "sha256": "2AC80E409F86EE8EC505BF71F0CE692B9ABFE189BDE8B9E64EF8B7E6A7006C77",
+      "path": "build/mo-windows-stage-expanded-0180-v3/stage/evidence/build-receipt.json",
+      "size": 20865
+    },
+    {
+      "sha256": "ECB8E5369D72863C79042E3AA00504893CFAED187D815232C5A4FFBAED988E5B",
+      "path": "build/mo-linked-win10-expanded-0180-v3/verification/linked-installer-evidence.json",
+      "size": 886
+    }
+  ]
+}

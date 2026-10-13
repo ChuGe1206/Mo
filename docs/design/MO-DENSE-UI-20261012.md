@@ -51,3 +51,8 @@ Figma 使用可用的 Noto Sans SC，原生使用 Microsoft YaHei UI；字体度
 - Figma 缺少 Microsoft YaHei UI，沿用 Noto Sans SC；尺寸/排列核验通过，
   不宣称字体栅格与 Windows GDI 截图逐像素一致。
 - [同步回执](../phase-0/evidence/FIGMA-CANDIDATE-REFERENCE-20261012.json)。本次没有 Rust/原生源码变更、重新构建或覆盖已封存包。
+
+## 2026-10-13 展开态进一步收紧
+
+详情网格由[紧凑注释展开](MO-COMPACT-EXPANDED-20261013.md)替代；无注释不展开，
+有注释时按内容排布、完整换行，最大宽360；Win10合成六词291×81。

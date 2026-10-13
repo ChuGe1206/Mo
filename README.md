@@ -140,6 +140,10 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 
 ## 现代 UI（develop）
 
+2026-10-13：[紧凑注释展开](docs/design/MO-COMPACT-EXPANDED-20261013.md)已实现：无注释不展开，
+有注释按内容收边，Win10六词291×81、默认nihao299×60。
+[0180配套包](docs/phase-0/WIN10-COMPACT-EXPANDED-0180-20261013.md)已核验，实际安装仍0170，正在等待升级审计UAC。
+
 2026-10-13：[预编辑/标点修复及 0.0.17.0 v2 包](docs/phase-0/WIN10-PREEDIT-0170-20261013.md)已准备，
 VM 已完成 [0.0.17.0 实际升级与验收](docs/phase-0/WIN10-INSTALLED-0170-20261013.md)。修复版左右/Home/End 编辑拼写，
 PageUp/PageDown、-/= 翻页；用户确认拼写光标、键盘翻页和标点完成均正常。展开态密度继续改进。

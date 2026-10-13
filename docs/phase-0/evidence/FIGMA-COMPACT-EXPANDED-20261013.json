@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "kind": "mo-figma-compact-annotations",
+  "date": "2026-10-13",
+  "file_key": "pFUWDZYKrLw9dxdNQ4XanU",
+  "review_node": "1553:1894",
+  "review_pixels": [
+    654,
+    459
+  ],
+  "expanded_components": [
+    "65:498",
+    "65:746",
+    "65:994",
+    "65:1242",
+    "65:1490",
+    "65:1738"
+  ],
+  "expanded_pixels": [
+    291,
+    81
+  ],
+  "candidates_per_example": 6,
+  "updated_existing_instances": [
+    "68:3105",
+    "68:3533",
+    "207:1638"
+  ],
+  "tokens": {
+    "expanded_max_width": "VariableID:1548:1008",
+    "comment_gap": "VariableID:1548:1007",
+    "annotation_line_height": "VariableID:1548:1009"
+  },
+  "annotation_text_style": "S:9e353283bcc5515e7c79826fe9fd5a228ec1b8c8,",
+  "skin_palette_bindings_reused": true,
+  "compact_no_annotations_disabled": true,
+  "editable_component_review": true,
+  "visual_review_passed": true,
+  "font_family": "Noto Sans SC",
+  "native_font_family": "Microsoft YaHei UI",
+  "font_pixels_identical_claimed": false
+}

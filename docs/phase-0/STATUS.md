@@ -4,6 +4,13 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-13 紧凑注释展开与0180配套包
+
+- [本轮记录](WIN10-COMPACT-EXPANDED-0180-20261013.md)：无注释不展开，六词注释291×81，Figma同步。
+- 最终具名视图状态、固定工具链双架构IPC和22幅Win10渲染通过；四Rust门禁199+1。
+- 最终0180 stage/MSI/Burn/ICE/Changed pair/kit已核验，VM自主重启后已发起升级，等待审计UAC。
+- 实际安装仍0170；18安装态待回执，不重复发起。Cargo默认target清零，释放约0.94GiB逻辑空间。
+
 ## 2026-10-13 实际 0170 输入修复验收
 
 - [安装态记录](WIN10-INSTALLED-0170-20261013.md)：16→17 v2 已完成，载荷/COM/权限/设置保全通过。
