@@ -141,8 +141,8 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 ## 现代 UI（develop）
 
 2026-10-13：[预编辑/标点修复及 0.0.17.0 v2 包](docs/phase-0/WIN10-PREEDIT-0170-20261013.md)已准备，
-VM 仍为 0.0.16.0，重启后已启动升级前只读审计，等待 UAC 确认。修复版左右/Home/End 编辑拼写，
-PageUp/PageDown、-/= 翻页；标点交由引擎处理并完成候选，未宣称安装态已通过。
+VM 已完成 [0.0.17.0 实际升级与验收](docs/phase-0/WIN10-INSTALLED-0170-20261013.md)。修复版左右/Home/End 编辑拼写，
+PageUp/PageDown、-/= 翻页；用户确认拼写光标、键盘翻页和标点完成均正常。展开态密度继续改进。
 
 2026-10-12 密度修订：[紧凑设计](docs/design/MO-DENSE-UI-20261012.md)、
 [Win10 证据与 0.0.16.0 包](docs/phase-0/WIN10-DENSE-UI-20261012.md)。

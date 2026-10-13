@@ -9,12 +9,14 @@
   TSF caret、候选光标/分段、翻页 tooltip 已实现。四 Rust 门禁及双架构 fake TSF/IPC/fault 通过。
 - Win10 renderer 20 BMP、exit 0、299×60。0170 v2 fresh stage/MSI/Burn/ICE、pair/kit 已通过；
   guest C:/MoDev/Packages/0.0.17.0-v2 已复制并全哈希核验。
-- 当前安装仍 0160；重启核验 boot UTC 2026-10-13T09:25:51.5000000Z，Broker/设置均为 0。
-  普通 session 1 driver 已启动，证据 Upgrade0170-v2；只读审计 UAC 等待确认，尚未调用安装器。
-  用户授权以后自主 VM 启停/重启/测试；安全提示仍受 computer-use 禁止规则约束，由用户处理。
-  VBox 截图两次 E_FAIL，检测 consent=1；尚未核对画面，不重复启动 driver。
+- [实际安装态](WIN10-INSTALLED-0170-20261013.md)：19:14 普通权限 driver 完成 16→17，exit 0；
+  载荷/机器 COM/安装权限/设置/默认输入法/finalizer 全部通过，审计 53 个进程。
+  已安装双架构 ABI、中英各 7 幅预览通过，14/14 与安装态 0160 像素一致；现有真实 Broker 保留。
+  用户反馈光标、键盘翻页、标点“均正常”；随后要求缩紧展开态，下一步改候选详情布局。
+  用户授权以后自主 VM 启停/重启/测试；安全提示仍由用户处理。关机后临时共享映射须恢复。
+  唯一升级回执 Upgrade0170-v2 已回传 Package0170-v2/upgrade-evidence-v2；不得重复运行16→17。
 - 唯一 kit：build/mo-vm-changed-upgrade-kit-0160-0170-v2；共享 Package0170-v2。
-  v1 保留不用于升级。实际 Rime/记事本修复未验收，G2/G3、50/400 ms 不变。
+  v1 保留不用于升级。用户有限文档输入验收通过，G2/G3、50/400 ms 不变。
 - 默认 target 于 09:23 清为 0，释放约 1.45 GiB 逻辑空间，封存包/证据保持。
 
 ## 2026-10-13 续测

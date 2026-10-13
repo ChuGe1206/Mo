@@ -3,9 +3,9 @@
   "kind": "mo-preedit-key-routing-validation",
   "date": "2026-10-13",
   "development_only": true,
-  "installed_version": "0.0.16.0",
+  "installed_version": "0.0.17.0",
   "prepared_version": "0.0.17.0",
-  "installed_upgrade_executed": false,
+  "installed_upgrade_executed": true,
   "final_package_revision": "v2",
   "rust_passed_including_doc": 199,
   "rust_ignored": 1,
@@ -50,8 +50,6 @@
   "bundle_sha256": "FF1756B67CA6FD9E7E66B70645CAB6EC3D7A2F34548A6D1DF9F4F8FF20ABCF90",
   "guest_kit_sha256": "819A52C2C6BE706C631DB98656816058FF6B1F8282F55B4B1CCB7F29EA30B48F",
   "pending": [
-    "actual 0160 to 0170 upgrade",
-    "real Rime document caret and punctuation",
     "non-US OEM layouts",
     "physical multi-DPI and high contrast",
     "G2/G3 and real first-key latency"
@@ -161,7 +159,7 @@
     "build/host-audit-quality-20261013-v1/preedit-broker-smoke.log"
   ],
   "vm_upgrade_preflight": {
-    "boot_utc": "2026-10-13T09:25:51.5000000Z",
+    "boot_utc": "2026-10-13T09:25:51.5Z",
     "session": 1,
     "broker_count": 0,
     "settings_count": 0,
@@ -175,5 +173,12 @@
     "uac_visual_verified": false,
     "future_vm_lifecycle_authorized": true,
     "uac_requires_user": true
-  }
+  },
+  "manual_user_acceptance": {
+    "keyboard_paging": true,
+    "punctuation_completion": true,
+    "preedit_caret": true,
+    "report": "均正常"
+  },
+  "installed_evidence_document": "docs/phase-0/evidence/WIN10-INSTALLED-0170-20261013.json"
 }
