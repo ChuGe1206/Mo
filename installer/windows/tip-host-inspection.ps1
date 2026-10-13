@@ -2,6 +2,8 @@
 $script:MoHostAuditFreshnessSeconds = 30
 $script:MoHostAuditFutureToleranceSeconds = 2
 $script:MoHostAuditMaxBytes = 262144
+# Bounds completion after UAC returns; user prompt time is managed separately.
+$script:MoHostAuditWorkerCompletionTimeoutMilliseconds = 120000
 $script:MoAntimalwareProtectionLevel = [uint32]3
 
 function Get-MoVmHostProtectionLevel([int]$ProcessId) {
@@ -87,7 +89,18 @@ function Invoke-MoVmElevatedHostInspection([string]$HelperPath, [string]$Evidenc
     $start = @{ FilePath = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
         ArgumentList = $arguments; Verb = 'RunAs'; WindowStyle = 'Hidden'; PassThru = $true }
     $process = Start-Process @start
-    if (-not $process.WaitForExit(120000)) { throw 'Read-only host inspection did not complete.' }
+    try {
+        # Retain the OS handle before waiting, including on Windows PowerShell 5.1.
+        # This keeps exit status readable after a short-lived worker has exited.
+        $null = $process.Handle
+        if (-not $process.WaitForExit($script:MoHostAuditWorkerCompletionTimeoutMilliseconds)) {
+            throw 'Read-only host inspection did not complete.'
+        }
+        if ($process.ExitCode -ne 0) { throw 'Read-only host inspection worker failed.' }
+    } finally {
+        # Dispose releases our process handle; it does not terminate the worker.
+        $process.Dispose()
+    }
     Assert-MoVmHostAuditAcl (Split-Path -Parent $auditRoot)
     Assert-MoVmHostAuditAcl $auditRoot
     $path = Join-Path $auditRoot 'audit.json'

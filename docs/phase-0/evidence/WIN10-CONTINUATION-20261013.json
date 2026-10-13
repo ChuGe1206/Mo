@@ -1,0 +1,123 @@
+{
+  "format": 1,
+  "kind": "mo-win10-host-audit-quality",
+  "date": "2026-10-13",
+  "installed_version": "0.0.16.0",
+  "development_only": true,
+  "host_inspection_tests_per_shell": 30,
+  "host_preflight_tests_per_shell": 14,
+  "transaction_tests_per_shell": 22,
+  "kit_policy_tests_ps7": 34,
+  "rust_passed_including_doc": 194,
+  "rust_ignored": 1,
+  "installed_abi_cases": [
+    {
+      "tip_sha256": "8985ED42D55BE2C2AB0E738BE937B3BDBB41A24BE55F1A5151118AD154C209A6",
+      "probe_sha256": "A962CC38CDB9A130A79F9B4F8448C02A96E1AD4AAF89C27E510C92D7C0E6CF0E",
+      "architecture": "x64",
+      "exit": 0
+    },
+    {
+      "tip_sha256": "EE824189F317CA17763F2312391B15AB077B7D4AC8143A3B8BADA6E5FD9A07AB",
+      "probe_sha256": "50E49476185E9C44B9E19604D4CCF11FB442208F81549148986D6393F9E17289",
+      "architecture": "x86",
+      "exit": 0
+    }
+  ],
+  "installed_broker_preserved": true,
+  "desktop_input_executed_by_agent": false,
+  "manual_user_report": {
+    "complete_candidates": true,
+    "mouse_paging": true,
+    "emoji_panel": true,
+    "escape": true,
+    "unresolved": [
+      "preedit caret/segment presentation",
+      "keyboard paging discoverability",
+      "punctuation passes through while composing"
+    ]
+  },
+  "audit_worker_elevated_integration_retested": false,
+  "kit_v4_installer_executed": false,
+  "evidence": [
+    {
+      "path": "build/host-audit-quality-20261013-v1/fmt.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/clippy.log",
+      "size": 1144,
+      "sha256": "0274355EC087ECA45F29EADD537579ADB5C815C607EBD47FA471F12A11F5FCB3"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/clippy-trace.log",
+      "size": 169,
+      "sha256": "4B74A07C58FD1A83C1DCFE1439FB70C8133B8D82C3237A3F565CDDEB5BD36230"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/workspace.log",
+      "size": 22009,
+      "sha256": "42F60ED0FACBF97048E7CCE9E13FED6F033EAD9EAA6393D12AAC940C20024A73"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/host-inspection-ps7-final.log",
+      "size": 881,
+      "sha256": "54EEBA61C03B5DC6BA24CB11B7AD849B0CC483BDE4EEB3966EB6C1FB7B38016B"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/host-inspection-ps5-final.log",
+      "size": 881,
+      "sha256": "54EEBA61C03B5DC6BA24CB11B7AD849B0CC483BDE4EEB3966EB6C1FB7B38016B"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/test-vm-tip-host-preflight-ps7.log",
+      "size": 524,
+      "sha256": "BA68C5D42075B23ADDCACC604C8E4694E2B0453C3246B06086E3329BB6CB9E76"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/test-vm-tip-host-preflight-ps5.log",
+      "size": 542,
+      "sha256": "90CB8504B2E0285EC4F6B6D0A7031867AB6AA38EBF67E24AC5E78C7D07875B0B"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/test-vm-changed-upgrade-transaction-ps7.log",
+      "size": 578,
+      "sha256": "B2EEADB32C634B393A00BB3CAA6AB6498EA0D0C227D1F844AEED7B94E96CC624"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/test-vm-changed-upgrade-transaction-ps5.log",
+      "size": 578,
+      "sha256": "B2EEADB32C634B393A00BB3CAA6AB6498EA0D0C227D1F844AEED7B94E96CC624"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/kit-policy.log",
+      "size": 1624,
+      "sha256": "34F9C14ABAD92EB9FE7CDF2474B383810ED633415821A0B10FD948193C6E6437"
+    },
+    {
+      "path": "build/host-audit-quality-20261013-v1/kit-v4-final.log",
+      "size": 259,
+      "sha256": "1613382F176F50F5C6A1BF688B59B15064AD1FECB2EAA3D07EDC75FB459B2BE3"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/InstalledTip0160-20261013-v1/guest-evidence-v2/receipt.json",
+      "size": 919,
+      "sha256": "E8ECCEEAFC5455F4DDA3179D675B521011B34597FE9D8A944A521C45AC218D42"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/InstalledTip0160-20261013-v1/cached-handle-ps5.json",
+      "size": 186,
+      "sha256": "F969A70D2C59FFD138546D0D8691ECFD52D6952109FBD8762AC9D20F48E586D2"
+    },
+    {
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v4/vm-changed-upgrade-kit.json",
+      "size": 2983,
+      "sha256": "20303FBAB499334A58E0A5EE2B5AE46D82534E3F19E64F40903B673960F67D53"
+    }
+  ],
+  "negative_evidence": [
+    "build\\win10-evidence-clean-v1\\InstalledTip0160-20261013-v1\\guest-evidence\\error.json",
+    "build\\host-audit-quality-20261013-v1\\kit-v4.log"
+  ]
+}

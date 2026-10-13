@@ -62,6 +62,7 @@ Run-AclCase 'caller-owned-audit' 'S-1-5-21-1-2-3-1001' $false $true
 Run-AclCase 'user-writable-audit' 'S-1-5-32-544' $true $true
 function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
     $script:adapterCopied = $false
+    $script:adapterDisposeCount = 0
     function Assert-MoVmPlainDosPath { param([string]$Path) return $Path }
     function Assert-MoVmHostAuditAcl { param([string]$Path) }
     function Get-FileHash { param([string]$LiteralPath, [string]$Algorithm) return [pscustomobject]@{Hash=('B'*64)} }
@@ -78,21 +79,42 @@ function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
         $script:adapterReport = [pscustomobject]@{format=1;nonce=$ArgumentList[7];owner_sid=$ArgumentList[9];session_id=17
             checked_utc=[DateTime]::UtcNow.ToString('o');elevated=$true;helper_sha256=('B'*64)
             scan=[pscustomobject]@{scope='identified-current-user-current-session';loaded_hosts=@();failed_process_ids=@();unresolved_owner_process_ids=@();protected_hosts=@()} }
-        $process=[pscustomobject]@{Done=($Mode -ne 'timeout')}
-        $process|Add-Member ScriptMethod WaitForExit {param([int]$Milliseconds) if($Milliseconds -ne 120000){throw 'Wrong timeout'};return $this.Done}
+        if ($Mode -eq 'invalid-report') { $script:adapterReport.format = 99 }
+        $process=[pscustomobject]@{Handle=[IntPtr]1;Done=($Mode -ne 'timeout');WaitThrows=($Mode -eq 'wait-error')
+            ExitCode=$(if ($Mode -eq 'failed-exit') { 1 } else { 0 })}
+        # Independent golden: preserving the existing two-minute completion budget.
+        $process|Add-Member ScriptMethod WaitForExit {
+            param([int]$Milliseconds)
+            if($Milliseconds -ne 120000){throw 'Wrong timeout'}
+            if($this.WaitThrows){throw 'synthetic wait failure'}
+            return $this.Done
+        }
+        $process|Add-Member ScriptMethod Dispose { $script:adapterDisposeCount++ }
         return $process
     }
     function Get-Content { param([string]$LiteralPath,[switch]$Raw) return $script:adapterReport|ConvertTo-Json -Depth 8 }
-    function Copy-Item {param([string]$LiteralPath,[string]$Destination) $script:adapterCopied=$true}
+    function Copy-Item {
+        param([string]$LiteralPath,[string]$Destination)
+        if ($Mode -eq 'copy-error') { throw 'synthetic evidence copy failure' }
+        $script:adapterCopied=$true
+    }
     $rejected=$false
     try { $null=Invoke-MoVmElevatedHostInspection 'C:\synthetic kit\inspect-vm-tip-hosts.ps1' 'C:\synthetic evidence' } catch {
         if($_.Exception.Message -eq 'Incorrect read-only elevated worker invocation.'){throw}
         $rejected=$true
     }
     if($rejected -ne $ShouldReject -or $script:adapterCopied -eq $ShouldReject){throw "Wrong worker adapter result: $Mode"}
+    $expectedDisposeCount = if ($Mode -eq 'cancelled') { 0 } else { 1 }
+    if ($script:adapterDisposeCount -ne $expectedDisposeCount) {
+        throw "Worker process handle was not released exactly once: $Mode"
+    }
     $script:count++;Write-Host "PASS worker adapter $Mode"
 }
 Run-LaunchAdapter 'success' $false
 Run-LaunchAdapter 'timeout' $true
 Run-LaunchAdapter 'cancelled' $true
+Run-LaunchAdapter 'failed-exit' $true
+Run-LaunchAdapter 'wait-error' $true
+Run-LaunchAdapter 'invalid-report' $true
+Run-LaunchAdapter 'copy-error' $true
 Write-Host "Read-only host inspection policy tests passed: $script:count."
