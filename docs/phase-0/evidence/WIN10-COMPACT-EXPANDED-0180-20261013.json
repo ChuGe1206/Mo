@@ -51,7 +51,7 @@
   "stage_manifest_sha256": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
   "guest_kit_verified_files": 14,
   "vm_reboot_executed": true,
-  "vm_boot_utc": "2026-10-13T12:06:56.5000000Z",
+  "vm_boot_utc": "2026-10-13T12:06:56.5Z",
   "cache_cleanup": {
     "format": 1,
     "checked_utc": "2026-10-13T12:14:12.0009479Z",
@@ -80,7 +80,7 @@
     "build/win10-evidence-clean-v1/Package0180-v1"
   ],
   "pending": [
-    "audit and installer UAC confirmation",
+    "user decision to reissue cancelled audit UAC; next attempt requires fresh evidence",
     "actual0170 to0180 upgrade and installed expanded verification",
     "physical multi-DPI,high contrast,non-US OEM,loaded host matrix,G2/G3"
   ],
@@ -174,6 +174,15 @@
       "sha256": "ECB8E5369D72863C79042E3AA00504893CFAED187D815232C5A4FFBAED988E5B",
       "path": "build/mo-linked-win10-expanded-0180-v3/verification/linked-installer-evidence.json",
       "size": 886
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v2/upgrade-state.json",
+      "size": 3203,
+      "sha256": "ECB7DF3E2DBFDD9D15BB50F53E9987D0A378F8282055DFA922C69ADA9AF6975B"
     }
-  ]
+  ],
+  "upgrade_attempt_cancelled": true,
+  "upgrade_failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。",
+  "installer_invocation_attempted": false,
+  "driver_final_state_verified": false
 }

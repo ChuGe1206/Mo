@@ -2,7 +2,7 @@
 
 2026-10-13，develop。[设计](../design/MO-COMPACT-EXPANDED-20261013.md) ·
 [结构化证据](evidence/WIN10-COMPACT-EXPANDED-0180-20261013.json)。
-当前实际安装 0170；最终 0180 包已核验并复制到客机，普通权限 driver 已启动，正等待审计 UAC。
+当前实际安装0170；最终0180包已核验并复制到客机。审计UAC返回取消，安装器没有执行。
 
 ## 实现与门禁
 
@@ -27,7 +27,9 @@
 用户授权下自主重启；新boot UTC为2026-10-13T12:06:56.5000000Z，session1、Broker/设置均0。
 启动通道曾未就绪、截图横线及guestcontrol20；用户处理桌面后最小通道恢复。
 长复制命令超时不代表复制失败：原回执随后完成14文件核验，未重复复制或重启。
-现在截图已确认Windows PowerShell/Microsoft Windows审计UAC，安全按钮仍由用户处理。
+曾通过截图确认Windows PowerShell/Microsoft Windows审计UAC，随后回执返回操作取消；安装器未调用。
+原失败回执保留于Package0180-v2/upgrade-evidence-v2。下一次须使用新证据目录Upgrade0180-v3，
+先重新检查实际基线；等待用户是否重发请求的选择，不复用已存在目录。安全按钮仍由用户处理。
 
 ## 失败保留与缓存
 

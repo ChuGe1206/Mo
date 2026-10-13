@@ -10,8 +10,9 @@
 - 四Rust门禁199+1、固定1.97.1双架构原生/IPC/恢复通过。
 - 唯一stage expanded-0180-v3、linked expanded-0180-v3、kit0170-0180-v2；v2stage/v1kit不使用。
 - Guest C:/MoDev/Packages/0.0.18.0-v2已14文件核验，session1/Broker0/设置0；自主重启且用户处理桌面。
-- Upgrade0180-v2普通driver已发起，截图确认审计PowerShell UAC，等待用户点击；不得重复发起。
-  实际安装仍0170；回执将回传Package0180-v2/upgrade-evidence-v2。
+- Upgrade0180-v2审计UAC返回取消，installer_invocation_attempted=false，实际安装保持0170。
+  回执已回传Package0180-v2/upgrade-evidence-v2；待用户选择是否重发，不复用原证据目录。
+  下一次使用Upgrade0180-v3并检查实际基线；安全提示需用户处理。
 - 20:14默认target清零，释放约0.94GiB逻辑空间；封存包和证据保留。
 
 ## 2026-10-13 输入修复与0170实际验收

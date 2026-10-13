@@ -8,7 +8,7 @@
 
 - [本轮记录](WIN10-COMPACT-EXPANDED-0180-20261013.md)：无注释不展开，六词注释291×81，Figma同步。
 - 最终具名视图状态、固定工具链双架构IPC和22幅Win10渲染通过；四Rust门禁199+1。
-- 最终0180 stage/MSI/Burn/ICE/Changed pair/kit已核验，VM自主重启后已发起升级，等待审计UAC。
+- 最终0180 stage/MSI/Burn/ICE/Changed pair/kit已核验，VM自主重启后审计UAC返回取消，安装器未调用。
 - 实际安装仍0170；18安装态待回执，不重复发起。Cargo默认target清零，释放约0.94GiB逻辑空间。
 
 ## 2026-10-13 实际 0170 输入修复验收
