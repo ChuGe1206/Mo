@@ -9,8 +9,10 @@
   TSF caret、候选光标/分段、翻页 tooltip 已实现。四 Rust 门禁及双架构 fake TSF/IPC/fault 通过。
 - Win10 renderer 20 BMP、exit 0、299×60。0170 v2 fresh stage/MSI/Burn/ICE、pair/kit 已通过；
   guest C:/MoDev/Packages/0.0.17.0-v2 已复制并全哈希核验。
-- 当前安装仍 0160；用户保存并重启请求待回复，旧真实 Broker 仍在，未发起安装。
-  回复后扫描，再通过普通权限 driver 升级；审计和安装 UAC 必须用户处理。
+- 当前安装仍 0160；重启核验 boot UTC 2026-10-13T09:25:51.5000000Z，Broker/设置均为 0。
+  普通 session 1 driver 已启动，证据 Upgrade0170-v2；只读审计 UAC 等待确认，尚未调用安装器。
+  用户授权以后自主 VM 启停/重启/测试；安全提示仍受 computer-use 禁止规则约束，由用户处理。
+  VBox 截图两次 E_FAIL，检测 consent=1；尚未核对画面，不重复启动 driver。
 - 唯一 kit：build/mo-vm-changed-upgrade-kit-0160-0170-v2；共享 Package0170-v2。
   v1 保留不用于升级。实际 Rime/记事本修复未验收，G2/G3、50/400 ms 不变。
 - 默认 target 于 09:23 清为 0，释放约 1.45 GiB 逻辑空间，封存包/证据保持。
