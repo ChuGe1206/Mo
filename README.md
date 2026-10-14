@@ -140,6 +140,10 @@ ui-language-v1.mo 同样位于 %LOCALAPPDATA%/Mo/Profile，不修改 settings-v1
 
 ## 现代 UI（develop）
 
+2026-10-14：[全键审查与空闲标点修复](docs/phase-0/WIN10-KEY-AUDIT-0190-20261014.md)：
+复现并修复中文空闲标点直接插入失败，32768 转换情形、真实 Rime 及双架构 TSF 回归通过。
+0.0.19.0 v2 配套包已核验，实际安装仍 0180，升级后的物理按键待验收。
+
 2026-10-13：[紧凑注释展开](docs/design/MO-COMPACT-EXPANDED-20261013.md)已实现：无注释不展开，
 有注释按内容收边，Win10六词291×81、默认nihao299×60。
 2026-10-14：[0.0.18.0 实际升级与验收](docs/phase-0/WIN10-INSTALLED-0180-20261014.md)已完成，

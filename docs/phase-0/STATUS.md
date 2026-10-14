@@ -4,6 +4,14 @@
 - 结论：Phase 0 已启动，G1 本机证据闭环；G2/G4 部分通过；G3 未通过。受控 TSF Edit Session 已贯通；未签名开发包已有 Win10 VM 有限生命周期验证，项目仍不可发布或日常使用。
 - 本机环境：Windows 10 22H2 build 19045（尽力兼容环境）、Rust 1.97.1 x86_64-pc-windows-msvc、Visual Studio 2022 17.14.37、MSVC 14.44、Windows SDK 10.0.26100.0。
 
+## 2026-10-14 全键审查与0190修复包
+
+- [本轮记录](WIN10-KEY-AUDIT-0190-20261014.md)：中文空闲标点插入 E_INVALIDARG 已复现并修复。
+- 全 VK/修饰/抬键/repeat 32768 情形；真实 Rime 188＋21 Shift/3快捷键/8斜杠，双架构 TSF/IPC/恢复通过。
+- 最终 Rust 四门禁202＋1；0190 v2 stage128文件/9源码、MSI/Burn/ICE/pair/kit通过，guest14文件已核验。
+- 自主重启后截图确认锁屏，等待用户登录；实际版本仍0180，安装器尚未执行，物理按键待验收。
+- cargo clean 默认 target 0.98 GiB→0，封存产物保持。
+
 ## 2026-10-14 实际 0180 紧凑候选验收
 
 - [安装态记录](WIN10-INSTALLED-0180-20261014.md)：用户选择重新发起，17→18 v3 完成，exit 0。

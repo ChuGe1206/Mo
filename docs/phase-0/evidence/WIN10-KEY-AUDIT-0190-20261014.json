@@ -1,0 +1,182 @@
+{
+  "format": 1,
+  "kind": "mo-win10-key-audit-0190",
+  "date": "2026-10-14",
+  "development_only": true,
+  "code_commit": "34850e7",
+  "installed_version": "0.0.18.0",
+  "prepared_version": "0.0.19.0",
+  "installed_upgrade_completed": false,
+  "user_report_key": "main keyboard OEM_2",
+  "idle_native_failure_reproduced": "E_INVALIDARG 0x80070057",
+  "direct_insert_range_and_caret_fixed": true,
+  "mapping_matrix_cases": 32768,
+  "virtual_keys_checked": 256,
+  "known_modifier_combinations": 32,
+  "native_direct_commits_per_fixture": 68,
+  "native_architectures": [
+    "x64",
+    "Win32"
+  ],
+  "native_fault_restarts_per_architecture": 2,
+  "real_rime_schema": "rime_ice",
+  "real_printable_mode_cases": 188,
+  "real_shifted_symbol_cases": 21,
+  "real_slash_shortcut_cases": 3,
+  "real_slash_fast_slow_presses": 8,
+  "real_slash_release_no_replay": true,
+  "real_nosymbol_idle_unchanged": true,
+  "workspace_passed_including_doc": 202,
+  "workspace_ignored": 1,
+  "rust_toolchain": "1.97.1",
+  "wire_and_settings_unchanged": true,
+  "deadlines_ms": [
+    50,
+    400
+  ],
+  "package": {
+    "source_inventory": 128,
+    "changed_files_matched": 9,
+    "kit_manifest_sha256": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
+    "bundle_sha256": "B29A4C6BCEB7B65C8237DF49D89AFAD2B26115FBB2C21D1EFE2B280104475926",
+    "stage_manifest_sha256": "F5F0F4F3BD4820CF24B7B67BD66A7D2CB27E6C6301CE8EBD9CE7B1900D751F01"
+  },
+  "guest_kit_verified_files": 14,
+  "guest_kit_directory": "C:/MoDev/Packages/0.0.19.0-v2",
+  "stage_directory": "build/mo-windows-stage-keys-0190-v2/stage",
+  "installer_directory": "build/mo-linked-win10-keys-0190-v2",
+  "kit_directory": "build/mo-vm-changed-upgrade-kit-0180-0190-v2",
+  "installer_invoked": false,
+  "vm_reboot_requested": true,
+  "cache_cleanup": {
+    "format": 1,
+    "checked_utc": "2026-10-14T12:24:57.6615235Z",
+    "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+    "active_project_tasks": 0,
+    "before_bytes": 1048017415,
+    "after_bytes": 0,
+    "disk_free_before": 29275734016,
+    "disk_free_after": 30242906112,
+    "sealed_build_preserved": true,
+    "download_cache_preserved": true,
+    "cache_warmup_rebuild": false
+  },
+  "source_unchanged_after_final_stage": true,
+  "preserved_failures": [
+    "Native idle NOQUERY/null-range insertion E_INVALIDARG",
+    "Expanded fixture EDIT text read truncated to32 UTF16 units",
+    "Expanded TSF context read truncated to64 UTF16 units",
+    "Guest kit copy returned20; eventual receipt proves14 files verified, no duplicate copy",
+    "Post-reboot Guest Additions service initially not ready"
+  ],
+  "superseded_not_for_upgrade": [
+    "build/mo-windows-stage-keys-0190-v1",
+    "build/mo-linked-win10-keys-0190-v1"
+  ],
+  "pending": [
+    "user unlock/login; then fresh0180 to0190 driver and manual UAC",
+    "installed physical punctuation feedback",
+    "non-US/dead/AltGr and regional keypad",
+    "other schemes and OS media/system routing",
+    "loaded-host matrix,multi-DPI,50/400ms,G2/G3"
+  ],
+  "evidence": [
+    {
+      "path": "build/key-audit-20261014-v1/fmt.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/clippy-final.log",
+      "size": 166,
+      "sha256": "B4F21ADBE248A443E95582F37DBCC07ACDC8530FC1B1B09D9D79EFE7D09A5207"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/clippy-trace-final.log",
+      "size": 73,
+      "sha256": "DD9268C460C9E5E1C76E6780E702887DA3EAFA3CBBB21C39308F7E35DB22F191"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/workspace-tests-final.log",
+      "size": 22025,
+      "sha256": "24A4A9163B5B1171D799D1F0245F37311426107B34622ECF1515A0E70C84F2F3"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/native-final.log",
+      "size": 25778,
+      "sha256": "D846CA645D68922E77523546F5537F4BC56E8288B86C93DEEAB41AB08B503619"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/real-key-audit-modifiers.log",
+      "size": 19928,
+      "sha256": "7F7C5F50647632CACC310C567321537C77221985892FC7578620047588237041"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/stage-0190-v2.log",
+      "size": 33317,
+      "sha256": "0153E83A65E04D065B400F9447DBFD5173F872F741CC3F40E5D2D6A74F859D7E"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/installer-0190-v2.log",
+      "size": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/pair-0190.log",
+      "size": 109,
+      "sha256": "177983E48F1766E19A619D4DF1D0CEB32732EA3C7C56FCAD3445DE6E8AC36913"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/kit-0190.log",
+      "size": 259,
+      "sha256": "65D16026CA549C6C4D4FF9388F107CDE6509B0404E233ADCF8A674EE91C8EB91"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/package-0190-receipt.json",
+      "size": 342,
+      "sha256": "CA895DDC3E93FD56DA832B051C3A87307F25B6DFD7BA0C59D1CBD737C6612269"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/cargo-clean-receipt.json",
+      "size": 414,
+      "sha256": "908ADC58F16038B421132A6DFAC3A78B93B44C4C60A856E5D1AF03EAFAF5CE3D"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/idle-punctuation-smoke-v1.log",
+      "size": 24121,
+      "sha256": "80509F70FD0C8421A15F30C16AF99AD15FEB90A6B50B4218A4DFCB7EE832F7A9"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/idle-punctuation-smoke-v2.log",
+      "size": 25047,
+      "sha256": "02855C75133B882F01ECB550B83C1FA879E848BB227BA0E4B155187210642577"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/idle-punctuation-smoke-v3.log",
+      "size": 23567,
+      "sha256": "0CC26A3FB8EC8446A0F2674B5177270B5C985AFC63E4C48F421986909A26BDBF"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0190-v2/guest-kit-receipt.json",
+      "size": 292,
+      "sha256": "284BF12CF8788463EF1FF6F6BEF34305B7B3D4AA098DC7091C7A6DD4CF6F6B40"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0190-v2/vm-reboot-request.json",
+      "size": 275,
+      "sha256": "0F42526D760D4ACC31B263BBECEDB36CAE78E21987DF9BCACF3FCF8E04D72A1D"
+    },
+    {
+      "path": "build/mo-linked-win10-keys-0190-v2/verification/linked-installer-evidence.json",
+      "size": 886,
+      "sha256": "22B0E7F21F32FE37288ACC88707B2843221099402729FE0A2B85380E4E54AEFC"
+    },
+    {
+      "path": "build/key-audit-20261014-v1/post-reboot-0190.png",
+      "size": 689389,
+      "sha256": "4F0F83CD6976804821A37D5AA1AF32E339F87B3C26157E10B6C9DE0368CFF172"
+    }
+  ],
+  "vm_lock_screen_visually_confirmed": true,
+  "guest_additions_run_level_after_reboot": 2
+}
