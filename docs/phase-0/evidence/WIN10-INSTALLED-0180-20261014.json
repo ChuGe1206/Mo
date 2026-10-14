@@ -1,0 +1,160 @@
+{
+  "format": 1,
+  "kind": "mo-win10-installed-upgrade-0180",
+  "date": "2026-10-14",
+  "development_only": true,
+  "base_version": "0.0.17.0",
+  "installed_version": "0.0.18.0",
+  "upgrade_completed": true,
+  "exit_code": 0,
+  "guest_kit_directory": "C:/MoDev/Packages/0.0.18.0-v2",
+  "guest_upgrade_evidence_directory": "C:/MoDev/Evidence/Upgrade0180-v3",
+  "kit_directory": "build/mo-vm-changed-upgrade-kit-0170-0180-v2",
+  "kit_manifest_sha256": "A36838B371C14781626C89FC5C9F055717573EFB400BFD8F649BFFDC59B05011",
+  "bundle_sha256": "47EA4494074CB9D5B6971982BE16EE80CF599FA47480D08339892C469EF40FDA",
+  "stage_manifest_sha256": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
+  "base_payload_verified": true,
+  "upgrade_payload_verified": true,
+  "install_tree_security_audited": true,
+  "settings_preserved": true,
+  "default_override_unchanged": true,
+  "final_state_verified": true,
+  "host_audit": {
+    "scope": "identified-current-user-current-session",
+    "checked_utc": "2026-10-14T11:14:23.2670336Z",
+    "elevated_read_only": true,
+    "scanned_process_count": 47,
+    "loaded_host_count": 0,
+    "failed_process_count": 0,
+    "unresolved_owner_count": 0,
+    "antimalware_light_unsigned_tip_exclusions": 1,
+    "installer_initiator_elevated": false
+  },
+  "installed_validation_completed_utc": "2026-10-14T11:18:45.1718446Z",
+  "installed_abi_cases": [
+    {
+      "tip_sha256": "6EDBAA4ED504B5F83669D2CD49BCFC4F989E6C56114EDD86AB4BE084DEBCF5CB",
+      "probe_sha256": "7AFCFAB361085A4CCF20F041456665A9EA910BCE52C8FE3DC5C7DF6746D03C99",
+      "architecture": "x64",
+      "exit": 0
+    },
+    {
+      "tip_sha256": "6495486591D0169C0B0B06E3E7077E805E05ED4343AE74489E5FD1445B3F0313",
+      "probe_sha256": "213C239A856B2954F79EBAF3921FA9E823C724AD592820142CBF7062B11DD4AF",
+      "architecture": "x86",
+      "exit": 0
+    }
+  ],
+  "installed_ui": {
+    "languages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "preview_count": 14,
+    "pixels_identical_to_installed_0170": true,
+    "real_settings_preserved": true,
+    "settings_sha256": "421157BEF6195AD99F29066E0942A79574AC244EB2B03133A6FE84A3AC2A40B6"
+  },
+  "existing_broker_preserved": true,
+  "broker_fake_mode": false,
+  "manual_user_acceptance": {
+    "context": "Win10 fresh Notepad, Mo, synthetic nihao test",
+    "report": "nihao 保持紧凑",
+    "no_annotation_expansion_stays_compact": true,
+    "annotation_expansion_in_real_document_verified": false
+  },
+  "desktop_input_executed_by_agent": false,
+  "post_upgrade_reboot_executed": false,
+  "cancelled_attempt_preserved": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v2/upgrade-state.json",
+  "cargo_target_absent": true,
+  "cache_warmup_rebuild": false,
+  "pending": [
+    "real-document annotation expansion",
+    "physical multi-DPI and high contrast",
+    "non-US OEM layout",
+    "loaded-host upgrade matrix",
+    "50/400 ms and G2/G3"
+  ],
+  "evidence": [
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v3/tip-host-elevated-audit.json",
+      "size": 1149,
+      "sha256": "E4A72C9CD228039CC0C31AB88263C4B20D5078D762C4B158CBE97DA1B2309C5C"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v3/upgrade-state.json",
+      "size": 5442,
+      "sha256": "11CF6E4085D79D44CD35499AE8BDEBB88DE106AB7D06FAF65EE1BC3CF488EB3F"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v3/upgrade.log",
+      "size": 16095,
+      "sha256": "3D17F076CBDE405749A9E0ADB1E5E154783C8D2356C2D2E912E867C7244C41B9"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/upgrade-evidence-v3/upgrade_000_MoMachinePackage.log",
+      "size": 672308,
+      "sha256": "6E1A786E620F1251B905EA89E49119546A322FDF565AC71DEC9A42D226CFE84B"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/abi-x64.stderr.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/abi-x64.stdout.log",
+      "size": 88,
+      "sha256": "D2E4B7B2812FF4D4263B8CD06288DDB27B45BD2972B0E7AF4BE9B70D57900186"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/abi-x86.stderr.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/abi-x86.stdout.log",
+      "size": 88,
+      "sha256": "D2E4B7B2812FF4D4263B8CD06288DDB27B45BD2972B0E7AF4BE9B70D57900186"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/receipt.json",
+      "size": 2217,
+      "sha256": "3E773EFE6ADA9EAF61FF99610AD375E15F7605152ACC5E7640DEEB08D693CA3F"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/ui-en-US.stderr.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/ui-en-US.stdout.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/ui-zh-CN.stderr.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/ui-zh-CN.stdout.log",
+      "size": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-evidence-v1/visual-equivalence.json",
+      "size": 2599,
+      "sha256": "C0473F801DC0CE03FBBD7EC9FB973EC79E923DBC14BD25289CCD18C3F3419CA8"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-tools-v1/manifest.json",
+      "size": 800,
+      "sha256": "82F11E1397E4359C755289568149B998588A62364E6B9186E3B26F949979650D"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0180-v2/installed-validation-tools-v1/validate-installed.ps1",
+      "size": 4807,
+      "sha256": "97EB3AB24D8AD5843444FA5D4643B2E303AA79B272A5B179649EA5ECC38A4513"
+    }
+  ]
+}
