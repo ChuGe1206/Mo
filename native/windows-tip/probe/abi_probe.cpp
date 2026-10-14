@@ -993,19 +993,23 @@ public:
         if (FAILED(result)) {
             return result;
         }
-        wchar_t buffer[64]{};
-        ULONG length = 0;
-        result = range->GetText(
-            edit_cookie,
-            TF_TF_MOVESTART,
-            buffer,
-            static_cast<ULONG>(std::size(buffer)),
-            &length);
-        if (FAILED(result)) {
-            return result;
-        }
+        constexpr ULONG kReadChunkUtf16Units = 64;
+        constexpr std::size_t kMaxProbeDocumentUtf16Units = 4096;
         try {
-            output_->assign(buffer, length);
+            output_->clear();
+            for (;;) {
+                wchar_t buffer[kReadChunkUtf16Units]{};
+                ULONG length = 0;
+                result = range->GetText(edit_cookie, TF_TF_MOVESTART,
+                    buffer, kReadChunkUtf16Units, &length);
+                if (FAILED(result)) { return result; }
+                if (length == 0) { break; }
+                if (length > kReadChunkUtf16Units
+                    || output_->size() + length > kMaxProbeDocumentUtf16Units) {
+                    return E_UNEXPECTED;
+                }
+                output_->append(buffer, length);
+            }
         } catch (...) {
             return E_OUTOFMEMORY;
         }
@@ -1958,6 +1962,47 @@ int probe_broker_input(
             expected += L"abc.";
             if (edit_store->text() != expected) { std::wcerr << L"Punctuation commit duplicated text or left preedit\n"; outcome = 1; break; }
             std::wcout << L"Mo TIP punctuation completion probe passed.\n";
+            constexpr DWORD kSlowPunctuationIntervalMs = 200;
+            struct PunctuationKey { WPARAM vk; wchar_t plain; wchar_t shifted; };
+            const PunctuationKey punctuation_keys[] = {
+                {VK_OEM_1, L';', L':'}, {VK_OEM_PLUS, L'=', L'+'}, {VK_OEM_COMMA, L',', L'<'},
+                {VK_OEM_MINUS, L'-', L'_'}, {VK_OEM_PERIOD, L'.', L'>'}, {VK_OEM_2, L'/', L'?'},
+                {VK_OEM_3, L'`', L'~'}, {VK_OEM_4, L'[', L'{'}, {VK_OEM_5, L'\\', L'|'},
+                {VK_OEM_6, L']', L'}'}, {VK_OEM_7, L'\'', L'"'}, {VK_OEM_102, L'\\', L'|'},
+                {VK_MULTIPLY, L'*', L'*'}, {VK_ADD, L'+', L'+'},
+                {VK_SUBTRACT, L'-', L'-'}, {VK_DECIMAL, L'.', L'.'}, {VK_DIVIDE, L'/', L'/'},
+            };
+            for (const bool slow : {false, true}) {
+                for (const bool shifted : {false, true}) {
+                    BYTE synthetic_state[256]{};
+                    if (shifted) { synthetic_state[VK_SHIFT] = 0x80; }
+                    if (!SetKeyboardState(synthetic_state)) { keys_succeeded = false; break; }
+                    for (const auto& key : punctuation_keys) {
+                        if (slow) { Sleep(kSlowPunctuationIntervalMs); }
+                        if (!SendTestedKey(direct_key_sink.Get(), context.Get(), edit_store, key.vk)) {
+                            keys_succeeded = false; break;
+                        }
+                        expected += shifted ? key.shifted : key.plain;
+                        if (edit_store->text() != expected
+                            || edit_store->selection_start() != static_cast<LONG>(expected.size())
+                            || edit_store->selection_end() != static_cast<LONG>(expected.size())) {
+                            std::wcerr << L"Idle punctuation lost/duplicated commit or misplaced caret; slow=" << slow << L'\n';
+                            keys_succeeded = false; break;
+                        }
+                        BOOL release_eaten = TRUE;
+                        if (FAILED(direct_key_sink->OnTestKeyUp(context.Get(), key.vk, 0, &release_eaten))
+                            || release_eaten != FALSE || edit_store->text() != expected) {
+                            keys_succeeded = false; break;
+                        }
+                    }
+                    if (!keys_succeeded) { break; }
+                }
+                BYTE synthetic_state[256]{};
+                if (!SetKeyboardState(synthetic_state)) { keys_succeeded = false; }
+                if (!keys_succeeded) { break; }
+            }
+            if (!keys_succeeded) { outcome = 1; break; }
+            std::wcout << L"Mo TIP idle punctuation fast/slow insertion probe passed.\n";
         }
         if (!registered) {
             for (const char key : input) {
@@ -2035,9 +2080,13 @@ int probe_broker_input(
             }
             if (!keys_succeeded) { outcome = 1; break; }
         }
-        wchar_t text_buffer[32]{};
-        const int text_length = GetWindowTextW(edit_window, text_buffer, ARRAYSIZE(text_buffer));
-        const std::wstring text(text_buffer, static_cast<std::size_t>(text_length));
+        // The expanded keyboard matrix exceeds the old 32-unit fixture buffer.
+        // Size from the independently accumulated expected document, then
+        // compare the full EDIT and TSF context contents below.
+        const int document_length = GetWindowTextLengthW(edit_window);
+        std::wstring text(static_cast<std::size_t>(document_length) + 1, L'\0');
+        const int text_length = GetWindowTextW(edit_window, text.data(), static_cast<int>(text.size()));
+        text.resize(static_cast<std::size_t>(text_length));
         if (text != expected) {
             std::wcerr << L"TIP edit session committed unexpected EDIT text: " << text << L'\n';
             outcome = 1;

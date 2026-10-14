@@ -1303,14 +1303,28 @@ private:
             if (FAILED(result)) {
                 return result;
             }
+            // Win10 TSF rejects the NOQUERY/null-range path in our real ACP
+            // fixture. Request the inserted range and explicitly advance the
+            // selection; direct punctuation has no owned composition range.
+            ComPtr<ITfRange> inserted;
             result = insertion->InsertTextAtSelection(
                 edit_cookie,
-                TF_IAS_NOQUERY,
+                0,
                 text.data(),
                 static_cast<LONG>(text.size()),
-                nullptr);
+                inserted.GetAddressOf());
+            // Once insertion succeeds, consume the key even if caret placement
+            // fails. Returning it to the host would duplicate committed text.
             *applied = SUCCEEDED(result);
-            return result;
+            if (FAILED(result)) { return result; }
+            if (inserted == nullptr) { return E_UNEXPECTED; }
+            result = inserted->Collapse(edit_cookie, TF_ANCHOR_END);
+            if (FAILED(result)) { return result; }
+            TF_SELECTION selection{};
+            selection.range = inserted.Get();
+            selection.style.ase = TF_AE_NONE;
+            selection.style.fInterimChar = FALSE;
+            return context->SetSelection(edit_cookie, 1, &selection);
         }
         if (composition_context_.Get() != context) {
             return TF_E_DISCONNECTED;

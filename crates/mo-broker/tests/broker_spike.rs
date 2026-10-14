@@ -1195,7 +1195,24 @@ fn oem_punctuation_and_shifted_digits_reach_the_engine_as_printable_symbols() {
         (0xdc, '\\', '|'),
         (0xdd, ']', '}'),
         (0xde, '\'', '"'),
+        (0x30, '0', ')'),
         (0x31, '1', '!'),
+        (0x32, '2', '@'),
+        (0x33, '3', '#'),
+        (0x34, '4', '$'),
+        (0x35, '5', '%'),
+        (0x36, '6', '^'),
+        (0x37, '7', '&'),
+        (0x38, '8', '*'),
+        (0x39, '9', '('),
+        (0x60, '0', '0'),
+        (0x69, '9', '9'),
+        (0x6a, '*', '*'),
+        (0x6b, '+', '+'),
+        (0x6d, '-', '-'),
+        (0x6e, '.', '.'),
+        (0x6f, '/', '/'),
+        (0xe2, '\\', '|'),
     ] {
         for (modifiers, expected) in [(0, plain), (1, shifted)] {
             let event = KeyEvent {
@@ -1342,7 +1359,7 @@ fn system_keys_and_unknown_virtual_keys_are_not_inferred_as_text() {
         (0x2d, 0xff63),
         (0x10, 0xffe1),
         (0xa1, 0xffe2),
-        (0x90, 0),
+        (0x90, 0xff7f),
         (0xe5, 0),
         (0x20, 0),
     ]

@@ -12,6 +12,7 @@ mod settings_service;
 pub mod startup_latency;
 mod state;
 pub mod tcp_loopback_spike;
+mod windows_keys;
 #[cfg(windows)]
 pub mod windows_named_pipe;
 #[cfg(windows)]

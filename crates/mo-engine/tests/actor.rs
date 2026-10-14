@@ -206,3 +206,44 @@ fn symbol_never_commits_when_backend_retains_unconfirmed_input() {
     );
     assert_eq!(actor.current_revision(), Revision::new(1));
 }
+
+#[test]
+fn synthetic_punctuation_commits_once_without_a_composition_and_after_preedit() {
+    use mo_domain::{KeyModifiers, KeyState};
+    let mut actor = EngineActor::new(FakeBackend::new());
+    for byte in b'!'..=b'~' {
+        let character = char::from(byte);
+        if !character.is_ascii_punctuation() {
+            continue;
+        }
+        for composing in [false, true] {
+            let token = actor.create_session(SessionOptions::new()).unwrap();
+            let mut expected = String::new();
+            if composing {
+                actor.dispatch(token, type_character('a')).unwrap();
+                expected.push('a');
+            }
+            expected.push(character);
+            let commit = actor.dispatch(token, type_character(character)).unwrap();
+            assert!(commit.handled);
+            assert_eq!(commit.commit.as_deref(), Some(expected.as_str()));
+            assert!(commit.composition.is_none());
+            let released = actor
+                .dispatch(
+                    token,
+                    EngineCommand::Key(KeyEvent::new(
+                        u32::from(character),
+                        KeyModifiers::NONE,
+                        KeyState::Released,
+                        None,
+                        false,
+                    )),
+                )
+                .unwrap();
+            assert!(!released.handled);
+            assert!(released.commit.is_none());
+            assert!(released.composition.is_none());
+            actor.destroy_session(token).unwrap();
+        }
+    }
+}

@@ -237,12 +237,11 @@ impl EngineBackend for FakeBackend {
                             };
                             handled = true;
                         }
-                        0x2c | 0x2e | 0x21 if !session.preedit.is_empty() => {
-                            // Synthetic punctuation commit exercises TSF completion without real input.
+                        _ if event.text.is_some_and(|text| text.is_ascii_punctuation()) => {
+                            // Synthetic direct commits exercise both idle insertion and preedit
+                            // completion. This does not model Rime's punctuation choices.
                             let mut text = std::mem::take(&mut session.preedit);
-                            text.push(
-                                char::from_u32(event.keycode).expect("matched ASCII punctuation"),
-                            );
+                            text.push(event.text.expect("punctuation guard requires text"));
                             commit = Some(text);
                             handled = true;
                         }
