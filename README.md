@@ -107,6 +107,14 @@ Cargo/Rust 编译、测试、运行程序或依赖 target 的打包任务，再�
 记录清理时间、清理前后大小和释放空间；保留 build 内封存包、stage、运行库、
 测试证据与用户数据，不清除 Cargo 下载源缓存，也不为了预热缓存重建。
 
+`build` 的封存保护不包含永久保留可再生成的编译缓存。打包验证完成后，确认没有任务
+使用对应目录、绝对路径在仓库内且无重解析点，可清理该版本的 `working/rust-target`
+和 `working/native-obj`；保留 `stage/`、源码快照、日志和 `working/native` ABI 探针。
+明确被替代的运行库构建可清理 `compile/`，保留 dist/inputs/commands；当前接受的运行库
+构建和未完成打包事务保持完整。重复解压的 `working/rime-ice-source` 仅在保留的
+`stage/evidence/rime-ice-source.tar` 与封存清单 SHA-256 一致后清理。
+每次清理记录目录清单、时间、释放空间及保留产物核验。
+
 ### 无需修改 Rust 代码的文案定制
 
 设置应用加载当前语言对应的可选覆盖文件：

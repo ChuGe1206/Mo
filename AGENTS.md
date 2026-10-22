@@ -26,6 +26,14 @@ cargo run diagnostics. Check that no project build, test, running binary, or pac
 still needs the target directory before cleaning. Validate the resolved Cargo target path is
 inside this repository. Preserve sealed build/ packages, stages, runtimes, evidence and user
 data. Record cleanup time and reclaimed space; do not rebuild solely to warm the cache.
+Sealed payloads and evidence do not require keeping regenerable working caches forever.
+After successful packaging and an idle/path/reparse-point check, remove the sealed stage's
+`working/rust-target` and `working/native-obj`; retain `stage/`, source snapshots, logs and
+`working/native` ABI probes. Compile trees of explicitly superseded runtime builds may be
+removed while retaining their dist/inputs/commands and the current accepted runtime build.
+The extracted `working/rime-ice-source` may be removed only after its retained
+`stage/evidence/rime-ice-source.tar` matches the sealed manifest SHA-256.
+Do not clean directories used by an active build or an incomplete packaging transaction.
 
 ## Coding Style & Naming Conventions
 

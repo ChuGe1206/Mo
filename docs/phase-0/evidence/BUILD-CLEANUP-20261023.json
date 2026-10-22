@@ -1,0 +1,1380 @@
+{
+  "format": 1,
+  "date": "2026-10-23",
+  "verified_utc": "2026-10-22T18:59:25.960919+00:00",
+  "status": "completed",
+  "reclaimed_logical_bytes": 10223226466,
+  "removed_directory_count": 175,
+  "categories": [
+    {
+      "kind": "archived-source-extraction",
+      "directories": 56,
+      "bytes": 3008756688
+    },
+    {
+      "kind": "sealed-stage-rebuildable-cache",
+      "directories": 112,
+      "bytes": 4830765656
+    },
+    {
+      "kind": "superseded-runtime-compile",
+      "directories": 7,
+      "bytes": 2383704122
+    }
+  ],
+  "disk_free_before": 84844089344,
+  "disk_free_after": 93672026112,
+  "physical_space_note": "Net disk space also reflects concurrent work in other projects; logical file byte counts are reported separately.",
+  "protected_hashes": {
+    "mo-windows-stage-keys-0190-v2/stage/mo-stage.json": "F5F0F4F3BD4820CF24B7B67BD66A7D2CB27E6C6301CE8EBD9CE7B1900D751F01",
+    "mo-windows-stage-expanded-0180-v3/stage/mo-stage.json": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
+    "mo-vm-changed-upgrade-kit-0180-0190-v2/vm-changed-upgrade-kit.json": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
+    "mo-linked-win10-expanded-0180-v3/mo-setup-development-unsigned.exe": "47EA4494074CB9D5B6971982BE16EE80CF599FA47480D08339892C469EF40FDA",
+    "mo-linked-win10-keys-0190-v2/mo-setup-development-unsigned.exe": "B29A4C6BCEB7B65C8237DF49D89AFAD2B26115FBB2C21D1EFE2B280104475926",
+    "mo-runtime-accepted/dist/mo-build-provenance.json": "17AD4CC8F66A67BB7DD1CC6D673FFB8CE46FB80C271F9AF3F47E8F6ABECC41AB",
+    "mo-runtime-userdb-v3/dist/mo-build-provenance.json": "11C4396204CB2657696AB9EAE9E58161718B773DCFF9F631033D9CFD39389002"
+  },
+  "protected_hashes_verified_after_both_passes": true,
+  "retained_archives_verified_after_cleanup": true,
+  "source_receipt_recovery": "PowerShell 5.1 Measure-Object did not resolve bytes keys on hashtable rows; summary recovered from per-directory progress.",
+  "default_target_present": false,
+  "removed": [
+    {
+      "bytes": 340099229,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-learning-v1/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 341274026,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-machine-data-v1/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 341274167,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-machine-data-v2/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 337839016,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-ready/compile",
+      "files": 1039
+    },
+    {
+      "bytes": 340017364,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-relocatable/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 340444176,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-relocatable-final/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 342756144,
+      "kind": "superseded-runtime-compile",
+      "status": "removed",
+      "path": "build/mo-runtime-relocatable-verified/compile",
+      "files": 1008
+    },
+    {
+      "bytes": 30754926,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-broker-bootstrap/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 40330169,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-broker-bootstrap/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30711086,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-build/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27431966,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-build/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 52619987,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42304961,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52602331,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-details-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42294907,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-details-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 30712906,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-final/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27729769,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-candidate-final/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 73536825,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-dense-0160-v1/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 44810344,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-dense-0160-v1/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 52612431,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42292655,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52611123,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-emoji-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42282202,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-emoji-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 39471218,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42839701,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 39471218,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42839873,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 73644763,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45098297,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 73644763,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-expanded-0180-v3/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45098272,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-expanded-0180-v3/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 30755282,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-fault-injection-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42077353,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-fault-injection-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30711086,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-final/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27432095,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-final/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 30711264,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-golden/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27432901,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-golden/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 30755816,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 41417792,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30756350,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 41430248,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30756350,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 41430015,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 73650345,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-keys-0190-v1/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45168887,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-keys-0190-v1/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 73650345,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-keys-0190-v2/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45168741,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-keys-0190-v2/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 52629680,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-fault-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42296945,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-fault-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52634823,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-fault-v2/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42297221,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-fault-v2/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52628387,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42286962,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52633530,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-v2/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42287050,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-learning-v2/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 30755460,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-linked-installer-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42074452,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-linked-installer-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 39471545,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42920250,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 73541925,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-localized-0150-v1/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 44707742,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-localized-0150-v1/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 73541925,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-localized-0150-v2/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 44707542,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-localized-0150-v2/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 30939325,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42078034,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30938590,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42071341,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30938590,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v2/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42070984,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v2/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30938590,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v3/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42070827,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-machine-data-v3/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 72862328,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 44707346,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 30712176,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-owner-final/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27681801,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-owner-final/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 30713265,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-owner-termination/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27633533,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-owner-termination/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 73643205,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45160365,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 73644513,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/rust-target",
+      "files": 145
+    },
+    {
+      "bytes": 45160848,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/native-obj",
+      "files": 112
+    },
+    {
+      "bytes": 30755460,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-production-shape-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42074549,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-production-shape-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30710908,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-safe/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27431530,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-safe/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 39492617,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42923300,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 39423797,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-notify-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42827013,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-notify-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 39423797,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-notify-v2/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42834875,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-notify-v2/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 39421266,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-v2/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42129863,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-v2/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 39421266,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-v3/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42128395,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-settings-v3/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 52511172,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-static-crt-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 41264211,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-static-crt-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 30712545,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-tsf-isolation/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 28095095,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-tsf-isolation/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 30755104,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 41791482,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 30755104,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 42061293,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/native-obj",
+      "files": 98
+    },
+    {
+      "bytes": 52639971,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-userdb-v3/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42706215,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-userdb-v3/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 30711624,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-verified/working/rust-target",
+      "files": 104
+    },
+    {
+      "bytes": 27433842,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-verified/working/native-obj",
+      "files": 94
+    },
+    {
+      "bytes": 52621455,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42707313,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52705587,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42959216,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52636559,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-enum-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42576053,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-enum-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52620391,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42299011,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52621243,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42719987,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "bytes": 52705587,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/rust-target",
+      "files": 128
+    },
+    {
+      "bytes": 42724297,
+      "kind": "sealed-stage-rebuildable-cache",
+      "status": "removed",
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/native-obj",
+      "files": 102
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-broker-bootstrap/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-broker-bootstrap/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-build/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-build/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-candidate-details-fault-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-candidate-details-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-candidate-details-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-candidate-final/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-candidate-final/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-dense-0160-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-dense-0160-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-emoji-fault-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-emoji-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-emoji-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-engine-preferences-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-engine-preferences-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-expanded-0180-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-expanded-0180-v3/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-expanded-0180-v3/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-fault-injection-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-fault-injection-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-final/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-final/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-golden/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-golden/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-installer-transaction/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-installer-transaction/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-installer-transaction-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-installer-transaction-v3/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-keys-0190-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-keys-0190-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-keys-0190-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-keys-0190-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-learning-fault-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-learning-fault-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-learning-fault-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-learning-fault-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-learning-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-learning-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-learning-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-learning-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-linked-installer-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-linked-installer-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-live-engine-switch-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-localized-0150-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-localized-0150-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-localized-0150-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-localized-0150-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-machine-data-dev-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-machine-data-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-machine-data-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-machine-data-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-machine-data-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-machine-data-v3/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-machine-data-v3/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-modern-ui-0140-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-owner-final/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-owner-final/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-owner-termination/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-owner-termination/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-preedit-0170-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-preedit-0170-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-production-shape-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-production-shape-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-safe/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-safe/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-session-settings-ack-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-settings-notify-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-settings-notify-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-settings-notify-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-settings-notify-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-settings-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-settings-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-settings-v3/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-settings-v3/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-static-crt-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-static-crt-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-tsf-isolation/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-tsf-isolation/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-user-finalizer-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-user-finalizer-v2/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-userdb-v3/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-userdb-v3/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-verified/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-verified/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-clean-root-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-contrast-abi3-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-enum-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-enum-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-fixed-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-key-count-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    },
+    {
+      "retained_archive": "build/mo-windows-stage-win10-settings-abi3-v1/stage/evidence/rime-ice-source.tar",
+      "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "bytes": 53727798,
+      "files": 168,
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/rime-ice-source",
+      "status": "removed",
+      "kind": "archived-source-extraction"
+    }
+  ]
+}
