@@ -1,0 +1,5740 @@
+{
+  "finished_utc": "2026-10-22T19:21:08.5236359Z",
+  "started_utc": "2026-10-22T19:13:16.9020123Z",
+  "retained_source_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+  "removed_count": 803,
+  "reclaimed_logical_bytes": 30049211276,
+  "disk_free_before": 93668749312,
+  "protected_hashes": {
+    "mo-runtime-accepted/dist/mo-build-provenance.json": "17AD4CC8F66A67BB7DD1CC6D673FFB8CE46FB80C271F9AF3F47E8F6ABECC41AB",
+    "mo-vm-changed-upgrade-kit-0180-0190-v2/vm-changed-upgrade-kit.json": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
+    "mo-linked-win10-expanded-0180-v3/mo-setup-development-unsigned.exe": "47EA4494074CB9D5B6971982BE16EE80CF599FA47480D08339892C469EF40FDA",
+    "mo-windows-stage-expanded-0180-v3/stage/mo-stage.json": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
+    "mo-windows-stage-keys-0190-v2/stage/mo-stage.json": "F5F0F4F3BD4820CF24B7B67BD66A7D2CB27E6C6301CE8EBD9CE7B1900D751F01",
+    "mo-runtime-userdb-v3/dist/mo-build-provenance.json": "11C4396204CB2657696AB9EAE9E58161718B773DCFF9F631033D9CFD39389002",
+    "mo-linked-win10-keys-0190-v2/mo-setup-development-unsigned.exe": "B29A4C6BCEB7B65C8237DF49D89AFAD2B26115FBB2C21D1EFE2B280104475926"
+  },
+  "planned_count": 803,
+  "status": "completed",
+  "failure": null,
+  "rows": [
+    {
+      "files": 906,
+      "bytes": 197813850,
+      "path": "build/latency-key-count-v1/target",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 714,
+      "bytes": 134121019,
+      "path": "build/mo-candidate-final-default-fake/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22571047,
+      "path": "build/mo-candidate-final-default-fake/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137939771,
+      "path": "build/mo-candidate-invariants-final-trace/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23092074,
+      "path": "build/mo-candidate-invariants-final-trace/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137921265,
+      "path": "build/mo-candidate-isolated-trace-final/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23515548,
+      "path": "build/mo-candidate-isolated-trace-final/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137917525,
+      "path": "build/mo-candidate-isolated-v4-final/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23513998,
+      "path": "build/mo-candidate-isolated-v4-final/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 714,
+      "bytes": 134141552,
+      "path": "build/mo-candidate-lifecycle-default-fake/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22474537,
+      "path": "build/mo-candidate-lifecycle-default-fake/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137919557,
+      "path": "build/mo-candidate-lifecycle-final-abi/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22977879,
+      "path": "build/mo-candidate-lifecycle-final-abi/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137943943,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 9,
+      "bytes": 2542109,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137946008,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace-2/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22974809,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace-2/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137946000,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace-3/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22976378,
+      "path": "build/mo-candidate-lifecycle-noactivate-trace-3/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137898985,
+      "path": "build/mo-candidate-lifecycle-trace/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 4,
+      "bytes": 4649,
+      "path": "build/mo-candidate-lifecycle-trace/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137917541,
+      "path": "build/mo-candidate-lifecycle-trace-2/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 4,
+      "bytes": 4675,
+      "path": "build/mo-candidate-lifecycle-trace-2/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137917534,
+      "path": "build/mo-candidate-lifecycle-trace-3/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22792665,
+      "path": "build/mo-candidate-lifecycle-trace-3/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137933909,
+      "path": "build/mo-candidate-lifecycle-trace-4/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22792665,
+      "path": "build/mo-candidate-lifecycle-trace-4/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137898645,
+      "path": "build/mo-candidate-origin-trace-1/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23403488,
+      "path": "build/mo-candidate-origin-trace-1/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137898638,
+      "path": "build/mo-candidate-origin-trace-2/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23412662,
+      "path": "build/mo-candidate-origin-trace-2/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137898625,
+      "path": "build/mo-candidate-origin-trace-3/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23412662,
+      "path": "build/mo-candidate-origin-trace-3/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137894815,
+      "path": "build/mo-candidate-owner-after/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22923464,
+      "path": "build/mo-candidate-owner-after/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137896510,
+      "path": "build/mo-candidate-owner-before/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 22920704,
+      "path": "build/mo-candidate-owner-before/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 30,
+      "bytes": 7298439,
+      "path": "build/mo-candidate-reentry-before-guard/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 717,
+      "bytes": 137942278,
+      "path": "build/mo-candidate-termination-reentry-trace/cargo",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 64,
+      "bytes": 23029578,
+      "path": "build/mo-candidate-termination-reentry-trace/objects",
+      "kind": "obsolete-diagnostic-compile-cache",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-development-linked-machine-data-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42041344,
+      "path": "build/mo-development-linked-machine-data-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65184,
+      "path": "build/mo-development-linked-machine-data-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42473635,
+      "path": "build/mo-development-linked-machine-data-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7746,
+      "path": "build/mo-development-linked-machine-data-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-development-linked-machine-data-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134610165,
+      "path": "build/mo-development-linked-machine-data-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-development-linked-machine-data-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42041344,
+      "path": "build/mo-development-linked-machine-data-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65192,
+      "path": "build/mo-development-linked-machine-data-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42472889,
+      "path": "build/mo-development-linked-machine-data-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7744,
+      "path": "build/mo-development-linked-machine-data-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-development-linked-machine-data-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134610165,
+      "path": "build/mo-development-linked-machine-data-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-flavor-dev-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-flavor-dev-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65088,
+      "path": "build/mo-flavor-dev-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477039,
+      "path": "build/mo-flavor-dev-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7721,
+      "path": "build/mo-flavor-dev-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-flavor-dev-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-flavor-dev-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-flavor-dev-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-flavor-dev-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65089,
+      "path": "build/mo-flavor-dev-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477381,
+      "path": "build/mo-flavor-dev-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7734,
+      "path": "build/mo-flavor-dev-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-flavor-dev-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-flavor-dev-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42668032,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67049,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43059561,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7742,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135707381,
+      "path": "build/mo-linked-candidate-details-fault-093-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42668032,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67050,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43059011,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7764,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135707381,
+      "path": "build/mo-linked-candidate-details-fault-094-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42668032,
+      "path": "build/mo-linked-candidate-details-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66684,
+      "path": "build/mo-linked-candidate-details-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43069768,
+      "path": "build/mo-linked-candidate-details-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6964,
+      "path": "build/mo-linked-candidate-details-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342357,
+      "path": "build/mo-linked-candidate-details-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135707381,
+      "path": "build/mo-linked-candidate-details-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-emoji-fault-095-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42729472,
+      "path": "build/mo-linked-emoji-fault-095-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66918,
+      "path": "build/mo-linked-emoji-fault-095-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43062413,
+      "path": "build/mo-linked-emoji-fault-095-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7752,
+      "path": "build/mo-linked-emoji-fault-095-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-emoji-fault-095-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135710453,
+      "path": "build/mo-linked-emoji-fault-095-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-emoji-fault-096-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42729472,
+      "path": "build/mo-linked-emoji-fault-096-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66917,
+      "path": "build/mo-linked-emoji-fault-096-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43062785,
+      "path": "build/mo-linked-emoji-fault-096-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7740,
+      "path": "build/mo-linked-emoji-fault-096-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-emoji-fault-096-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135710453,
+      "path": "build/mo-linked-emoji-fault-096-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-linked-installer-fault-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-linked-installer-fault-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65171,
+      "path": "build/mo-linked-installer-fault-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-linked-installer-fault-v1b/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-linked-installer-fault-v1b/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65189,
+      "path": "build/mo-linked-installer-fault-v1b/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477237,
+      "path": "build/mo-linked-installer-fault-v1b/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7735,
+      "path": "build/mo-linked-installer-fault-v1b/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-linked-installer-fault-v1b/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-linked-installer-fault-v1c/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-linked-installer-fault-v1c/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65189,
+      "path": "build/mo-linked-installer-fault-v1c/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477071,
+      "path": "build/mo-linked-installer-fault-v1c/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7740,
+      "path": "build/mo-linked-installer-fault-v1c/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-linked-installer-fault-v1c/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-linked-installer-fault-v1c/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-linked-installer-fault-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42074112,
+      "path": "build/mo-linked-installer-fault-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 65171,
+      "path": "build/mo-linked-installer-fault-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477475,
+      "path": "build/mo-linked-installer-fault-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7732,
+      "path": "build/mo-linked-installer-fault-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345556,
+      "path": "build/mo-linked-installer-fault-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-linked-installer-fault-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42016768,
+      "path": "build/mo-linked-installer-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64810,
+      "path": "build/mo-linked-installer-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465046,
+      "path": "build/mo-linked-installer-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6913,
+      "path": "build/mo-linked-installer-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342321,
+      "path": "build/mo-linked-installer-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-linked-installer-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42016768,
+      "path": "build/mo-linked-installer-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64849,
+      "path": "build/mo-linked-installer-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-linked-installer-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6916,
+      "path": "build/mo-linked-installer-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342321,
+      "path": "build/mo-linked-installer-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-linked-installer-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-learning-fault-097-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42713088,
+      "path": "build/mo-linked-learning-fault-097-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66978,
+      "path": "build/mo-linked-learning-fault-097-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43070013,
+      "path": "build/mo-linked-learning-fault-097-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7753,
+      "path": "build/mo-linked-learning-fault-097-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-learning-fault-097-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-linked-learning-fault-097-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-learning-fault-097-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42745856,
+      "path": "build/mo-linked-learning-fault-097-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66959,
+      "path": "build/mo-linked-learning-fault-097-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055319,
+      "path": "build/mo-linked-learning-fault-097-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7755,
+      "path": "build/mo-linked-learning-fault-097-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-learning-fault-097-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-linked-learning-fault-097-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-learning-fault-098-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42713088,
+      "path": "build/mo-linked-learning-fault-098-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66985,
+      "path": "build/mo-linked-learning-fault-098-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43069975,
+      "path": "build/mo-linked-learning-fault-098-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7739,
+      "path": "build/mo-linked-learning-fault-098-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-learning-fault-098-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-linked-learning-fault-098-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-linked-learning-fault-098-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42745856,
+      "path": "build/mo-linked-learning-fault-098-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66970,
+      "path": "build/mo-linked-learning-fault-098-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055431,
+      "path": "build/mo-linked-learning-fault-098-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7746,
+      "path": "build/mo-linked-learning-fault-098-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-learning-fault-098-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-linked-learning-fault-098-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42635264,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67007,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063273,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7752,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135726837,
+      "path": "build/mo-linked-win10-clean-root-0911-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42676224,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67011,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43053571,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7748,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135727861,
+      "path": "build/mo-linked-win10-contrast-abi3-0130-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-dense-0160-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42856448,
+      "path": "build/mo-linked-win10-dense-0160-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66902,
+      "path": "build/mo-linked-win10-dense-0160-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-linked-win10-dense-0160-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7740,
+      "path": "build/mo-linked-win10-dense-0160-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-dense-0160-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136250613,
+      "path": "build/mo-linked-win10-dense-0160-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 320512,
+      "path": "build/mo-linked-win10-enum-0910-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42708992,
+      "path": "build/mo-linked-win10-enum-0910-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66905,
+      "path": "build/mo-linked-win10-enum-0910-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43078799,
+      "path": "build/mo-linked-win10-enum-0910-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7731,
+      "path": "build/mo-linked-win10-enum-0910-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-enum-0910-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135715573,
+      "path": "build/mo-linked-win10-enum-0910-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-expanded-0180-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42860544,
+      "path": "build/mo-linked-win10-expanded-0180-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66966,
+      "path": "build/mo-linked-win10-expanded-0180-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43231957,
+      "path": "build/mo-linked-win10-expanded-0180-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7741,
+      "path": "build/mo-linked-win10-expanded-0180-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-expanded-0180-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136258805,
+      "path": "build/mo-linked-win10-expanded-0180-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318976,
+      "path": "build/mo-linked-win10-fixed-099-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42684416,
+      "path": "build/mo-linked-win10-fixed-099-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66922,
+      "path": "build/mo-linked-win10-fixed-099-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43076973,
+      "path": "build/mo-linked-win10-fixed-099-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7735,
+      "path": "build/mo-linked-win10-fixed-099-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-win10-fixed-099-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135712501,
+      "path": "build/mo-linked-win10-fixed-099-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 320000,
+      "path": "build/mo-linked-win10-fixed-099-v2/enum-probe.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318976,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42684416,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66926,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43076679,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7728,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318976,
+      "path": "build/mo-linked-win10-fixed-099-v2/mo-tip-registrar-fresh-manager-probe.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345578,
+      "path": "build/mo-linked-win10-fixed-099-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135712501,
+      "path": "build/mo-linked-win10-fixed-099-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-key-count-0110-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42713088,
+      "path": "build/mo-linked-win10-key-count-0110-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66995,
+      "path": "build/mo-linked-win10-key-count-0110-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-linked-win10-key-count-0110-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7748,
+      "path": "build/mo-linked-win10-key-count-0110-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-key-count-0110-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135726837,
+      "path": "build/mo-linked-win10-key-count-0110-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-keys-0190-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42864640,
+      "path": "build/mo-linked-win10-keys-0190-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66889,
+      "path": "build/mo-linked-win10-keys-0190-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43238399,
+      "path": "build/mo-linked-win10-keys-0190-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7729,
+      "path": "build/mo-linked-win10-keys-0190-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-keys-0190-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136259829,
+      "path": "build/mo-linked-win10-keys-0190-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-localized-0150-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42733568,
+      "path": "build/mo-linked-win10-localized-0150-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66943,
+      "path": "build/mo-linked-win10-localized-0150-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43179569,
+      "path": "build/mo-linked-win10-localized-0150-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7749,
+      "path": "build/mo-linked-win10-localized-0150-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-localized-0150-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136226549,
+      "path": "build/mo-linked-win10-localized-0150-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-localized-0150-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42840064,
+      "path": "build/mo-linked-win10-localized-0150-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66949,
+      "path": "build/mo-linked-win10-localized-0150-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-linked-win10-localized-0150-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7748,
+      "path": "build/mo-linked-win10-localized-0150-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-localized-0150-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136226549,
+      "path": "build/mo-linked-win10-localized-0150-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-matrix-0100-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42635264,
+      "path": "build/mo-linked-win10-matrix-0100-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67030,
+      "path": "build/mo-linked-win10-matrix-0100-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063515,
+      "path": "build/mo-linked-win10-matrix-0100-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7750,
+      "path": "build/mo-linked-win10-matrix-0100-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-matrix-0100-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135726837,
+      "path": "build/mo-linked-win10-matrix-0100-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-matrix-0912-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42635264,
+      "path": "build/mo-linked-win10-matrix-0912-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 67036,
+      "path": "build/mo-linked-win10-matrix-0912-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063511,
+      "path": "build/mo-linked-win10-matrix-0912-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7741,
+      "path": "build/mo-linked-win10-matrix-0912-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-matrix-0912-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135726837,
+      "path": "build/mo-linked-win10-matrix-0912-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42823680,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66970,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43213277,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7732,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136149749,
+      "path": "build/mo-linked-win10-modern-ui-0140-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-preedit-0170-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42819584,
+      "path": "build/mo-linked-win10-preedit-0170-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66924,
+      "path": "build/mo-linked-win10-preedit-0170-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43226947,
+      "path": "build/mo-linked-win10-preedit-0170-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7739,
+      "path": "build/mo-linked-win10-preedit-0170-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-preedit-0170-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136265461,
+      "path": "build/mo-linked-win10-preedit-0170-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-preedit-0170-v2/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42893312,
+      "path": "build/mo-linked-win10-preedit-0170-v2/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66956,
+      "path": "build/mo-linked-win10-preedit-0170-v2/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43228021,
+      "path": "build/mo-linked-win10-preedit-0170-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7745,
+      "path": "build/mo-linked-win10-preedit-0170-v2/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-preedit-0170-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 136265973,
+      "path": "build/mo-linked-win10-preedit-0170-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/mo-development-failure-injection.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42749952,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/mo-development-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66981,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/mo-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43090685,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 7744,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/mo-setup-development-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 345589,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135726837,
+      "path": "build/mo-linked-win10-settings-abi3-0120-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42684416,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66532,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43065454,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6973,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342357,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135710453,
+      "path": "build/mo-production-shape-linked-emoji-095-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42065920,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66728,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42501672,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6957,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134830325,
+      "path": "build/mo-production-shape-linked-engine-preferences-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42143744,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66727,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42521952,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6965,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134830325,
+      "path": "build/mo-production-shape-linked-engine-preferences-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42127360,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66699,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42525062,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6971,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134836981,
+      "path": "build/mo-production-shape-linked-ice-gated-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42127360,
+      "path": "build/mo-production-shape-linked-ice69-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66726,
+      "path": "build/mo-production-shape-linked-ice69-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42525008,
+      "path": "build/mo-production-shape-linked-ice69-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6960,
+      "path": "build/mo-production-shape-linked-ice69-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-ice69-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134836981,
+      "path": "build/mo-production-shape-linked-ice69-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42557440,
+      "path": "build/mo-production-shape-linked-learning-097-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66565,
+      "path": "build/mo-production-shape-linked-learning-097-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43026512,
+      "path": "build/mo-production-shape-linked-learning-097-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6966,
+      "path": "build/mo-production-shape-linked-learning-097-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342357,
+      "path": "build/mo-production-shape-linked-learning-097-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-production-shape-linked-learning-097-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42717184,
+      "path": "build/mo-production-shape-linked-learning-097-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66585,
+      "path": "build/mo-production-shape-linked-learning-097-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43072332,
+      "path": "build/mo-production-shape-linked-learning-097-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6969,
+      "path": "build/mo-production-shape-linked-learning-097-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342357,
+      "path": "build/mo-production-shape-linked-learning-097-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135711477,
+      "path": "build/mo-production-shape-linked-learning-097-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42123264,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66724,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42519164,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6954,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134836469,
+      "path": "build/mo-production-shape-linked-live-engine-switch-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42070016,
+      "path": "build/mo-production-shape-linked-machine-data-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64858,
+      "path": "build/mo-production-shape-linked-machine-data-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42478586,
+      "path": "build/mo-production-shape-linked-machine-data-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6954,
+      "path": "build/mo-production-shape-linked-machine-data-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-machine-data-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134610165,
+      "path": "build/mo-production-shape-linked-machine-data-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42119168,
+      "path": "build/mo-production-shape-linked-machine-data-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64852,
+      "path": "build/mo-production-shape-linked-machine-data-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42490042,
+      "path": "build/mo-production-shape-linked-machine-data-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6958,
+      "path": "build/mo-production-shape-linked-machine-data-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-machine-data-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134610165,
+      "path": "build/mo-production-shape-linked-machine-data-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42037248,
+      "path": "build/mo-production-shape-linked-machine-data-v3/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64866,
+      "path": "build/mo-production-shape-linked-machine-data-v3/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477086,
+      "path": "build/mo-production-shape-linked-machine-data-v3/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6949,
+      "path": "build/mo-production-shape-linked-machine-data-v3/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-machine-data-v3/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134610165,
+      "path": "build/mo-production-shape-linked-machine-data-v3/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42127360,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66746,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42525198,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6956,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134836981,
+      "path": "build/mo-production-shape-linked-session-settings-ack-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42131456,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66667,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42544812,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6953,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134824693,
+      "path": "build/mo-production-shape-linked-settings-notify-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42115072,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66669,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42546546,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6949,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134824693,
+      "path": "build/mo-production-shape-linked-settings-notify-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42106880,
+      "path": "build/mo-production-shape-linked-settings-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66489,
+      "path": "build/mo-production-shape-linked-settings-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42519926,
+      "path": "build/mo-production-shape-linked-settings-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6949,
+      "path": "build/mo-production-shape-linked-settings-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134817525,
+      "path": "build/mo-production-shape-linked-settings-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42106880,
+      "path": "build/mo-production-shape-linked-settings-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66480,
+      "path": "build/mo-production-shape-linked-settings-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42519910,
+      "path": "build/mo-production-shape-linked-settings-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6958,
+      "path": "build/mo-production-shape-linked-settings-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-settings-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134817525,
+      "path": "build/mo-production-shape-linked-settings-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42131456,
+      "path": "build/mo-production-shape-linked-settings-v3/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66474,
+      "path": "build/mo-production-shape-linked-settings-v3/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42534904,
+      "path": "build/mo-production-shape-linked-settings-v3/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6949,
+      "path": "build/mo-production-shape-linked-settings-v3/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-settings-v3/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 134817525,
+      "path": "build/mo-production-shape-linked-settings-v3/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42639360,
+      "path": "build/mo-production-shape-linked-static-crt-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 66587,
+      "path": "build/mo-production-shape-linked-static-crt-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43028674,
+      "path": "build/mo-production-shape-linked-static-crt-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6960,
+      "path": "build/mo-production-shape-linked-static-crt-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342357,
+      "path": "build/mo-production-shape-linked-static-crt-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 133,
+      "bytes": 135689973,
+      "path": "build/mo-production-shape-linked-static-crt-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42049536,
+      "path": "build/mo-production-shape-linked-v1/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64871,
+      "path": "build/mo-production-shape-linked-v1/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42432613,
+      "path": "build/mo-production-shape-linked-v1/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 5857,
+      "path": "build/mo-production-shape-linked-v1/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 339614,
+      "path": "build/mo-production-shape-linked-v1/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-production-shape-linked-v1/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42049536,
+      "path": "build/mo-production-shape-linked-v2/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64872,
+      "path": "build/mo-production-shape-linked-v2/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42462670,
+      "path": "build/mo-production-shape-linked-v2/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6961,
+      "path": "build/mo-production-shape-linked-v2/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-v2/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-production-shape-linked-v2/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42049536,
+      "path": "build/mo-production-shape-linked-v3/mo-production-shape-unsigned.msi",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 64873,
+      "path": "build/mo-production-shape-linked-v3/mo-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42463922,
+      "path": "build/mo-production-shape-linked-v3/mo-setup-production-shape-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 6954,
+      "path": "build/mo-production-shape-linked-v3/mo-setup-production-shape-unsigned.wixpdb",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 7,
+      "bytes": 342346,
+      "path": "build/mo-production-shape-linked-v3/verification/bundle-ba",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134596341,
+      "path": "build/mo-production-shape-linked-v3/verification/msi-files",
+      "kind": "superseded-installer-extraction",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14041554,
+      "path": "build/mo-runtime-learning-v1/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14042152,
+      "path": "build/mo-runtime-machine-data-v1/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14042148,
+      "path": "build/mo-runtime-machine-data-v2/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 13658954,
+      "path": "build/mo-runtime-ready/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14024788,
+      "path": "build/mo-runtime-relocatable/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14043638,
+      "path": "build/mo-runtime-relocatable-final/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 146,
+      "bytes": 14044548,
+      "path": "build/mo-runtime-relocatable-verified/prefix",
+      "kind": "superseded-runtime-intermediates",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43059561,
+      "path": "build/mo-vm-candidate-details-clean-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-candidate-details-clean-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43059561,
+      "path": "build/mo-vm-candidate-details-matrix-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43059011,
+      "path": "build/mo-vm-candidate-details-matrix-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-candidate-details-matrix-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43090685,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43090685,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v3/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43090685,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v3/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0120-v3/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0130-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43053571,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0130-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0130-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0140-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43213277,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0140-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0110-0140-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43213277,
+      "path": "build/mo-vm-changed-upgrade-kit-0140-0150-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-vm-changed-upgrade-kit-0140-0150-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0140-0150-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v3/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v3/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v3/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43233721,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v4/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v4/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0150-0160-v4/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43226947,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43235549,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43228021,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0160-0170-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43228021,
+      "path": "build/mo-vm-changed-upgrade-kit-0170-0180-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43231957,
+      "path": "build/mo-vm-changed-upgrade-kit-0170-0180-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-changed-upgrade-kit-0170-0180-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43070013,
+      "path": "build/mo-vm-clean-kit-learning-097-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-clean-kit-learning-097-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055319,
+      "path": "build/mo-vm-clean-kit-learning-097-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-clean-kit-learning-097-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055319,
+      "path": "build/mo-vm-clean-kit-learning-097-win10-v3/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-clean-kit-learning-097-win10-v3/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063273,
+      "path": "build/mo-vm-clean-kit-win10-clean-root-0911-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-clean-kit-win10-clean-root-0911-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43078799,
+      "path": "build/mo-vm-clean-kit-win10-enum-0910-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 320512,
+      "path": "build/mo-vm-clean-kit-win10-enum-0910-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43076679,
+      "path": "build/mo-vm-clean-kit-win10-fixed-099-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318976,
+      "path": "build/mo-vm-clean-kit-win10-fixed-099-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43062413,
+      "path": "build/mo-vm-emoji-clean-kit-095-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-emoji-clean-kit-095-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43062413,
+      "path": "build/mo-vm-emoji-matrix-kit-095-096-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43062785,
+      "path": "build/mo-vm-emoji-matrix-kit-095-096-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-emoji-matrix-kit-095-096-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43088701,
+      "path": "build/mo-vm-kit-win10-key-count-0110-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-kit-win10-key-count-0110-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43090685,
+      "path": "build/mo-vm-kit-win10-settings-abi3-0120-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-kit-win10-settings-abi3-0120-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43070013,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43069975,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055319,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43055431,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 318464,
+      "path": "build/mo-vm-matrix-kit-learning-097-098-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063273,
+      "path": "build/mo-vm-matrix-kit-win10-0911-0100-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 43063515,
+      "path": "build/mo-vm-matrix-kit-win10-0911-0100-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 326144,
+      "path": "build/mo-vm-matrix-kit-win10-0911-0100-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42473635,
+      "path": "build/mo-vm-matrix-test-kit-machine-data-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42472889,
+      "path": "build/mo-vm-matrix-test-kit-machine-data-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-machine-data-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477071,
+      "path": "build/mo-vm-matrix-test-kit-v1/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477475,
+      "path": "build/mo-vm-matrix-test-kit-v1/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477071,
+      "path": "build/mo-vm-matrix-test-kit-v2/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477475,
+      "path": "build/mo-vm-matrix-test-kit-v2/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477071,
+      "path": "build/mo-vm-matrix-test-kit-v3/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477475,
+      "path": "build/mo-vm-matrix-test-kit-v3/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-v3/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477039,
+      "path": "build/mo-vm-matrix-test-kit-v4/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477381,
+      "path": "build/mo-vm-matrix-test-kit-v4/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-v4/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477039,
+      "path": "build/mo-vm-matrix-test-kit-v5/mo-setup-base-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477381,
+      "path": "build/mo-vm-matrix-test-kit-v5/mo-setup-upgrade-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-matrix-test-kit-v5/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42472889,
+      "path": "build/mo-vm-test-kit-machine-data-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-machine-data-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v1/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v1/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v2/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v2/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v3/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v3/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v4/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v4/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v5/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v5/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42465040,
+      "path": "build/mo-vm-test-kit-v6/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v6/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477071,
+      "path": "build/mo-vm-test-kit-v7/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v7/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477039,
+      "path": "build/mo-vm-test-kit-v8/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v8/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 42477039,
+      "path": "build/mo-vm-test-kit-v9/mo-setup-development-unsigned.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 82432,
+      "path": "build/mo-vm-test-kit-v9/mo-tip-registrar.exe",
+      "kind": "superseded-installer-binary",
+      "status": "removed"
+    },
+    {
+      "files": 131,
+      "bytes": 134468853,
+      "path": "build/mo-windows-stage-broker-bootstrap/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10123245,
+      "path": "build/mo-windows-stage-broker-bootstrap/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-broker-bootstrap/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-broker-bootstrap/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-broker-bootstrap/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134461685,
+      "path": "build/mo-windows-stage-build/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8785327,
+      "path": "build/mo-windows-stage-build/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-build/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-build/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-build/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135388917,
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36977705,
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-candidate-details-fault-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135388917,
+      "path": "build/mo-windows-stage-candidate-details-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36961285,
+      "path": "build/mo-windows-stage-candidate-details-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-candidate-details-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-candidate-details-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-candidate-details-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134462709,
+      "path": "build/mo-windows-stage-candidate-final/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8860139,
+      "path": "build/mo-windows-stage-candidate-final/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-candidate-final/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-candidate-final/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-candidate-final/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 0,
+      "bytes": 0,
+      "path": "build/mo-windows-stage-debug/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 135924469,
+      "path": "build/mo-windows-stage-dense-0160-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 38147551,
+      "path": "build/mo-windows-stage-dense-0160-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-dense-0160-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-dense-0160-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-dense-0160-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135391989,
+      "path": "build/mo-windows-stage-emoji-fault-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36977633,
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-emoji-fault-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-emoji-fault-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135391989,
+      "path": "build/mo-windows-stage-emoji-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36977597,
+      "path": "build/mo-windows-stage-emoji-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-emoji-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-emoji-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-emoji-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134747893,
+      "path": "build/mo-windows-stage-engine-preferences-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11120143,
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-engine-preferences-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-engine-preferences-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134747893,
+      "path": "build/mo-windows-stage-engine-preferences-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11120143,
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 15,
+      "bytes": 498136,
+      "path": "build/mo-windows-stage-engine-preferences-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-engine-preferences-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135932661,
+      "path": "build/mo-windows-stage-expanded-0180-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 38217197,
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-expanded-0180-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-expanded-0180-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134513909,
+      "path": "build/mo-windows-stage-fault-injection-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10999289,
+      "path": "build/mo-windows-stage-fault-injection-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-fault-injection-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-fault-injection-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-fault-injection-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134461685,
+      "path": "build/mo-windows-stage-final/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8785327,
+      "path": "build/mo-windows-stage-final/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-final/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-final/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-final/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134461685,
+      "path": "build/mo-windows-stage-golden/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8785329,
+      "path": "build/mo-windows-stage-golden/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-golden/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-golden/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-golden/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 0,
+      "bytes": 0,
+      "path": "build/mo-windows-stage-initial/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 131,
+      "bytes": 134494453,
+      "path": "build/mo-windows-stage-installer-transaction/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10797071,
+      "path": "build/mo-windows-stage-installer-transaction/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-installer-transaction/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-installer-transaction/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-installer-transaction/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134494965,
+      "path": "build/mo-windows-stage-installer-transaction-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10797597,
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-installer-transaction-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-installer-transaction-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134494965,
+      "path": "build/mo-windows-stage-installer-transaction-v3/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10789405,
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-installer-transaction-v3/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-installer-transaction-v3/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135933685,
+      "path": "build/mo-windows-stage-keys-0190-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 38238677,
+      "path": "build/mo-windows-stage-keys-0190-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-keys-0190-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-keys-0190-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-keys-0190-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135393013,
+      "path": "build/mo-windows-stage-learning-fault-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36961783,
+      "path": "build/mo-windows-stage-learning-fault-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-learning-fault-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-learning-fault-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-learning-fault-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135393013,
+      "path": "build/mo-windows-stage-learning-fault-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36961783,
+      "path": "build/mo-windows-stage-learning-fault-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-learning-fault-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-learning-fault-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-learning-fault-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135393013,
+      "path": "build/mo-windows-stage-learning-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36978131,
+      "path": "build/mo-windows-stage-learning-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-learning-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-learning-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-learning-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135393013,
+      "path": "build/mo-windows-stage-learning-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36978131,
+      "path": "build/mo-windows-stage-learning-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-learning-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-learning-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-learning-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134513909,
+      "path": "build/mo-windows-stage-linked-installer-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10982403,
+      "path": "build/mo-windows-stage-linked-installer-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-linked-installer-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-linked-installer-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-linked-installer-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134754037,
+      "path": "build/mo-windows-stage-live-engine-switch-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11143183,
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-live-engine-switch-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-live-engine-switch-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135900405,
+      "path": "build/mo-windows-stage-localized-0150-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37736951,
+      "path": "build/mo-windows-stage-localized-0150-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-localized-0150-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-localized-0150-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-localized-0150-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135900405,
+      "path": "build/mo-windows-stage-localized-0150-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37736951,
+      "path": "build/mo-windows-stage-localized-0150-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-localized-0150-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-localized-0150-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-localized-0150-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134527733,
+      "path": "build/mo-windows-stage-machine-data-dev-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10991107,
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-machine-data-dev-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-machine-data-dev-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134527733,
+      "path": "build/mo-windows-stage-machine-data-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10990571,
+      "path": "build/mo-windows-stage-machine-data-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-machine-data-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-machine-data-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-machine-data-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134527733,
+      "path": "build/mo-windows-stage-machine-data-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10990571,
+      "path": "build/mo-windows-stage-machine-data-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-machine-data-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-machine-data-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-machine-data-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134527733,
+      "path": "build/mo-windows-stage-machine-data-v3/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10990571,
+      "path": "build/mo-windows-stage-machine-data-v3/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-machine-data-v3/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-machine-data-v3/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-machine-data-v3/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135823605,
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37745143,
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-modern-ui-0140-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134462709,
+      "path": "build/mo-windows-stage-owner-final/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8839123,
+      "path": "build/mo-windows-stage-owner-final/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-owner-final/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-owner-final/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-owner-final/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134462197,
+      "path": "build/mo-windows-stage-owner-termination/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8828919,
+      "path": "build/mo-windows-stage-owner-termination/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-owner-termination/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-owner-termination/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-owner-termination/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135939317,
+      "path": "build/mo-windows-stage-preedit-0170-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 38232555,
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-preedit-0170-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-preedit-0170-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135939829,
+      "path": "build/mo-windows-stage-preedit-0170-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 38232555,
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-preedit-0170-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-preedit-0170-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134513909,
+      "path": "build/mo-windows-stage-production-shape-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10982403,
+      "path": "build/mo-windows-stage-production-shape-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-production-shape-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-production-shape-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-production-shape-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134461685,
+      "path": "build/mo-windows-stage-safe/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8785317,
+      "path": "build/mo-windows-stage-safe/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-safe/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-safe/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-safe/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134754549,
+      "path": "build/mo-windows-stage-session-settings-ack-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11143707,
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-session-settings-ack-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-session-settings-ack-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134742261,
+      "path": "build/mo-windows-stage-settings-notify-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11111417,
+      "path": "build/mo-windows-stage-settings-notify-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-settings-notify-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-settings-notify-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-settings-notify-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134742261,
+      "path": "build/mo-windows-stage-settings-notify-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11111929,
+      "path": "build/mo-windows-stage-settings-notify-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-settings-notify-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-settings-notify-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-settings-notify-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 0,
+      "bytes": 0,
+      "path": "build/mo-windows-stage-settings-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 132,
+      "bytes": 134735093,
+      "path": "build/mo-windows-stage-settings-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11008979,
+      "path": "build/mo-windows-stage-settings-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-settings-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-settings-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-settings-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 134735093,
+      "path": "build/mo-windows-stage-settings-v3/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 11000787,
+      "path": "build/mo-windows-stage-settings-v3/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-settings-v3/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-settings-v3/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-settings-v3/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135371509,
+      "path": "build/mo-windows-stage-static-crt-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36807647,
+      "path": "build/mo-windows-stage-static-crt-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-static-crt-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-static-crt-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-static-crt-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134462709,
+      "path": "build/mo-windows-stage-tsf-isolation/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8951775,
+      "path": "build/mo-windows-stage-tsf-isolation/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-tsf-isolation/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-tsf-isolation/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-tsf-isolation/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134504181,
+      "path": "build/mo-windows-stage-user-finalizer-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10914295,
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-user-finalizer-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-user-finalizer-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134513397,
+      "path": "build/mo-windows-stage-user-finalizer-v2/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 10990071,
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-user-finalizer-v2/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-user-finalizer-v2/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135399157,
+      "path": "build/mo-windows-stage-userdb-v3/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37124039,
+      "path": "build/mo-windows-stage-userdb-v3/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-userdb-v3/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-userdb-v3/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-userdb-v3/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 131,
+      "bytes": 134461685,
+      "path": "build/mo-windows-stage-verified/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 8785341,
+      "path": "build/mo-windows-stage-verified/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-verified/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-verified/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-verified/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135400693,
+      "path": "build/mo-windows-stage-win10-clean-root-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37116419,
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-clean-root-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-clean-root-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135401717,
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37226513,
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-contrast-abi3-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135395061,
+      "path": "build/mo-windows-stage-win10-enum-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37040607,
+      "path": "build/mo-windows-stage-win10-enum-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-enum-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-enum-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-enum-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135393525,
+      "path": "build/mo-windows-stage-win10-fixed-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 36988385,
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-fixed-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-fixed-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135400693,
+      "path": "build/mo-windows-stage-win10-key-count-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37125113,
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-key-count-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-key-count-v1/stage/evidence/rime-ice-source.tar"
+    },
+    {
+      "files": 132,
+      "bytes": 135400693,
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/stage/payload",
+      "kind": "superseded-stage-payload",
+      "status": "removed"
+    },
+    {
+      "files": 16,
+      "bytes": 37116945,
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/native",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 1,
+      "bytes": 20632,
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/rime-include",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "files": 3,
+      "bytes": 263,
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/working/deploy-user",
+      "kind": "superseded-stage-working-copy",
+      "status": "removed"
+    },
+    {
+      "status": "removed",
+      "kind": "duplicate-pinned-source-archive",
+      "bytes": 53872640,
+      "files": 1,
+      "retained_archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+      "path": "build/mo-windows-stage-win10-settings-abi3-v1/stage/evidence/rime-ice-source.tar"
+    }
+  ],
+  "disk_free_after": 123458072576,
+  "format": 1,
+  "categories": [
+    {
+      "kind": "duplicate-pinned-source-archive",
+      "targets": 54,
+      "bytes": 2909122560
+    },
+    {
+      "kind": "obsolete-diagnostic-compile-cache",
+      "targets": 40,
+      "bytes": 3189342000
+    },
+    {
+      "kind": "superseded-installer-binary",
+      "targets": 373,
+      "bytes": 7758450435
+    },
+    {
+      "kind": "superseded-installer-extraction",
+      "targets": 110,
+      "bytes": 7596326926
+    },
+    {
+      "kind": "superseded-runtime-intermediates",
+      "targets": 7,
+      "bytes": 97897782
+    },
+    {
+      "kind": "superseded-stage-payload",
+      "targets": 57,
+      "bytes": 7290332590
+    },
+    {
+      "kind": "superseded-stage-working-copy",
+      "targets": 162,
+      "bytes": 1207738983
+    }
+  ],
+  "retired_root_count": 165,
+  "verified_utc": "2026-10-22T19:21:27.804722+00:00",
+  "all_removed_paths_absent": true,
+  "note": "Logical deleted bytes differ from disk net change; current baseline/upgrade, runtimes, source snapshots, toolchains, logs, manifests, shared evidence and user data preserved."
+}

@@ -24,8 +24,9 @@ These commands build Rust, check formatting and lint, run workspace tests, probe
 Periodically run cargo clean after completed build/test milestones, especially after
 cargo run diagnostics. Check that no project build, test, running binary, or packaging task
 still needs the target directory before cleaning. Validate the resolved Cargo target path is
-inside this repository. Preserve sealed build/ packages, stages, runtimes, evidence and user
-data. Record cleanup time and reclaimed space; do not rebuild solely to warm the cache.
+inside this repository. Preserve current sealed build/ packages, the installed/rollback
+baseline, accepted runtimes, evidence and user data. Record cleanup time and reclaimed
+space; do not rebuild solely to warm the cache.
 Sealed payloads and evidence do not require keeping regenerable working caches forever.
 After successful packaging and an idle/path/reparse-point check, remove the sealed stage's
 `working/rust-target` and `working/native-obj`; retain `stage/`, source snapshots, logs and
@@ -33,6 +34,12 @@ After successful packaging and an idle/path/reparse-point check, remove the seal
 removed while retaining their dist/inputs/commands and the current accepted runtime build.
 The extracted `working/rime-ice-source` may be removed only after its retained
 `stage/evidence/rime-ice-source.tar` matches the sealed manifest SHA-256.
+When the user requests build artifact cleanup, retire superseded installer binaries,
+extracted verification payloads, old stage payloads and generated deployment/probe copies.
+Retain their manifests, source snapshots and logs; record removed paths and mark the old
+artifact roots retired. Deduplicate old source archives only against a retained identical
+SHA-256 archive. Do not treat historical build paths as runnable packages after retirement.
+Preserve the installed baseline, pending upgrade package/kit and required toolchains.
 Do not clean directories used by an active build or an incomplete packaging transaction.
 
 ## Coding Style & Naming Conventions
