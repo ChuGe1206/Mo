@@ -9,6 +9,7 @@
 mod codec;
 mod composition_snapshot;
 mod frame;
+mod input_mode;
 mod message;
 mod version;
 
@@ -20,6 +21,10 @@ pub use composition_snapshot::{
 pub use frame::{
     FLAG_ERROR, FLAG_RESPONSE, Frame, FrameError, FrameHeader, HEADER_LEN, MAGIC, MAX_FRAME_LEN,
     MAX_PAYLOAD_LEN, MessageKind, read_frame, write_frame,
+};
+pub use input_mode::{
+    FEATURE_INPUT_MODE, INPUT_MODE_HEADER_BYTES, InputModeAction, InputModeRequest,
+    MIN_MODE_SNAPSHOT_PAYLOAD_LEN, ModeSnapshot,
 };
 pub use message::{
     CandidateAction, CandidateActionKind, CandidatePage, CharacterSet, DetailedCandidate,

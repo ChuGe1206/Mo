@@ -1,4 +1,5 @@
 #include <windows.h>
+#pragma code_page(65001)
 1 ICON "../../../assets/icons/mo-app-icon.ico"
 300 RCDATA "../../../assets/ui/previous.mask"
 301 RCDATA "../../../assets/ui/next.mask"
@@ -7,3 +8,20 @@
 304 RCDATA "../../../assets/ui/close.mask"
 305 RCDATA "../../../assets/ui/smile.mask"
 306 RCDATA "../../../third_party/figma-sds-MIT.txt"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+STRINGTABLE
+BEGIN
+    400 "Mo: Chinese input (Shift to switch)"
+    401 "Mo: English input (Shift to switch)"
+    402 "Mo: input mode unavailable"
+    403 "Mo input mode"
+END
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+STRINGTABLE
+BEGIN
+    400 "Mo：中文输入（Shift 切换）"
+    401 "Mo：英文输入（Shift 切换）"
+    402 "Mo：输入模式暂不可用"
+    403 "Mo 输入模式"
+END

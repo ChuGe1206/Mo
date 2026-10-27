@@ -13,6 +13,46 @@
 
 namespace {
 
+bool ProbeInputMode(const wchar_t* expected_broker) {
+    using mo::windows_tip::BrokerClient;
+    constexpr DWORD kProbeTimeoutMs = 2000;
+    BrokerClient broker(expected_broker);
+    if (!broker.ConnectAndOpen(kProbeTimeoutMs) || !broker.input_mode_supported()
+        || !broker.input_mode() || broker.input_mode()->disabled
+        || broker.input_mode()->composing || broker.input_mode()->ascii_mode) { return false; }
+    auto revision = broker.input_mode()->revision;
+    if (!broker.SetInputMode(true, revision, kProbeTimeoutMs)
+        || !broker.input_mode() || !broker.input_mode()->ascii_mode
+        || broker.input_mode()->revision <= revision) { return false; }
+    // A local stale UI action cannot mutate or disconnect the current session.
+    if (broker.SetInputMode(false, revision, kProbeTimeoutMs) || !broker.connected()
+        || !broker.input_mode()->ascii_mode) { return false; }
+    mo::windows_tip::BrokerSnapshot snapshot;
+    if (!broker.SendKey('N', 0, 0, true, false, &snapshot, kProbeTimeoutMs)
+        || snapshot.ascii_mode != true || snapshot.handled || !snapshot.composition.empty()
+        || snapshot.commit.has_value()) { return false; }
+    if (!broker.SetInputMode(false, snapshot.revision, kProbeTimeoutMs)
+        || broker.input_mode()->ascii_mode
+        || !broker.SendKey('N', 0, 0, true, false, &snapshot, kProbeTimeoutMs)
+        || snapshot.ascii_mode != false || !snapshot.handled || snapshot.composition != "n"
+        || !broker.input_mode()->composing) { return false; }
+    // Clicking the indicator during preedit preserves the in-flight composition.
+    revision = snapshot.revision;
+    if (broker.SetInputMode(true, revision, kProbeTimeoutMs) || !broker.connected()
+        || broker.input_mode()->revision != revision || broker.input_mode()->ascii_mode
+        || !broker.SendKey(VK_SPACE, 0, 0, true, false, &snapshot, kProbeTimeoutMs)
+        || !snapshot.commit.has_value() || broker.input_mode()->composing) { return false; }
+    if (!broker.SetInputMode(true, snapshot.revision, kProbeTimeoutMs)
+        || broker.ReplaceSession(kProbeTimeoutMs) != mo::windows_tip::SessionReplaceResult::Replaced
+        || !broker.input_mode() || broker.input_mode()->ascii_mode || broker.input_mode()->composing) { return false; }
+    broker.Close(kProbeTimeoutMs);
+    if (broker.input_mode() || !broker.ConnectAndOpen(kProbeTimeoutMs)
+        || !broker.input_mode() || broker.input_mode()->ascii_mode) { return false; }
+    broker.Close(kProbeTimeoutMs);
+    std::wcout << L"Authoritative input mode, idle toggle, stale/preedit guard and reconnect passed.\n";
+    return true;
+}
+
 bool ProbeRejectsUnexpectedServerImage() {
     std::wstring own_path(32768, L'\0');
     const DWORD length = GetModuleFileNameW(
@@ -327,7 +367,7 @@ int wmain(int argc, wchar_t** argv) {
         return 0;
     }
 
-    if (!ProbeExpiredKeyBudget(argv[1])) { return 1; }
+    if (!ProbeInputMode(argv[1]) || !ProbeExpiredKeyBudget(argv[1])) { return 1; }
 
     mo::windows_tip::BrokerClient broker(argv[1]);
     if (!broker.ConnectAndOpen(2000)) {

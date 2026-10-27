@@ -42,6 +42,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config, dll,
     )?)?);
     let mut swallowed = 0;
+    let mode_token = actor.create_session(
+        SessionOptions::new()
+            .with_schema("rime_ice")
+            .with_option("mo_disable_learning", true),
+    )?;
+    for ascii_mode in [false, true, false] {
+        let changed = actor.dispatch(
+            mode_token,
+            EngineCommand::SetOption {
+                name: "ascii_mode".into(),
+                value: ascii_mode,
+            },
+        )?;
+        let inspected = actor.dispatch(mode_token, EngineCommand::Inspect)?;
+        if changed.status.ascii_mode != ascii_mode
+            || inspected.status.ascii_mode != ascii_mode
+            || inspected.handled
+            || inspected.commit.is_some()
+            || inspected.composition.is_some()
+        {
+            return Err(
+                io::Error::other("authoritative input mode inspection/toggle failed").into(),
+            );
+        }
+    }
+    actor.destroy_session(mode_token)?;
+    println!("Real input mode inspection and idle toggles passed.");
     for ascii_mode in [false, true] {
         for byte in b'!'..=b'~' {
             let token = actor.create_session(

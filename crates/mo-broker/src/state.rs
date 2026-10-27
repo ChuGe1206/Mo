@@ -21,6 +21,10 @@ use mo_ipc::{
     CompositionPositions, CompositionSnapshot, FEATURE_COMPOSITION_POSITIONS,
     MIN_COMPOSITION_SNAPSHOT_PAYLOAD_LEN,
 };
+use mo_ipc::{
+    FEATURE_INPUT_MODE, InputModeAction, InputModeRequest, MIN_MODE_SNAPSHOT_PAYLOAD_LEN,
+    ModeSnapshot,
+};
 use mo_ipc::{FEATURE_PRESENTATION_SETTINGS, FEATURE_QUICK_SETTINGS, SetEmoji};
 
 use crate::engine_service::EngineClient;
@@ -62,6 +66,8 @@ where
 
 struct WireSession {
     engine_token: SessionToken,
+    last_revision: u64,
+    composing: bool,
     /// Only successfully encoded pages authorize a subsequent UI action.
     page: Option<(u64, usize)>,
 }
@@ -213,6 +219,7 @@ where
             MessageKind::CandidateAction => self.candidate_action(request),
             MessageKind::SymbolAction => self.symbol_action(request),
             MessageKind::SetEmoji => self.set_emoji(request),
+            MessageKind::InputMode => self.input_mode(request),
             MessageKind::GetSettings => self.get_settings(request),
             MessageKind::CloseSession => self.close_session(request),
             MessageKind::Ping => self.pong(request),
@@ -262,7 +269,8 @@ where
                 | FEATURE_SYMBOL_ACTIONS
                 | FEATURE_SETTINGS_SNAPSHOT
                 | FEATURE_SESSION_SETTINGS_ACK
-                | FEATURE_COMPOSITION_POSITIONS);
+                | FEATURE_COMPOSITION_POSITIONS
+                | FEATURE_INPUT_MODE);
         if hello.max_payload_len < MIN_DETAILED_SNAPSHOT_PAYLOAD_LEN as u32 {
             self.negotiated_features &= !FEATURE_CANDIDATE_DETAILS;
         }
@@ -279,6 +287,11 @@ where
         }
         if self.negotiated_features & FEATURE_CANDIDATE_ACTIONS == 0 {
             self.negotiated_features &= !FEATURE_SYMBOL_ACTIONS;
+        }
+        if self.negotiated_features & FEATURE_COMPOSITION_POSITIONS == 0
+            || hello.max_payload_len < MIN_MODE_SNAPSHOT_PAYLOAD_LEN as u32
+        {
+            self.negotiated_features &= !FEATURE_INPUT_MODE;
         }
         if self.negotiated_features & FEATURE_SETTINGS_SNAPSHOT == 0 {
             self.negotiated_features &= !(FEATURE_PRESENTATION_SETTINGS | FEATURE_QUICK_SETTINGS);
@@ -369,6 +382,8 @@ where
             token,
             WireSession {
                 engine_token,
+                last_revision: 0,
+                composing: false,
                 page: None,
             },
         );
@@ -505,6 +520,40 @@ where
         )
     }
 
+    fn input_mode(&mut self, request: Frame) -> Result<Frame, BrokerError> {
+        if self.negotiated_features & FEATURE_INPUT_MODE == 0 {
+            return self.error(&request, ERROR_BAD_REQUEST, "input mode was not negotiated");
+        }
+        let Some(session) = self.sessions.get(&request.header.session_token) else {
+            return self.error(
+                &request,
+                ERROR_NO_SUCH_SESSION,
+                "invalid input mode session",
+            );
+        };
+        let Ok(mode) = InputModeRequest::decode_payload(&request.payload) else {
+            return self.error(&request, ERROR_BAD_REQUEST, "malformed input mode request");
+        };
+        if mode.action != InputModeAction::Inspect
+            && (mode.expected_revision != session.last_revision || session.composing)
+        {
+            return self.error(
+                &request,
+                ERROR_BAD_REQUEST,
+                "input mode revision or composition conflict",
+            );
+        }
+        let engine_token = session.engine_token;
+        let command = match mode.action {
+            InputModeAction::Inspect => EngineCommand::Inspect,
+            InputModeAction::Chinese | InputModeAction::English => EngineCommand::SetOption {
+                name: "ascii_mode".to_owned(),
+                value: mode.action == InputModeAction::English,
+            },
+        };
+        self.dispatch_snapshot(&request, engine_token, command)
+    }
+
     fn dispatch_snapshot(
         &mut self,
         request: &Frame,
@@ -514,10 +563,10 @@ where
         let token = request.header.session_token;
         // A backend error may follow a native state change. Never authorize an
         // old UI page after an attempted command, even when encoding fails.
-        self.sessions
-            .get_mut(&token)
-            .expect("validated session")
-            .page = None;
+        let session = self.sessions.get_mut(&token).expect("validated session");
+        session.page = None;
+        session.last_revision = 0;
+        session.composing = true;
         let engine_snapshot = match self.engine.dispatch(engine_token, command) {
             Ok(snapshot) => snapshot,
             Err(_) => {
@@ -530,6 +579,8 @@ where
         };
         let revision = engine_snapshot.revision.get();
         let handled = engine_snapshot.handled;
+        let ascii_mode = engine_snapshot.status.ascii_mode;
+        let disabled = engine_snapshot.status.disabled;
         let positions = engine_snapshot
             .composition
             .as_ref()
@@ -586,14 +637,26 @@ where
                     page,
                 };
                 if self.negotiated_features & FEATURE_COMPOSITION_POSITIONS != 0 {
-                    (
-                        MessageKind::CompositionSnapshot,
-                        CompositionSnapshot {
-                            presentation,
-                            positions,
-                        }
-                        .encode_payload()?,
-                    )
+                    let composition = CompositionSnapshot {
+                        presentation,
+                        positions,
+                    };
+                    if self.negotiated_features & FEATURE_INPUT_MODE != 0 {
+                        (
+                            MessageKind::ModeSnapshot,
+                            ModeSnapshot {
+                                ascii_mode,
+                                disabled,
+                                composition,
+                            }
+                            .encode_payload()?,
+                        )
+                    } else {
+                        (
+                            MessageKind::CompositionSnapshot,
+                            composition.encode_payload()?,
+                        )
+                    }
                 } else {
                     (
                         MessageKind::PresentationSnapshot,
@@ -617,6 +680,9 @@ where
             };
             (MessageKind::Snapshot, legacy.encode_payload()?)
         };
+        let session = self.sessions.get_mut(&token).expect("validated session");
+        session.last_revision = revision;
+        session.composing = has_composition;
         if has_composition && candidate_count != 0 {
             self.sessions
                 .get_mut(&token)

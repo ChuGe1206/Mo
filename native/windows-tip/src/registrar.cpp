@@ -28,6 +28,10 @@ constexpr wchar_t kMachineCategoryByCategoryKey[] =
     L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Category\\{34745C63-B2F0-4784-8B67-5E12C8701A31}\\{B4911146-2A27-47AA-9D12-109B6AE10A70}";
 constexpr wchar_t kMachineCategoryByItemKey[] =
     L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Item\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\{34745C63-B2F0-4784-8B67-5E12C8701A31}";
+constexpr wchar_t kMachineSystrayByCategoryKey[] =
+    L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Category\\{25504FB4-7BAB-4BC1-9C69-CF81890F0EF5}\\{B4911146-2A27-47AA-9D12-109B6AE10A70}";
+constexpr wchar_t kMachineSystrayByItemKey[] =
+    L"Software\\Microsoft\\CTF\\TIP\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\Category\\Item\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\{25504FB4-7BAB-4BC1-9C69-CF81890F0EF5}";
 constexpr wchar_t kComKey[] =
     L"Software\\Classes\\CLSID\\{B4911146-2A27-47AA-9D12-109B6AE10A70}\\InprocServer32";
 constexpr wchar_t kComClsidPath[] =
@@ -252,6 +256,7 @@ HRESULT create_category_manager(ComPtr<ITfCategoryMgr>& manager) noexcept {
 struct MachineProfileState final {
     bool profile = false;
     bool category = false;
+    bool systray = false;
 };
 
 enum class TransactionKind {
@@ -328,6 +333,14 @@ HRESULT query_machine_profile_state(MachineProfileState& state) noexcept {
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     }
     state.category = by_category;
+    result = query_registry_key_exists_at(
+        HKEY_LOCAL_MACHINE, kMachineSystrayByCategoryKey, KEY_WOW64_64KEY, by_category);
+    if (FAILED(result)) { return result; }
+    result = query_registry_key_exists_at(
+        HKEY_LOCAL_MACHINE, kMachineSystrayByItemKey, KEY_WOW64_64KEY, by_item);
+    if (FAILED(result)) { return result; }
+    if (by_category != by_item) { return HRESULT_FROM_WIN32(ERROR_INVALID_DATA); }
+    state.systray = by_category;
     return S_OK;
 }
 
@@ -386,6 +399,14 @@ HRESULT apply_machine_profile_state(
             first_failure = operation;
         }
     }
+    if (target.systray || current.systray) {
+        const HRESULT operation = target.systray
+            ? categories->RegisterCategory(mo::windows_tip::kTextServiceClsid,
+                GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT, mo::windows_tip::kTextServiceClsid)
+            : categories->UnregisterCategory(mo::windows_tip::kTextServiceClsid,
+                GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT, mo::windows_tip::kTextServiceClsid);
+        if (FAILED(operation) && SUCCEEDED(first_failure)) { first_failure = operation; }
+    }
     if (!target.profile && current.profile) {
         const HRESULT operation = profiles->UnregisterProfile(
             mo::windows_tip::kTextServiceClsid,
@@ -404,11 +425,14 @@ HRESULT apply_machine_profile_state(
     if (FAILED(result)) {
         return result;
     }
-    if (final_state.profile != target.profile || final_state.category != target.category) {
+    if (final_state.profile != target.profile || final_state.category != target.category
+        || final_state.systray != target.systray) {
         std::wcerr << L"Machine profile readback mismatch: profile=" << final_state.profile
                    << L", category=" << final_state.category
                    << L", target.profile=" << target.profile
-                   << L", target.category=" << target.category << L'\n';
+                   << L", target.category=" << target.category
+                   << L", systray=" << final_state.systray
+                   << L", target.systray=" << target.systray << L'\n';
         return E_UNEXPECTED;
     }
     return S_OK;
@@ -513,12 +537,18 @@ HRESULT get_fixed_tip_paths(
     return S_OK;
 }
 
-std::string marker_contents(TransactionKind kind, const MachineProfileState& state) {
-    std::string value = "mo-machine-profile-transaction-v1 ";
+std::string marker_contents(TransactionKind kind, const MachineProfileState& state,
+    bool legacy = false) {
+    std::string value = legacy ? "mo-machine-profile-transaction-v1 "
+        : "mo-machine-profile-transaction-v2 ";
     value += kind == TransactionKind::install ? "install " : "remove ";
     value += state.profile ? '1' : '0';
     value += ' ';
     value += state.category ? '1' : '0';
+    if (!legacy) {
+        value += ' ';
+        value += state.systray ? '1' : '0';
+    }
     value += '\n';
     return value;
 }
@@ -526,7 +556,8 @@ std::string marker_contents(TransactionKind kind, const MachineProfileState& sta
 HRESULT create_transaction_marker(
     const std::wstring& path,
     TransactionKind kind,
-    const MachineProfileState& state) noexcept {
+    const MachineProfileState& state,
+    bool legacy = false) noexcept {
     HANDLE file = CreateFileW(
         path.c_str(),
         GENERIC_WRITE,
@@ -538,7 +569,7 @@ HRESULT create_transaction_marker(
     if (file == INVALID_HANDLE_VALUE) {
         return HRESULT_FROM_WIN32(GetLastError());
     }
-    const std::string contents = marker_contents(kind, state);
+    const std::string contents = marker_contents(kind, state, legacy);
     DWORD written = 0;
     const BOOL wrote = WriteFile(
         file,
@@ -609,11 +640,15 @@ HRESULT read_transaction_marker(
     const std::string actual(buffer.data(), bytes);
     for (const bool profile : {false, true}) {
         for (const bool category : {false, true}) {
-            const MachineProfileState candidate{profile, category};
-            if (actual == marker_contents(expected_kind, candidate)) {
-                state = candidate;
-                exists = true;
-                return S_OK;
+            for (const bool systray : {false, true}) {
+                const MachineProfileState candidate{profile, category, systray};
+                // A v1 receipt predates taskbar support and restores it absent.
+                if (actual == marker_contents(expected_kind, candidate)
+                    || (!systray && actual == marker_contents(expected_kind, candidate, true))) {
+                    state = candidate;
+                    exists = true;
+                    return S_OK;
+                }
             }
         }
     }
@@ -1008,7 +1043,7 @@ HRESULT verify_machine_installation_for_user_finalizer() noexcept {
     if (FAILED(result)) {
         return result;
     }
-    return state.profile && state.category
+    return state.profile && state.category && state.systray
         ? S_OK
         : HRESULT_FROM_WIN32(ERROR_PRODUCT_UNINSTALLED);
 }
@@ -1184,7 +1219,7 @@ HRESULT change_machine_profile_without_marker(
 }
 
 HRESULT register_machine_profile(const std::wstring& icon_path) noexcept {
-    return change_machine_profile_without_marker(icon_path, {true, true});
+    return change_machine_profile_without_marker(icon_path, {true, true, true});
 }
 
 HRESULT unregister_machine_profile() noexcept {
@@ -1226,7 +1261,7 @@ HRESULT begin_machine_profile_transaction(
     if (FAILED(result)) {
         return result;
     }
-    if (require_absent_previous && (previous.profile || previous.category)) {
+    if (require_absent_previous && (previous.profile || previous.category || previous.systray)) {
         return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
     }
     result = create_transaction_marker(marker_path, kind, previous);
@@ -1309,11 +1344,11 @@ HRESULT fixed_machine_profile_operation(std::wstring_view command) noexcept {
     }
     if (command == L"install-machine-profile-fixed") {
         return begin_machine_profile_transaction(
-            TransactionKind::install, icon_path, install_marker, {true, true});
+            TransactionKind::install, icon_path, install_marker, {true, true, true});
     }
     if (command == L"install-new-machine-profile-fixed") {
         return begin_machine_profile_transaction(
-            TransactionKind::install, icon_path, install_marker, {true, true}, true);
+            TransactionKind::install, icon_path, install_marker, {true, true, true}, true);
     }
     if (command == L"rollback-install-machine-profile-fixed") {
         return rollback_machine_profile_transaction(
@@ -1361,29 +1396,34 @@ HRESULT self_test_machine_transaction(const std::wstring& marker_path) noexcept 
     for (const TransactionKind kind : {TransactionKind::install, TransactionKind::remove}) {
         for (const bool profile : {false, true}) {
             for (const bool category : {false, true}) {
-                const MachineProfileState expected{profile, category};
-                HRESULT result = create_transaction_marker(marker_path, kind, expected);
-                if (FAILED(result)) {
-                    return result;
-                }
-                bool exists = false;
-                MachineProfileState actual{};
-                result = read_transaction_marker(marker_path, kind, exists, actual);
-                if (FAILED(result) || !exists || actual.profile != expected.profile
-                    || actual.category != expected.category) {
-                    DeleteFileW(marker_path.c_str());
-                    return FAILED(result) ? result : E_UNEXPECTED;
-                }
-                const HRESULT duplicate = create_transaction_marker(marker_path, kind, expected);
-                if (duplicate != HRESULT_FROM_WIN32(ERROR_FILE_EXISTS)
-                    && duplicate != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
-                    DeleteFileW(marker_path.c_str());
-                    return E_UNEXPECTED;
-                }
-                result = delete_transaction_marker(marker_path, kind, false);
-                if (FAILED(result)
-                    || GetFileAttributesW(marker_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    return FAILED(result) ? result : E_UNEXPECTED;
+                for (const bool systray : {false, true}) {
+                    for (const bool legacy : {false, true}) {
+                        if (legacy && systray) { continue; }
+                        const MachineProfileState expected{profile, category, systray};
+                        HRESULT result = create_transaction_marker(marker_path, kind, expected, legacy);
+                        if (FAILED(result)) {
+                            return result;
+                        }
+                        bool exists = false;
+                        MachineProfileState actual{};
+                        result = read_transaction_marker(marker_path, kind, exists, actual);
+                        if (FAILED(result) || !exists || actual.profile != expected.profile
+                            || actual.category != expected.category || actual.systray != expected.systray) {
+                            DeleteFileW(marker_path.c_str());
+                            return FAILED(result) ? result : E_UNEXPECTED;
+                        }
+                        const HRESULT duplicate = create_transaction_marker(marker_path, kind, expected);
+                        if (duplicate != HRESULT_FROM_WIN32(ERROR_FILE_EXISTS)
+                            && duplicate != HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)) {
+                            DeleteFileW(marker_path.c_str());
+                            return E_UNEXPECTED;
+                        }
+                        result = delete_transaction_marker(marker_path, kind, false);
+                        if (FAILED(result)
+                            || GetFileAttributesW(marker_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            return FAILED(result) ? result : E_UNEXPECTED;
+                        }
+                    }
                 }
             }
         }

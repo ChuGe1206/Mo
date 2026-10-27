@@ -219,6 +219,7 @@ impl EngineBackend for RimeBackend {
         command: &EngineCommand,
     ) -> Result<EngineOutput, Self::Error> {
         let handled = match command {
+            EngineCommand::Inspect => false,
             EngineCommand::Key(event) => {
                 let keycode = rime_keycode(*event)?;
                 self.engine
@@ -242,6 +243,10 @@ impl EngineBackend for RimeBackend {
             EngineCommand::InsertSymbol { .. } => {
                 return Err(RimeBackendError::UnsupportedCommand("insert_symbol"));
             }
+            EngineCommand::SetOption { name, value } if name == "ascii_mode" => {
+                self.engine.set_option_id(session.id, name, *value)?;
+                true
+            }
             EngineCommand::SetOption { .. } => {
                 return Err(RimeBackendError::UnsupportedCommand("set_option"));
             }
@@ -252,20 +257,7 @@ impl EngineBackend for RimeBackend {
             .take_commit_id(session.id)?
             .map(|value| value.text);
         let context = self.engine.context_id(session.id)?;
-        let status = self
-            .engine
-            .status_id(session.id)?
-            .unwrap_or(StatusSnapshot {
-                schema_id: None,
-                schema_name: None,
-                is_disabled: false,
-                is_composing: false,
-                is_ascii_mode: false,
-                is_full_shape: false,
-                is_simplified: false,
-                is_traditional: false,
-                is_ascii_punct: false,
-            });
+        let status = engine_status(self.engine.status_id(session.id)?);
 
         Ok(EngineOutput {
             handled,
@@ -288,18 +280,32 @@ impl EngineBackend for RimeBackend {
                 })
             }),
             candidates: context.map_or_else(Vec::new, context_candidates),
-            status: EngineStatus {
-                schema_id: status.schema_id.unwrap_or_default(),
-                disabled: status.is_disabled,
-                composing: status.is_composing,
-                ascii_mode: status.is_ascii_mode,
-            },
+            status,
         })
     }
 
     fn destroy_session(&mut self, session: Self::Session) -> Result<(), Self::Error> {
         self.engine.destroy_session_id(session.id)?;
         Ok(())
+    }
+}
+
+fn engine_status(status: Option<StatusSnapshot>) -> EngineStatus {
+    match status {
+        Some(status) => EngineStatus {
+            schema_id: status.schema_id.unwrap_or_default(),
+            disabled: status.is_disabled,
+            composing: status.is_composing,
+            ascii_mode: status.is_ascii_mode,
+        },
+        // A missing native status is not evidence of Chinese input. Keep the
+        // mode indicator unavailable until a later authoritative status arrives.
+        None => EngineStatus {
+            schema_id: String::new(),
+            disabled: true,
+            composing: false,
+            ascii_mode: false,
+        },
     }
 }
 
@@ -407,6 +413,37 @@ fn context_candidates(context: ContextSnapshot) -> Vec<Candidate> {
 mod tests {
     use super::*;
     use mo_domain::KeyEvent;
+
+    #[test]
+    fn missing_native_status_cannot_advertise_an_available_chinese_mode() {
+        let missing = engine_status(None);
+        assert!(missing.disabled);
+        assert!(missing.schema_id.is_empty());
+        assert!(!missing.composing);
+    }
+
+    #[test]
+    fn native_mode_and_availability_are_preserved_independently() {
+        for ascii_mode in [false, true] {
+            for disabled in [false, true] {
+                let actual = engine_status(Some(StatusSnapshot {
+                    schema_id: Some("synthetic".into()),
+                    schema_name: None,
+                    is_disabled: disabled,
+                    is_composing: true,
+                    is_ascii_mode: ascii_mode,
+                    is_full_shape: false,
+                    is_simplified: false,
+                    is_traditional: false,
+                    is_ascii_punct: false,
+                }));
+                assert_eq!(actual.schema_id, "synthetic");
+                assert_eq!(actual.ascii_mode, ascii_mode);
+                assert_eq!(actual.disabled, disabled);
+                assert!(actual.composing);
+            }
+        }
+    }
 
     #[test]
     fn modifiers_match_librime_key_table_masks() {

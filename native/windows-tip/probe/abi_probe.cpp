@@ -22,6 +22,7 @@
 #include "mo_deadline.h"
 #include "mo_candidate_palette.h"
 #include "mo_settings_change_window.h"
+#include "mo_input_mode.h"
 
 namespace {
 
@@ -90,6 +91,112 @@ bool ProbeDeadlineArithmetic() {
         && RemainingMillisecondsAt(deadline, deadline) == 0
         && RemainingMillisecondsAt(deadline, deadline + std::chrono::nanoseconds(1)) == 0
         && RemainingMillisecondsAt(now + std::chrono::milliseconds(MAXDWORD), now) == MAXDWORD - 1;
+}
+
+class ModeUpdateRecorder final : public ITfLangBarItemSink {
+public:
+    ULONG references = 1;
+    DWORD count = 0, flags = 0;
+    bool fail_update = false;
+    ITfTextInputProcessorEx* deactivate_service = nullptr;
+    HRESULT deactivate_result = E_PENDING;
+    STDMETHODIMP QueryInterface(REFIID iid, void** object) noexcept override {
+        if (object == nullptr) { return E_POINTER; }
+        *object = nullptr;
+        if (iid != IID_IUnknown && iid != IID_ITfLangBarItemSink) { return E_NOINTERFACE; }
+        *object = static_cast<ITfLangBarItemSink*>(this); AddRef(); return S_OK;
+    }
+    STDMETHODIMP_(ULONG) AddRef() noexcept override { return ++references; }
+    STDMETHODIMP_(ULONG) Release() noexcept override {
+        const ULONG remaining = --references;
+        if (remaining == 0) { delete this; }
+        return remaining;
+    }
+    STDMETHODIMP OnUpdate(DWORD changed) noexcept override {
+        ++count; flags = changed;
+        if (deactivate_service != nullptr) {
+            auto* service = deactivate_service;
+            deactivate_service = nullptr;
+            deactivate_result = service->Deactivate();
+        }
+        return fail_update ? E_FAIL : S_OK;
+    }
+};
+
+void CountModeToggle(void* owner) noexcept { ++*static_cast<unsigned int*>(owner); }
+
+bool ProbeInputModeButton(HINSTANCE module) {
+    using namespace mo::windows_tip;
+    volatile LONG live = 0;
+    unsigned int toggles = 0;
+    ComPtr<InputModeButton> button;
+    button.Attach(new (std::nothrow) InputModeButton(module, &live, CountModeToggle, &toggles));
+    if (button == nullptr || live != 1 || button->GetIcon(nullptr) != E_POINTER
+        || button->GetText(nullptr) != E_POINTER || button->GetInfo(nullptr) != E_POINTER) { return false; }
+    TF_LANGBARITEMINFO info{};
+    const GUID expected_item = {0x2c77a81e,0x41cc,0x4178,{0xa3,0xa7,0x5f,0x8a,0x98,0x75,0x68,0xe6}};
+    if (FAILED(button->GetInfo(&info)) || info.guidItem != expected_item
+        || !(info.dwStyle & TF_LBI_STYLE_TEXTCOLORICON)) { return false; }
+    ComPtr<ModeUpdateRecorder> recorder;
+    recorder.Attach(new (std::nothrow) ModeUpdateRecorder());
+    if (recorder == nullptr) { return false; }
+    DWORD cookie = TF_INVALID_COOKIE, second = TF_INVALID_COOKIE;
+    if (FAILED(button->AdviseSink(IID_ITfLangBarItemSink, recorder.Get(), &cookie))
+        || button->AdviseSink(IID_ITfLangBarItemSink, recorder.Get(), &second) != CONNECT_E_ADVISELIMIT) { return false; }
+    button->Update(InputModeState::Chinese, true, true);
+    BSTR text = nullptr;
+    if (recorder->count != 1 || recorder->flags != (TF_LBI_BTNALL | TF_LBI_STATUS)
+        || FAILED(button->GetText(&text))) { return false; }
+    const bool chinese = wcscmp(text, L"中") == 0;
+    SysFreeString(text);
+    if (!chinese || FAILED(button->OnClick(TF_LBI_CLK_LEFT, {}, nullptr)) || toggles != 1) { return false; }
+    button->Update(InputModeState::Chinese, true, true);
+    if (recorder->count != 1) { return false; }
+    recorder->fail_update = true;
+    button->Update(InputModeState::English, true, true);
+    recorder->fail_update = false;
+    button->Update(InputModeState::English, true, true);
+    if (recorder->count != 3 || FAILED(button->GetText(&text))) { return false; }
+    const bool english = wcscmp(text, L"英") == 0;
+    SysFreeString(text);
+    if (!english) { return false; }
+    const LANGID languages[] = {MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)};
+    for (const LANGID language : languages) {
+        const LANGID previous = GetThreadUILanguage();
+        SetThreadUILanguage(language);
+        const HRESULT result = button->GetTooltipString(&text);
+        const bool translated = SUCCEEDED(result) && wcsstr(text, language == 0x0409 ? L"English" : L"英文") != nullptr;
+        SysFreeString(text); SetThreadUILanguage(previous);
+        if (!translated) { return false; }
+    }
+    for (const int size : {16, 20, 24, 28, 32, 40, 48}) {
+        std::vector<BYTE> previous;
+        for (const auto state : {InputModeState::Chinese, InputModeState::English, InputModeState::Unknown}) {
+            const HICON icon = CreateInputModeIcon(state, size, size);
+            ICONINFO icon_info{};
+            const bool valid = icon != nullptr && GetIconInfo(icon, &icon_info);
+            if (icon != nullptr) { DestroyIcon(icon); }
+            BITMAP bitmap{};
+            const bool monochrome = valid && icon_info.hbmColor == nullptr
+                && GetObjectW(icon_info.hbmMask, sizeof(bitmap), &bitmap) == sizeof(bitmap)
+                && bitmap.bmBitsPixel == 1 && bitmap.bmHeight == size * 2;
+            const LONG bytes = bitmap.bmWidthBytes * bitmap.bmHeight;
+            std::vector<BYTE> pixels(monochrome ? static_cast<std::size_t>(bytes) : 0);
+            const bool copied = monochrome && GetBitmapBits(icon_info.hbmMask, bytes, pixels.data()) == bytes;
+            if (icon_info.hbmMask != nullptr) { DeleteObject(icon_info.hbmMask); }
+            if (icon_info.hbmColor != nullptr) { DeleteObject(icon_info.hbmColor); }
+            if (!copied || pixels == previous) { return false; }
+            previous = std::move(pixels);
+        }
+    }
+    button->Update(InputModeState::Unknown, false, false);
+    if (button->OnClick(TF_LBI_CLK_LEFT, {}, nullptr) != S_FALSE || toggles != 1) { return false; }
+    if (FAILED(button->UnadviseSink(cookie)) || FAILED(button->AdviseSink(IID_ITfLangBarItemSink, recorder.Get(), &second))
+        || second == cookie || button->UnadviseSink(cookie) != CONNECT_E_NOCONNECTION) { return false; }
+    button->Detach();
+    if (button->OnClick(TF_LBI_CLK_LEFT, {}, nullptr) != S_FALSE || recorder->references != 1) { return false; }
+    button.Reset();
+    return live == 0;
 }
 
 void CountSettingsNotification(void* context) noexcept {
@@ -332,7 +439,7 @@ private:
 };
 ProbeFocusRecorder* g_probe_focus = nullptr;
 
-class FakeThreadManager final : public ITfThreadMgr, public ITfKeystrokeMgr {
+class FakeThreadManager final : public ITfThreadMgr, public ITfKeystrokeMgr, public ITfLangBarItemMgr {
 public:
     STDMETHODIMP QueryInterface(REFIID interface_id, void** object) noexcept override {
         if (object == nullptr) {
@@ -344,6 +451,8 @@ public:
             *object = static_cast<ITfThreadMgr*>(this);
         } else if (IsEqualIID(interface_id, IID_ITfKeystrokeMgr)) {
             *object = static_cast<ITfKeystrokeMgr*>(this);
+        } else if (IsEqualIID(interface_id, IID_ITfLangBarItemMgr)) {
+            *object = static_cast<ITfLangBarItemMgr*>(this);
         } else {
             return E_NOINTERFACE;
         }
@@ -453,6 +562,34 @@ public:
         return sink_ != nullptr && client_id_ == client_id && foreground_ != FALSE;
     }
 
+    bool has_mode_item() const noexcept { return mode_item_ != nullptr; }
+    STDMETHODIMP EnumItems(IEnumTfLangBarItems**) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP GetItem(REFGUID guid, ITfLangBarItem** item) noexcept override {
+        if (item == nullptr) { return E_POINTER; }
+        *item = nullptr;
+        if (guid != mo::windows_tip::kInputModeItemGuid || mode_item_ == nullptr) { return E_FAIL; }
+        *item = mode_item_.Get(); (*item)->AddRef(); return S_OK;
+    }
+    STDMETHODIMP AddItem(ITfLangBarItem* item) noexcept override {
+        if (item == nullptr || mode_item_ != nullptr) { return E_INVALIDARG; }
+        TF_LANGBARITEMINFO info{};
+        if (FAILED(item->GetInfo(&info)) || info.guidItem != mo::windows_tip::kInputModeItemGuid
+            || info.clsidService != mo::windows_tip::kTextServiceClsid) { return E_INVALIDARG; }
+        mode_item_ = item; return S_OK;
+    }
+    STDMETHODIMP RemoveItem(ITfLangBarItem* item) noexcept override {
+        if (item == nullptr || item != mode_item_.Get()) { return E_INVALIDARG; }
+        mode_item_.Reset(); return S_OK;
+    }
+    STDMETHODIMP AdviseItemSink(ITfLangBarItemSink*, DWORD*, REFGUID) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP UnadviseItemSink(DWORD) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP GetItemFloatingRect(DWORD, REFGUID, RECT*) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP GetItemsStatus(ULONG, const GUID*, DWORD*) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP GetItemNum(ULONG*) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP GetItems(ULONG, ITfLangBarItem**, TF_LANGBARITEMINFO*, DWORD*, ULONG*) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP AdviseItemsSink(ULONG, ITfLangBarItemSink**, const GUID*, DWORD*) noexcept override { return E_NOTIMPL; }
+    STDMETHODIMP UnadviseItemsSink(ULONG, DWORD*) noexcept override { return E_NOTIMPL; }
+
 private:
     ~FakeThreadManager() noexcept {
         if (sink_ != nullptr) {
@@ -461,6 +598,7 @@ private:
     }
 
     volatile LONG reference_count_ = 1;
+    ComPtr<ITfLangBarItem> mode_item_;
     ITfKeyEventSink* sink_ = nullptr;
     TfClientId client_id_ = TF_CLIENTID_NULL;
     BOOL foreground_ = FALSE;
@@ -1158,6 +1296,7 @@ bool SendSystemTestedKey(
 }
 
 int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
+    ComPtr<ModeUpdateRecorder> mode_recorder;
     ComPtr<ITfThreadMgr> thread_manager;
     HRESULT result = CoCreateInstance(
         CLSID_TF_ThreadMgr,
@@ -1223,7 +1362,7 @@ int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
             break;
         }
         service_active = true;
-        if (!fake_manager->has_expected_sink(service_client_id)) {
+        if (!fake_manager->has_expected_sink(service_client_id) || !fake_manager->has_mode_item()) {
             std::wcerr << L"ActivateEx did not install the expected foreground key sink\n";
             outcome = 1;
             break;
@@ -1263,6 +1402,17 @@ int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
             outcome = fail(L"ITfKeyEventSink::OnSetFocus", result);
             break;
         }
+        ComPtr<ITfLangBarItem> mode_item;
+        ComPtr<ITfSource> mode_source;
+        mode_recorder.Attach(new (std::nothrow) ModeUpdateRecorder());
+        DWORD mode_cookie = TF_INVALID_COOKIE;
+        if (mode_recorder == nullptr
+            || FAILED(fake_manager->GetItem(mo::windows_tip::kInputModeItemGuid, &mode_item))
+            || FAILED(mode_item.As(&mode_source))
+            || FAILED(mode_source->AdviseSink(IID_ITfLangBarItemSink, mode_recorder.Get(), &mode_cookie))) {
+            outcome = fail(L"Advise input-mode teardown observer", E_FAIL); break;
+        }
+        mode_recorder->deactivate_service = service;
     } while (false);
 
     if (service_active) {
@@ -1270,7 +1420,10 @@ int probe_key_sink_activation(ITfTextInputProcessorEx* service) {
         if (FAILED(result) && outcome == 0) {
             outcome = fail(L"ITfTextInputProcessor::Deactivate", result);
         }
-        if (fake_manager->has_expected_sink(service_client_id) && outcome == 0) {
+        if (mode_recorder != nullptr && mode_recorder->deactivate_result != S_OK && outcome == 0) {
+            outcome = fail(L"Reentrant input-mode Deactivate", mode_recorder->deactivate_result);
+        }
+        if ((fake_manager->has_expected_sink(service_client_id) || fake_manager->has_mode_item()) && outcome == 0) {
             std::wcerr << L"Deactivate left the key sink advised\n";
             outcome = 1;
         }
@@ -1439,6 +1592,49 @@ bool SendFailOpenKey(ITfKeyEventSink* sink, ITfContext* context, WPARAM key) {
     if (FAILED(test) || FAILED(apply) || tested || handled || GetTickCount64() - started > 500) {
         std::wcerr << L"Dead Broker key was consumed or exceeded fail-open budget\n"; return false;
     }
+    return true;
+}
+
+bool ProbeServiceInputMode(ITfThreadMgr* manager, ITfKeyEventSink* sink,
+    ITfContext* context, bool real_rime) {
+    ComPtr<ITfLangBarItemMgr> items;
+    ComPtr<ITfLangBarItem> item;
+    ComPtr<ITfLangBarItemButton> button;
+    if (FAILED(manager->QueryInterface(IID_PPV_ARGS(&items)))
+        || FAILED(items->GetItem(mo::windows_tip::kInputModeItemGuid, &item))
+        || FAILED(item.As(&button))) { return false; }
+    const auto shows = [&](const wchar_t* expected) {
+        BSTR text = nullptr;
+        const HRESULT result = button->GetText(&text);
+        const bool matches = SUCCEEDED(result) && text != nullptr && wcscmp(text, expected) == 0;
+        SysFreeString(text);
+        return matches;
+    };
+    if (!shows(L"中") || FAILED(button->OnClick(TF_LBI_CLK_LEFT, {}, nullptr))
+        || !shows(L"英") || FAILED(button->OnClick(TF_LBI_CLK_LEFT, {}, nullptr))
+        || !shows(L"中")) { return false; }
+    if (real_rime) {
+        struct KeyboardStateGuard final {
+            BYTE saved[256]{};
+            ~KeyboardStateGuard() noexcept { SetKeyboardState(saved); }
+        } keyboard;
+        if (!GetKeyboardState(keyboard.saved)) { return false; }
+        for (const wchar_t* expected : {L"英", L"中"}) {
+            BYTE synthetic[256]{};
+            synthetic[VK_SHIFT] = synthetic[VK_LSHIFT] = 0x80;
+            if (!SetKeyboardState(synthetic)) { return false; }
+            BOOL eaten = FALSE;
+            const LPARAM scan = static_cast<LPARAM>(MapVirtualKeyW(VK_LSHIFT, MAPVK_VK_TO_VSC)) << 16;
+            if (FAILED(sink->OnTestKeyDown(context, VK_SHIFT, scan | 1, &eaten))
+                || (eaten && FAILED(sink->OnKeyDown(context, VK_SHIFT, scan | 1, &eaten)))) { return false; }
+            synthetic[VK_SHIFT] = synthetic[VK_LSHIFT] = 0;
+            if (!SetKeyboardState(synthetic)
+                || FAILED(sink->OnTestKeyUp(context, VK_SHIFT, scan | 1, &eaten))
+                || (eaten && FAILED(sink->OnKeyUp(context, VK_SHIFT, scan | 1, &eaten)))
+                || !shows(expected)) { return false; }
+        }
+    }
+    std::wcout << L"Mo TIP input-mode click/keyboard indicator synchronization passed.\n";
     return true;
 }
 
@@ -1643,6 +1839,10 @@ int probe_broker_input(
         }
 
         const std::string input = rime_ice ? "NIHAO" : "M";
+        if (!registered && !ProbeServiceInputMode(service_thread_manager.Get(),
+                direct_key_sink.Get(), context.Get(), rime_ice)) {
+            outcome = fail(L"Input-mode indicator synchronization", E_FAIL); break;
+        }
         bool keys_succeeded = true;
         for (int composition_index = 0; composition_index < 2 && keys_succeeded;
              ++composition_index) {
@@ -2297,6 +2497,9 @@ int wmain(int argument_count, wchar_t** arguments) {
     }
     if (!ProbeSettingsChangeWindow()) {
         service->Release(); FreeLibrary(module); return fail(L"Settings change notification window", E_FAIL);
+    }
+    if (!ProbeInputModeButton(module)) {
+        service->Release(); FreeLibrary(module); return fail(L"Input mode button, notifications and monochrome DPI icons", E_FAIL);
     }
     {
         const IID retired_iids[] = {

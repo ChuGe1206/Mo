@@ -40,7 +40,7 @@
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>$(ProjectDir)src\mo_tip.def</ModuleDefinitionFile>
-      <AdditionalDependencies>advapi32.lib;gdi32.lib;msimg32.lib;comctl32.lib;ole32.lib;shell32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>advapi32.lib;gdi32.lib;msimg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;shell32.lib;uuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -51,6 +51,7 @@
     <ClCompile Include="src\mo_candidate_window.cpp" />
     <ClCompile Include="src\mo_settings_change_window.cpp" />
     <ClCompile Include="src\mo_tip.cpp" />
+    <ClCompile Include="src\mo_input_mode.cpp" />
   </ItemGroup>
   <ItemGroup><None Include="src\mo_tip.def" /></ItemGroup>
   <ItemGroup>
@@ -60,6 +61,7 @@
     <ClInclude Include="include\mo_settings_change_window.h" />
     <ClInclude Include="include\mo_candidate_palette.h" />
     <ClInclude Include="include\mo_tip_ids.h" />
+    <ClInclude Include="include\mo_input_mode.h" />
   </ItemGroup>
   <ItemGroup><ClCompile Include="src\mo_ui_icons.cpp" /><ResourceCompile Include="src\mo_ui.rc" /></ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -13,6 +13,163 @@ use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use std::thread;
 use std::time::Duration;
 
+#[test]
+fn input_mode_is_negotiated_authoritative_and_rejects_conflicting_mutations() {
+    use mo_ipc::{
+        FEATURE_CANDIDATE_DETAILS, FEATURE_CANDIDATE_PRESENTATION, FEATURE_COMPOSITION_POSITIONS,
+        FEATURE_INPUT_MODE, InputModeAction, InputModeRequest, MIN_MODE_SNAPSHOT_PAYLOAD_LEN,
+        ModeSnapshot,
+    };
+    let full = FEATURE_KEY_EVENTS
+        | FEATURE_CANDIDATE_DETAILS
+        | FEATURE_CANDIDATE_PRESENTATION
+        | FEATURE_COMPOSITION_POSITIONS
+        | FEATURE_INPUT_MODE;
+    for (features, limit, enabled) in [
+        (full, MAX_PAYLOAD_LEN as u32, true),
+        (full, MIN_MODE_SNAPSHOT_PAYLOAD_LEN as u32, true),
+        (full, MIN_MODE_SNAPSHOT_PAYLOAD_LEN as u32 - 1, false),
+        (
+            FEATURE_KEY_EVENTS | FEATURE_INPUT_MODE,
+            MAX_PAYLOAD_LEN as u32,
+            false,
+        ),
+    ] {
+        let mut connection = BrokerConnection::new(141);
+        let response = connection
+            .handle(frame(
+                MessageKind::Hello,
+                0,
+                0,
+                1,
+                Hello {
+                    supported: VersionRange::new(CURRENT_VERSION, CURRENT_VERSION).unwrap(),
+                    features,
+                    max_payload_len: limit,
+                }
+                .encode_payload()
+                .unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(
+            HelloAck::decode_payload(&response.payload)
+                .unwrap()
+                .features
+                & FEATURE_INPUT_MODE
+                != 0,
+            enabled
+        );
+        let token = open(&mut connection, 2);
+        let mut request_id = 2;
+        let mut mode = |action, revision, target_token| {
+            request_id += 1;
+            connection
+                .handle(frame(
+                    MessageKind::InputMode,
+                    141,
+                    target_token,
+                    request_id,
+                    InputModeRequest {
+                        expected_revision: revision,
+                        action,
+                    }
+                    .encode_payload()
+                    .unwrap(),
+                ))
+                .unwrap()
+        };
+        let response = mode(InputModeAction::Inspect, 0, token);
+        if !enabled {
+            assert_eq!(response.header.kind, MessageKind::Error);
+            continue;
+        }
+        let initial = ModeSnapshot::decode_payload(&response.payload).unwrap();
+        assert!(!initial.ascii_mode);
+        assert!(!initial.disabled);
+        let revision = initial.composition.presentation.snapshot.revision;
+        let english = mode(InputModeAction::English, revision, token);
+        let english = ModeSnapshot::decode_payload(&english.payload).unwrap();
+        assert!(english.ascii_mode);
+        assert!(english.composition.presentation.snapshot.revision > revision);
+        assert!(english.composition.presentation.snapshot.commit.is_none());
+        assert_eq!(
+            mode(InputModeAction::Chinese, revision, token).header.kind,
+            MessageKind::Error
+        );
+        assert_eq!(
+            mode(InputModeAction::Inspect, 0, token + 1).header.kind,
+            MessageKind::Error
+        );
+        let current = mode(InputModeAction::Inspect, 0, token);
+        let current = ModeSnapshot::decode_payload(&current.payload).unwrap();
+        assert!(current.ascii_mode);
+        let chinese = mode(
+            InputModeAction::Chinese,
+            current.composition.presentation.snapshot.revision,
+            token,
+        );
+        assert!(
+            !ModeSnapshot::decode_payload(&chinese.payload)
+                .unwrap()
+                .ascii_mode
+        );
+        request_id += 1;
+        let key = connection
+            .handle(frame(
+                MessageKind::KeyEvent,
+                141,
+                token,
+                request_id,
+                KeyEvent {
+                    virtual_key: u32::from(b'N'),
+                    scan_code: 0,
+                    modifiers: 0,
+                    key_down: true,
+                    repeat: false,
+                }
+                .encode_payload()
+                .unwrap(),
+            ))
+            .unwrap();
+        let key = ModeSnapshot::decode_payload(&key.payload).unwrap();
+        assert_eq!(key.composition.presentation.snapshot.composition, "n");
+        request_id += 1;
+        let rejected = connection
+            .handle(frame(
+                MessageKind::InputMode,
+                141,
+                token,
+                request_id,
+                InputModeRequest {
+                    expected_revision: key.composition.presentation.snapshot.revision,
+                    action: InputModeAction::English,
+                }
+                .encode_payload()
+                .unwrap(),
+            ))
+            .unwrap();
+        assert_eq!(rejected.header.kind, MessageKind::Error);
+        request_id += 1;
+        let retained = connection
+            .handle(frame(
+                MessageKind::InputMode,
+                141,
+                token,
+                request_id,
+                InputModeRequest {
+                    expected_revision: 0,
+                    action: InputModeAction::Inspect,
+                }
+                .encode_payload()
+                .unwrap(),
+            ))
+            .unwrap();
+        let retained = ModeSnapshot::decode_payload(&retained.payload).unwrap();
+        assert!(!retained.ascii_mode);
+        assert_eq!(retained.composition.presentation.snapshot.composition, "n");
+    }
+}
+
 fn frame(
     kind: MessageKind,
     generation: u64,

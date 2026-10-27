@@ -2,6 +2,13 @@
 
 ## Verified development staging
 
+The registrar now owns the keyboard and `GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT`
+categories together with the machine profile. Transaction receipt content v2
+records profile/keyboard/systray state; the existing marker paths are unchanged.
+The reader accepts strict v1 receipts with systray absent, so rollback can restore
+an older baseline. No Immersive or SecureMode capability is declared.
+See [ADR 0066](../../docs/adr/0066-authoritative-taskbar-input-mode.md).
+
 `prepare-stage.ps1` now creates the fixed installation-tree **assets**, not an
 installer. Use PowerShell 7.4+ as an ordinary user with the existing local Rust
 1.97.1, Visual Studio C++ tools, dependency cache and verified runtime build:

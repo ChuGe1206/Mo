@@ -1,0 +1,175 @@
+{
+  "format": 1,
+  "kind": "mo-authoritative-taskbar-input-mode",
+  "checked_utc": "2026-10-27T16:28:35.4482740Z",
+  "status": "development-kit-ready-vm-install-pending",
+  "source_snapshot_file_count": 132,
+  "stage_inventory_files": 138,
+  "source_snapshot_matches_repository": true,
+  "rust": {
+    "toolchain": "1.97.1",
+    "fmt": true,
+    "strict_clippy_default": true,
+    "strict_clippy_latency_trace": true,
+    "workspace_passed": 207,
+    "workspace_ignored": 1
+  },
+  "native": {
+    "architectures": [
+      "x64",
+      "Win32"
+    ],
+    "warnings": 0,
+    "abi_mode_icon_and_reentrant_teardown": true,
+    "fake_ipc_pool_tsf_and_fault_recovery": true,
+    "real_rime_actor_and_ipc_mode": true,
+    "real_rime_tsf_click_shift_indicator_sync": true,
+    "real_rime_complete_tsf_smoke": false,
+    "taskbar_installed_visual_acceptance": false,
+    "native_status_missing_guard_unit_tests": 2
+  },
+  "open_latency": {
+    "request": 11,
+    "kind": 5,
+    "phase": "Header",
+    "error": 1460,
+    "total_us": 50179,
+    "header_us": 50161,
+    "write_us": 6,
+    "deadline_ms": 50,
+    "engine_duration_us": null,
+    "cause": "not established; no timeout increase or request replay"
+  },
+  "packaging": {
+    "product_version": "0.0.20.0",
+    "development_only": true,
+    "msi_burn_and_ice_verified": true,
+    "changed_pair": "0.0.18.0 -> 0.0.20.0",
+    "stage_policy_tests": 98,
+    "upgrade_policy_tests": 34,
+    "upgrade_transaction_tests": 22,
+    "stage_manifest_sha256": "4EC4F1773E9A30DB2A1A1FF042CF6F8E8FBC9933877F0707F5D749E147E31FC6",
+    "kit_manifest_sha256": "7B3C66E1E706229B33BA8E1A7D5B7349F7A5360C65134013201531ACBD92895D",
+    "variant": "0200-v2",
+    "stage_policy_scope": "98 tests against v1; unchanged staging policy; v2 independently verified inventory, source hashes, ABI, MSI/Burn and ICE"
+  },
+  "guest": {
+    "format": 1,
+    "status": "verified",
+    "checked_utc": "2026-10-27T16:23:24.856948Z",
+    "guest_package": "C:\\MoDev\\Packages\\0.0.20.0-v2",
+    "hashed_files": 14,
+    "manifest_sha256": "7B3C66E1E706229B33BA8E1A7D5B7349F7A5360C65134013201531ACBD92895D",
+    "installed_version": "0.0.18.0",
+    "session_id": 1,
+    "installer_invoked": false,
+    "elevation_requested": false,
+    "retired_old_binaries": [
+      "C:\\MoDev\\Packages\\0.0.20.0-v1\\mo-setup-base-unsigned.exe",
+      "C:\\MoDev\\Packages\\0.0.20.0-v1\\mo-setup-upgrade-unsigned.exe",
+      "C:\\MoDev\\Packages\\0.0.20.0-v1\\mo-tip-registrar.exe"
+    ]
+  },
+  "logs": {
+    "mode-workspace-final.log": {
+      "bytes": 23540,
+      "sha256": "2D773BA2DA3F44068F207A7270F9F2C1DD5153D5820118B07A985D1539E158DC"
+    },
+    "mode-clippy-final.log": {
+      "bytes": 1144,
+      "sha256": "96C1F3C02662CF29F2D4650383F125977085DD7904F81EAA2D5DAA2E9E53D42A"
+    },
+    "mode-clippy-trace-final.log": {
+      "bytes": 169,
+      "sha256": "0C1A5E6C9A6A8E9C99D5EBEEB19E61528BABDD86A1B882D4358FDA3C06044109"
+    },
+    "mode-broker-final.log": {
+      "bytes": 37159,
+      "sha256": "6318E82512A53E4BF123EFEAFFC461D60DACAC529F8D317BEBF1F5E49A44787F"
+    },
+    "mode-real-key-smoke.log": {
+      "bytes": 19981,
+      "sha256": "0FD8AB98B425D43287F94DE853A6C3DEE710DF08CFD366833A5B0F2EFF49FA61"
+    },
+    "mode-rime-smoke.log": {
+      "bytes": 18525,
+      "sha256": "7780B282FA9E3A89791157B3D03222801C342827AB16361E976096EF25130B16"
+    },
+    "mode-rime-final.log": {
+      "bytes": 18525,
+      "sha256": "633E70CF04C183A81BA77F9298E4165440CBBFE0E22986D2E0821FE6DE61DC2C"
+    },
+    "mode-trace-abi.log": {
+      "bytes": 392,
+      "sha256": "D07EE195C7932934F0BC8B610D0DB0DBD353AF78F80B4B10C57C51CB49007EDA"
+    },
+    "mode-trace-broker.log": {
+      "bytes": 504,
+      "sha256": "D6B2B4A576B4495A75C3C02A14FBFAEAAD2674525A560A85AEF5036F92620F4F"
+    },
+    "mode-stage-0200.log": {
+      "bytes": 34173,
+      "sha256": "B2046D49162F694E0B08A92AB276ECC0DBBFD88B45E6C15019974D00FB528A43"
+    },
+    "mode-stage-policy.log": {
+      "bytes": 4173,
+      "sha256": "3253A12EB74DD23EFF418B877147A95B6AEEC100DE01ECC597A296C34FB12F57"
+    },
+    "mode-installer-0200.log": {
+      "bytes": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    "mode-pair-0200.log": {
+      "bytes": 109,
+      "sha256": "238C5FBC66A719F8B1C7FAAABCD8E108D6EFC7F289D45D1C594DE4659EC9DDCA"
+    },
+    "mode-kit-0200.log": {
+      "bytes": 259,
+      "sha256": "3ADA55F51157B60BBC93BF1E6ED3A40E44F5F0428F3970A86E424C1127D9A2B8"
+    },
+    "mode-upgrade-policy.log": {
+      "bytes": 1624,
+      "sha256": "34F9C14ABAD92EB9FE7CDF2474B383810ED633415821A0B10FD948193C6E6437"
+    },
+    "mode-upgrade-transaction.log": {
+      "bytes": 578,
+      "sha256": "B2EEADB32C634B393A00BB3CAA6AB6498EA0D0C227D1F844AEED7B94E96CC624"
+    },
+    "mode-cargo-clean.log": {
+      "bytes": 41,
+      "sha256": "26AC8A3F63C6EFAC185691D651F84A8440B08321A4F916FEC41B8A05FB810B8E"
+    },
+    "mode-real-key-final.log": {
+      "bytes": 19981,
+      "sha256": "0FD8AB98B425D43287F94DE853A6C3DEE710DF08CFD366833A5B0F2EFF49FA61"
+    },
+    "mode-stage-0200-v2.log": {
+      "bytes": 34167,
+      "sha256": "CD8FB6671F96A9F7326ED4D73B7F8FFE890D1AF616A33331D56023784ACE8912"
+    },
+    "mode-stage-v2-verify.log": {
+      "bytes": 89,
+      "sha256": "0C50C71772C4877C5E0DCF151AAC2697243732293002E3CDE1984E989E23CA8A"
+    },
+    "mode-installer-0200-v2.log": {
+      "bytes": 317,
+      "sha256": "0F14B1FA6E593E5F0CB0DF9B62ECF8B3E18C8B3AF0131983053F84D0AAE78FDF"
+    },
+    "mode-pair-0200-v2.log": {
+      "bytes": 109,
+      "sha256": "238C5FBC66A719F8B1C7FAAABCD8E108D6EFC7F289D45D1C594DE4659EC9DDCA"
+    },
+    "mode-kit-0200-v2.log": {
+      "bytes": 259,
+      "sha256": "017E46892BE3D8A7303AB0A34A6B0DE3F5ECE1964C93D2E83730145FA59835AF"
+    }
+  },
+  "glyph_preview_sha256": "25170975CCABFB463F0BC366B8C2FFC568B3F84CF15904D1F4B9B5C040FFF1D2",
+  "superseded_artifacts": "INPUT-MODE-V1-RETIREMENT-20261028.json",
+  "cleanup_records": [
+    "INPUT-MODE-CLEANUP-20261028.json",
+    "INPUT-MODE-CLEANUP-V2-20261028.json",
+    "INPUT-MODE-V1-RETIREMENT-20261028.json"
+  ],
+  "reclaimed_logical_bytes": 3168382669
+}

@@ -183,11 +183,13 @@ impl EngineBackend for FakeBackend {
         let mut commit = None;
 
         match command {
+            EngineCommand::Inspect => {}
             EngineCommand::Key(event) => {
                 let command_modifiers =
                     KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER;
                 if event.state == KeyState::Pressed
                     && !event.modifiers.intersects(command_modifiers)
+                    && !session.options.get("ascii_mode").copied().unwrap_or(false)
                 {
                     match event.keycode {
                         0xff08 if !session.preedit.is_empty() => {

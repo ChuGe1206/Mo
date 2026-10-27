@@ -143,6 +143,9 @@ constexpr std::uint64_t kSymbolActionsFeature = 64ULL;
 constexpr std::uint64_t kPresentationSettingsFeature = 128ULL;
 constexpr std::uint64_t kQuickSettingsFeature = 256ULL;
 constexpr std::uint64_t kCompositionPositionsFeature = 512ULL;
+constexpr std::uint64_t kInputModeFeature = 1024ULL;
+constexpr std::uint32_t kInputModeHeaderBytes = 2;
+enum class InputModeAction : Byte { Inspect = 0, Chinese = 1, English = 2 };
 constexpr std::uint32_t kCompositionPositionHeaderBytes = 13;
 constexpr std::uint32_t kPresentationPageHeaderBytes = 8;
 constexpr std::uint64_t kCandidateDetailsFeature = 16ULL;
@@ -186,6 +189,8 @@ enum class MessageKind : std::uint16_t {
     PresentationSettings = 18,
     SetEmoji = 19,
     CompositionSnapshot = 20,
+    ModeSnapshot = 21,
+    InputMode = 22,
 };
 
 struct Frame final {
@@ -696,11 +701,20 @@ private:
 };
 
 bool DecodeSnapshot(const Frame& frame, mo::windows_tip::BrokerSnapshot* snapshot) {
-    const bool position_snapshot = frame.kind == MessageKind::CompositionSnapshot;
+    const bool mode_snapshot = frame.kind == MessageKind::ModeSnapshot;
+    const bool position_snapshot = mode_snapshot || frame.kind == MessageKind::CompositionSnapshot;
     const bool presentation = position_snapshot || frame.kind == MessageKind::PresentationSnapshot;
     const bool detailed = presentation || frame.kind == MessageKind::DetailedSnapshot;
     if (!detailed && frame.kind != MessageKind::Snapshot) { return false; }
     PayloadReader reader(frame.payload);
+    snapshot->ascii_mode.reset();
+    snapshot->engine_disabled = false;
+    if (mode_snapshot) {
+        Byte ascii = 0, disabled = 0;
+        if (!reader.U8(&ascii) || !reader.U8(&disabled) || ascii > 1 || disabled > 1) { return false; }
+        snapshot->ascii_mode = ascii != 0;
+        snapshot->engine_disabled = disabled != 0;
+    }
     std::optional<mo::windows_tip::CompositionPositions> positions;
     if (position_snapshot) {
         Byte present = 0;
@@ -867,7 +881,7 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
             kKeyEventsFeature | kCandidateActionsFeature | kSettingsSnapshotFeature
             | kSessionSettingsAckFeature | kCandidateDetailsFeature
             | kCandidatePresentationFeature | kSymbolActionsFeature
-            | kPresentationSettingsFeature | kQuickSettingsFeature | kCompositionPositionsFeature);
+            | kPresentationSettingsFeature | kQuickSettingsFeature | kCompositionPositionsFeature | kInputModeFeature);
         AppendU32(&hello.payload, static_cast<std::uint32_t>(kMaximumPayloadLength));
 
         Frame hello_ack;
@@ -894,6 +908,12 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         candidate_presentation_supported_ =
             (GetU64(hello_ack.payload.data() + 4) & kCandidatePresentationFeature) != 0;
         composition_positions_supported_ = (GetU64(hello_ack.payload.data() + 4) & kCompositionPositionsFeature) != 0;
+        input_mode_supported_ = (GetU64(hello_ack.payload.data() + 4) & kInputModeFeature) != 0;
+        if (input_mode_supported_ && (!composition_positions_supported_
+            || GetU32(hello_ack.payload.data() + 12) < kMinimumDetailedSnapshotPayloadLength
+                + kPresentationPageHeaderBytes + kCompositionPositionHeaderBytes + kInputModeHeaderBytes)) {
+            last_connect_error_ = ERROR_INVALID_DATA; Reset(); return false;
+        }
         if (composition_positions_supported_ && (!candidate_presentation_supported_
             || GetU32(hello_ack.payload.data() + 12) < kMinimumDetailedSnapshotPayloadLength
                 + kPresentationPageHeaderBytes + kCompositionPositionHeaderBytes)) {
@@ -955,6 +975,9 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         }
         session_token_ = opened.session_token;
         if (session_settings_ack_supported_) { settings_ = applied_settings; }
+        if (input_mode_supported_ && !RequestInputMode(std::nullopt, 0, deadline)) {
+            last_connect_error_ = ERROR_INVALID_DATA; Reset(); return false;
+        }
         if (DeadlineExpired(deadline)) {
             last_connect_error_ = ERROR_TIMEOUT; TraceFailure(ERROR_TIMEOUT); Reset(); return false;
         }
@@ -968,6 +991,41 @@ bool BrokerClient::ConnectAndOpenUntil(Deadline deadline, bool retry_missing_end
         Reset();
         return false;
     }
+}
+
+void BrokerClient::RememberInputMode(const BrokerSnapshot& snapshot) noexcept {
+    if (snapshot.ascii_mode.has_value()) {
+        input_mode_ = BrokerInputMode{snapshot.revision, *snapshot.ascii_mode,
+            snapshot.engine_disabled, !snapshot.composition.empty()};
+    } else { input_mode_.reset(); }
+}
+
+bool BrokerClient::RequestInputMode(std::optional<bool> ascii_mode,
+    std::uint64_t revision, Deadline deadline) noexcept {
+    if (!connected() || !input_mode_supported_) { return false; }
+    try {
+        Frame request;
+        request.kind = MessageKind::InputMode; request.generation = generation_;
+        request.session_token = session_token_; request.request_id = next_request_id_++;
+        AppendU64(&request.payload, revision);
+        request.payload.push_back(static_cast<Byte>(!ascii_mode.has_value() ? InputModeAction::Inspect
+            : *ascii_mode ? InputModeAction::English : InputModeAction::Chinese));
+        Frame response; BrokerSnapshot snapshot;
+        if (!Exchange(pipe_, request, MessageKind::ModeSnapshot, &response, deadline)
+            || response.generation != generation_ || response.session_token != session_token_
+            || !DecodeSnapshot(response, &snapshot) || !snapshot.composition.empty()
+            || snapshot.commit.has_value() || !snapshot.candidates.empty() || snapshot.revision <= revision
+            || (ascii_mode.has_value() && snapshot.ascii_mode != ascii_mode)
+            || DeadlineExpired(deadline)) { Reset(); return false; }
+        RememberInputMode(snapshot);
+        return true;
+    } catch (...) { Reset(); return false; }
+}
+
+bool BrokerClient::SetInputMode(bool ascii_mode, std::uint64_t expected_revision, DWORD timeout_ms) noexcept {
+    if (!input_mode_.has_value() || input_mode_->disabled || input_mode_->composing
+        || input_mode_->revision != expected_revision) { return false; }
+    return RequestInputMode(ascii_mode, expected_revision, DeadlineFromNow(timeout_ms));
 }
 
 bool BrokerClient::SendKey(
@@ -1004,7 +1062,7 @@ bool BrokerClient::SendKeyUntil(
 
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, composition_positions_supported_ ? MessageKind::CompositionSnapshot
+        if (!Exchange(pipe_, request, input_mode_supported_ ? MessageKind::ModeSnapshot : composition_positions_supported_ ? MessageKind::CompositionSnapshot
                 : candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
                 : candidate_details_supported_ ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
@@ -1017,6 +1075,7 @@ bool BrokerClient::SendKeyUntil(
         if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
         decoded.symbols_supported = symbols_supported_;
         decoded.quick_settings_supported = quick_settings_supported_;
+        RememberInputMode(decoded);
         *snapshot = std::move(decoded);
         return true;
     } catch (...) {
@@ -1055,7 +1114,7 @@ bool BrokerClient::SendCandidateAction(
         AppendU32(&request.payload, index);
         Frame response;
         BrokerSnapshot decoded;
-        if (!Exchange(pipe_, request, composition_positions_supported_ ? MessageKind::CompositionSnapshot
+        if (!Exchange(pipe_, request, input_mode_supported_ ? MessageKind::ModeSnapshot : composition_positions_supported_ ? MessageKind::CompositionSnapshot
                 : candidate_presentation_supported_ ? MessageKind::PresentationSnapshot
                 : candidate_details_supported_ ? MessageKind::DetailedSnapshot : MessageKind::Snapshot, &response, deadline)
             || response.generation != generation_
@@ -1069,6 +1128,7 @@ bool BrokerClient::SendCandidateAction(
         if (DeadlineExpired(deadline)) { TraceFailure(ERROR_TIMEOUT); Reset(); return false; }
         decoded.symbols_supported = symbols_supported_;
         decoded.quick_settings_supported = quick_settings_supported_;
+        RememberInputMode(decoded);
         *snapshot = std::move(decoded);
         return true;
     } catch (...) {
@@ -1218,6 +1278,10 @@ SessionReplaceResult BrokerClient::ReplaceSession(DWORD timeout_ms) noexcept {
         }
         session_token_ = new_token;
         if (session_settings_ack_supported_) { settings_ = applied_settings; }
+        input_mode_.reset();
+        if (input_mode_supported_ && !RequestInputMode(std::nullopt, 0, deadline)) {
+            return SessionReplaceResult::Disconnected;
+        }
         return SessionReplaceResult::Replaced;
     } catch (...) {
         Reset();
@@ -1259,6 +1323,8 @@ void BrokerClient::Reset() noexcept {
     candidate_details_supported_ = false;
     candidate_presentation_supported_ = false;
     composition_positions_supported_ = false;
+    input_mode_supported_ = false;
+    input_mode_.reset();
     symbols_supported_ = false;
     presentation_settings_supported_ = false;
     quick_settings_supported_ = false;

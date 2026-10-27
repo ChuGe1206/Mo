@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "checked_utc": "2026-10-27T16:06:55.5659015Z",
+  "cargo_target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+  "removed": [
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+      "bytes": 1226338529
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v1\\working\\rust-target",
+      "bytes": 73728906
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v1\\working\\native-obj",
+      "bytes": 48666731
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v1\\working\\rime-ice-source",
+      "bytes": 53727798
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mode-rime-user-v2",
+      "bytes": 76644681
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mode-rime-trace-user-v1",
+      "bytes": 76645236
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mode-key-smoke-user-v1",
+      "bytes": 552
+    }
+  ],
+  "reclaimed_logical_bytes": 1555752433.0,
+  "drive_free_before_bytes": 99584155648,
+  "drive_free_after_bytes": 101042573312,
+  "sealed_stage_reverified": true,
+  "installed_baseline_preserved": "0.0.18.0",
+  "pending_kit_preserved": "0.0.20.0-v1",
+  "user_data_and_cargo_download_cache_preserved": true
+}

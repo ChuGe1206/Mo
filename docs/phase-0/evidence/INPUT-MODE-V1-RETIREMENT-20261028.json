@@ -1,0 +1,92 @@
+{
+  "format": 1,
+  "retired_utc": "2026-10-27T16:26:29.0138935Z",
+  "reason": "superseded by 0200-v2 with unavailable-native-status guard",
+  "runnable": false,
+  "replacement": "0200-v2",
+  "retained_archive": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v2\\stage\\evidence\\rime-ice-source.tar",
+  "archive_sha256": "CD1895FBC961131A62F23277F636C27A6FB941DAC66DAF43C4A10D4E9E6ADAD3",
+  "removed": [
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v1\\stage\\payload",
+      "bytes": 135957237,
+      "directory": true
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\verification\\bundle-ba",
+      "bytes": 345589,
+      "directory": true
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\verification\\bundle-payload",
+      "bytes": 43447296,
+      "directory": true
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\verification\\msi-files",
+      "bytes": 136285429,
+      "directory": true
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\mo-development-failure-injection.exe",
+      "bytes": 328192,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\mo-development-unsigned.msi",
+      "bytes": 42790912,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\mo-development-unsigned.wixpdb",
+      "bytes": 66900,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\mo-setup-development-unsigned.exe",
+      "bytes": 43243571,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-linked-win10-mode-0200-v1\\mo-setup-development-unsigned.wixpdb",
+      "bytes": 7745,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-vm-changed-upgrade-kit-0180-0200-v1\\mo-setup-base-unsigned.exe",
+      "bytes": 43218033,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-vm-changed-upgrade-kit-0180-0200-v1\\mo-setup-upgrade-unsigned.exe",
+      "bytes": 43243571,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-vm-changed-upgrade-kit-0180-0200-v1\\mo-tip-registrar.exe",
+      "bytes": 328192,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\Package0200-v1\\kit\\mo-setup-base-unsigned.exe",
+      "bytes": 43218033,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\Package0200-v1\\kit\\mo-setup-upgrade-unsigned.exe",
+      "bytes": 43243571,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\win10-evidence-clean-v1\\Package0200-v1\\kit\\mo-tip-registrar.exe",
+      "bytes": 328192,
+      "directory": false
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\mo-windows-stage-mode-0200-v1\\stage\\evidence\\rime-ice-source.tar",
+      "bytes": 53872640,
+      "directory": false
+    }
+  ],
+  "reclaimed_logical_bytes": 629925103.0
+}

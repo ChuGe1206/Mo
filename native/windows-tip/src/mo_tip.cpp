@@ -16,6 +16,7 @@
 #include "mo_broker_launcher.h"
 #include "mo_candidate_window.h"
 #include "mo_settings_change_window.h"
+#include "mo_input_mode.h"
 #include "mo_tip_ids.h"
 
 namespace {
@@ -270,6 +271,7 @@ public:
         keystroke_manager_ = keystroke_manager;
         client_id_ = client_id;
         activation_flags_ = flags;
+        StartModeIndicator();
         // This is deliberately best-effort. If class/window creation is not
         // available, activation and typing continue and the next connection
         // still loads the current settings snapshot.
@@ -288,9 +290,10 @@ public:
         candidate_window_.Destroy();
         latest_revision_ = 0;
         CancelActiveComposition();
-        HRESULT result = S_OK;
+        HRESULT result = StopModeIndicator();
         if (keystroke_manager_ != nullptr) {
-            result = keystroke_manager_->UnadviseKeyEventSink(client_id_);
+            const HRESULT unadvised = keystroke_manager_->UnadviseKeyEventSink(client_id_);
+            if (SUCCEEDED(result)) { result = unadvised; }
             keystroke_manager_->Release();
             keystroke_manager_ = nullptr;
         }
@@ -322,6 +325,7 @@ public:
             next_reconnect_tick_ = 0;
             EnsureBrokerConnected(kBrokerActivationTimeoutMs);
         }
+        UpdateModeIndicator();
         return S_OK;
     }
 
@@ -431,6 +435,59 @@ public:
     }
 
 private:
+    void StartModeIndicator() noexcept {
+        if (FAILED(thread_manager_->QueryInterface(IID_PPV_ARGS(mode_manager_.GetAddressOf())))) { return; }
+        mode_button_.Attach(new (std::nothrow) mo::windows_tip::InputModeButton(
+            g_module, &g_live_objects, ToggleInputModeCallback, this));
+        if (mode_button_ == nullptr || FAILED(mode_manager_->AddItem(mode_button_.Get()))) {
+            if (mode_button_ != nullptr) { mode_button_->Detach(); }
+            mode_button_.Reset(); mode_manager_.Reset();
+        }
+    }
+
+    HRESULT StopModeIndicator() noexcept {
+        if (mode_button_ == nullptr) { return S_OK; }
+        // TSF notifications can reenter Deactivate; retire our members first.
+        auto button = std::move(mode_button_);
+        auto manager = std::move(mode_manager_);
+        // Remove the non-owning callback before TSF can retain this COM item.
+        button->Detach();
+        return manager->RemoveItem(button.Get());
+    }
+
+    void UpdateModeIndicator() noexcept {
+        if (mode_button_ == nullptr) { return; }
+        const auto mode = broker_.input_mode();
+        using mo::windows_tip::InputModeState;
+        const InputModeState state = !mode.has_value() ? InputModeState::Unknown
+            : mode->disabled ? InputModeState::Disabled
+            : mode->ascii_mode ? InputModeState::English : InputModeState::Chinese;
+        mode_button_->Update(state, mode.has_value() && !mode->disabled && !mode->composing
+            && !(cached_key_.valid && cached_key_.snapshot.handled)
+            && active_range_ == nullptr && !handling_termination_ && !mode_toggle_pending_, has_focus_);
+    }
+
+    static void ToggleInputModeCallback(void* context) noexcept {
+        auto* owner = static_cast<TextService*>(context);
+        owner->AddRef(); owner->ToggleInputMode(); owner->Release();
+    }
+
+    void ToggleInputMode() noexcept {
+        const auto mode = broker_.input_mode();
+        if (!has_focus_ || handling_termination_ || mode_toggle_pending_
+            || (cached_key_.valid && cached_key_.snapshot.handled)
+            || active_range_ != nullptr || !mode.has_value() || mode->disabled || mode->composing) { return; }
+        mode_toggle_pending_ = true;
+        cached_key_.valid = false;
+        const bool changed = broker_.SetInputMode(!mode->ascii_mode, mode->revision, kBrokerKeyTimeoutMs);
+        if (changed) {
+            InvalidateCandidateIdentity(); display_snapshot_.reset();
+            latest_revision_ = 0; candidate_window_.Hide();
+        } else if (!broker_.connected()) { DisconnectBroker(0); }
+        mode_toggle_pending_ = false;
+        UpdateModeIndicator();
+    }
+
     struct CandidateIdentity final {
         ComPtr<ITfContext> context;
         ComPtr<ITfRange> range;
@@ -683,6 +740,7 @@ private:
             active_emoji_ = broker_.settings().emoji;
             active_effective_learning_ = broker_.settings().effective_learning;
             pending_engine_settings_ = false;
+            UpdateModeIndicator();
             return true;
         }
         if (broker_auto_start_
@@ -696,6 +754,7 @@ private:
             active_emoji_ = broker_.settings().emoji;
             active_effective_learning_ = broker_.settings().effective_learning;
             pending_engine_settings_ = false;
+            UpdateModeIndicator();
             return true;
         }
         next_reconnect_tick_ = now + kBrokerReconnectBackoffMs;
@@ -726,6 +785,7 @@ private:
         display_snapshot_.reset();
         pending_layout_request_ = 0;
         broker_.Close(timeout_ms);
+        UpdateModeIndicator();
         next_reconnect_tick_ = GetTickCount64() + kBrokerReconnectBackoffMs;
     }
 
@@ -805,6 +865,7 @@ private:
         active_character_set_ = broker_.settings().character_set;
         active_emoji_ = broker_.settings().emoji;
         active_effective_learning_ = broker_.settings().effective_learning;
+        UpdateModeIndicator();
     }
 
     bool CachedKeyMatches(
@@ -886,6 +947,7 @@ private:
         cached_key_.key_data = key_data;
         cached_key_.key_down = key_down;
         cached_key_.valid = true;
+        UpdateModeIndicator();
         return true;
     }
 
@@ -933,6 +995,7 @@ private:
         }
         if (!cached_key_.snapshot.handled) {
             cached_key_.valid = false;
+            UpdateModeIndicator();
             if (pending_engine_settings_ && active_range_ == nullptr) {
                 settings_change_window_.ScheduleRefresh();
             }
@@ -959,6 +1022,7 @@ private:
 #endif
         edit_session->Release();
         cached_key_.valid = false;
+        UpdateModeIndicator();
         if (pending_engine_settings_ && active_range_ == nullptr) {
             settings_change_window_.ScheduleRefresh();
         }
@@ -1195,6 +1259,7 @@ private:
         else if (pending_engine_settings_ && active_range_ == nullptr) {
             settings_change_window_.ScheduleRefresh();
         }
+        UpdateModeIndicator();
         return result;
     }
 
@@ -1409,6 +1474,9 @@ private:
     mo::windows_tip::BrokerClient broker_;
     mo::windows_tip::CandidateWindow candidate_window_;
     mo::windows_tip::SettingsChangeWindow settings_change_window_;
+    ComPtr<ITfLangBarItemMgr> mode_manager_;
+    ComPtr<mo::windows_tip::InputModeButton> mode_button_;
+    bool mode_toggle_pending_ = false;
 #ifdef MO_LATENCY_TRACE
     DWORD candidate_trace_stage_ = 0;
     HRESULT candidate_trace_result_ = S_OK;

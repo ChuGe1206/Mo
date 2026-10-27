@@ -52,6 +52,8 @@ pub enum MessageKind {
     PresentationSettings = 18,
     SetEmoji = 19,
     CompositionSnapshot = 20,
+    ModeSnapshot = 21,
+    InputMode = 22,
 }
 
 impl TryFrom<u16> for MessageKind {
@@ -79,6 +81,8 @@ impl TryFrom<u16> for MessageKind {
             tag if tag == Self::PresentationSettings as u16 => Ok(Self::PresentationSettings),
             tag if tag == Self::SetEmoji as u16 => Ok(Self::SetEmoji),
             tag if tag == Self::CompositionSnapshot as u16 => Ok(Self::CompositionSnapshot),
+            tag if tag == Self::ModeSnapshot as u16 => Ok(Self::ModeSnapshot),
+            tag if tag == Self::InputMode as u16 => Ok(Self::InputMode),
             other => Err(FrameError::UnknownMessageKind(other)),
         }
     }

@@ -143,6 +143,8 @@ impl SessionOptions {
 /// Commands accepted by the platform-neutral engine contract.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EngineCommand {
+    /// Reads the current session without sending a synthetic key or changing options.
+    Inspect,
     /// Dispatches a normalized keyboard event.
     Key(KeyEvent),
     /// Selects a candidate by zero-based index on the current page.

@@ -72,6 +72,9 @@ struct CandidatePage final {
     std::optional<std::uint8_t> highlighted;
 };
 struct BrokerSnapshot final {
+    // Absent on old negotiated protocols; never infer mode from a key or preedit.
+    std::optional<bool> ascii_mode;
+    bool engine_disabled = false;
     std::uint64_t revision = 0;
     bool handled = false;
     std::optional<CandidatePage> page;
@@ -83,6 +86,13 @@ struct BrokerSnapshot final {
     std::vector<std::string> candidates;
     std::vector<std::optional<std::string>> candidate_comments;
     std::vector<std::optional<std::string>> candidate_labels;
+};
+
+struct BrokerInputMode final {
+    std::uint64_t revision;
+    bool ascii_mode;
+    bool disabled;
+    bool composing;
 };
 
 // Thread-affine client for the versioned Mo broker protocol. Every public
@@ -119,6 +129,9 @@ public:
         BrokerSnapshot* snapshot,
         DWORD timeout_ms) noexcept;
     bool candidate_actions_supported() const noexcept { return candidate_actions_supported_; }
+    bool input_mode_supported() const noexcept { return input_mode_supported_; }
+    const std::optional<BrokerInputMode>& input_mode() const noexcept { return input_mode_; }
+    bool SetInputMode(bool ascii_mode, std::uint64_t expected_revision, DWORD timeout_ms) noexcept;
     bool SetEmoji(std::uint64_t candidate_revision, bool value, DWORD timeout_ms) noexcept;
     SettingsRefreshResult RefreshSettings(DWORD timeout_ms) noexcept;
     // Open the next configured session before retiring the old one. A stable
@@ -137,6 +150,8 @@ public:
 
 private:
     void Reset() noexcept;
+    bool RequestInputMode(std::optional<bool> ascii_mode, std::uint64_t revision, Deadline deadline) noexcept;
+    void RememberInputMode(const BrokerSnapshot& snapshot) noexcept;
 
     std::wstring expected_broker_path_;
     HANDLE pipe_ = INVALID_HANDLE_VALUE;
@@ -147,6 +162,8 @@ private:
     bool candidate_details_supported_ = false;
     bool candidate_presentation_supported_ = false;
     bool composition_positions_supported_ = false;
+    bool input_mode_supported_ = false;
+    std::optional<BrokerInputMode> input_mode_;
     bool symbols_supported_ = false;
     bool presentation_settings_supported_ = false;
     bool quick_settings_supported_ = false;

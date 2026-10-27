@@ -193,6 +193,10 @@ Win10 VM 已完成 0.0.15.0→0.0.16.0 实际升级，载荷、权限、设置�
 
 ## 已落地的基线
 
+- 中英文状态项已实现：任务栏模式图标显示“中 / 英”，Shift 切换后依据引擎状态更新；
+  空闲时也可点击切换，组词中保留输入状态。断线/旧协议显示未知状态，避免误报。
+  [状态协议与注册合同](docs/adr/0066-authoritative-taskbar-input-mode.md)、
+  [0200 开发包与验证范围](docs/phase-0/WIN10-INPUT-MODE-0200-20261027.md)。客机 kit 已核验，实际仍0180，任务栏安装态待验。
 - Rust 领域模型与单线程 Engine Actor，包含 generation/revision 防陈旧状态机制；Broker 的 session/key/close 已全部经过 Actor，不再维护旁路输入状态。
 - 有大小上限、版本协商、严格 request id 和会话隔离的二进制 IPC 协议；Windows Named Pipe 已具备双向登录会话 SID 复核、TIP 侧 Broker PID/映像身份校验、拒绝远程客户端和首帧/半帧硬超时，且 Broker/Engine 可跨连续连接常驻，TCP 仅保留为诊断 spike。
 - Broker 已接入 16 个独立受保护的连接槽，共享唯一 Engine Actor；每槽保留原始服务端 handle，断线复用不产生名称重建缺口，也不向客户端授予创建服务端实例的权限。x64/x86 fake 与真实词库探针已通过 16 路同时连接、满载限时返回、槽复用和跨连接候选隔离，见 ADR 0019。
