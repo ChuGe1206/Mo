@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "status": "awaiting-user-login",
+  "checked_utc": "2026-10-27T07:08:05.959989+00:00",
+  "checks": [
+    {
+      "path": "build/mo-windows-stage-expanded-0180-v3/stage/mo-stage.json",
+      "files_verified": 138,
+      "manifest_sha256": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23"
+    },
+    {
+      "path": "build/mo-windows-stage-keys-0190-v2/stage/mo-stage.json",
+      "files_verified": 138,
+      "manifest_sha256": "F5F0F4F3BD4820CF24B7B67BD66A7D2CB27E6C6301CE8EBD9CE7B1900D751F01"
+    },
+    {
+      "path": "build/mo-vm-changed-upgrade-kit-0180-0190-v2/vm-changed-upgrade-kit.json",
+      "files_verified": 14,
+      "manifest_sha256": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D"
+    }
+  ],
+  "build_started": false,
+  "installer_invoked": false,
+  "kind": "mo-win10-0190-continuation-preflight",
+  "date": "2026-10-27",
+  "last_verified_installed_version": "0.0.18.0",
+  "installed_version_reverified_this_turn": false,
+  "vm_started": true,
+  "vm_lock_screen_visually_confirmed": true,
+  "guest_read_only_probe": {
+    "guest_ready": true,
+    "interactive_session_count": 0,
+    "logon_ui_count": 1,
+    "installed_settings_exists": true
+  },
+  "guest_package_recopy_attempted": false,
+  "guest_authentication_automated": false,
+  "computer_use_capture_errors": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "window capture timed out: timed out waiting on channel"
+  ],
+  "fallback_screenshot": "build/win10-0190-20261027-v1/vm-state.png",
+  "next_action": "Wait for user unlock/login; verify actual installed baseline and guest kit before invoking fresh upgrade driver evidence directory.",
+  "screenshot_sha256": "A197559D9C38DCCD0AD6FC18DBD80C825EFD8ABC7A7D2784A6678304F7362A07",
+  "host_package_check_status": "passed",
+  "recorded_utc": "2026-10-27T07:16:01.280853+00:00"
+}
