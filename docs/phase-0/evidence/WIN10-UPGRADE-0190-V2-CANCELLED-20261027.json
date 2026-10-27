@@ -1,0 +1,60 @@
+{
+  "format": 4,
+  "kind": "mo-vm-changed-payload-upgrade-evidence",
+  "development_only": true,
+  "vm_id": "a43fc65eef274711b44708fcefaabcc8",
+  "completed": false,
+  "installer_invocation_attempted": false,
+  "exit_code": null,
+  "base_version": "0.0.18.0",
+  "upgrade_version": "0.0.19.0",
+  "base_bundle_sha256": "47EA4494074CB9D5B6971982BE16EE80CF599FA47480D08339892C469EF40FDA",
+  "upgrade_bundle_sha256": "B29A4C6BCEB7B65C8237DF49D89AFAD2B26115FBB2C21D1EFE2B280104475926",
+  "base_stage_manifest_sha256": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23",
+  "upgrade_stage_manifest_sha256": "F5F0F4F3BD4820CF24B7B67BD66A7D2CB27E6C6301CE8EBD9CE7B1900D751F01",
+  "kit_manifest_sha256": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
+  "base_payload_verified": false,
+  "upgrade_payload_verified": false,
+  "install_tree_security_audited": false,
+  "settings_preserved": false,
+  "default_override_unchanged": false,
+  "loaded_tip_matrix_executed": false,
+  "desktop_input_executed": false,
+  "reboot_executed": false,
+  "tip_host_scan": {
+    "scope": "identified-current-user-current-session",
+    "scanned_process_count": 43,
+    "loaded_hosts": [],
+    "failed_process_ids": [
+      3368,
+      5932
+    ],
+    "unresolved_owner_process_ids": [
+      528,
+      592,
+      812,
+      920
+    ],
+    "protected_hosts": [
+      {
+        "process_id": 4448,
+        "protection_level": 3,
+        "installed_tips_unsigned": true
+      }
+    ]
+  },
+  "tip_host_inspection": null,
+  "failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。",
+  "final_state": {
+    "profile.enabled": "true",
+    "profile.registered": "true",
+    "com.x86": "missing",
+    "user.finalizer.transaction": "mo-user-finalizer-install-v1-disabled",
+    "com.x64": "missing",
+    "profile.active": "false",
+    "user.finalizer": "v1"
+  },
+  "final_state_verified": false,
+  "final_state_failure": null,
+  "logs": {}
+}

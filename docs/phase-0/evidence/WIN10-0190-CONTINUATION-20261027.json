@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "status": "awaiting-user-login",
+  "status": "awaiting-user-uac-observation",
   "checked_utc": "2026-10-27T07:08:05.959989+00:00",
   "checks": [
     {
@@ -24,14 +24,33 @@
   "kind": "mo-win10-0190-continuation-preflight",
   "date": "2026-10-27",
   "last_verified_installed_version": "0.0.18.0",
-  "installed_version_reverified_this_turn": false,
+  "installed_version_reverified_this_turn": true,
   "vm_started": true,
-  "vm_lock_screen_visually_confirmed": true,
+  "vm_lock_screen_visually_confirmed": false,
   "guest_read_only_probe": {
-    "guest_ready": true,
-    "interactive_session_count": 0,
-    "logon_ui_count": 1,
-    "installed_settings_exists": true
+    "format": 1,
+    "status": "completed",
+    "checked_utc": "2026-10-27T08:50:47.0499650Z",
+    "installer_invoked": false,
+    "verified_kit_files": 14,
+    "kit_sha256": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
+    "interactive_sessions": [
+      1
+    ],
+    "logon_ui_count": 0,
+    "current_session": 1,
+    "elevated": false,
+    "products": [
+      {
+        "DisplayName": "Mo (墨) 输入法 — development build",
+        "DisplayVersion": "0.0.18.0",
+        "PSChildName": "{49CE7537-0AC8-4D1F-951C-E072C3BA519A}"
+      }
+    ],
+    "upgrade_evidence_exists": false,
+    "brokers": 0,
+    "settings": 0,
+    "finished_utc": "2026-10-27T08:53:34.8249146Z"
   },
   "guest_package_recopy_attempted": false,
   "guest_authentication_automated": false,
@@ -40,8 +59,66 @@
     "window capture timed out: timed out waiting on channel"
   ],
   "fallback_screenshot": "build/win10-0190-20261027-v1/vm-state.png",
-  "next_action": "Wait for user unlock/login; verify actual installed baseline and guest kit before invoking fresh upgrade driver evidence directory.",
+  "next_action": "Clarify whether user saw read-only PowerShell UAC; both v1/v2 exited before installer. Do not rerun either evidence directory or reuse prior UAC confirmations. Choose a fresh v3 directory only when ready to handle a new prompt.",
   "screenshot_sha256": "A197559D9C38DCCD0AD6FC18DBD80C825EFD8ABC7A7D2784A6678304F7362A07",
   "host_package_check_status": "passed",
-  "recorded_utc": "2026-10-27T07:16:01.280853+00:00"
+  "recorded_utc": "2026-10-27T09:34:20.049464+00:00",
+  "installed_version_before_attempts": "0.0.18.0",
+  "guest_upgrade_attempts": [
+    {
+      "evidence_directory": "C:/MoDev/Evidence/Upgrade0190-v1",
+      "status": "pre-install-elevation-cancelled",
+      "installer_invocation_attempted": false,
+      "completed": false,
+      "failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。",
+      "receipt": "build/win10-evidence-clean-v1/Package0190-v2/continuation-20261027-v1/upgrade-evidence-v1/upgrade-state.json"
+    },
+    {
+      "evidence_directory": "C:/MoDev/Evidence/Upgrade0190-v2",
+      "status": "pre-install-elevation-cancelled",
+      "driver_invoked": true,
+      "completed": false,
+      "installer_invocation_attempted": false,
+      "failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。",
+      "receipt": "build/win10-evidence-clean-v1/Package0190-v2/continuation-20261027-v1/upgrade-evidence-v2/upgrade-state.json"
+    }
+  ],
+  "helper_syntax_check": "PowerShell AST: three scripts passed",
+  "installed_validation_tools": "build/win10-evidence-clean-v1/Package0190-v2/installed-validation-tools-v1",
+  "transport_timeouts": [
+    {
+      "operation": "synchronous guest preflight",
+      "exit_code": 20
+    },
+    {
+      "operation": "synchronous liveness probe",
+      "exit_code": 20
+    }
+  ],
+  "asynchronous_preflight_completed": true,
+  "additional_capture_errors": [
+    "VBox screenshot E_FAIL (0x80004005)",
+    "Activated VirtualBox capture: FrameArrived timed out"
+  ],
+  "installed_validation_manifest": {
+    "format": 1,
+    "kind": "mo-installed-validation-tools",
+    "version": "0.0.19.0",
+    "cases": [
+      {
+        "probe": "abi-x64.exe",
+        "architecture": "x64",
+        "probe_sha256": "07D7E0A55E30812CB66E92AEA252F97C94A137B95D6B40FDB65C447A29BA52CD",
+        "tip_sha256": "9882301F7E5AE571954A8BCA9BB05601290B82C23C073E4E11FCA8FDB7F005FF"
+      },
+      {
+        "probe": "abi-Win32.exe",
+        "architecture": "x86",
+        "probe_sha256": "DB0E433A60FA5DD599EB6DF56A72B1EE4766C72D3322BAD0577725F7B3CBC827",
+        "tip_sha256": "6D949DAC2464125F1862B3CE287953C1299CCB8651A1DFB5DE9ABB3BC94B9DDF"
+      }
+    ],
+    "broker_sha256": "D8DA118F34B8A8DE359B7B08EAA5A9E9A92623454509D83EF6E96C2AB43EDAE3",
+    "settings_sha256": "A91DD8557C1E424085D9A985501B018D6D6662B773B40FBC668E92B76F63AF61"
+  }
 }

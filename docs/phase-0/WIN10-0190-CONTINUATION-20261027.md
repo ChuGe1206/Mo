@@ -23,3 +23,19 @@
 
 [结构化记录](evidence/WIN10-0190-CONTINUATION-20261027.json)；原始截图和核验结果在
 build/win10-0190-20261027-v1。本轮只更新文档，执行 git diff --check，不启动缓存重建。
+
+## 用户解锁后的续接
+
+- 用户已解锁并授权继续 VM 操作；截图确认桌面。异步回执核验客机实际 0180、14 文件 kit、
+  Session 1 普通权限、LogonUI 0、Broker/设置 0、Upgrade0190-v1 不存在。
+- 两次同步 guestcontrol 查询超时退出 20；改为异步共享回执后取得完整校验结果，没有重复复制 kit。
+- Upgrade0190-v1 在只读管理员复核时返回“操作已被用户取消”；installer_invocation_attempted=false，
+  安装器没有执行。47 进程初扫有未能读取的进程，不能跳过管理员复核。
+  [原始取消回执](evidence/WIN10-UPGRADE-0190-V1-CANCELLED-20261027.json) 保留失败与最终状态。
+- 新鲜 Upgrade0190-v2 的只读提权也返回取消，installer_invocation_attempted=false，安装器未执行。
+  [第二次取消回执](evidence/WIN10-UPGRADE-0190-V2-CANCELLED-20261027.json) 已保留；停止重试，
+  等待用户说明是否看到了 UAC。截图通道 E_FAIL，激活窗口后 computer-use 仍 FrameArrived 超时，
+  不声称已看到具体权限提示。v1/v2 目录均不可重跑，后续如重发必须使用全新 v3 目录。
+- 0190 安装后验证工具已准备：复制当前封存的 x64/Win32 ABI probe，并绑定两架构 TIP、Broker、
+  设置 EXE 的 stage 哈希；三份 guest helper 脚本 AST 检查通过。安装完成前不运行这些工具。
+- 认证界面和安全提示仍由用户处理；没有修改安全设置或自动确认 UAC。
