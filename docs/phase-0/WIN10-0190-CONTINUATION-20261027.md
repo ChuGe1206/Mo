@@ -39,3 +39,23 @@ build/win10-0190-20261027-v1。本轮只更新文档，执行 git diff --check�
 - 0190 安装后验证工具已准备：复制当前封存的 x64/Win32 ABI probe，并绑定两架构 TIP、Broker、
   设置 EXE 的 stage 哈希；三份 guest helper 脚本 AST 检查通过。安装完成前不运行这些工具。
 - 认证界面和安全提示仍由用户处理；没有修改安全设置或自动确认 UAC。
+
+## 用户确认未见 UAC 后的排查
+
+- 用户回复“没有”：两次系统返回取消不能归因为用户主动点击取消。停止第三次提权和安装。
+- 新只读回执确认 guestcontrol 进程位于 Session 1、WinSta0/Default，输入桌面也为 Default，
+  普通权限且 UserInteractive=true；EnableLUA=1、ConsentPromptBehaviorAdmin=5、
+  PromptOnSecureDesktop=1，Appinfo 正在运行。尚未确定 UAC 未显示的根因。
+- VBox 显示状态为 1045×750、bpp=0、flags=2；日志出现无源位图的 fallback buffer，
+  截图继续 E_FAIL，computer-use 捕获继续 FrameArrived 超时。显示模式提示未恢复捕获。
+  这些证据能解释捕获通道不可用，不能证明其造成 UAC 不可见。
+- 空载异步进程在 TimeoutMs=45000 下完成 55 秒等待，排除本次观察路径中简单的
+  45 秒进程终止假设。[Oracle 参数文档](https://docs.oracle.com/en/virtualization/virtualbox/7.2/user/vboxmanage.html)
+  将 timeout 描述为执行时间上限；不能把参数含义直接当作这次失败的原因。
+- 源码新增 tip-host-elevation-launch.json：记录提权请求前后状态、会话、耗时、异常类型和
+  内层 Win32 错误码；结果不宣称用户是否见过提示。写证据失败仍阻止继续，并释放子进程句柄。
+  原有 UAC、审计身份/ACL/新鲜度和升级前检查契约保持有效。
+- PS7 与 WinPS 5.1 的 host-inspection 各 33 项通过；升级策略 34 项、事务 22 项通过。
+  没有 Rust/native 代码变化，不重建 Cargo 缓存；封存 v2 kit 未修改，新诊断尚未部署到客机包。
+- [结构化诊断](evidence/WIN10-0190-ELEVATION-DIAGNOSTIC-20261027.json)。0180 仍是最后验证的
+  安装版本；恢复可核验的交互画面后再考虑全新证据目录，不能复用 v1/v2。

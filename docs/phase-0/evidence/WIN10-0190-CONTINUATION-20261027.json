@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "status": "awaiting-user-uac-observation",
-  "checked_utc": "2026-10-27T07:08:05.959989+00:00",
+  "status": "elevation-not-observed-display-path-unavailable",
+  "checked_utc": "2026-10-27T15:08:05.959989+08:00",
   "checks": [
     {
       "path": "build/mo-windows-stage-expanded-0180-v3/stage/mo-stage.json",
@@ -30,7 +30,7 @@
   "guest_read_only_probe": {
     "format": 1,
     "status": "completed",
-    "checked_utc": "2026-10-27T08:50:47.0499650Z",
+    "checked_utc": "2026-10-27T08:50:47.049965Z",
     "installer_invoked": false,
     "verified_kit_files": 14,
     "kit_sha256": "2688C6CE6ACFA64B5FF02422E9298EC2D605DEF991A9CF0E9B40201323E87C6D",
@@ -59,10 +59,10 @@
     "window capture timed out: timed out waiting on channel"
   ],
   "fallback_screenshot": "build/win10-0190-20261027-v1/vm-state.png",
-  "next_action": "Clarify whether user saw read-only PowerShell UAC; both v1/v2 exited before installer. Do not rerun either evidence directory or reuse prior UAC confirmations. Choose a fresh v3 directory only when ready to handle a new prompt.",
+  "next_action": "Restore a verifiable interactive display before any fresh upgrade attempt; keep both failed attempt directories and sealed v2 kit unchanged.",
   "screenshot_sha256": "A197559D9C38DCCD0AD6FC18DBD80C825EFD8ABC7A7D2784A6678304F7362A07",
   "host_package_check_status": "passed",
-  "recorded_utc": "2026-10-27T09:34:20.049464+00:00",
+  "recorded_utc": "2026-10-27T17:34:20.049464+08:00",
   "installed_version_before_attempts": "0.0.18.0",
   "guest_upgrade_attempts": [
     {
@@ -120,5 +120,6 @@
     ],
     "broker_sha256": "D8DA118F34B8A8DE359B7B08EAA5A9E9A92623454509D83EF6E96C2AB43EDAE3",
     "settings_sha256": "A91DD8557C1E424085D9A985501B018D6D6662B773B40FBC668E92B76F63AF61"
-  }
+  },
+  "elevation_diagnostic": "WIN10-0190-ELEVATION-DIAGNOSTIC-20261027.json"
 }

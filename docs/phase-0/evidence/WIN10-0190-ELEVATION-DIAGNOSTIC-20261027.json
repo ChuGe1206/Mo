@@ -1,0 +1,61 @@
+{
+  "format": 1,
+  "kind": "mo-win10-0190-invisible-elevation-diagnostic",
+  "checked_utc": "2026-10-27T13:25:21.2382471Z",
+  "user_observed_uac": false,
+  "status": "inconclusive-no-upgrade-retry",
+  "installed_version_last_verified": "0.0.18.0",
+  "installer_invoked_this_followup": false,
+  "elevation_requested_this_followup": false,
+  "session_id": 1,
+  "elevated": false,
+  "window_station": "WinSta0",
+  "thread_desktop": "Default",
+  "input_desktop": "Default",
+  "user_interactive": true,
+  "uac_policy": {
+    "EnableLUA": 1,
+    "ConsentPromptBehaviorAdmin": 5,
+    "PromptOnSecureDesktop": 1
+  },
+  "appinfo_running": true,
+  "display_observation": {
+    "video_mode": "1045,750,0",
+    "flags": 2,
+    "source": "VBoxManage showvminfo",
+    "screenshot_error": "E_FAIL (0x80004005)",
+    "frame_buffer_log": "Using fallback buffer since no source bitmap is provided",
+    "mode_hint_attempted": true,
+    "mode_hint_restored_capture": false
+  },
+  "lifetime_probe": {
+    "started_utc": "2026-10-27T13:14:15.3916779Z",
+    "process_id": 5884,
+    "completed": true,
+    "finished_utc": "2026-10-27T13:15:10.5568034Z"
+  },
+  "lifetime_probe_scope": "Synthetic idle process survived 55 seconds with StartOnly TimeoutMs=45000; excludes a simple 45-second process kill in this observed asynchronous path, not all timeout causes.",
+  "diagnostic_limitations": [
+    "GetLastWin32Error in original desktop-diagnostic.json is stale after a successful OpenInputDesktop; do not interpret value 122 as an open failure.",
+    "Display-buffer failure explains capture failures but does not establish why UAC was not seen.",
+    "No new token comparison or UAC reproduction was performed."
+  ],
+  "source_change": "Record elevation request timestamp, session, duration, exception type and innermost Win32 error in tip-host-elevation-launch.json. Do not infer user action from a cancellation result.",
+  "deployed_to_sealed_kit": false,
+  "tests": [
+    {
+      "name": "test-vm-tip-host-inspection",
+      "powershell_7_passed": 33,
+      "windows_powershell_5_1_passed": 33
+    },
+    {
+      "name": "test-vm-changed-upgrade-policy",
+      "passed": 34
+    },
+    {
+      "name": "test-vm-changed-upgrade-transaction",
+      "passed": 22
+    }
+  ],
+  "next_action": "Restore a verifiable interactive display before any fresh upgrade attempt; keep both failed attempt directories and sealed v2 kit unchanged."
+}

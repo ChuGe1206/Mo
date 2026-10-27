@@ -88,18 +88,48 @@ function Invoke-MoVmElevatedHostInspection([string]$HelperPath, [string]$Evidenc
     # installation still runs later from this non-elevated initiating process.
     $start = @{ FilePath = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
         ArgumentList = $arguments; Verb = 'RunAs'; WindowStyle = 'Hidden'; PassThru = $true }
-    $process = Start-Process @start
+    # ERROR_CANCELLED alone does not prove that the user saw or dismissed UAC.
+    # Preserve launch diagnostics separately from the authenticated audit report.
+    $launchPath = Join-Path $EvidenceDirectory 'tip-host-elevation-launch.json'
+    $launch = [ordered]@{
+        format = 1; status = 'requesting-elevation'; requested_utc = [DateTime]::UtcNow.ToString('o')
+        session_id = $sessionId; native_error_code = $null; exception_type = $null
+        elapsed_milliseconds = $null
+    }
+    $launch | ConvertTo-Json | Set-Content -LiteralPath $launchPath -Encoding UTF8
+    $launchTimer = [Diagnostics.Stopwatch]::StartNew()
+    $process = $null
     try {
-        # Retain the OS handle before waiting, including on Windows PowerShell 5.1.
-        # This keeps exit status readable after a short-lived worker has exited.
-        $null = $process.Handle
+        try {
+            $process = Start-Process @start
+            # Retain the OS handle before writing evidence or waiting, including
+            # on Windows PowerShell 5.1 with a short-lived worker.
+            $null = $process.Handle
+        } catch {
+            $launch.status = 'elevation-request-failed'
+            $launch.exception_type = $_.Exception.GetType().FullName
+            $cause = $_.Exception
+            while ($null -ne $cause) {
+                if ($cause -is [ComponentModel.Win32Exception]) {
+                    $launch.native_error_code = $cause.NativeErrorCode
+                    break
+                }
+                $cause = $cause.InnerException
+            }
+            throw
+        } finally {
+            $launchTimer.Stop()
+            if ($launch.status -eq 'requesting-elevation') { $launch.status = 'worker-started' }
+            $launch.elapsed_milliseconds = $launchTimer.ElapsedMilliseconds
+            $launch | ConvertTo-Json | Set-Content -LiteralPath $launchPath -Encoding UTF8
+        }
         if (-not $process.WaitForExit($script:MoHostAuditWorkerCompletionTimeoutMilliseconds)) {
             throw 'Read-only host inspection did not complete.'
         }
         if ($process.ExitCode -ne 0) { throw 'Read-only host inspection worker failed.' }
     } finally {
         # Dispose releases our process handle; it does not terminate the worker.
-        $process.Dispose()
+        if ($null -ne $process) { $process.Dispose() }
     }
     Assert-MoVmHostAuditAcl (Split-Path -Parent $auditRoot)
     Assert-MoVmHostAuditAcl $auditRoot

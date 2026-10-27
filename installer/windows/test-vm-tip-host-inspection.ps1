@@ -61,8 +61,10 @@ Run-AclCase 'protected-audit' 'S-1-5-32-544' $false $false
 Run-AclCase 'caller-owned-audit' 'S-1-5-21-1-2-3-1001' $false $true
 Run-AclCase 'user-writable-audit' 'S-1-5-32-544' $true $true
 function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
+    $launchFailed = $Mode -in @('cancelled', 'wrapped-cancelled', 'launch-error')
     $script:adapterCopied = $false
     $script:adapterDisposeCount = 0
+    $script:adapterLaunchEvidence = @()
     function Assert-MoVmPlainDosPath { param([string]$Path) return $Path }
     function Assert-MoVmHostAuditAcl { param([string]$Path) }
     function Get-FileHash { param([string]$LiteralPath, [string]$Algorithm) return [pscustomobject]@{Hash=('B'*64)} }
@@ -75,7 +77,11 @@ function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
             $ArgumentList.Count -ne 12 -or $ArgumentList[5] -cne '"C:\synthetic kit\inspect-vm-tip-hosts.ps1"') {
             throw 'Incorrect read-only elevated worker invocation.'
         }
-        if ($Mode -eq 'cancelled') { throw 'synthetic UAC cancelled' }
+        if ($Mode -eq 'cancelled') { throw [ComponentModel.Win32Exception]::new(1223) }
+        if ($Mode -eq 'wrapped-cancelled') {
+            throw [InvalidOperationException]::new('synthetic wrapper', [ComponentModel.Win32Exception]::new(1223))
+        }
+        if ($Mode -eq 'launch-error') { throw [InvalidOperationException]::new('synthetic launch failure') }
         $script:adapterReport = [pscustomobject]@{format=1;nonce=$ArgumentList[7];owner_sid=$ArgumentList[9];session_id=17
             checked_utc=[DateTime]::UtcNow.ToString('o');elevated=$true;helper_sha256=('B'*64)
             scan=[pscustomobject]@{scope='identified-current-user-current-session';loaded_hosts=@();failed_process_ids=@();unresolved_owner_process_ids=@();protected_hosts=@()} }
@@ -93,6 +99,18 @@ function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
         return $process
     }
     function Get-Content { param([string]$LiteralPath,[switch]$Raw) return $script:adapterReport|ConvertTo-Json -Depth 8 }
+    function Set-Content {
+        [CmdletBinding()]param([string]$LiteralPath,[string]$Encoding,[Parameter(ValueFromPipeline=$true)][string]$Value)
+        process {
+            if ($LiteralPath -cne 'C:\synthetic evidence\tip-host-elevation-launch.json' -or $Encoding -cne 'UTF8') {
+                throw 'Incorrect launch evidence destination.'
+            }
+            $script:adapterLaunchEvidence += ($Value | ConvertFrom-Json)
+            if ($Mode -eq 'launch-evidence-error' -and $script:adapterLaunchEvidence.Count -eq 2) {
+                throw 'synthetic launch evidence write failure'
+            }
+        }
+    }
     function Copy-Item {
         param([string]$LiteralPath,[string]$Destination)
         if ($Mode -eq 'copy-error') { throw 'synthetic evidence copy failure' }
@@ -104,17 +122,33 @@ function Run-LaunchAdapter([string]$Mode, [bool]$ShouldReject) {
         $rejected=$true
     }
     if($rejected -ne $ShouldReject -or $script:adapterCopied -eq $ShouldReject){throw "Wrong worker adapter result: $Mode"}
-    $expectedDisposeCount = if ($Mode -eq 'cancelled') { 0 } else { 1 }
+    $expectedDisposeCount = if ($launchFailed) { 0 } else { 1 }
     if ($script:adapterDisposeCount -ne $expectedDisposeCount) {
         throw "Worker process handle was not released exactly once: $Mode"
+    }
+    if ($script:adapterLaunchEvidence.Count -ne 2 -or
+        $script:adapterLaunchEvidence[0].status -cne 'requesting-elevation') {
+        throw "Missing elevation request evidence: $Mode"
+    }
+    $launch = $script:adapterLaunchEvidence[1]
+    $expectedStatus = if ($launchFailed) { 'elevation-request-failed' } else { 'worker-started' }
+    if ($launch.status -cne $expectedStatus -or $launch.session_id -ne 17 -or
+        $launch.elapsed_milliseconds -lt 0) { throw "Incorrect elevation launch evidence: $Mode" }
+    if ($Mode -in @('cancelled', 'wrapped-cancelled') -and ($launch.native_error_code -ne 1223 -or
+        [string]::IsNullOrEmpty($launch.exception_type))) { throw 'Missing native cancellation diagnostics.' }
+    if ($Mode -notin @('cancelled', 'wrapped-cancelled') -and $null -ne $launch.native_error_code) {
+        throw 'Invented native launch error.'
     }
     $script:count++;Write-Host "PASS worker adapter $Mode"
 }
 Run-LaunchAdapter 'success' $false
 Run-LaunchAdapter 'timeout' $true
 Run-LaunchAdapter 'cancelled' $true
+Run-LaunchAdapter 'wrapped-cancelled' $true
+Run-LaunchAdapter 'launch-error' $true
 Run-LaunchAdapter 'failed-exit' $true
 Run-LaunchAdapter 'wait-error' $true
 Run-LaunchAdapter 'invalid-report' $true
 Run-LaunchAdapter 'copy-error' $true
+Run-LaunchAdapter 'launch-evidence-error' $true
 Write-Host "Read-only host inspection policy tests passed: $script:count."
