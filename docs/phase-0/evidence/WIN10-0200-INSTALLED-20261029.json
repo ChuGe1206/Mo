@@ -1,0 +1,185 @@
+{
+  "format": 1,
+  "kind": "mo-win10-installed-0200-validation",
+  "recorded_date": "2026-10-29",
+  "upgrade_attempt": "Upgrade0200-v4",
+  "upgrade": {
+    "from": "0.0.18.0",
+    "to": "0.0.20.0",
+    "completed": true,
+    "exit_code": 0,
+    "payload_verified": true,
+    "install_tree_security_audited": true,
+    "settings_preserved": true,
+    "default_override_unchanged": true,
+    "final_state_verified": true,
+    "upgrade_log_hashes_verified": 4
+  },
+  "installed_validation": {
+    "completed": true,
+    "x64_abi_exit": 0,
+    "x86_abi_exit": 0,
+    "zh_CN_preview_files": 7,
+    "en_US_preview_files": 7,
+    "language_switch_both_directions": true,
+    "real_settings_preserved": true,
+    "existing_broker_preserved": true,
+    "broker_started": false,
+    "general_page_visual_review": [
+      "zh-CN",
+      "en-US"
+    ],
+    "desktop_input_executed": false
+  },
+  "limitations": [
+    "Synthetic previews and ABI checks do not validate physical taskbar interactions.",
+    "Taskbar click, Shift synchronization, Explorer refresh, and light/dark taskbar acceptance remain separate."
+  ],
+  "files": [
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/continuation-20261029-v4/driver-status-v2.json",
+      "bytes": 341,
+      "sha256": "91971A9FEB4F6914296CE2D17A53B9AEB88BB591E96891FA4438838E31E3072C"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/continuation-20261029-v4/upgrade-evidence-v2/upgrade-state.json",
+      "bytes": 5759,
+      "sha256": "9581B9E9B6E1862ADD830EB84A25CDA8B97B2E0FBB3D7B7FC122A6D9BCC4D922"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-tools-v1/manifest.json",
+      "bytes": 800,
+      "sha256": "7285EBA4865FE9AAE54A06B9D6798CE655AC81908BCABC19A3D0898EA4DA3DF6"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-tools-v1/validate-installed.ps1",
+      "bytes": 4809,
+      "sha256": "777800B773A356C901DE1D820029C4E5430D4D352E5E1A9B6AA8E937ACAABA4E"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/abi-x64.stderr.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/abi-x64.stdout.log",
+      "bytes": 88,
+      "sha256": "D2E4B7B2812FF4D4263B8CD06288DDB27B45BD2972B0E7AF4BE9B70D57900186"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/abi-x86.stderr.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/abi-x86.stdout.log",
+      "bytes": 88,
+      "sha256": "D2E4B7B2812FF4D4263B8CD06288DDB27B45BD2972B0E7AF4BE9B70D57900186"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/receipt.json",
+      "bytes": 2217,
+      "sha256": "342A221FDDEA069FAB24E96CC4C16A378C11814FEC16B60D14A882947EBAF463"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/ui-en-US.stderr.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/ui-en-US.stdout.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/ui-zh-CN.stderr.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/ui-zh-CN.stdout.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/language-switch-state.txt",
+      "bytes": 46,
+      "sha256": "FA410C39B84154D504877974AA217D830D49F171B8EF5778A275D10EF0E2FBDD"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-appearance.bmp",
+      "bytes": 2193910,
+      "sha256": "2E2E0418C9A856AD4632CD0936AB1D146CC66CD36A196ABE8B0FFC554F0BB116"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-custom.bmp",
+      "bytes": 2193910,
+      "sha256": "FA1FD3C198993201127A85041EF156B4DF70ACF19130F189BC3BB4640FE9A161"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-dark.bmp",
+      "bytes": 2193910,
+      "sha256": "4A60EB152DABE633DA4657B42A8E0841E9BD720CD73320644F69E7B5F415D30C"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-general.bmp",
+      "bytes": 2193910,
+      "sha256": "098595968EE0630F2893E5083072686793FE6EC90032F7481A67E871A6BE6CA8"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-language-switch.bmp",
+      "bytes": 1571190,
+      "sha256": "F8AB5436C8632E056EE3EEDF5BF78987E0F32CF7C1E0642B660CCA6CA6B1B975"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-privacy.bmp",
+      "bytes": 2193910,
+      "sha256": "E61E6FC9C1762C0A4DC4417463B3B19119C47F336D2E1A4B7DC5A8D13D9F9FDC"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/en-US/settings-small.bmp",
+      "bytes": 1571190,
+      "sha256": "B24B3B544D7ED0002899216AF6231A48054D9E2542397B177B4DBD27B2E0B5C8"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/language-switch-state.txt",
+      "bytes": 46,
+      "sha256": "356DBE6ED7220B44B66CD9F831B86536C2DEFE3DF91C41401977B91D7E17B933"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-appearance.bmp",
+      "bytes": 2193910,
+      "sha256": "6830ECAD5F585792C8DD97BBAA7AC73EA7C47645E18CE8701648352B70A1B615"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-custom.bmp",
+      "bytes": 2193910,
+      "sha256": "BDF357211810425EBAAC22059083D077554E5FDD450A790C220C0B2A3409573C"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-dark.bmp",
+      "bytes": 2193910,
+      "sha256": "DFBD55C5F0BC232B10EC41AD77D188DFE6A9EFDCC445660759CCE9E804482B79"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-general.bmp",
+      "bytes": 2193910,
+      "sha256": "5104F43A4C64EF48BE134A86DA4F46BABAE3D6DA8B1CAC0139F91B8A57B47F65"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-language-switch.bmp",
+      "bytes": 1571190,
+      "sha256": "9320586E51E34B39CC964A15FD56ECC1BD4EB7FCB8F42B25C5CA306B6297E841"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-privacy.bmp",
+      "bytes": 2193910,
+      "sha256": "1C3BB6A7C97E0A241030A8928EB75A7C2570354A49F4D2672029B6C7155DE54F"
+    },
+    {
+      "path": "build/win10-evidence-clean-v1/Package0200-v2/installed-validation-evidence-v1/zh-CN/settings-small.bmp",
+      "bytes": 1571190,
+      "sha256": "D0576F4BF0A43FC6FE88B74AA96FB09AFB400FC3D8B7B27AEBFA9FB738A6C916"
+    }
+  ]
+}
