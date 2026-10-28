@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "kind": "mo-win10-0200-user-triggered-upgrade-handoff",
+  "checked_utc": "2026-10-28T17:40:32.8785246Z",
+  "attempt_v2": {
+    "readonly_audit_completed": true,
+    "bundle_elevation_error": "0x800704c7 / 0x80070642",
+    "completed": false,
+    "installer_invoked": true,
+    "msi_execution_evidence_present": false,
+    "exit_code": 1602,
+    "base_payload_verified": true
+  },
+  "attempt_v3": {
+    "failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。",
+    "completed": false,
+    "installer_invoked": false
+  },
+  "desktop_launcher": {
+    "guest_evidence": "C:\\MoDev\\Evidence\\Upgrade0200-v4",
+    "read_only_uac_then_installer_uac": true,
+    "permission_buttons_automated": false,
+    "prepared": true,
+    "shortcut": "Mo 0.0.20 Upgrade",
+    "local_sha256": "50B628463A003FE79132E0F4CB84D0D7C8105C35BAF5757C7E447B52452A13E2",
+    "local_script": "C:\\MoDev\\Tools\\Upgrade0200-v4\\start-upgrade.ps1",
+    "atomic_once_marker": true
+  },
+  "package_rebuilt": false,
+  "cargo_target_exists": false,
+  "files": {
+    "continuation-20261028-v2/upgrade-evidence-v2/upgrade-state.json": {
+      "bytes": 5477,
+      "sha256": "5B5289D401A9E727D1A325C4AAF86F1DE5276CA64437C044A96DCEE312DE9453"
+    },
+    "continuation-20261028-v2/upgrade-evidence-v2/upgrade.log": {
+      "bytes": 9920,
+      "sha256": "CE6EE2143E0D947AD8D314022969337659715D146DE1BAF814F306F5B04F0753"
+    },
+    "continuation-20261029-v3/upgrade-evidence-v2/upgrade-state.json": {
+      "bytes": 3587,
+      "sha256": "EC374050B11D0FF1DDDAA20206B609E45B0C7B5D5DC300A9F85A54D5CB123631"
+    },
+    "continuation-20261029-v4/desktop-launcher-receipt.json": {
+      "bytes": 488,
+      "sha256": "50929B7D9D8630D519946D5D57911C2DB23DB411129FA2A48C8C92FCB71F500C"
+    },
+    "continuation-20261029-v4/desktop-launcher-final-receipt.json": {
+      "bytes": 291,
+      "sha256": "E2566E7F76E4A0CE25344AD593254D832E7CFDE3C0D29E0C6E7643C5CE56A047"
+    },
+    "continuation-20261029-v4/start-upgrade.ps1": {
+      "bytes": 1928,
+      "sha256": "50B628463A003FE79132E0F4CB84D0D7C8105C35BAF5757C7E447B52452A13E2"
+    },
+    "continuation-20261029-v4/prepare-desktop-launcher.ps1": {
+      "bytes": 3192,
+      "sha256": "B70813CFD7AA78FD8A56C34794741D4FBCDC57094062240213BB90D769CFA1FB"
+    },
+    "continuation-20261029-v4/desktop-shortcut.png": {
+      "bytes": 735974,
+      "sha256": "ACF5B48D5C88DD758D971323652429EDFCE3FEC031C8D148F765F2295A5D4747"
+    },
+    "continuation-20261029-v4/latest-readonly-status.json": {
+      "bytes": 518,
+      "sha256": "06A08266C48C6C88847AA0F2D52C270F2B49B9CA14CA2F89C9FCCF6D65F3B02D"
+    }
+  },
+  "latest_readonly_check": {
+    "checked_utc": "2026-10-28T17:44:37.1672562Z",
+    "installed_settings_sha256": "421157BEF6195AD99F29066E0942A79574AC244EB2B03133A6FE84A3AC2A40B6",
+    "installed_products": [
+      {
+        "DisplayName": "Mo (墨) 输入法 — development build",
+        "DisplayVersion": "0.0.18.0"
+      }
+    ],
+    "launcher_started": false,
+    "pending_elevation": 0,
+    "matches_retained_0180_settings": true
+  }
+}
