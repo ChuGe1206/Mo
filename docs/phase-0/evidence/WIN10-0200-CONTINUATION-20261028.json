@@ -1,0 +1,106 @@
+{
+  "format": 1,
+  "kind": "mo-win10-0200-upgrade-continuation",
+  "checked_utc": "2026-10-28T09:23:08.9164983Z",
+  "status": "readonly-elevation-returned-cancelled-installer-not-invoked",
+  "raw_evidence_root": "build/win10-evidence-clean-v1/Package0200-v2/continuation-20261028-v1",
+  "guest_evidence_directory": "C:\\MoDev\\Evidence\\Upgrade0200-v1",
+  "installed_version": "0.0.18.0",
+  "kit_files_verified": 14,
+  "kit_manifest_sha256": "7B3C66E1E706229B33BA8E1A7D5B7349F7A5360C65134013201531ACBD92895D",
+  "vm_display": {
+    "after_cancel_screenshot": true,
+    "width": 1045,
+    "flags": 1,
+    "desktop_screenshot": true,
+    "recovery_cause": "not established",
+    "uac_screenshot": true,
+    "height": 750,
+    "bpp": 32
+  },
+  "elevation": {
+    "readonly": true,
+    "elapsed_milliseconds": 123224,
+    "cancel_source": "not established",
+    "application": "Windows PowerShell",
+    "publisher": "Microsoft Windows",
+    "status": "elevation-request-failed",
+    "automated_permission_action": false
+  },
+  "upgrade": {
+    "completed": false,
+    "installer_invocation_attempted": false,
+    "final_state_verified": false,
+    "failure": "由于出现以下错误，无法运行此命令: 操作已被用户取消。。"
+  },
+  "installed_tools": {
+    "manifest_sha256": "7285EBA4865FE9AAE54A06B9D6798CE655AC81908BCABC19A3D0898EA4DA3DF6",
+    "guest_powershell": "5.1.19041.6456",
+    "probe_hashes_verified": 2,
+    "files": {
+      "abi-Win32.exe": {
+        "sha256": "0892D297E61837C74DAC7F5A3F7DCEFE1C0C474CE1AC679F55985B0183437A24",
+        "bytes": 335872
+      },
+      "abi-x64.exe": {
+        "sha256": "2D9A7DFB388B2DB5A2CE1172192057E437B0B22CEFF73D3E813E857FFC1BADFB",
+        "bytes": 385536
+      },
+      "manifest.json": {
+        "sha256": "7285EBA4865FE9AAE54A06B9D6798CE655AC81908BCABC19A3D0898EA4DA3DF6",
+        "bytes": 800
+      },
+      "validate-installed.ps1": {
+        "sha256": "777800B773A356C901DE1D820029C4E5430D4D352E5E1A9B6AA8E937ACAABA4E",
+        "bytes": 4809
+      }
+    },
+    "executed": false,
+    "guest_script_ast": true
+  },
+  "new_build_performed": false,
+  "product_sources_changed": false,
+  "cargo_target_exists": false,
+  "files": {
+    "desktop-before.png": {
+      "sha256": "CBFC109145062987917165332E6395928D42D73CBB2C65AA3DA1EFB4FAE1B443",
+      "bytes": 581108
+    },
+    "upgrade-step-1.png": {
+      "sha256": "4810CF6EBFF6311897DF8BC24FEEBACFCE4524082EC94D634EE0534255D9F61A",
+      "bytes": 330504
+    },
+    "desktop-after-cancel.png": {
+      "sha256": "69E00E18FD8DB78113CFE23FB070042C6893931915249BE0FBB90BA9164876C0",
+      "bytes": 581344
+    },
+    "guest-preflight.json": {
+      "sha256": "F31EDFC1ECD77319FEE5EEC825793FE22E49A76B02D2EE636ED89B4E5078B0D9",
+      "bytes": 894
+    },
+    "guest-postflight.json": {
+      "sha256": "A2681A634B20A05137D353535DBD6D03B506165541C7FC9EAE005C6AAFD7E53B",
+      "bytes": 1178
+    },
+    "driver-status-v2.json": {
+      "sha256": "3DF127E7C998A0DB9D485FB58F8DC15E7BFB64915B0A22B4866A54E0D424094B",
+      "bytes": 417
+    },
+    "driver-v2.log": {
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    "start-upgrade.ps1": {
+      "sha256": "3698E5A98880357BEB8641439A9B48A0ABE38E976D0DB9002F24C92C0D6A632A",
+      "bytes": 1652
+    },
+    "upgrade-evidence-v2/upgrade-state.json": {
+      "sha256": "7BF1592570B427E5C92D47FC9DCCC3EB9AC711E04A81A7A866F53923800C8070",
+      "bytes": 3517
+    },
+    "upgrade-evidence-v2/tip-host-elevation-launch.json": {
+      "sha256": "6E061A2C27D88980CFDF65690B221BF06D17B06D2345CEE825E449218CEA20AC",
+      "bytes": 280
+    }
+  }
+}
