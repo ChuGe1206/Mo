@@ -28,6 +28,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'registered-tip-state.ps1')
 . (Join-Path $PSScriptRoot 'broker-fault-harness.ps1')
+. (Join-Path $PSScriptRoot 'probe-broker-diagnostics.ps1')
 . (Join-Path $PSScriptRoot 'opencc-data.ps1')
 if ($Registered -and $Architecture -ne 'All') { throw 'Registered smoke requires -Architecture All.' }
 if ($Registered) {
@@ -159,6 +160,7 @@ function Invoke-RimeBrokerProbe(
     if ($null -eq $process) { throw "Failed to start Broker for $Platform $Label" }
 
     $runtimeLog = $null
+    $probeFailure = $null
     try {
         # Wait for the Broker's explicit readiness line rather than guessing at
         # librime startup time. This wait belongs to the harness, not the TIP.
@@ -185,17 +187,37 @@ function Invoke-RimeBrokerProbe(
         }
     } catch {
         $probeFailure = $_.Exception.Message
-        if (-not $process.HasExited) { $process.Kill($true) }
-        if ($process.WaitForExit(3000) -and $null -ne $runtimeLog -and $runtimeLog.Wait(1000)) {
-            $probeFailure += "`nOwned Broker stderr: $($runtimeLog.Result)"
+        if ($null -ne $runtimeLog) {
+            try {
+                $transcript = Complete-MoOwnedProbeBrokerDiagnostics -Process $process `
+                    -Log $runtimeLog -DiagnosticGrace:$LatencyTrace
+                $probeFailure += "`nOwned Broker stderr: $transcript"
+            } catch {
+                $probeFailure += "`nBroker diagnostic cleanup: $($_.Exception.Message)"
+            }
         }
+        # Persist the original failure and diagnostic transcript even when the
+        # outer host redirects only ordinary output. Cleanup cannot replace it.
+        Write-Host "MO_RIME_PROBE_FAILURE $probeFailure"
         throw $probeFailure
     } finally {
+        $cleanupErrors = @()
+        $processStopped = $false
         try {
             if (-not $process.HasExited) { $process.Kill($true) }
             if (-not $process.WaitForExit(3000)) { throw 'Owned Rime Broker did not exit before data cleanup.' }
+            $processStopped = $true
+        } catch {
+            $cleanupErrors += $_.Exception.Message
         } finally { $process.Dispose() }
-        Remove-ProbeUser $probeUser
+        if ($processStopped) {
+            try { Remove-ProbeUser $probeUser } catch { $cleanupErrors += $_.Exception.Message }
+        }
+        if ($cleanupErrors.Count) {
+            $cleanupFailure = "Owned Rime probe cleanup: $($cleanupErrors -join '; ')"
+            Write-Host "MO_RIME_PROBE_CLEANUP_FAILURE $cleanupFailure"
+            if ($null -eq $probeFailure) { throw $cleanupFailure }
+        }
     }
 }
 

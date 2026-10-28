@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "kind": "mo-probe-failure-diagnostic-retention",
+  "checked_utc": "2026-10-28T07:02:24.1671827Z",
+  "script_checks_passed": 33,
+  "rust": {
+    "workspace_ignored": 1,
+    "toolchain": "1.97.1",
+    "strict_clippy_default": true,
+    "workspace_passed": 207.0,
+    "fmt": true,
+    "strict_clippy_latency_trace": true
+  },
+  "native": {
+    "full_real_rime_tsf_passed": false,
+    "input_mode_click_shift_probe_passed": true,
+    "reused_existing_x64_trace_probe": true,
+    "product_sources_changed": false
+  },
+  "latency": {
+    "actor_engine_us": 288011,
+    "request_kind": 5,
+    "isolated_connection": true,
+    "logger_dropped": 0,
+    "request_id": 11,
+    "frontend_deadline_ms": 50,
+    "correlation": "ordered final dispatch before destroy, no concurrent connections",
+    "actor_queue_us": 8,
+    "client_total_us": 50674,
+    "client_header_us": 50652,
+    "conclusion": "engine handling interval, internal computation/IO/scheduling distinction unresolved"
+  },
+  "vm": {
+    "elevation_requested": false,
+    "running": true,
+    "pending_kit": "0.0.20.0-v2",
+    "vbox_screenshot": "E_FAIL",
+    "latest_verified_installed_version": "0.0.18.0",
+    "installer_invoked": false,
+    "ui_capture_retries": 2,
+    "screen_layout_did_not_restore_capture": true
+  },
+  "package_rebuilt": false,
+  "cleanup_evidence": "PROBE-DIAGNOSTICS-CLEANUP-20261028.json",
+  "reclaimed_bytes": 971919349,
+  "logs": {
+    "probe-diagnostics-tests-20261028.log": {
+      "sha256": "D662529BB8A74D3DAF07CF5F412ADBA94934B674F59FD9C5CA3DB616D4EEF7B4",
+      "bytes": 179
+    },
+    "probe-diagnostics-tests-20261028-v2.log": {
+      "sha256": "D662529BB8A74D3DAF07CF5F412ADBA94934B674F59FD9C5CA3DB616D4EEF7B4",
+      "bytes": 179
+    },
+    "probe-diagnostics-tests-20261028-v3.log": {
+      "sha256": "A7A6765828A01053065030A150E4662DA1B84C61FD540029CF6BE1008EE2895C",
+      "bytes": 179
+    },
+    "probe-diagnostics-fmt-20261028.log": {
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    "probe-diagnostics-clippy-20261028.log": {
+      "sha256": "C294FBA0F6D8BA8336AE41BBFC0CE28608CA44EC292BE51342E024F03B84C5B7",
+      "bytes": 1144
+    },
+    "probe-diagnostics-clippy-trace-20261028.log": {
+      "sha256": "9A273F0FF9BA82C004152C2918709AC91209C1841666AA763F0FFBB331AA80B0",
+      "bytes": 169
+    },
+    "probe-diagnostics-workspace-20261028.log": {
+      "sha256": "661C78C3D6A11BDCFCECAFCEEBD6E4685167A97DA5E200C174D0B3D7C179C699",
+      "bytes": 23540
+    },
+    "probe-diagnostics-trace-build-20261028.log": {
+      "sha256": "7C785DB75039FCF44A0B3564CE236589BBDEBE65E5FD9C3DEF16C3082EA70962",
+      "bytes": 620
+    },
+    "probe-diagnostics-rime-20261028.log": {
+      "sha256": "0FC5D37EBC70CB62D42757EF6C459092A5A2E0EE7829B343CFBFA13065141A84",
+      "bytes": 1535
+    },
+    "probe-diagnostics-rime-20261028.json": {
+      "sha256": "1E488269EED8EDF50001332D4A457612F4DC1948298D4C26E7F81F2D69612550",
+      "bytes": 1327
+    },
+    "probe-diagnostics-cargo-clean-20261028.log": {
+      "sha256": "BD6B34C9D66569CF0E595E242D89B8C912EDF48CEB1B03B021A5EEC0F9614E4E",
+      "bytes": 41
+    },
+    "vm-display-20261028-v1/diagnostic.json": {
+      "sha256": "A530D2573F3ECC4398E30DF7D16E4B631BEBBA389A2F8BA71AF4B816F9D9FB9D",
+      "bytes": 291
+    },
+    "probe-diagnostics-tests-20261028-v4.log": {
+      "sha256": "F555FF295A1010BE768F166066B85336B89BBCE2898158152A70890AE4AE095E",
+      "bytes": 262
+    }
+  }
+}

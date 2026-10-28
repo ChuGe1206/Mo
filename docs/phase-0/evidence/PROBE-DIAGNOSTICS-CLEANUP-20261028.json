@@ -1,0 +1,31 @@
+{
+  "checked_utc": "2026-10-28T06:53:27.1857415Z",
+  "target_directory": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+  "idle_checked": true,
+  "plain_paths_checked": true,
+  "removed": [
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\target",
+      "before_bytes": 895274668,
+      "remaining_bytes": 0,
+      "reclaimed_bytes": 895274668
+    },
+    {
+      "path": "E:\\ChuGe\\CodeProject\\101_ProjectCollection\\Mo\\build\\probe-diagnostics-rime-user-20261028-v1",
+      "before_bytes": 76644681,
+      "remaining_bytes": 0,
+      "reclaimed_bytes": 76644681
+    }
+  ],
+  "reclaimed_bytes": 971919349,
+  "free_before_bytes": 99197726720,
+  "free_after_bytes": 100133961728,
+  "protected_sha256": {
+    "build/mo-windows-stage-mode-0200-v2/stage/mo-stage.json": "4EC4F1773E9A30DB2A1A1FF042CF6F8E8FBC9933877F0707F5D749E147E31FC6",
+    "build/mo-vm-changed-upgrade-kit-0180-0200-v2/mo-setup-upgrade-unsigned.exe": "C113D004478A954760F4BA6BEACD66445A9937B2AA1E2B0F79C5589BA82BD538",
+    "build/mo-runtime-userdb-v3/dist/lib/rime.dll": "BE5E3E374D9FBE12381A0E3D522079033D85C08F4675F7A9A556A6DC3D30D564",
+    "build/mo-vm-changed-upgrade-kit-0180-0200-v2/vm-changed-upgrade-kit.json": "7B3C66E1E706229B33BA8E1A7D5B7349F7A5360C65134013201531ACBD92895D",
+    "build/mo-windows-stage-expanded-0180-v3/stage/mo-stage.json": "3603E8E4B39A552564C84FEA5AB1D464C2C725EE72DADA47224B8808E320CF23"
+  },
+  "accounting_note": "Aggregate corrected from retained per-path before/remaining bytes; no cleanup rerun."
+}

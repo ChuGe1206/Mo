@@ -56,6 +56,9 @@ jobs:
       - name: Test registered-smoke rollback policy without changing Windows input state
         shell: pwsh
         run: ./tools/test-registered-tip-state.ps1
+      - name: Retain bounded late Broker diagnostics after probe failures
+        shell: pwsh
+        run: ./tools/test-probe-broker-diagnostics.ps1
       - name: Test development staging policy without installing or registering an IME
         shell: pwsh
         run: |
